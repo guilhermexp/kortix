@@ -13,10 +13,10 @@
 - Timestamp triggers set on users, spaces, documents, memories, ingestion_jobs.
 
 ## Next Steps
-1. Seed initial organization/user (admin) via better-auth once backend ready.
-2. Add migrations for API keys, chat sessions, and other aux tables if needed.
-3. Integrate Drizzle migration process to manage future schema changes.
-4. Set up Supabase RLS policies after auth flows are in place.
+1. Seed inicial já aplicado (ver seção `Seed 0001_default_org`).
+2. Aplicar `0002_rls_policies.sql` na instância Supabase para liberar uso do `anon` key com segurança (ver detalhes abaixo).
+3. Executar `0004_api_keys_password_reset.sql` antes de habilitar API keys e reset de senha em produção.
+4. Integrar processo automatizado de migrações (Drizzle/CLI) para versionar mudanças futuras.
 
 ## Migration 0004_api_keys_password_reset
 - Adds `api_keys` table with hashed secrets, metadata, and lifecycle timestamps.
@@ -29,9 +29,15 @@
 - Creates organization slug `default`, admin user `admin@local.host`, owner membership, and default project (`sm_project_default`).
 
 ## Migration 0002_rls_policies
-- Pending application (define via Supabase SQL or CLI before exposing anon key).
-- Adds helper functions `current_request_org()`/`current_request_user()` and enables RLS on organizations, memberships, spaces, documents, chunks, memories, join tables e jobs.
-- Policies restrict `authenticated` role to rows matching the `X-Supermemory-Organization` header while keeping `service_role` unrestricted for internal workers.
+- **Status**: pendente (executar antes de expor `SUPABASE_ANON_KEY`).
+- Cria helpers `current_request_org()`/`current_request_user()` que leem os headers `X-Supermemory-*` injetados pelo backend.
+- Ativa RLS em organizations, memberships, spaces, documents, chunks, memories, join tables e jobs, liberando apenas linhas do `org_id` atual.
+- `service_role` mantém acesso irrestrito para workers/background.
+- Como aplicar:
+  1. Abra o **SQL Editor** do Supabase ou use o MCP `supabase` configurado no repositório.
+  2. Carregue o conteúdo de `spec/infra/migrations/0002_rls_policies.sql`.
+  3. Execute e verifique se nenhuma política conflituosa permanece (`DROP POLICY` já cuida das existentes).
+  4. Teste com o backend local garantindo que chamadas feitas com a service-role continuam funcionando e que o `anon` respeita o cabeçalho `X-Supermemory-Organization`.
 
 ## Migration 0003_auth_verifications
 - Applied via Supabase management API (2025-09-29) using PAT.

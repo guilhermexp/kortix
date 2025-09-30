@@ -2,9 +2,6 @@ import { createFetch, createSchema } from "@better-fetch/fetch"
 import { z } from "zod"
 import { BACKEND_URL } from "./env"
 import {
-	AnalyticsChatResponseSchema,
-	AnalyticsMemoryResponseSchema,
-	AnalyticsUsageResponseSchema,
 	ConnectionResponseSchema,
 	CreateProjectSchema,
 	DeleteProjectResponseSchema,
@@ -35,15 +32,6 @@ const SettingsResponseSchema = z.object({
 	}),
 })
 
-// Analytics request schema - custom to console
-const AnalyticsRequestSchema = z.object({
-	from: z.string().datetime().optional(),
-	limit: z.number().int().min(1).max(100).default(20),
-	page: z.number().int().min(1).default(1),
-	period: z.enum(["24h", "7d", "30d", "all"]).optional(),
-	to: z.string().datetime().optional(),
-})
-
 // Waitlist response schema
 const WaitlistStatusResponseSchema = z.object({
 	inWaitlist: z.boolean(),
@@ -52,21 +40,6 @@ const WaitlistStatusResponseSchema = z.object({
 })
 
 export const apiSchema = createSchema({
-	"@get/analytics/chat": {
-		output: AnalyticsChatResponseSchema,
-		query: AnalyticsRequestSchema,
-	},
-	"@get/analytics/memory": {
-		output: AnalyticsMemoryResponseSchema,
-		query: AnalyticsRequestSchema,
-	},
-
-	// Analytics operations
-	"@get/analytics/usage": {
-		output: AnalyticsUsageResponseSchema,
-		query: AnalyticsRequestSchema,
-	},
-
 	// Connection operations - Add missing endpoints
 	"@post/connections/:provider": {
 		input: z.object({
@@ -193,15 +166,6 @@ export const apiSchema = createSchema({
 		output: WaitlistStatusResponseSchema,
 	},
 
-	"@post/emails/welcome/pro": {
-		input: z.object({
-			email: z.string(),
-			firstName: z.string(),
-		}),
-		output: z.object({
-			message: z.string(),
-		}),
-	},
 })
 
 export const $fetch = createFetch({

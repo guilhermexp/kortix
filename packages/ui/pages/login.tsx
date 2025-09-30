@@ -87,6 +87,7 @@ export function LoginPage() {
 							onChange={(event) => setEmail(event.target.value)}
 							required
 							placeholder="seu@email.com"
+							autoComplete="email"
 							className="bg-white/10 border-white/20 text-white"
 						/>
 					</div>
@@ -118,6 +119,7 @@ export function LoginPage() {
 							onChange={(event) => setPassword(event.target.value)}
 							required
 							placeholder="Sua senha"
+							autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
 							className="bg-white/10 border-white/20 text-white"
 						/>
 						{mode === "sign-in" && (

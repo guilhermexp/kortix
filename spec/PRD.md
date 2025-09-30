@@ -16,7 +16,8 @@ The open-source frontend depends on the proprietary Supermemory SaaS API for all
 
 ## Scope
 ### In Scope
-- Backend services for auth, documents, memories, search, chat, connectors, settings, analytics stubs.
+- Backend services for auth, documents, memories, search, chat, connectors e settings.
+- Conversão automática de conteúdos (sites, PDFs, DOCX, PPTX, áudio, vídeo, YouTube) usando Firecrawl e Gemini para alimentar memórias enriquecidas.
 - Queue/worker pipeline for ingestion stages (`queued` → `done`).
 - Vector search with configurable thresholds and filters.
 - Frontend updates removing subscription gating (Autumn/Pro), pointing to new backend.
@@ -24,7 +25,7 @@ The open-source frontend depends on the proprietary Supermemory SaaS API for all
 
 ### Out of Scope
 - Paid subscription management, billing portals, Autumn licensing.
-- Proprietary analytics dashboards beyond basic telemetry proxies.
+- Analytics proprietários/telemetria centralizada.
 - Enterprise-only connectors not exposed in OSS frontend.
 - MCP client packaging beyond existing repo tools.
 
@@ -37,6 +38,7 @@ The open-source frontend depends on the proprietary Supermemory SaaS API for all
 ## Assumptions & Risks
 - Access to Supabase Postgres with pgvector and Supabase Storage (or equivalents).
 - Availability of Gemini API keys (default provider) – adapters can add others later if needed.
+- Firecrawl é opcional mas recomendado para padronizar páginas web antes do chunking.
 - OAuth clients for connectors can be provisioned by deployers.
 - Some SaaS behaviors undocumented; may require iterative testing against original API to match edge cases.
 - Long-running ingestion jobs must fit within Workers/queue constraints; may need dedicated worker runtime.
@@ -45,7 +47,7 @@ The open-source frontend depends on the proprietary Supermemory SaaS API for all
 1. **M1 – Authentication Foundation**: better-auth server, session cookies, organization/project scoping.
 2. **M2 – Ingestion Pipeline**: document upload, storage, async processing, status polling.
 3. **M3 – Search & Chat**: vector retrieval, thresholds, rerank, chat streaming.
-4. **M4 – Integrations & Analytics**: connector OAuth skeletons (shipped behind feature flags until configured), analytics/settings endpoints, Posthog proxy.
+4. **M4 – Integrations & Settings**: connector OAuth skeletons (atrás de feature flags até configurar) e ajustes de preferências; analytics/Posthog foram descartados para o self-hosted.
 5. **M5 – Frontend Retrofit & Docs**: remove paywall logic, update env files, write deployment guides, final QA.
 
 ## Dependencies

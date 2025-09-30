@@ -17,6 +17,8 @@ const envSchema = z.object({
     .transform((value) => Number.parseInt(value, 10))
     .default("1536"),
   CHAT_MODEL: z.string().default("models/gemini-2.5-pro"),
+  SUMMARY_MODEL: z.string().optional(),
+  FIRECRAWL_API_KEY: z.string().optional(),
   INGESTION_BATCH_SIZE: z
     .string()
     .regex(/^\d+$/)
@@ -56,6 +58,8 @@ const parsed = envSchema.safeParse({
   EMBEDDING_MODEL: process.env.EMBEDDING_MODEL,
   EMBEDDING_DIMENSION: process.env.EMBEDDING_DIMENSION,
   CHAT_MODEL: process.env.CHAT_MODEL,
+  SUMMARY_MODEL: process.env.SUMMARY_MODEL,
+  FIRECRAWL_API_KEY: process.env.FIRECRAWL_API_KEY,
   INGESTION_BATCH_SIZE: process.env.INGESTION_BATCH_SIZE,
   INGESTION_POLL_MS: process.env.INGESTION_POLL_MS,
   INGESTION_MAX_ATTEMPTS: process.env.INGESTION_MAX_ATTEMPTS,
