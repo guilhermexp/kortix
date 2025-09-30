@@ -29,7 +29,6 @@ export default defineConfig({
 			`${apiOrigin.protocol}//${apiOrigin.host}/*`,
 			"*://chatgpt.com/*",
 			"*://chat.openai.com/*",
-			"https://*.posthog.com/*",
 		],
 		web_accessible_resources: [
 			{

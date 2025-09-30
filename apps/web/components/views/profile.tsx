@@ -19,7 +19,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { analytics } from "@/lib/analytics"
-import { $fetch } from "@lib/api"
 
 export function ProfileView() {
 	const router = useRouter()
@@ -79,30 +78,10 @@ export function ProfileView() {
 	const handleUpgrade = async () => {
 		setIsLoading(true)
 		try {
-			const upgradeResult = await attach({
+			await attach({
 				productId: "consumer_pro",
 				successUrl: `${appOrigin}/`,
 			})
-			if (
-				upgradeResult.statusCode === 200 &&
-				upgradeResult.data &&
-				"code" in upgradeResult.data
-			) {
-				const isProPlanActivated =
-					upgradeResult.data.code === "new_product_attached"
-				if (isProPlanActivated && session?.name && session?.email) {
-					try {
-						await $fetch("@post/emails/welcome/pro", {
-							body: {
-								email: session?.email,
-								firstName: session?.name,
-							},
-						})
-					} catch (error) {
-						console.error(error)
-					}
-				}
-			}
 		} catch (error) {
 			console.error(error)
 			setIsLoading(false)

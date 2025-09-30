@@ -49,6 +49,8 @@ AUTH_SECRET=chave_com_32_caracteres
 APP_URL=https://app.seudominio.com
 ALLOWED_ORIGINS=https://app.seudominio.com,http://localhost:3000
 GOOGLE_API_KEY=sua_key_do_modelo
+SUMMARY_MODEL=models/gemini-2.5-pro
+FIRECRAWL_API_KEY= # opcional, usa Firecrawl para normalizar páginas web
 RESEND_API_KEY=sua_key_resend
 FROM_EMAIL=suporte@seudominio.com
 ```
@@ -59,8 +61,7 @@ FROM_EMAIL=suporte@seudominio.com
 NEXT_PUBLIC_BACKEND_URL=https://api.seudominio.com
 NEXT_PUBLIC_APP_URL=https://app.seudominio.com
 NEXT_PUBLIC_MCP_SERVER_URL=https://api.seudominio.com/mcp
-NEXT_PUBLIC_POSTHOG_KEY= # opcional, mantenha vazio se não usar
-NEXT_PUBLIC_POSTHOG_HOST=
+NEXT_PUBLIC_DOCS_URL=https://app.seudominio.com/docs
 ```
 
 > Para desenvolvimento local, use `http://localhost:4000` e `http://localhost:3000` respectivamente.
@@ -113,6 +114,7 @@ A build do Next utiliza as envs de `.env`. Sirva atrás do mesmo proxy ou utiliz
 - `packages/auth-server/mailer.ts` usa Resend. Configure o domínio e ajuste o `FROM_EMAIL`.
 - Se quiser SMTP próprio, adapte esse arquivo mantendo a mesma interface.
 - RLS do Supabase depende das seeds executadas; revise `spec/infra/migrations/0002_*` para políticas atualizadas.
+- Ingestão multimídia: com `GOOGLE_API_KEY` ativo o backend usa Gemini para resumir YouTube, imagens, áudio, vídeo e documentos (PDF, DOCX, PPTX, planilhas). Configure `FIRECRAWL_API_KEY` para padronizar páginas web antes do chunking.
 
 ## 6. MCP e conectores
 
@@ -125,6 +127,7 @@ A build do Next utiliza as envs de `.env`. Sirva atrás do mesmo proxy ou utiliz
 - [ ] Frontend acessível e apontando para o backend correto.
 - [ ] Login por e-mail funcionando (verifique entrega de Resend).
 - [ ] Upload/ingestão de documentos gera memórias consultáveis em `/v3/search`.
+- [ ] Uploads multimídia (PDF, DOCX, imagens, áudio, vídeo, YouTube) são resumidos automaticamente pelo Gemini/Firecrawl.
 - [ ] Chat responde utilizando contexto das memórias.
 - [ ] MCP conectado (se aplicável).
 

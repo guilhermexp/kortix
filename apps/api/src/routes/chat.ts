@@ -137,7 +137,7 @@ export async function handleChat({
         contents,
         systemInstruction,
         generationConfig: {
-          maxOutputTokens: 1024,
+          maxOutputTokens: 8192,
         },
       })
 

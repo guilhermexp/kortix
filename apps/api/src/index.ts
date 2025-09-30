@@ -44,9 +44,7 @@ import {
 } from "./routes/connections"
 import { requestPasswordReset, completePasswordReset, updatePassword, updatePasswordValidator } from "./routes/password"
 import { getSettings, updateSettings } from "./routes/settings"
-import { getAnalyticsChat, getAnalyticsMemory, getAnalyticsUsage } from "./routes/analytics"
 import { getWaitlistStatus } from "./routes/waitlist"
-import { sendWelcomeEmail } from "./routes/emails"
 import { generateChatTitle, handleChat } from "./routes/chat"
 import { createScopedSupabase } from "./supabase"
 
@@ -223,12 +221,19 @@ app.post(
       const docs = await listDocumentsWithMemories(supabase, organizationId, query)
       return c.json(docs)
     } catch (error) {
-      console.error("Failed to fetch documents with memories", error)
+      console.error("Failed to fetch documents with memories:", error)
+      console.error("Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        organizationId,
+        query,
+      })
       return c.json(
         {
           error: {
             message:
               error instanceof Error ? error.message : "Failed to fetch documents",
+            details: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.stack : String(error)) : undefined,
           },
         },
         500,
@@ -430,36 +435,7 @@ app.patch("/v3/settings", zValidator("json", SettingsRequestSchema.partial().opt
   }
 })
 
-app.get("/v3/analytics/chat", (c) => {
-  const params = c.req.query()
-  const result = getAnalyticsChat(params)
-  return c.json(result)
-})
-
-app.get("/v3/analytics/memory", (c) => {
-  const params = c.req.query()
-  const result = getAnalyticsMemory(params)
-  return c.json(result)
-})
-
-app.get("/v3/analytics/usage", (c) => {
-  const params = c.req.query()
-  const result = getAnalyticsUsage(params)
-  return c.json(result)
-})
-
 app.get("/v3/waitlist/status", (c) => c.json(getWaitlistStatus()))
-
-app.post("/v3/emails/welcome/pro", async (c) => {
-  const body = await c.req.json()
-  try {
-    const response = await sendWelcomeEmail(body)
-    return c.json(response)
-  } catch (error) {
-    console.error("Failed to send welcome email", error)
-    return c.json({ error: { message: "Failed to send welcome email" } }, 400)
-  }
-})
 
 app.post("/chat", async (c) => {
   const { organizationId } = c.var.session

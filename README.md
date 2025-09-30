@@ -12,7 +12,7 @@ Everything is wired to talk to _your_ backend – no calls to `api.supermemory.a
 
 ## What’s Included
 
-- ✅ Memory ingestion pipeline (text, links, future uploads) with background processing
+- ✅ Memory ingestion pipeline (text, links, arquivos multimídia) com processing em segundo plano
 - ✅ Vector search + chat that surfaces your stored memories
 - ✅ Connectors/MCP scaffolding ready for local credentials
 - ✅ Documentation & specs inside `spec/` describing the new architecture
@@ -45,6 +45,8 @@ SUPABASE_ANON_KEY=...
 SUPABASE_DATABASE_URL=postgresql://...
 AUTH_SECRET=use_a_32_char_secret
 GOOGLE_API_KEY=your_gemini_key
+SUMMARY_MODEL=models/gemini-2.5-pro
+FIRECRAWL_API_KEY=optional_firecrawl_key
 APP_URL=http://localhost:3000
 ALLOWED_ORIGINS=http://localhost:3000
 ```
@@ -83,6 +85,8 @@ spec/         → PRD, technical specs, schema status
 | `NEXT_PUBLIC_MCP_SERVER_URL` | `apps/web/.env.local` | MCP endpoint (defaults to `<BACKEND_URL>/mcp`) |
 | `SUPABASE_*` | `apps/api/.env.local` | Supabase Postgres/Storage credentials |
 | `GOOGLE_API_KEY` | `apps/api/.env.local` | Gemini API key for embeddings/chat |
+| `SUMMARY_MODEL` | `apps/api/.env.local` | (Opcional) modelo usado para resumos automáticos |
+| `FIRECRAWL_API_KEY` | `apps/api/.env.local` | (Opcional) chave do Firecrawl para normalizar páginas web |
 
 ## Documentation
 

@@ -148,26 +148,41 @@ export async function addDocument({
   client: SupabaseClient
 }) {
   const parsed = MemoryAddSchema.parse(payload)
-  const content = parsed.content
+  const rawContent = parsed.content?.trim()
 
-  if (!content) {
+  if (!rawContent) {
     throw new Error("Content is required to create a document")
   }
 
   const [containerTag] = parsed.containerTags && parsed.containerTags.length > 0 ? parsed.containerTags : [defaultContainerTag]
   const spaceId = await ensureSpace(client, organizationId, containerTag)
 
-  const metadata = parsed.metadata ?? null
+  const isUrl = /^https?:\/\//i.test(rawContent)
+  const baseMetadata: Record<string, unknown> = {
+    ...(parsed.metadata ?? {}),
+  }
+  if (isUrl) {
+    baseMetadata.originalUrl = rawContent
+  }
+  const metadata = Object.keys(baseMetadata).length > 0 ? baseMetadata : null
+
+  const inferredType = (parsed.metadata?.type as string | undefined) ?? (isUrl ? "url" : "text")
+  const inferredSource = (parsed.metadata?.source as string | undefined) ?? (isUrl ? "web" : "manual")
+  const inferredUrl = isUrl ? rawContent : ((parsed.metadata?.url as string | undefined) ?? null)
+  const initialTitle = parsed.metadata?.title ?? (isUrl ? null : rawContent.slice(0, 80)) ?? "Untitled"
+  const initialContent = isUrl ? null : rawContent
 
   const { data: document, error: insertError } = await client
     .from("documents")
     .insert({
       org_id: organizationId,
       user_id: userId,
-      title: parsed.metadata?.title ?? content.slice(0, 80) ?? "Untitled",
-      content,
+      title: initialTitle,
+      content: initialContent,
+      url: inferredUrl,
+      source: inferredSource,
       status: "queued",
-      type: parsed.metadata?.type ?? "text",
+      type: inferredType,
       metadata,
       chunk_count: 0,
     })
@@ -189,7 +204,14 @@ export async function addDocument({
       document_id: docId,
       org_id: organizationId,
       status: "queued",
-      payload: { containerTags: parsed.containerTags ?? [containerTag] },
+      payload: {
+        containerTags: parsed.containerTags ?? [containerTag],
+        content: rawContent,
+        metadata,
+        url: inferredUrl,
+        type: inferredType,
+        source: inferredSource,
+      },
     })
     .select("id")
     .single()
@@ -208,10 +230,26 @@ export async function addDocument({
       organizationId,
       userId,
       spaceId,
-      content,
-      metadata,
       containerTags: parsed.containerTags ?? [containerTag],
       jobId,
+      document: {
+        content: initialContent,
+        metadata,
+        title: initialTitle,
+        url: inferredUrl,
+        source: inferredSource,
+        type: inferredType,
+        raw: null,
+        processingMetadata: null,
+      },
+      jobPayload: {
+        containerTags: parsed.containerTags ?? [containerTag],
+        content: rawContent,
+        metadata,
+        url: inferredUrl,
+        type: inferredType,
+        source: inferredSource,
+      },
     })
 
     return MemoryResponseSchema.parse({ id: docId, status: processingResult.status })
@@ -379,6 +417,27 @@ export async function listDocumentsWithMemories(
       spaceContainerTag: containerTags[0] ?? null,
     }))
 
+    // Normalize document type
+    let normalizedType = doc.type ?? "text"
+    if (normalizedType === "url") {
+      normalizedType = "webpage"
+    }
+
+    // Clean metadata to ensure it only contains string/number/boolean values
+    const cleanMetadata = doc.metadata ?
+      Object.fromEntries(
+        Object.entries(doc.metadata as Record<string, any>).filter(([_, v]) =>
+          typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+        )
+      ) : null
+
+    // Ensure processingMetadata has required fields or set to null
+    const cleanProcessingMetadata = doc.processing_metadata ? {
+      startTime: (doc.processing_metadata as any).startTime ?? Date.now(),
+      steps: (doc.processing_metadata as any).steps ?? [],
+      ...doc.processing_metadata
+    } : null
+
     return {
       id: doc.id,
       customId: doc.custom_id ?? null,
@@ -391,10 +450,10 @@ export async function listDocumentsWithMemories(
       summary: doc.summary ?? null,
       url: doc.url ?? null,
       source: doc.source ?? null,
-      type: doc.type ?? "text",
+      type: normalizedType,
       status: doc.status ?? "unknown",
-      metadata: doc.metadata ?? null,
-      processingMetadata: doc.processing_metadata ?? null,
+      metadata: cleanMetadata,
+      processingMetadata: cleanProcessingMetadata,
       raw: doc.raw ?? null,
       tokenCount: doc.token_count ?? null,
       wordCount: doc.word_count ?? null,
@@ -413,7 +472,7 @@ export async function listDocumentsWithMemories(
       ? documents.length
       : count ?? documents.length
 
-  return DocumentsWithMemoriesResponseSchema.parse({
+  const response = {
     documents,
     pagination: {
       currentPage: page,
@@ -421,7 +480,15 @@ export async function listDocumentsWithMemories(
       totalItems,
       totalPages: Math.max(1, Math.ceil(totalItems / limit)),
     },
-  })
+  }
+
+  try {
+    return DocumentsWithMemoriesResponseSchema.parse(response)
+  } catch (zodError) {
+    console.error("Zod validation failed for DocumentsWithMemoriesResponse:", zodError)
+    console.error("Response data:", JSON.stringify(response, null, 2))
+    throw zodError
+  }
 }
 
 export async function listDocumentsWithMemoriesByIds(
@@ -514,6 +581,27 @@ export async function listDocumentsWithMemoriesByIds(
       spaceContainerTag: containerTags[0] ?? null,
     }))
 
+    // Normalize document type
+    let normalizedType = doc.type ?? "text"
+    if (normalizedType === "url") {
+      normalizedType = "webpage"
+    }
+
+    // Clean metadata to ensure it only contains string/number/boolean values
+    const cleanMetadata = doc.metadata ?
+      Object.fromEntries(
+        Object.entries(doc.metadata as Record<string, any>).filter(([_, v]) =>
+          typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+        )
+      ) : null
+
+    // Ensure processingMetadata has required fields or set to null
+    const cleanProcessingMetadata = doc.processing_metadata ? {
+      startTime: (doc.processing_metadata as any).startTime ?? Date.now(),
+      steps: (doc.processing_metadata as any).steps ?? [],
+      ...doc.processing_metadata
+    } : null
+
     return {
       id: doc.id,
       customId: doc.custom_id ?? null,
@@ -526,10 +614,10 @@ export async function listDocumentsWithMemoriesByIds(
       summary: doc.summary ?? null,
       url: doc.url ?? null,
       source: doc.source ?? null,
-      type: doc.type ?? "text",
+      type: normalizedType,
       status: doc.status ?? "unknown",
-      metadata: doc.metadata ?? null,
-      processingMetadata: doc.processing_metadata ?? null,
+      metadata: cleanMetadata,
+      processingMetadata: cleanProcessingMetadata,
       raw: doc.raw ?? null,
       tokenCount: doc.token_count ?? null,
       wordCount: doc.word_count ?? null,

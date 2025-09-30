@@ -32,18 +32,13 @@ async function fetchQueuedJobs(): Promise<IngestionJobRow[]> {
 async function hydrateDocument(jobId: string, documentId: string, orgId: string, payload: any) {
   const { data: document, error: docError } = await supabaseAdmin
     .from("documents")
-    .select("content, metadata, user_id")
+    .select("content, metadata, user_id, title, url, source, type, raw, processing_metadata")
     .eq("id", documentId)
     .maybeSingle()
 
   if (docError) throw docError
   if (!document) {
     throw new Error("Document not found for ingestion job")
-  }
-
-  const content = document.content ?? ""
-  if (!content) {
-    throw new Error("Document has no content for ingestion")
   }
 
   const containerTags: string[] = Array.isArray(payload?.containerTags)
@@ -65,10 +60,19 @@ async function hydrateDocument(jobId: string, documentId: string, orgId: string,
     organizationId: orgId,
     userId,
     spaceId,
-    content,
-    metadata: document.metadata ?? null,
     containerTags,
     jobId,
+    document: {
+      content: document.content ?? null,
+      metadata: document.metadata ?? null,
+      title: document.title ?? null,
+      url: document.url ?? null,
+      source: document.source ?? null,
+      type: document.type ?? null,
+      raw: document.raw ?? null,
+      processingMetadata: document.processing_metadata ?? null,
+    },
+    jobPayload: payload ?? null,
   })
 }
 
