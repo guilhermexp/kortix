@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import type { useCustomer } from "autumn-js/react"
+import type { useCustomer } from "@lib/autumn-stub"
 import { toast } from "sonner"
 import type { z } from "zod"
 import type { DocumentsWithMemoriesResponseSchema } from "../validation/api"

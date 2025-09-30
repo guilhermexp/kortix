@@ -14,6 +14,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Spinner } from "@/components/spinner"
+import { MCP_SERVER_URL } from "@lib/env"
 
 interface MigrateMCPRequest {
 	userId: string
@@ -44,8 +45,7 @@ export default function MigrateMCPPage() {
 	}, [searchParams])
 
 	useEffect(() => {
-		console.log("session", session)
-		if (!session.isPending && !session.data) {
+		if (!session.isLoading && !session.data?.session) {
 			const redirectUrl = new URL("/login", window.location.href)
 			redirectUrl.searchParams.set("redirect", window.location.href)
 			router.push(redirectUrl.toString())
@@ -54,9 +54,17 @@ export default function MigrateMCPPage() {
 	}, [session, router])
 
 	// Extract userId from MCP URL
-	const getUserIdFromUrl = (url: string) => {
-		return url.split("/").at(-2) || ""
-	}
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+const MCP_SERVER_BASE = MCP_SERVER_URL.replace(/\/$/, "")
+const MCP_SSE_PATTERN = new RegExp(`^${escapeRegExp(MCP_SERVER_BASE)}\\/[^/]+\\/sse$`)
+const MCP_SSE_PLACEHOLDER = `${MCP_SERVER_BASE}/your-user-id/sse`
+
+const getUserIdFromUrl = (url: string) => {
+	const trimmed = url.trim()
+	if (!MCP_SSE_PATTERN.test(trimmed)) return ""
+	const withoutBase = trimmed.replace(`${MCP_SERVER_BASE}/`, "")
+	return withoutBase.split("/")[0] || ""
+}
 
 	const migrateMutation = useMutation({
 		mutationFn: async (data: MigrateMCPRequest) => {
@@ -186,7 +194,7 @@ export default function MigrateMCPPage() {
 											disabled={migrateMutation.isPending}
 											id="mcpUrl"
 											onChange={(e) => setMcpUrl(e.target.value)}
-											placeholder="https://mcp.supermemory.ai/userId/sse"
+									placeholder={MCP_SSE_PLACEHOLDER.replace("your-user-id", "userId")}
 											type="url"
 											value={mcpUrl}
 										/>

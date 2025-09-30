@@ -21,7 +21,7 @@ console.debug(connection.authLink);
 ```python Python
 import requests
 
-url = "https://api.supermemory.ai/v3/connections/{provider}"
+url = "http://localhost:4000/v3/connections/{provider}"
 
 payload = {
     "redirectUrl": "<string>",
@@ -41,7 +41,7 @@ print(response.text)
 
 ```bash cURL
 curl --request POST \
-  --url https://api.supermemory.ai/v3/connections/{provider} \
+  --url http://localhost:4000/v3/connections/{provider} \
   --header 'Authorization: Bearer <token>' \
   --header 'Content-Type: application/json' \
   --data '{

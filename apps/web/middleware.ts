@@ -1,17 +1,17 @@
-import { getSessionCookie } from "better-auth/cookies"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { APP_URL, APP_HOSTNAME } from "@lib/env"
 
-export default async function middleware(request: Request) {
+export default async function middleware(request: NextRequest) {
 	console.debug("[MIDDLEWARE] === MIDDLEWARE START ===")
 	const url = new URL(request.url)
 	console.debug("[MIDDLEWARE] Path:", url.pathname)
 	console.debug("[MIDDLEWARE] Method:", request.method)
 
-	const sessionCookie = getSessionCookie(request)
+	const sessionCookie = request.cookies.get("sm_session")?.value ?? null
 	console.debug("[MIDDLEWARE] Session cookie exists:", !!sessionCookie)
 
 	// Always allow access to login and waitlist pages
-	const publicPaths = ["/login"]
+	const publicPaths = ["/login", "/manifest.webmanifest"]
 	if (publicPaths.includes(url.pathname)) {
 		console.debug("[MIDDLEWARE] Public path, allowing access")
 		return NextResponse.next()
@@ -45,8 +45,8 @@ export default async function middleware(request: Request) {
 	const response = NextResponse.next()
 	response.cookies.set({
 		name: "last-site-visited",
-		value: "https://app.supermemory.ai",
-		domain: "supermemory.ai",
+		value: APP_URL,
+		domain: APP_HOSTNAME,
 	})
 	return response
 }

@@ -8,9 +8,10 @@ import {
 	organizationClient,
 	usernameClient,
 } from "better-auth/client/plugins"
+import { BACKEND_URL } from "./env"
 
 export const middlewareAuthClient = createAuthClient({
-	baseURL: process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://api.supermemory.ai",
+	baseURL: BACKEND_URL,
 	fetchOptions: {
 		throw: true,
 	},

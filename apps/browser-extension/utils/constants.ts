@@ -1,13 +1,17 @@
+const DEFAULT_API_URL = "http://localhost:4000"
+const DEFAULT_APP_URL = "http://localhost:3000"
+
+const SUPERMEMORY_API =
+	(import.meta.env.VITE_SUPERMEMORY_API as string | undefined) ?? DEFAULT_API_URL
+const SUPERMEMORY_WEB =
+	(import.meta.env.VITE_SUPERMEMORY_APP as string | undefined) ?? DEFAULT_APP_URL
+
 /**
  * API Endpoints
  */
 export const API_ENDPOINTS = {
-	SUPERMEMORY_API: import.meta.env.PROD
-		? "https://api.supermemory.ai"
-		: "http://localhost:8787",
-	SUPERMEMORY_WEB: import.meta.env.PROD
-		? "https://app.supermemory.ai"
-		: "http://localhost:3000",
+	SUPERMEMORY_API,
+	SUPERMEMORY_WEB,
 } as const
 
 /**
@@ -59,7 +63,7 @@ export const DOMAINS = {
 	CHATGPT: ["chatgpt.com", "chat.openai.com"],
 	CLAUDE: ["claude.ai"],
 	T3: ["t3.chat"],
-	SUPERMEMORY: ["localhost", "supermemory.ai", "app.supermemory.ai"],
+	SUPERMEMORY: ["localhost", new URL(SUPERMEMORY_WEB).hostname],
 } as const
 
 /**

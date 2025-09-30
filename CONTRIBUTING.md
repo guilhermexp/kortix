@@ -94,7 +94,7 @@ bun run build
 - **State Management**: Zustand, TanStack Query
 - **Build Tool**: Turbo (monorepo)
 - **Package Manager**: Bun
-- **Deployment**: Cloudflare (OpenNext.js)
+- **Deployment**: Bun API + Next.js (self-hosted)
 
 ## 🎯 How to Contribute
 

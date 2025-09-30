@@ -666,7 +666,7 @@ export const GraphCanvas = memo<GraphCanvasProps>(
 					nativeEvent: e,
 					preventDefault: () => {},
 					stopPropagation: () => {},
-				} as React.WheelEvent);
+				} as unknown as React.WheelEvent);
 			};
 
 			// Add listener with passive: false to ensure preventDefault works

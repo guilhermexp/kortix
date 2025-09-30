@@ -9,8 +9,9 @@ export const cosineSimilarity = (
 	vectorA: number[],
 	vectorB: number[],
 ): number => {
+	// Return 0 for incompatible vectors (different dimensions = different models)
 	if (vectorA.length !== vectorB.length) {
-		throw new Error("Vectors must have the same length")
+		return 0
 	}
 
 	let dotProduct = 0
@@ -24,7 +25,7 @@ export const cosineSimilarity = (
 			isNaN(vectorAi) ||
 			isNaN(vectorBi)
 		) {
-			throw new Error("Vectors must contain only numbers")
+			return 0
 		}
 		dotProduct += vectorAi * vectorBi
 	}

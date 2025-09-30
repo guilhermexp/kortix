@@ -22,7 +22,7 @@ import {
 	DropzoneContent,
 	DropzoneEmptyState,
 } from "@ui/components/shadcn-io/dropzone"
-import { useCustomer } from "autumn-js/react"
+import { useCustomer } from "@lib/autumn-stub"
 import {
 	Brain,
 	FileIcon,

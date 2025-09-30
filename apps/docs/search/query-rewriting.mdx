@@ -82,7 +82,7 @@ This process adds ~400ms latency but significantly improves result quality, espe
     ```bash
     # Without query rewriting
     echo "Basic search:"
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -93,7 +93,7 @@ This process adds ~400ms latency but significantly improves result quality, espe
 
     # With query rewriting
     echo "Rewritten search:"
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -161,7 +161,7 @@ Query rewriting excels at converting conversational questions into effective sea
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -248,7 +248,7 @@ Query rewriting helps find content using different technical terminologies:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -336,7 +336,7 @@ Query rewriting works with both document and memory search:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v4/search" \
+    curl -X POST "http://localhost:4000/v4/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -422,7 +422,7 @@ Query rewriting excels at handling queries with multiple concepts:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{

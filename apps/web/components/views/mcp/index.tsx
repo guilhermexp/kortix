@@ -23,6 +23,18 @@ import { toast } from "sonner"
 import { z } from "zod/v4"
 import { analytics } from "@/lib/analytics"
 import { InstallationDialogContent } from "./installation-dialog-content"
+import { MCP_SERVER_URL } from "@lib/env"
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+const MCP_SERVER_BASE = MCP_SERVER_URL.replace(/\/$/, "")
+const MCP_SSE_PLACEHOLDER = `${MCP_SERVER_BASE}/your-user-id/sse`
+const MCP_SSE_PATTERN = new RegExp(`^${escapeRegExp(MCP_SERVER_BASE)}\\/[^/]+\\/sse$`)
+
+const getCursorDeeplink = () => {
+	const command = `npx -y install-mcp@latest ${MCP_SERVER_BASE} --client cursor --oauth=yes`
+	const config = encodeURIComponent(JSON.stringify({ command }))
+	return `https://cursor.com/en/install-mcp?name=supermemory-mcp&config=${config}`
+}
 
 // Validation schemas
 const mcpMigrationSchema = z.object({
@@ -30,8 +42,8 @@ const mcpMigrationSchema = z.object({
 		.string()
 		.min(1, "MCP Link is required")
 		.regex(
-			/^https:\/\/mcp\.supermemory\.ai\/[^/]+\/sse$/,
-			"Link must be in format: https://mcp.supermemory.ai/userId/sse",
+			MCP_SSE_PATTERN,
+			`Link must be in format: ${MCP_SERVER_BASE}/userId/sse`,
 		),
 })
 
@@ -79,9 +91,11 @@ export function MCPView() {
 	})
 
 	const extractUserIdFromMCPUrl = (url: string): string | null => {
-		const regex = /^https:\/\/mcp\.supermemory\.ai\/([^/]+)\/sse$/
-		const match = url.trim().match(regex)
-		return match?.[1] || null
+		const trimmed = url.trim()
+		if (!MCP_SSE_PATTERN.test(trimmed)) return null
+		const withoutBase = trimmed.replace(`${MCP_SERVER_BASE}/`, "")
+		const [userId] = withoutBase.split("/")
+		return userId || null
 	}
 
 	// Migrate MCP mutation
@@ -138,7 +152,7 @@ export function MCPView() {
 					<div className="p-3 bg-white/5 rounded border border-white/10">
 						<CopyableCell
 							className="font-mono text-sm text-blue-400"
-							value="https://api.supermemory.ai/mcp"
+							value={MCP_SERVER_BASE}
 						/>
 					</div>
 					<p className="text-xs text-white/50 mt-2">
@@ -167,7 +181,7 @@ export function MCPView() {
 					</Dialog>
 					<motion.a
 						className="inline-block"
-						href="https://cursor.com/install-mcp?name=supermemory&config=JTdCJTIydXJsJTIyJTNBJTIyaHR0cHMlM0ElMkYlMkZhcGkuc3VwZXJtZW1vcnkuYWklMkZtY3AlMjIlN0Q%3D"
+						href={getCursorDeeplink()}
 						whileHover={{ scale: 1.05 }}
 						whileTap={{ scale: 0.95 }}
 					>
@@ -236,7 +250,7 @@ export function MCPView() {
 															id="mcpUrl"
 															onBlur={handleBlur}
 															onChange={(e) => handleChange(e.target.value)}
-															placeholder="https://mcp.supermemory.ai/your-user-id/sse"
+								placeholder={MCP_SSE_PLACEHOLDER}
 															value={state.value}
 														/>
 														{state.meta.errors.length > 0 && (
@@ -255,7 +269,7 @@ export function MCPView() {
 											<p className="text-xs text-white/50">
 												Enter your old MCP Link in the format: <br />
 												<span className="font-mono">
-													https://mcp.supermemory.ai/userId/sse
+								{MCP_SSE_PLACEHOLDER.replace("your-user-id", "userId")}
 												</span>
 											</p>
 										</motion.div>

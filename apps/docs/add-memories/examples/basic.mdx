@@ -30,7 +30,7 @@ print(response)
 ```
 
 ```bash cURL
-curl -X POST "https://api.supermemory.ai/v3/documents" \
+curl -X POST "http://localhost:4000/v3/documents" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -67,7 +67,7 @@ print(response['id'])
 ```
 
 ```bash cURL
-curl -X POST "https://api.supermemory.ai/v3/documents" \
+curl -X POST "http://localhost:4000/v3/documents" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -109,7 +109,7 @@ client.memories.add(
 ```
 
 ```bash cURL
-curl -X POST "https://api.supermemory.ai/v3/documents" \
+curl -X POST "http://localhost:4000/v3/documents" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -160,7 +160,7 @@ for note in notes:
 
 ```bash cURL
 # Add each note with separate requests
-curl -X POST "https://api.supermemory.ai/v3/documents" \
+curl -X POST "http://localhost:4000/v3/documents" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"content": "API redesign discussion", "containerTag": "meeting_2024_01_15"}'
@@ -216,13 +216,13 @@ client.memories.add(
 
 ```bash cURL
 # Web page
-curl -X POST "https://api.supermemory.ai/v3/documents" \
+curl -X POST "http://localhost:4000/v3/documents" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"content": "https://example.com/article", "containerTag": "articles"}'
 
 # YouTube video
-curl -X POST "https://api.supermemory.ai/v3/documents" \
+curl -X POST "http://localhost:4000/v3/documents" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"content": "https://youtube.com/watch?v=dQw4w9WgXcQ", "containerTag": "videos"}'
@@ -269,7 +269,7 @@ client.memories.add(
 ```
 
 ```bash cURL
-curl -X POST "https://api.supermemory.ai/v3/documents" \
+curl -X POST "http://localhost:4000/v3/documents" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"content": "# Project Documentation\n\n## Features\n- **Real-time sync**\n- **AI search**", "containerTag": "docs"}'

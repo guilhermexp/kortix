@@ -6,7 +6,8 @@ import {
 } from "@lib/queries";
 import { Button } from "@ui/components/button";
 import { HeadingH3Bold } from "@ui/text/heading/heading-h3-bold";
-import { useCustomer } from "autumn-js/react";
+import { useCustomer } from "@lib/autumn-stub";
+import { APP_URL } from "@lib/env";
 import { CheckCircle, LoaderIcon, X } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
@@ -15,6 +16,7 @@ import { analytics } from "@/lib/analytics";
 
 export function BillingView() {
 	const autumn = useCustomer();
+	const appOrigin = APP_URL.replace(/\/$/, "");
 	const { user } = useAuth();
 	const [isLoading, setIsLoading] = useState(false);
 
@@ -46,7 +48,7 @@ export function BillingView() {
 		try {
 			await autumn.attach({
 				productId: "consumer_pro",
-				successUrl: "https://app.supermemory.ai/",
+				successUrl: `${appOrigin}/`,
 			});
 			analytics.upgradeCompleted();
 			window.location.reload();
@@ -59,9 +61,9 @@ export function BillingView() {
 	// Handle manage billing
 	const handleManageBilling = async () => {
 		analytics.billingPortalOpened();
-		await autumn.openBillingPortal({
-			returnUrl: "https://app.supermemory.ai",
-		});
+			await autumn.openBillingPortal({
+				returnUrl: appOrigin,
+			});
 	};
 
 	const isPro = status.consumer_pro;

@@ -1,67 +1,79 @@
 ---
-title: 'Setup and usage'
-description: 'How to set up and use supermemory MCP'
+title: 'Setup e uso'
+description: 'Como configurar o MCP com o backend self-hosted'
 ---
 
-### Hosted setup (recommended)
+O servidor MCP roda no próprio backend (`apps/api`). Sempre que a API estiver ativa ele expõe uma conexão SSE em `${SUPERMEMORY_API_URL}/mcp` (por padrão `http://localhost:4000/mcp`).
 
-1. **Visit** https://mcp.supermemory.ai
-2. **Receive** automatically generated unique URL (e.g., `https://mcp.supermemory.ai/TN-IKxAcDdHWTJkMhtGLF/sse`)
-3. **Select** your MCP client from the dropdown menu
-4. **Copy** the generated installation command
-5. **Run** the command: `npx install-mcp [YOUR_URL] --client [CLIENT_NAME]`
+## Passo a passo rápido
 
-Or follow the client configuration example below.
+1. Gere um token no painel (`http://localhost:3000` → **Configurações → API Keys**).
+2. Anote a URL pública do backend. Em desenvolvimento ela é `http://localhost:4000`.
+3. Escolha o cliente MCP (Cursor, Claude Desktop, VS Code, etc.).
+4. Use o comando:
 
-### Self-hosted configuration
+```bash
+npx -y install-mcp@latest http://localhost:4000/mcp --client cursor --oauth=yes
+```
 
-For users requiring complete data control:
+Substitua `cursor` pelo cliente desejado. O script instala e registra o servidor automaticamente com autenticação baseada no token informado durante o fluxo.
 
-1. **Obtain API key** from https://console.supermemory.ai
-2. **Create `.env` file** with `SUPERMEMORY_API_KEY=your_key`
-3. **Clone repository**: `git clone https://github.com/supermemoryai/supermemory-mcp.git`
-4. **Configure MCP client** to connect to local server instance
+## Configuração manual (exemplo)
 
-### Client configuration example
+Se preferir configurar à mão, adicione algo assim ao arquivo de configuração do seu cliente:
 
-1. For Clients that support `url` configuration:
 ```json
 {
   "mcpServers": {
     "supermemory": {
       "transport": "sse",
-      "url": "https://mcp.supermemory.ai/[USER_ID]/sse"
+      "url": "http://localhost:4000/mcp",
+      "env": {
+        "SUPERMEMORY_API_KEY": "SEU_TOKEN"
+      }
     }
   }
 }
 ```
 
-2. Using `supergateway` with `npx`:
+Para rodar via `supergateway` (CLI):
+
 ```json
 {
-    "command": "npx",
-    "args": ["-y", "supergateway", "--sse", "YOUR_URL"]
-}
-```
-
-3. Using `supergateway` with `docker`:
-
-The equivalent MCP command would be:
-```json
-{
-  "mcpServers": {
-    "supermachineExampleDocker": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "supercorp/supergateway",
-        "--sse",
-        "YOUR_SUPERMEMORY_URL"
-      ]
-    }
+  "command": "npx",
+  "args": [
+    "-y",
+    "supergateway",
+    "--sse",
+    "http://localhost:4000/mcp"
+  ],
+  "env": {
+    "SUPERMEMORY_API_KEY": "SEU_TOKEN"
   }
 }
 ```
 
+Ou com Docker:
+
+```json
+{
+  "command": "docker",
+  "args": [
+    "run",
+    "-i",
+    "--rm",
+    "ghcr.io/supermemoryai/supergateway:latest",
+    "--sse",
+    "http://localhost:4000/mcp"
+  ],
+  "env": {
+    "SUPERMEMORY_API_KEY": "SEU_TOKEN"
+  }
+}
+```
+
+## Dicas
+
+- O backend valida o token via better-auth; gere credenciais individuais para cada equipe/ferramenta.
+- Ajuste a URL para o domínio público quando publicar (ex.: `https://api.supermemory.local/mcp`).
+- Os conectores MCP usam a mesma organização/projeto definidos no painel.

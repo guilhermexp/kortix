@@ -5,7 +5,7 @@ description: "Learn how to integrate supermemory into your application"
 
 ## Authentication
 
-Head to [supermemory's Developer Platform](https://console.supermemory.ai) built to help you monitor and manage every aspect of the API.
+Faça login no painel self-hosted (`http://localhost:3000`) com um usuário administrador e gere um token em **Configurações → API Keys**. Todas as requisições devem enviar o header `Authorization: Bearer <token>`.
 
 All API requests require authentication using an API key. Include your API key as follows:
 
@@ -15,65 +15,70 @@ All API requests require authentication using an API key. Include your API key a
 Authorization: Bearer YOUR_API_KEY
 ```
 
-```typescript Typescript
-// npm install supermemory
+```bash Node.js
+const API_URL = process.env.SUPERMEMORY_API_URL ?? "http://localhost:4000"
+const API_KEY = process.env.SUPERMEMORY_API_KEY
 
-const client = new supermemory({
-  apiKey: "YOUR_API_KEY",
-});
+const response = await fetch(`${API_URL}/v3/documents`, {
+  headers: { Authorization: `Bearer ${API_KEY}` },
+})
 ```
 
 ```python Python
-# pip install supermemory
+import os
 
-client = supermemory(
-    api_key="YOUR_API_KEY",
-)
+API_URL = os.getenv("SUPERMEMORY_API_URL", "http://localhost:4000")
+API_KEY = os.environ["SUPERMEMORY_API_KEY"]
 ```
 
 </CodeGroup>
 
-## Installing the clients
+## Clientes e SDKs
 
-You can use supermemory through the APIs, or using our SDKs
-
-<CodeGroup>
-
-```bash cURL
-https://api.supermemory.ai/v3
-```
-
-```bash Typescript
-npm i supermemory
-```
-
-```bash Python
-pip install supermemory
-```
-
-</CodeGroup>
+O backend expõe uma API REST em `http://localhost:4000/v3`. Use qualquer cliente HTTP (fetch, axios, requests, curl). Os pacotes `@repo/lib` e `@supermemory/tools` dentro do monorepo já encapsulam chamadas para o frontend, mas não há dependência externa obrigatória.
 
 ## Add your first memory
 
 <CodeGroup>
 
 ```bash cURL
-curl https://api.supermemory.ai/v3/documents \
+curl "$SUPERMEMORY_API_URL/v3/documents" \
   --request POST \
   --header 'Content-Type: application/json' \
-  --header 'Authorization: Bearer SUPERMEMORY_API_KEY' \
-  -d '{"content": "This is the content of my first memory."}'
+  --header "Authorization: Bearer $SUPERMEMORY_API_KEY" \
+  --data '{"name":"Primeira memória","type":"text","projectId":"default","content":"Este é o conteúdo da minha primeira memória."}'
 ```
 
-```typescript Typescript
-await client.memory.add({
-  content: "This is the content of my first memory.",
-});
+```typescript Node.js
+await fetch(`${API_URL}/v3/documents`, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    name: "Primeira memória",
+    type: "text",
+    projectId: "default",
+    content: "Este é o conteúdo da minha primeira memória.",
+  }),
+})
 ```
 
 ```python Python
-client.memory.add(
-    content="This is the content of my first memory.",
+requests.post(
+    f"{API_URL}/v3/documents",
+    headers={
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "name": "Primeira memória",
+        "type": "text",
+        "projectId": "default",
+        "content": "Este é o conteúdo da minha primeira memória.",
+    },
+    timeout=30,
 )
 ```
 
@@ -111,22 +116,33 @@ Try it out in the [API Playground](/api-reference/manage-memories/add-memory).
 <CodeGroup>
 
 ```bash cURL
-curl https://api.supermemory.ai/v3/search \
+curl "$SUPERMEMORY_API_URL/v3/search" \
   --request POST \
   --header 'Content-Type: application/json' \
-  --header 'Authorization: Bearer SUPERMEMORY_API_KEY' \
-  -d '{"q": "This is the content of my first memory."}'
+  --header "Authorization: Bearer $SUPERMEMORY_API_KEY" \
+  --data '{"q": "Este é o conteúdo da minha primeira memória.", "limit": 3}'
 ```
 
-```typescript Typescript
-await client.search.execute({
-  q: "This is the content of my first memory.",
-});
+```typescript Node.js
+await fetch(`${API_URL}/v3/search`, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ q: "Este é o conteúdo da minha primeira memória.", limit: 3 }),
+})
 ```
 
 ```python Python
-client.search.execute(
-    q="This is the content of my first memory.",
+requests.post(
+    f"{API_URL}/v3/search",
+    headers={
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json",
+    },
+    json={"q": "Este é o conteúdo da minha primeira memória.", "limit": 3},
+    timeout=30,
 )
 ```
 

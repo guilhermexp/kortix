@@ -58,7 +58,7 @@ Connect Notion workspaces to automatically sync pages, databases, and content bl
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/connections/notion" \
+    curl -X POST "http://localhost:4000/v3/connections/notion" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -119,7 +119,7 @@ After user grants workspace access, Notion redirects to your callback URL. The c
   <Tab title="cURL">
     ```bash
     # Get connection details by provider and tags
-    curl -X POST "https://api.supermemory.ai/v3/connections/notion/connection" \
+    curl -X POST "http://localhost:4000/v3/connections/notion/connection" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{"containerTags": ["user-123", "notion-workspace"]}'
@@ -135,7 +135,7 @@ After user grants workspace access, Notion redirects to your callback URL. The c
     # }
 
     # List synced documents
-    curl -X POST "https://api.supermemory.ai/v3/connections/notion/documents" \
+    curl -X POST "http://localhost:4000/v3/connections/notion/documents" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{"containerTags": ["user-123", "notion-workspace"]}'
@@ -214,11 +214,11 @@ Remove a Notion connection when no longer needed:
   <Tab title="cURL">
     ```bash
     # Delete by connection ID
-    curl -X DELETE "https://api.supermemory.ai/v3/connections/connection_id_123" \
+    curl -X DELETE "http://localhost:4000/v3/connections/connection_id_123" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY"
 
     # Delete by provider and container tags
-    curl -X DELETE "https://api.supermemory.ai/v3/connections/notion" \
+    curl -X DELETE "http://localhost:4000/v3/connections/notion" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{"containerTags": ["user-123"]}'
@@ -278,7 +278,7 @@ For production deployments, create your own Notion integration:
   <Tab title="cURL">
     ```bash
     # Update organization settings
-    curl -X PATCH "https://api.supermemory.ai/v3/settings" \
+    curl -X PATCH "http://localhost:4000/v3/settings" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -334,7 +334,7 @@ Control which Notion content gets synced:
   <Tab title="cURL">
     ```bash
     # Configure intelligent filtering for Notion content
-    curl -X PATCH "https://api.supermemory.ai/v3/settings" \
+    curl -X PATCH "http://localhost:4000/v3/settings" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{

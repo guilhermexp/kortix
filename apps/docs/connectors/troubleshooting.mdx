@@ -50,13 +50,13 @@ if failed:
 
 ```bash cURL
 # List all connections
-curl -X POST "https://api.supermemory.ai/v3/connections/list" \
+curl -X POST "http://localhost:4000/v3/connections/list" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"containerTags": ["user-123"]}'
 
 # Check document status
-curl -X POST "https://api.supermemory.ai/v3/documents/list" \
+curl -X POST "http://localhost:4000/v3/documents/list" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"containerTags": ["user-123"], "source": "notion"}'

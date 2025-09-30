@@ -7,13 +7,13 @@ The technical architecture prioritizes **simplicity and user experience** while 
 
 ### Architecture components
 
-- **Backend API**: Built on top of the supermemory API (https://api.supermemory.ai/v3)
+- **Backend API**: Built on top of the supermemory API (http://localhost:4000/v3)
 - **Transport Layer**: Uses Server-Sent Events (SSE) for real-time communication
 - **Dynamic Server Generation**: Creates unique MCP server instances for each user via URL path parameters
 - **Session Management**: Maintains complete user isolation through unique URLs
-- **Infrastructure**: Hosted on Cloudflare using Durable Objects for persistent, long-running connections
+- **Infrastructure**: Fornecida pelo backend Bun em `${SUPERMEMORY_API_URL}/mcp`, com SSE persistente gerenciado pelo próprio servidor
 
-The system leverages **Cloudflare's infrastructure** with CPU-based billing, making it highly efficient since memory connections spend most time waiting between interactions rather than actively processing, resulting in minimal CPU usage despite potentially running for millions of milliseconds.
+O sistema aproveita o backend self-hosted, mantendo conexões SSE leves: a maior parte do tempo as sessões ficam ociosas aguardando comandos, então o consumo de CPU é baixo mesmo com conexões prolongadas.
 
 ## The two main components explained
 

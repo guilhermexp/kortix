@@ -35,7 +35,7 @@ print(response['id'])
 ```
 
 ```bash cURL
-curl -X POST "https://api.supermemory.ai/v3/documents/file" \
+curl -X POST "http://localhost:4000/v3/documents/file" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -F "file=@document.pdf" \
   -F "containerTags=documents"
@@ -69,7 +69,7 @@ with open('screenshot.png', 'rb') as file:
 ```
 
 ```bash cURL
-curl -X POST "https://api.supermemory.ai/v3/documents/file" \
+curl -X POST "http://localhost:4000/v3/documents/file" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -F "file=@screenshot.png" \
   -F "containerTags=images"
@@ -88,7 +88,7 @@ const formData = new FormData();
 formData.append('file', fileInput.files[0]);
 formData.append('containerTags', 'uploads');
 
-const response = await fetch('https://api.supermemory.ai/v3/documents/file', {
+const response = await fetch('http://localhost:4000/v3/documents/file', {
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${API_KEY}`
@@ -106,7 +106,7 @@ function handleUpload(file: File) {
   formData.append('file', file);
   formData.append('containerTags', 'uploads');
 
-  return fetch('https://api.supermemory.ai/v3/documents/file', {
+  return fetch('http://localhost:4000/v3/documents/file', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${API_KEY}` },
     body: formData
@@ -116,7 +116,7 @@ function handleUpload(file: File) {
 
 ```bash cURL
 # Browser uploads use FormData, same as file upload
-curl -X POST "https://api.supermemory.ai/v3/documents/file" \
+curl -X POST "http://localhost:4000/v3/documents/file" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -F "file=@document.pdf" \
   -F "containerTags=uploads"
@@ -160,7 +160,7 @@ for file_path in files:
 ```bash cURL
 # Upload each file separately with delays
 for file in *.pdf; do
-  curl -X POST "https://api.supermemory.ai/v3/documents/file" \
+  curl -X POST "http://localhost:4000/v3/documents/file" \
     -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
     -F "file=@$file" \
     -F "containerTags=batch"

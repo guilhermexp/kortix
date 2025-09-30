@@ -4,13 +4,12 @@ import "../globals.css";
 import "@ui/globals.css";
 import { AuthProvider } from "@lib/auth-context";
 import { ErrorTrackingProvider } from "@lib/error-tracking";
-import { PostHogProvider } from "@lib/posthog";
 import { QueryProvider } from "@lib/query-client";
-import { AutumnProvider } from "autumn-js/react";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
 import { TourProvider } from "@/components/tour";
 import { MobilePanelProvider } from "@/lib/mobile-panel-context";
+import { APP_URL } from "@lib/env";
 
 import { ViewModeProvider } from "@/lib/view-mode-context";
 
@@ -24,10 +23,18 @@ const mono = JetBrains_Mono({
 	variable: "--font-mono",
 });
 
+const metadataBase = (() => {
+	try {
+		return new URL(APP_URL);
+	} catch {
+		return new URL("http://localhost:3000");
+	}
+})();
+
 export const metadata: Metadata = {
-	metadataBase: new URL("https://app.supermemory.ai"),
-	description: "Your memories, wherever you are",
-	title: "supermemory app",
+	metadataBase,
+	description: "Self-hosted Supermemory",
+	title: "supermemory",
 };
 
 export default function RootLayout({
@@ -40,29 +47,20 @@ export default function RootLayout({
 			<body
 				className={`${sans.variable} ${mono.variable} antialiased bg-[#0f1419]`}
 			>
-				<AutumnProvider
-					backendUrl={
-						process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://api.supermemory.ai"
-					}
-					includeCredentials={true}
-				>
-					<QueryProvider>
-						<AuthProvider>
-							<ViewModeProvider>
-								<MobilePanelProvider>
-									<PostHogProvider>
-										<ErrorTrackingProvider>
-											<TourProvider>
-												<Suspense>{children}</Suspense>
-												<Toaster richColors theme="dark" />
-											</TourProvider>
-										</ErrorTrackingProvider>
-									</PostHogProvider>
-								</MobilePanelProvider>
-							</ViewModeProvider>
-						</AuthProvider>
-					</QueryProvider>
-				</AutumnProvider>
+				<QueryProvider>
+					<AuthProvider>
+						<ViewModeProvider>
+							<MobilePanelProvider>
+								<ErrorTrackingProvider>
+									<TourProvider>
+										<Suspense>{children}</Suspense>
+										<Toaster richColors theme="dark" />
+									</TourProvider>
+								</ErrorTrackingProvider>
+							</MobilePanelProvider>
+						</ViewModeProvider>
+					</AuthProvider>
+				</QueryProvider>
 			</body>
 		</html>
 	);

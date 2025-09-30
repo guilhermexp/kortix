@@ -1,3 +1,5 @@
+import { API_ENDPOINTS } from "../../utils/constants"
+
 function Welcome() {
 	return (
 		<div className="min-h-screen font-[Space_Grotesk,-apple-system,BlinkMacSystemFont,Segoe_UI,Roboto,sans-serif] flex items-center justify-center p-8 bg-gradient-to-br from-gray-50 to-white">
@@ -73,11 +75,8 @@ function Welcome() {
 					<button
 						className="min-w-[200px] px-8 py-4 bg-gray-700 text-white border-none rounded-3xl text-base font-semibold cursor-pointer transition-colors duration-200 mb-4 outline-none hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
 						onClick={() => {
-							chrome.tabs.create({
-								url: import.meta.env.PROD
-									? "https://app.supermemory.ai/login"
-									: "http://localhost:3000/login",
-							})
+							const loginUrl = `${API_ENDPOINTS.SUPERMEMORY_WEB.replace(/\/$/, "")}/login`
+							chrome.tabs.create({ url: loginUrl })
 						}}
 						type="button"
 					>
@@ -91,11 +90,11 @@ function Welcome() {
 						Learn more at{" "}
 						<a
 							className="text-blue-500 no-underline hover:underline hover:text-blue-700"
-							href="https://supermemory.ai"
+							href={API_ENDPOINTS.SUPERMEMORY_WEB}
 							rel="noopener noreferrer"
 							target="_blank"
 						>
-							supermemory.ai
+							{new URL(API_ENDPOINTS.SUPERMEMORY_WEB).hostname}
 						</a>
 					</p>
 				</div>

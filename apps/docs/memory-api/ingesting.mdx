@@ -23,7 +23,7 @@ Your Content → Document → Processing → Multiple Memories
    PDF File → Stored Doc → Chunking → Searchable Memories
 ```
 
-You can visualize this process in the [Supermemory Console](https://console.supermemory.ai) where you'll see a graph view showing how your documents are broken down into interconnected memories.
+Você pode acompanhar o progresso direto no painel self-hosted (`http://localhost:3000`), na aba **Documentos**, que mostra como cada arquivo gera memórias e chunks relacionados.
 
 ### Content Sources
 
@@ -81,7 +81,7 @@ Despite the endpoint name, you're creating a **document** that Supermemory will 
 <CodeGroup>
 
 ```bash cURL
-curl https://api.supermemory.ai/v3/documents \
+curl http://localhost:4000/v3/documents \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -184,7 +184,7 @@ Got a PDF, image, or video? Upload it directly and let Supermemory extract the v
 <CodeGroup>
 
 ```bash cURL
-curl https://api.supermemory.ai/v3/documents/file \
+curl http://localhost:4000/v3/documents/file \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -F "file=@document.pdf" \
   -F "containerTags=research_project"
@@ -215,7 +215,7 @@ const formData = new FormData()
 formData.append('file', fileInput.files[0])
 formData.append('containerTags', 'research_project')
 
-const response = await fetch('https://api.supermemory.ai/v3/documents/file', {
+const response = await fetch('http://localhost:4000/v3/documents/file', {
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${process.env.SUPERMEMORY_API_KEY}`
@@ -246,7 +246,7 @@ files = {'file': open('document.pdf', 'rb')}
 data = {'containerTags': 'research_project'}
 
 response = requests.post(
-    'https://api.supermemory.ai/v3/documents/file',
+    'http://localhost:4000/v3/documents/file',
     headers={'Authorization': f'Bearer {api_key}'},
     files=files,
     data=data
@@ -561,7 +561,7 @@ Custom IDs prevent duplicates and enable document updates. Two update methods av
 **Method 1: POST with customId (Upsert)**
 ```bash
 # Create document
-curl -X POST "https://api.supermemory.ai/v3/documents" \
+curl -X POST "http://localhost:4000/v3/documents" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -572,7 +572,7 @@ curl -X POST "https://api.supermemory.ai/v3/documents" \
 # Response: {"id": "abc123", "status": "queued"}
 
 # Update same document (same customId = upsert)
-curl -X POST "https://api.supermemory.ai/v3/documents" \
+curl -X POST "http://localhost:4000/v3/documents" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -584,7 +584,7 @@ curl -X POST "https://api.supermemory.ai/v3/documents" \
 
 **Method 2: PATCH by ID (Update)**
 ```bash
-curl -X PATCH "https://api.supermemory.ai/v3/documents/abc123" \
+curl -X PATCH "http://localhost:4000/v3/documents/abc123" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -635,7 +635,7 @@ curl -X PATCH "https://api.supermemory.ai/v3/documents/abc123" \
 
 **Limit Exceeded Response**
 ```bash
-curl -X POST "https://api.supermemory.ai/v3/documents" \
+curl -X POST "http://localhost:4000/v3/documents" \
   -H "Authorization: Bearer your_api_key" \
   -d '{"content": "Some content"}'
 ```
@@ -857,5 +857,5 @@ Progress: 3/150 (2.0%) - Next batch in 2s
 </Accordion>
 
 <Note>
-Ready to start ingesting? [Get an API key](https://console.supermemory.ai) now!
+Pronto para começar? Gere um token em **Configurações → API Keys** dentro do painel self-hosted e faça suas chamadas para `http://localhost:4000/v3/documents`.
 </Note>

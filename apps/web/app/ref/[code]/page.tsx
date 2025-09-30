@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { APP_URL } from "@lib/env";
 
 export default function ReferralPage() {
 	const router = useRouter();
@@ -27,7 +28,8 @@ export default function ReferralPage() {
 	} | null>(null);
 	const [copiedLink, setCopiedLink] = useState(false);
 
-	const referralLink = `https://supermemory.ai/ref/${referralCode}`;
+	const appOrigin = APP_URL.replace(/\/$/, "");
+	const referralLink = `${appOrigin}/ref/${referralCode}`;
 
 	// Verify referral code and get referrer info
 	useEffect(() => {
@@ -106,7 +108,7 @@ export default function ReferralPage() {
 					<CardContent>
 						<div className="text-center">
 							<Button asChild className="w-full">
-								<Link href="https://supermemory.ai">Go to supermemory</Link>
+								<Link href={APP_URL}>Go to supermemory</Link>
 							</Button>
 						</div>
 					</CardContent>
@@ -149,7 +151,7 @@ export default function ReferralPage() {
 
 							<div className="text-center">
 								<Link
-									href="https://supermemory.ai"
+									href={APP_URL}
 									className="text-orange-500 hover:text-orange-400 text-sm underline"
 								>
 									Learn more about supermemory

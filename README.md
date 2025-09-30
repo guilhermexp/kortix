@@ -1,75 +1,105 @@
-<div align="center" style="padding-bottom:20px;padding-top:20px">
-  <img src="logo.svg" alt="supermemory Logo" width="400" />
-</div>
+# Supermemory – Self-Hosted Edition
 
-<div align="center" style="padding-bottom:10px;padding-top:10px">
-  <img src="apps/web/public/landing-page.jpeg" alt="supermemory" width="100%" />
-</div>
+This repository packages the open-source Supermemory web app together with a brand‑new backend (`apps/api`) that runs entirely on your own infrastructure. The default stack is:
 
-## Features
+- **Frontend**: Next.js 15 (Turbopack) in `apps/web`
+- **Backend API**: Bun + Hono server in `apps/api`
+- **Database & Storage**: Supabase Postgres (pgvector enabled) and Supabase Storage
+- **Auth**: better-auth (email/pass, magic links, organizations)
+- **Embeddings & Chat**: Gemini models (configurable)
 
-### Core Functionality
+Everything is wired to talk to _your_ backend – no calls to `api.supermemory.ai` remain.
 
-- **[Add Memories from Any Content](#add-memory)**: Easily add memories from URLs, PDFs, and plain text—just paste, upload, or link.
-- **[Chat with Your Memories](#chat-memories)**: Converse with your stored content using natural language chat.
-- **[Supermemory MCP Integration](#mcp-integration)**: Seamlessly connect with all major AI tools (Claude, Cursor, etc.) via Supermemory MCP.
+## What’s Included
 
-## How do i use this?
+- ✅ Memory ingestion pipeline (text, links, future uploads) with background processing
+- ✅ Vector search + chat that surfaces your stored memories
+- ✅ Connectors/MCP scaffolding ready for local credentials
+- ✅ Documentation & specs inside `spec/` describing the new architecture
+- ✅ Browser extension + docs site that point to the self-hosted API
 
-Go to [app.supermemory.ai](https://app.supermemory.ai) and sign into with your account
+## Prerequisites
 
-1. <a id="add-memory"></a>Start Adding Memory with your choose of format (Note, Link, File)
-<div align="center" style="padding-bottom:10px;padding-top:10px">
-  <img src="apps/web/public/add-memory.png" alt="supermemory" width="100%" />
-</div>
+1. Supabase project with pgvector enabled
+2. Bun ≥ 1.2, Node ≥ 20, and pnpm/bun for package scripts
+3. Gemini API key (or adjust the embedding/chat providers in `apps/api/src/services/*`)
 
-2. You can also Connect to your favourite services (Notion, Google Drive, OneDrive)
-<div align="center" style="padding-bottom:10px;padding-top:10px">
-  <img src="apps/web/public/add-connections.png" alt="supermemory" width="100%" />
-</div>
+## Quick Start
 
-3. <a id="chat-memories"></a>Once Memories are added, you can chat with Supermemory by clicking on "Open Chat" and retrieve info from your saved memories
-<div align="center" style="padding-bottom:10px;padding-top:10px">
-  <img src="apps/web/public/chat.png" alt="supermemory" width="100%" />
-</div>
+```bash
+# Install dependencies
+bun install
 
-4. <a id="mcp-integration"></a>Add MCP to your AI Tools (by clicking on "Connect to your AI" and select the AI tool you are trying to integrate)
-<div align="center" style="padding-bottom:10px;padding-top:10px">
-  <img src="apps/web/public/mcp.png" alt="supermemory" width="100%" />
-</div>
+# Copy example environment files
+cp apps/api/.env.local.example apps/api/.env.local
+cp apps/web/.env.example apps/web/.env.local
+```
 
-## Support
+Edit `apps/api/.env.local` and fill in your Supabase credentials:
 
-Have questions or feedback? We're here to help:
+```ini
+PORT=4000
+SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_ANON_KEY=...
+SUPABASE_DATABASE_URL=postgresql://...
+AUTH_SECRET=use_a_32_char_secret
+GOOGLE_API_KEY=your_gemini_key
+APP_URL=http://localhost:3000
+ALLOWED_ORIGINS=http://localhost:3000
+```
 
-- Email: [dhravya@supermemory.com](mailto:dhravya@supermemory.com)
-- Documentation: [docs.supermemory.ai](https://docs.supermemory.ai)
+Then launch both services:
+
+```bash
+# Terminal 1 – API
+bun run --cwd apps/api dev
+
+# Terminal 2 – Frontend
+bun run --cwd apps/web dev
+```
+
+Open <http://localhost:3000> and sign up. All network traffic stays between the Next.js app and your local API.
+
+## Repository Structure
+
+```
+apps/
+  api/        → Bun/Hono backend
+  web/        → Next.js frontend
+  docs/       → Mintlify documentation, now pointing at your backend
+packages/
+  lib/        → Shared utilities (auth, API clients, env helpers)
+  ui/         → Component library
+spec/         → PRD, technical specs, schema status
+```
+
+## Configuration Cheatsheet
+
+| Variable | Location | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_BACKEND_URL` | `apps/web/.env.local` | Base URL for the API (`http://localhost:4000`) |
+| `NEXT_PUBLIC_APP_URL` | `apps/web/.env.local` | Public URL for the web app |
+| `NEXT_PUBLIC_MCP_SERVER_URL` | `apps/web/.env.local` | MCP endpoint (defaults to `<BACKEND_URL>/mcp`) |
+| `SUPABASE_*` | `apps/api/.env.local` | Supabase Postgres/Storage credentials |
+| `GOOGLE_API_KEY` | `apps/api/.env.local` | Gemini API key for embeddings/chat |
+
+## Documentation
+
+- Architecture & requirements: [`spec/TECH_SPEC.md`](spec/TECH_SPEC.md)
+- Product scope & milestones: [`spec/PRD.md`](spec/PRD.md)
+- Developer docs site (Mintlify): `apps/docs/` — run with `bunx mintlify dev` (uses ` NEXT_PUBLIC_BACKEND_URL`).
 
 ## Contributing
 
-We welcome contributions from developers of all skill levels! Whether you're fixing bugs, adding features, or improving documentation, your help makes supermemory better for everyone.
+1. Fork the repo and create a branch
+2. Run `bun install`
+3. Keep backend and frontend running with `bun dev`
+4. Submit a PR summarizing your changes
 
-### Quick Start for Contributors
+## Support
 
-1. **Fork and clone** the repository
-2. **Install dependencies** with `bun install`
-3. **Set up your environment** by copying `.env.example` to `.env.local`
-4. **Start developing** with `bun run dev`
+- Issues: open a ticket on this repository
+- Discussion: use the repo discussions tab
 
-For detailed guidelines, development setup, coding standards, and the complete contribution workflow, please see our [**Contributing Guide**](CONTRIBUTING.md).
-
-### Ways to Contribute
-
-- 🐛 **Bug fixes** - Help us squash those pesky issues
-- ✨ **New features** - Add functionality that users will love
-- 🎨 **UI/UX improvements** - Make the interface more intuitive
-- ⚡ **Performance optimizations** - Help us make supermemory faster
-
-Check out our [Issues](https://github.com/supermemoryai/supermemory/issues) page for `good first issue` and `help wanted` labels to get started!
-
-## Updates & Roadmap
-
-Stay up to date with the latest improvements:
-
-- [Changelog](https://docs.supermemory.ai/changelog/overview)
-- [X](https://x.com/supermemoryai).
+Self-hosted Supermemory is under active development—check the `Outstanding TODOs` in `spec/TECH_SPEC.md` to see what’s next.

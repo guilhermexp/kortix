@@ -19,7 +19,8 @@ import {
 	TabsTrigger,
 } from "@repo/ui/components/tabs";
 import { HeadingH3Bold } from "@repo/ui/text/heading/heading-h3-bold";
-import { useCustomer } from "autumn-js/react";
+import { useCustomer } from "@lib/autumn-stub";
+import { APP_URL } from "@lib/env";
 import {
 	CheckCircle,
 	Copy,
@@ -47,6 +48,7 @@ export function ReferralUpgradeModal({
 	const [isLoading, setIsLoading] = useState(false);
 	const [copied, setCopied] = useState(false);
 
+	const appOrigin = APP_URL.replace(/\/$/, "");
 	const { data: memoriesCheck } = fetchMemoriesFeature(autumn as any);
 	const memoriesUsed = memoriesCheck?.usage ?? 0;
 	const memoriesLimit = memoriesCheck?.included_usage ?? 0;
@@ -67,7 +69,7 @@ export function ReferralUpgradeModal({
 		try {
 			await autumn.attach({
 				productId: "consumer_pro",
-				successUrl: "https://app.supermemory.ai/",
+				successUrl: `${appOrigin}/`,
 			});
 			window.location.reload();
 		} catch (error) {
@@ -77,7 +79,7 @@ export function ReferralUpgradeModal({
 	};
 
 	// Generate referral link (you'll need to implement this based on your referral system)
-	const referralLink = `https://app.supermemory.ai/ref/${user?.id || "user"}`;
+	const referralLink = `${appOrigin}/ref/${user?.id || "user"}`;
 
 	const handleCopyReferralLink = async () => {
 		try {

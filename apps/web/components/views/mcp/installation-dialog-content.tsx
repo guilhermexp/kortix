@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { analytics } from "@/lib/analytics";
 import { $fetch } from "@repo/lib/api";
 import { useQuery } from "@tanstack/react-query";
+import { MCP_SERVER_URL } from "@lib/env";
 
 const clients = {
 	cursor: "Cursor",
@@ -63,7 +64,8 @@ export function InstallationDialogContent() {
 
 	// Generate installation command based on selected project
 	function generateInstallCommand() {
-		let command = `npx -y install-mcp@latest https://api.supermemory.ai/mcp --client ${client} --oauth=yes`;
+		const base = MCP_SERVER_URL.replace(/\/$/, "");
+		let command = `npx -y install-mcp@latest ${base} --client ${client} --oauth=yes`;
 
 		if (selectedProject && selectedProject !== "none") {
 			// Remove the "sm_project_" prefix from the containerTag

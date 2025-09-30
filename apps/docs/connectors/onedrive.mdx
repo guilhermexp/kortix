@@ -62,7 +62,7 @@ print(f'Redirect to: {connection.auth_link}')
 ```
 
 ```bash cURL
-curl -X POST "https://api.supermemory.ai/v3/connections/onedrive" \
+curl -X POST "http://localhost:4000/v3/connections/onedrive" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -119,7 +119,7 @@ After user grants permissions, Microsoft redirects to your callback URL. The con
     ```
   ```bash cURL
     # Get connections by provider and tags
-    curl -X POST "https://api.supermemory.ai/v3/connections/list" \
+    curl -X POST "http://localhost:4000/v3/connections/list" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -128,7 +128,7 @@ After user grants permissions, Microsoft redirects to your callback URL. The con
       }'
 
     # List synced Office documents
-    curl -X POST "https://api.supermemory.ai/v3/documents/list" \
+    curl -X POST "http://localhost:4000/v3/documents/list" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -191,7 +191,7 @@ Webhooks lead to real-time syncing of changes in documents. You may also manuall
     ```
   ```bash cURL
     # Trigger manual sync
-    curl -X POST "https://api.supermemory.ai/v3/connections/onedrive/import" \
+    curl -X POST "http://localhost:4000/v3/connections/onedrive/import" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{"containerTags": ["user-123"]}'
@@ -231,11 +231,11 @@ print('Deleted OneDrive connection for user')
 
 ```bash cURL
 # Delete by connection ID
-curl -X DELETE "https://api.supermemory.ai/v3/connections/connection_id_123" \
+curl -X DELETE "http://localhost:4000/v3/connections/connection_id_123" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY"
 
 # Delete by provider and container tags
-curl -X DELETE "https://api.supermemory.ai/v3/connections/onedrive" \
+curl -X DELETE "http://localhost:4000/v3/connections/onedrive" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"containerTags": ["user-123"]}'
@@ -290,7 +290,7 @@ For production deployments, configure your own Microsoft application:
     ```
   ```bash cURL
     # Update organization settings
-    curl -X PATCH "https://api.supermemory.ai/v3/settings" \
+    curl -X PATCH "http://localhost:4000/v3/settings" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -340,7 +340,7 @@ Control which OneDrive documents get synced:
     ```
   ```bash cURL
     # Configure filtering for Office documents
-    curl -X PATCH "https://api.supermemory.ai/v3/settings" \
+    curl -X PATCH "http://localhost:4000/v3/settings" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
