@@ -6,7 +6,8 @@ import { Skeleton } from "@repo/ui/components/skeleton"
 import type { ConnectionResponseSchema } from "@repo/validation/api"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { GoogleDrive, Notion, OneDrive } from "@ui/assets/icons"
-import { useCustomer } from "autumn-js/react"
+import { useCustomer } from "@lib/autumn-stub"
+import { APP_URL } from "@lib/env"
 import { Trash2 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { useEffect, useState } from "react"
@@ -43,13 +44,14 @@ export function ConnectionsTabContent() {
 	const queryClient = useQueryClient()
 	const { selectedProject } = useProject()
 	const autumn = useCustomer()
+	const appOrigin = APP_URL.replace(/\/$/, "")
 	const [isProUser, setIsProUser] = useState(false)
 
 	const handleUpgrade = async () => {
 		try {
 			await autumn.attach({
 				productId: "consumer_pro",
-				successUrl: "https://app.supermemory.ai/",
+				successUrl: `${appOrigin}/`,
 			})
 			window.location.reload()
 		} catch (error) {

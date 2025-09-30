@@ -42,9 +42,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://supermemory.ai"
+Homepage = "http://localhost:3000"
 Repository = "https://github.com/supermemoryai/supermemory"
-Documentation = "https://supermemory.ai/docs"
+Documentation = "http://localhost:3000/docs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]

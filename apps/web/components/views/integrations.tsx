@@ -19,7 +19,8 @@ import { Skeleton } from "@repo/ui/components/skeleton"
 import type { ConnectionResponseSchema } from "@repo/validation/api"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { GoogleDrive, Notion, OneDrive } from "@ui/assets/icons"
-import { useCustomer } from "autumn-js/react"
+import { useCustomer } from "@lib/autumn-stub"
+import { APP_URL } from "@lib/env"
 import { Check, Copy, Smartphone, Trash2 } from "lucide-react"
 import { motion } from "motion/react"
 import Image from "next/image"
@@ -96,11 +97,12 @@ export function IntegrationsView() {
 	>(null)
 	const apiKeyId = useId()
 
+	const appOrigin = APP_URL.replace(/\/$/, "")
 	const handleUpgrade = async () => {
 		try {
 			await autumn.attach({
 				productId: "consumer_pro",
-				successUrl: "https://app.supermemory.ai/",
+				successUrl: `${appOrigin}/`,
 			})
 			window.location.reload()
 		} catch (error) {

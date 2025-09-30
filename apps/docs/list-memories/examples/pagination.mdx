@@ -41,13 +41,13 @@ Handle large memory collections efficiently using pagination to process data in 
   <Tab title="cURL">
     ```bash
     # Get first page
-    curl -X POST "https://api.supermemory.ai/v3/documents/list" \
+    curl -X POST "http://localhost:4000/v3/documents/list" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{"limit": 20, "page": 1}'
 
     # Get next page
-    curl -X POST "https://api.supermemory.ai/v3/documents/list" \
+    curl -X POST "http://localhost:4000/v3/documents/list" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{"limit": 20, "page": 2}'
@@ -95,7 +95,7 @@ Handle large memory collections efficiently using pagination to process data in 
     # Manual pagination with bash loop
     for page in {1..5}; do
       echo "=== Page $page ==="
-      curl -X POST "https://api.supermemory.ai/v3/documents/list" \
+      curl -X POST "http://localhost:4000/v3/documents/list" \
         -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
         -H "Content-Type: application/json" \
         -d "{\"page\": $page, \"limit\": 20}" | \

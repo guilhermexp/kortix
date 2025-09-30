@@ -29,7 +29,7 @@ If a conversation identifier is provided, You do not need to send the entire arr
 // if you provide conversation ID, You do not need to send all the messages every single time. supermemory automatically backfills it. 
 const client = new OpenAI({
     baseURL:
-"https://api.supermemory.ai/v3/https://api.openai.com/v1",
+"http://localhost:4000/v3/https://api.openai.com/v1",
     defaultHeaders: {
         "x-supermemory-api-key":
             "SUPERMEMORY_API_KEY",

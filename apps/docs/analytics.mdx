@@ -43,7 +43,7 @@ Get comprehensive usage statistics including hourly breakdowns and per-key metri
 
 ```typescript TypeScript
 // Get usage for the last 24 hours
-const usage = await fetch('https://api.supermemory.ai/v3/analytics/usage?period=24h', {
+const usage = await fetch('http://localhost:4000/v3/analytics/usage?period=24h', {
   headers: {
     'Authorization': `Bearer ${SUPERMEMORY_API_KEY}`
   }
@@ -58,7 +58,7 @@ from datetime import datetime, timedelta
 
 # Get usage for the last 7 days
 response = requests.get(
-    'https://api.supermemory.ai/v3/analytics/usage',
+    'http://localhost:4000/v3/analytics/usage',
     params={'period': '7d'},
     headers={'Authorization': f'Bearer {SUPERMEMORY_API_KEY}'}
 )
@@ -68,7 +68,7 @@ data = response.json()
 
 ```bash cURL
 # Get usage for a specific date range
-curl -X GET "https://api.supermemory.ai/v3/analytics/usage?from=2024-01-01T00:00:00Z&to=2024-01-31T23:59:59Z" \
+curl -X GET "http://localhost:4000/v3/analytics/usage?from=2024-01-01T00:00:00Z&to=2024-01-31T23:59:59Z" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY"
 ```
 
@@ -136,7 +136,7 @@ Same as usage endpoint - supports `from`, `to`, `period`, `page`, and `limit`.
 
 ```typescript TypeScript
 // Get errors from the last 24 hours
-const errors = await fetch('https://api.supermemory.ai/v3/analytics/errors?period=24h', {
+const errors = await fetch('http://localhost:4000/v3/analytics/errors?period=24h', {
   headers: {
     'Authorization': `Bearer ${SUPERMEMORY_API_KEY}`
   }
@@ -148,7 +148,7 @@ const data = await errors.json();
 ```python Python
 # Monitor errors and alert on spikes
 response = requests.get(
-    'https://api.supermemory.ai/v3/analytics/errors?period=1h',
+    'http://localhost:4000/v3/analytics/errors?period=1h',
     headers={'Authorization': f'Bearer {SUPERMEMORY_API_KEY}'}
 )
 
@@ -157,7 +157,7 @@ data = response.json()
 
 ```bash cURL
 # Get errors for the last 7 days
-curl -X GET "https://api.supermemory.ai/v3/analytics/errors?period=7d" \
+curl -X GET "http://localhost:4000/v3/analytics/errors?period=7d" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY"
 ```
 
@@ -220,7 +220,7 @@ Same as usage endpoint, plus optional filters:
 
 ```typescript TypeScript
 // Get recent failed requests
-const logs = await fetch('https://api.supermemory.ai/v3/analytics/logs?period=1h&statusCode=500', {
+const logs = await fetch('http://localhost:4000/v3/analytics/logs?period=1h&statusCode=500', {
   headers: {
     'Authorization': `Bearer ${SUPERMEMORY_API_KEY}`
   }
@@ -232,7 +232,7 @@ const data = await logs.json();
 ```python Python
 # Debug specific API key usage
 response = requests.get(
-    'https://api.supermemory.ai/v3/analytics/logs',
+    'http://localhost:4000/v3/analytics/logs',
     params={
         'keyId': 'key_abc123',
         'period': '24h'
@@ -246,7 +246,7 @@ logs = response.json()['logs']
 
 ```bash cURL
 # Get all logs for debugging
-curl -X GET "https://api.supermemory.ai/v3/analytics/logs?period=1h&limit=50" \
+curl -X GET "http://localhost:4000/v3/analytics/logs?period=1h&limit=50" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY"
 ```
 

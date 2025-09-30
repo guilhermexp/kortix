@@ -47,7 +47,7 @@ print(f"ID: {updated.id}")  # "memory_id_123"
 ```
 
 ```bash cURL
-curl -X PATCH "https://api.supermemory.ai/v3/documents/memory_id_123" \
+curl -X PATCH "http://localhost:4000/v3/documents/memory_id_123" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -120,7 +120,7 @@ print(f'Same memory? {created.id == updated.id}')  # True
 
 ```bash cURL
 # First call - creates memory
-curl -X POST "https://api.supermemory.ai/v3/documents" \
+curl -X POST "http://localhost:4000/v3/documents" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -132,7 +132,7 @@ curl -X POST "https://api.supermemory.ai/v3/documents" \
 # Response: {"id": "mem_abc123", "status": "queued", "customId": "user-note-001"}
 
 # Second call - updates existing (same customId)
-curl -X POST "https://api.supermemory.ai/v3/documents" \
+curl -X POST "http://localhost:4000/v3/documents" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -181,7 +181,7 @@ except Exception as e:
 ```
 
 ```bash cURL
-curl -X DELETE "https://api.supermemory.ai/v3/documents/memory_id_123" \
+curl -X DELETE "http://localhost:4000/v3/documents/memory_id_123" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY"
 
 # Response: 204 No Content (success)
@@ -239,7 +239,7 @@ print(f'Bulk delete result: {result}')
 ```
 
 ```bash cURL
-curl -X DELETE "https://api.supermemory.ai/v3/documents/bulk" \
+curl -X DELETE "http://localhost:4000/v3/documents/bulk" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -297,7 +297,7 @@ print(f'Bulk delete by tags result: {result}')
 ```
 
 ```bash cURL
-curl -X DELETE "https://api.supermemory.ai/v3/documents/bulk" \
+curl -X DELETE "http://localhost:4000/v3/documents/bulk" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -370,7 +370,7 @@ print(f'Active memories: {len(active_memories.results)}')
 
 ```bash cURL
 # Soft delete using metadata
-curl -X PATCH "https://api.supermemory.ai/v3/documents/memory_id" \
+curl -X PATCH "http://localhost:4000/v3/documents/memory_id" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -475,7 +475,7 @@ for ((i=0; i<${#MEMORY_IDS[@]}; i+=BATCH_SIZE)); do
     echo "Processing batch $((i/BATCH_SIZE + 1))"
 
     response=$(curl -s -X DELETE \
-      "https://api.supermemory.ai/v3/documents/bulk" \
+      "http://localhost:4000/v3/documents/bulk" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d "{\"ids\": $batch_json}")

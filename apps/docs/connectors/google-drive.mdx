@@ -59,7 +59,7 @@ Connect Google Drive to sync documents into your Supermemory knowledge base with
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/connections/google-drive" \
+    curl -X POST "http://localhost:4000/v3/connections/google-drive" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -108,7 +108,7 @@ After user grants permissions, Google redirects to your callback URL. The connec
   <Tab title="cURL">
     ```bash
     # Get connections by provider and tags
-    curl -X POST "https://api.supermemory.ai/v3/connections/list" \
+    curl -X POST "http://localhost:4000/v3/connections/list" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -117,7 +117,7 @@ After user grants permissions, Google redirects to your callback URL. The connec
       }'
 
     # List synced documents
-    curl -X POST "https://api.supermemory.ai/v3/documents/list" \
+    curl -X POST "http://localhost:4000/v3/documents/list" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -176,7 +176,7 @@ Based on the API type definitions, Google Drive documents are identified with th
   <Tab title="cURL">
     ```bash
     # List all connections for specific container tags
-    curl -X POST "https://api.supermemory.ai/v3/connections/list" \
+    curl -X POST "http://localhost:4000/v3/connections/list" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -230,13 +230,13 @@ Based on the API type definitions, Google Drive documents are identified with th
   <Tab title="cURL">
     ```bash
     # Delete by connection ID
-    curl -X DELETE "https://api.supermemory.ai/v3/connections/connection_id_123" \
+    curl -X DELETE "http://localhost:4000/v3/connections/connection_id_123" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY"
 
     # Response: {"id": "connection_id_123", "provider": "google-drive"}
 
     # Delete by provider and container tags
-    curl -X DELETE "https://api.supermemory.ai/v3/connections/google-drive" \
+    curl -X DELETE "http://localhost:4000/v3/connections/google-drive" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -290,11 +290,11 @@ Trigger a manual synchronization:
   <Tab title="cURL">
     ```bash
     # Trigger sync for all Google Drive connections
-    curl -X POST "https://api.supermemory.ai/v3/connections/google-drive/import" \
+    curl -X POST "http://localhost:4000/v3/connections/google-drive/import" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY"
 
     # Trigger sync for specific container tags
-    curl -X POST "https://api.supermemory.ai/v3/connections/google-drive/import" \
+    curl -X POST "http://localhost:4000/v3/connections/google-drive/import" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -348,7 +348,7 @@ Configure your own Google OAuth app using the settings API:
   <Tab title="cURL">
     ```bash
     # Update organization settings
-    curl -X PATCH "https://api.supermemory.ai/v3/settings" \
+    curl -X PATCH "http://localhost:4000/v3/settings" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -358,7 +358,7 @@ Configure your own Google OAuth app using the settings API:
       }'
 
     # Get current settings
-    curl -X GET "https://api.supermemory.ai/v3/settings" \
+    curl -X GET "http://localhost:4000/v3/settings" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY"
     ```
   </Tab>
@@ -400,7 +400,7 @@ Configure filtering using the settings API:
   <Tab title="cURL">
     ```bash
     # Configure document filtering
-    curl -X PATCH "https://api.supermemory.ai/v3/settings" \
+    curl -X PATCH "http://localhost:4000/v3/settings" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{

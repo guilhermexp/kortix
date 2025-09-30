@@ -20,6 +20,7 @@ import {
 import { AnimatePresence, motion } from "motion/react"
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { APP_URL } from "@lib/env"
 import type { z } from "zod"
 import { ConnectAIModal } from "@/components/connect-ai-modal"
 import { InstallPrompt } from "@/components/install-prompt"
@@ -605,7 +606,7 @@ const MemoryGraphPage = () => {
 					<div className="flex items-center gap-3 justify-between w-full md:w-fit md:justify-start">
 						<Link
 							className="pointer-events-auto"
-							href="https://supermemory.ai"
+							href={APP_URL}
 							rel="noopener noreferrer"
 							target="_blank"
 						>

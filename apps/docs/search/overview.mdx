@@ -86,7 +86,7 @@ Refer to the [ingestion guide](/memory-api/ingesting) to learn more about the di
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -181,7 +181,7 @@ Companies like Composio [Rube.app](https://rube.app) use memories search for let
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v4/search" \
+    curl -X POST "http://localhost:4000/v4/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{

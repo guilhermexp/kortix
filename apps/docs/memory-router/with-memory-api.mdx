@@ -31,7 +31,7 @@ from openai import OpenAI
 
 router_client = OpenAI(
     api_key="YOUR_OPENAI_KEY",
-    base_url="https://api.supermemory.ai/v3/https://api.openai.com/v1/",
+    base_url="http://localhost:4000/v3/https://api.openai.com/v1/",
     default_headers={
         "x-supermemory-api-key": "YOUR_SUPERMEMORY_KEY",
         "x-sm-user-id": "user123"  # Same user_id
@@ -60,7 +60,7 @@ api_client.memories.add({
 
 # Step 2: Support agent uses chat with Router
 router_client = OpenAI(
-    base_url="https://api.supermemory.ai/v3/https://api.openai.com/v1/",
+    base_url="http://localhost:4000/v3/https://api.openai.com/v1/",
     default_headers={"x-sm-user-id": "support_agent_123"}
 )
 

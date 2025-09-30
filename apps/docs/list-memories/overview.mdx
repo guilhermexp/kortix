@@ -34,7 +34,7 @@ Retrieve paginated memories with filtering and sorting options from your Superme
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/documents/list" \
+    curl -X POST "http://localhost:4000/v3/documents/list" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{"limit": 10}'

@@ -33,7 +33,7 @@ Monitor all documents currently being processed across your account.
 
 ```typescript
 // Direct API call (not in SDK)
-const response = await fetch('https://api.supermemory.ai/v3/documents/processing', {
+const response = await fetch('http://localhost:4000/v3/documents/processing', {
   headers: {
     'Authorization': `Bearer ${SUPERMEMORY_API_KEY}`
   }
@@ -48,7 +48,7 @@ console.log(`${processing.documents.length} documents processing`);
 import requests
 
 response = requests.get(
-    'https://api.supermemory.ai/v3/documents/processing',
+    'http://localhost:4000/v3/documents/processing',
     headers={'Authorization': f'Bearer {SUPERMEMORY_API_KEY}'}
 )
 
@@ -57,7 +57,7 @@ print(f"{len(processing['documents'])} documents processing")
 ```
 
 ```bash
-curl -X GET "https://api.supermemory.ai/v3/documents/processing" \
+curl -X GET "http://localhost:4000/v3/documents/processing" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY"
 ```
 
@@ -130,7 +130,7 @@ while memory['status'] != 'done':
 ```
 
 ```bash
-curl -X GET "https://api.supermemory.ai/v3/documents/doc_abc123" \
+curl -X GET "http://localhost:4000/v3/documents/doc_abc123" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY"
 ```
 

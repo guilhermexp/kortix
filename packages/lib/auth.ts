@@ -1,32 +1,181 @@
-import {
-	adminClient,
-	anonymousClient,
-	apiKeyClient,
-	emailOTPClient,
-	magicLinkClient,
-	organizationClient,
-	usernameClient,
-} from "better-auth/client/plugins"
-import { createAuthClient } from "better-auth/react"
+"use client"
 
-export const authClient = createAuthClient({
-	baseURL: process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://api.supermemory.ai",
-	fetchOptions: {
-		credentials: "include",
-		throw: true,
-	},
-	plugins: [
-		usernameClient(),
-		magicLinkClient(),
-		emailOTPClient(),
-		apiKeyClient(),
-		adminClient(),
-		organizationClient(),
-		anonymousClient(),
-	],
-})
+import useSWR, { mutate } from "swr"
 
-export const signIn = authClient.signIn
-export const signOut = authClient.signOut
-export const useSession = authClient.useSession
-export const getSession = authClient.getSession
+import { BACKEND_URL } from "./env"
+
+const API_BASE = BACKEND_URL
+
+async function request(path: string, init: RequestInit = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init.headers ?? {}),
+    },
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    let message = "Request failed"
+    try {
+      const body = await response.json()
+      message = body?.error?.message ?? message
+    } catch {
+      // ignore
+    }
+    throw new Error(message)
+  }
+
+  if (response.status === 204) return null
+
+  const text = await response.text()
+  return text ? JSON.parse(text) : null
+}
+
+export async function signUp(input: { email: string; password: string; name?: string }) {
+  await request("/api/auth/sign-up", {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
+  await mutateSession()
+}
+
+export async function signIn(input: { email: string; password: string }) {
+  await request("/api/auth/sign-in", {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
+  await mutateSession()
+}
+
+export async function signOut() {
+  await request("/api/auth/sign-out", { method: "POST" })
+  await mutateSession()
+}
+
+export async function getSession() {
+  return request("/api/auth/session")
+}
+
+export async function requestPasswordReset(email: string) {
+  await request("/api/auth/password/reset/request", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  })
+}
+
+export async function completePasswordReset(input: { token: string; password: string }) {
+  await request("/api/auth/password/reset/complete", {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
+}
+
+export async function updatePassword(input: { currentPassword: string; newPassword: string }) {
+  await request("/api/auth/password/update", {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
+}
+
+const sessionKey = "auth-session"
+
+function mutateSession() {
+  return mutate(sessionKey)
+}
+
+type SessionResponse = {
+  session: {
+    token: string
+    expiresAt: string
+    organizationId: string
+  } | null
+  user?: {
+    id: string
+    email: string
+    name: string | null
+    createdAt?: string
+    updatedAt?: string
+  }
+  organization?: {
+    id: string
+    slug: string
+    name: string
+  }
+} | null
+
+export function useSession() {
+  const swr = useSWR<SessionResponse>(sessionKey, async () => {
+    try {
+      const data = await getSession()
+      return data
+    } catch {
+      return { session: null }
+    }
+  })
+
+  return swr
+}
+
+function unsupported<T = never>(message = "Not implemented"): Promise<T> {
+  return Promise.reject(new Error(message))
+}
+
+export const authClient = {
+  signIn: {
+    email: signIn,
+    anonymous: async () => {
+      const email = "anonymous@local.host"
+      const password = "anonymous"
+      try {
+        await signIn({ email, password })
+      } catch {
+        await signUp({ email, password, name: "Anonymous" })
+      }
+    },
+  },
+  signUp,
+  signOut,
+  getSession,
+  organization: {
+    async list() {
+      const data = await getSession()
+      if (data?.organization) {
+        return [data.organization]
+      }
+      return []
+    },
+    async setActive() {
+      const data = await getSession()
+      return data?.organization ?? null
+    },
+    async getFullOrganization() {
+      const data = await getSession()
+      return data?.organization ?? null
+    },
+  },
+  apiKey: {
+    async create(input: { name: string; prefix?: string; metadata?: Record<string, unknown> }) {
+      const response = await request("/api/auth/api-keys", {
+        method: "POST",
+        body: JSON.stringify(input),
+      })
+      return response as {
+        key: string
+        apiKey: {
+          id: string
+          name: string
+          createdAt: string
+          lastUsedAt: string | null
+          tokenHint: string
+        }
+      }
+    },
+  },
+  password: {
+    requestReset: requestPasswordReset,
+    completeReset: completePasswordReset,
+    update: updatePassword,
+  },
+}

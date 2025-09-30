@@ -281,10 +281,23 @@ export function useGraphData(
 				const docJ = filteredDocuments[j];
 				if (!docJ) continue;
 
-				const sim = calculateSemanticSimilarity(
-					docI.summaryEmbedding ? Array.from(docI.summaryEmbedding) : null,
-					docJ.summaryEmbedding ? Array.from(docJ.summaryEmbedding) : null,
-				);
+				// Parse embeddings (handle both string and array formats)
+				const parseEmbedding = (emb: string | number[] | null | undefined): number[] | null => {
+					if (!emb) return null;
+					if (typeof emb === 'string') {
+						try {
+							return JSON.parse(emb);
+						} catch {
+							return null;
+						}
+					}
+					return Array.isArray(emb) ? emb : null;
+				};
+
+				const embI = parseEmbedding(docI.summaryEmbedding);
+				const embJ = parseEmbedding(docJ.summaryEmbedding);
+
+				const sim = calculateSemanticSimilarity(embI, embJ);
 				if (sim > 0.725) {
 					allEdges.push({
 						id: `doc-doc-${docI.id}-${docJ.id}`,

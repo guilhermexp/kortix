@@ -1,5 +1,5 @@
 import { PostHog } from "posthog-js/dist/module.no-external"
-import { STORAGE_KEYS } from "./constants"
+import { API_ENDPOINTS, STORAGE_KEYS } from "./constants"
 
 export async function identifyUser(posthog: PostHog): Promise<void> {
 	const stored = await chrome.storage.local.get([STORAGE_KEYS.USER_DATA])
@@ -18,7 +18,7 @@ let posthogInstance: PostHog | null = null
 let initializationPromise: Promise<PostHog> | null = null
 
 export const POSTHOG_CONFIG = {
-	api_host: "https://api.supermemory.ai/orange",
+	api_host: `${API_ENDPOINTS.SUPERMEMORY_API.replace(/\/$/, "")}/orange`,
 	person_profiles: "identified_only",
 	disable_external_dependency_loading: true,
 	persistence: "localStorage",

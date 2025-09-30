@@ -21,7 +21,7 @@ The graph is built on top of the Container Tags. For example, each user / tag in
 <CodeGroup>
 
 ```bash cURL
-curl https://api.supermemory.ai/v3/search \
+curl http://localhost:4000/v3/search \
   --request POST \
   --header 'Content-Type: application/json' \
   --header 'Authorization: Bearer SUPERMEMORY_API_KEY' \
@@ -76,7 +76,7 @@ These limits help prevent overly complex queries that could impact performance. 
 <CodeGroup>
 
 ```bash cURL
-curl https://api.supermemory.ai/v3/search \
+curl http://localhost:4000/v3/search \
   --request POST \
   --header 'Content-Type: application/json' \
   --header 'Authorization: Bearer SUPERMEMORY_API_KEY' \
@@ -156,7 +156,7 @@ First, create a memory with participants in the metadata:
 <CodeGroup>
 
 ```bash cURL
-curl --location 'https://api.supermemory.ai/v3/documents' \
+curl --location 'http://localhost:4000/v3/documents' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Bearer SUPERMEMORY_API_KEY' \
 --data '{
@@ -192,7 +192,7 @@ Then search using the `array_contains` filter:
 <CodeGroup>
 
 ```bash cURL
-curl --location 'https://api.supermemory.ai/v3/search' \
+curl --location 'http://localhost:4000/v3/search' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Bearer SUPERMEMORY_API_KEY' \
 --data '{
@@ -270,7 +270,7 @@ This can be particularly useful for extremely large documents like Books, Podcas
 <CodeGroup>
 
 ```bash cURL
-curl https://api.supermemory.ai/v3/search \
+curl http://localhost:4000/v3/search \
   --request POST \
   --header 'Content-Type: application/json' \
   --header 'Authorization: Bearer SUPERMEMORY_API_KEY' \

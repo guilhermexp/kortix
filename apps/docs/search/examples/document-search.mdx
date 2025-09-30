@@ -52,7 +52,7 @@ Documents search (`POST /v3/search`) provides maximum control over search behavi
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -124,7 +124,7 @@ Container tags are the primary way to isolate search results by user, project, o
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -197,7 +197,7 @@ Metadata filtering allows complex conditions on structured data attached to your
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -293,7 +293,7 @@ When your metadata includes arrays (like participant lists, tags, or categories)
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -340,7 +340,7 @@ Control result quality with sensitivity thresholds:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -378,7 +378,7 @@ Improve search accuracy with automatic query rewriting:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -419,7 +419,7 @@ Improve result quality with secondary ranking:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -456,7 +456,7 @@ Search within a specific large document:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -497,7 +497,7 @@ Include complete document content and summaries:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -562,7 +562,7 @@ Combining all features for maximum control:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{

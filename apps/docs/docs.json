@@ -5,7 +5,7 @@
 			"defaults": "required",
 			"languages": ["javascript", "python", "curl"]
 		},
-		"openapi": "https://api.supermemory.ai/v3/openapi"
+		"openapi": "./openapi.json"
 	},
 	"colors": {
 		"dark": "#1E3A8A",
@@ -42,13 +42,13 @@
 	"navbar": {
 		"links": [
 			{
-				"href": "mailto:dhravya@supermemory.com",
-				"label": "Support"
+				"href": "mailto:suporte@supermemory.local",
+				"label": "Suporte"
 			}
 		],
 		"primary": {
-			"href": "https://console.supermemory.ai",
-			"label": "Dashboard",
+			"href": "http://localhost:3000",
+			"label": "Abrir App",
 			"type": "button"
 		}
 	},
@@ -62,8 +62,8 @@
 				"icon": "code",
 				"anchors": [
 					{
-						"anchor": "Your Dashboard",
-						"href": "https://console.supermemory.ai",
+						"anchor": "Painel Local",
+						"href": "http://localhost:3000",
 						"icon": "play"
 					},
 					{
@@ -205,7 +205,7 @@
 					{
 						"anchor": "API Reference",
 						"icon": "unplug",
-						"openapi": "https://api.supermemory.ai/v3/openapi"
+						"openapi": "./openapi.json"
 					}
 				],
 				"tab": "API Reference"

@@ -77,7 +77,7 @@ print(f'Expires in: {connection.expires_in}')
 ```
 
 ```bash cURL
-curl -X POST "https://api.supermemory.ai/v3/connections/notion" \
+curl -X POST "http://localhost:4000/v3/connections/notion" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -159,7 +159,7 @@ print(f'Synced {len(memories.memories)} documents')
 
 ```bash cURL
 # List all connections
-curl -X POST "https://api.supermemory.ai/v3/connections/list" \
+curl -X POST "http://localhost:4000/v3/connections/list" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"containerTags": ["user-123", "workspace-alpha"]}'
@@ -167,7 +167,7 @@ curl -X POST "https://api.supermemory.ai/v3/connections/list" \
 # Response: [{"id": "conn_abc", "provider": "notion", "email": "user@example.com", ...}]
 
 # List synced documents
-curl -X POST "https://api.supermemory.ai/v3/documents/list" \
+curl -X POST "http://localhost:4000/v3/documents/list" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"containerTags": ["user-123", "workspace-alpha"]}'
@@ -244,7 +244,7 @@ for conn in connections:
 ```
 
 ```bash cURL
-curl -X POST "https://api.supermemory.ai/v3/connections/list" \
+curl -X POST "http://localhost:4000/v3/connections/list" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"containerTags": ["org-123"]}'
@@ -294,7 +294,7 @@ print(f"Deleted: {result.id} {result.provider}")
 ```
 
 ```bash cURL
-curl -X DELETE "https://api.supermemory.ai/v3/connections/conn_abc123" \
+curl -X DELETE "http://localhost:4000/v3/connections/conn_abc123" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY"
 
 # Response: {

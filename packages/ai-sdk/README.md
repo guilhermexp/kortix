@@ -30,7 +30,7 @@ import { generateText } from 'ai'
 
 // Using a custom provider URL
 const supermemoryOpenai = createOpenAI({
-  baseUrl: 'https://api.supermemory.ai/v3/https://api.openai.com/v1',
+  baseUrl: 'http://localhost:4000/v3/https://api.openai.com/v1',
   apiKey: 'your-provider-api-key',
   headers: {
     'x-supermemory-api-key': 'supermemory-api-key',
@@ -56,7 +56,7 @@ const openaiApiKey = process.env.OPENAI_API_KEY!
 
 // Initialize infinite chat provider
 const supermemoryOpenai = createOpenAI({
-  baseUrl: 'https://api.supermemory.ai/v3/https://api.openai.com/v1',
+  baseUrl: 'http://localhost:4000/v3/https://api.openai.com/v1',
   apiKey: 'your-provider-api-key',
   headers: {
     'x-supermemory-api-key': 'supermemory-api-key',
@@ -118,7 +118,7 @@ const result = await generateText({
   tools: {
     ...supermemoryTools('your-supermemory-api-key', {
   // Optional: specify a base URL for self-hosted instances
-  baseUrl: 'https://api.supermemory.com',
+  baseUrl: 'http://localhost:4000',
 
   // Use either projectId OR containerTags, not both
   projectId: 'your-project-id',
@@ -168,7 +168,7 @@ async function chatWithTools(userMessage: string) {
 
 ```typescript
 interface SupermemoryConfig {
-  // Optional: Base URL for API calls (default: https://api.supermemory.com)
+  // Optional: Base URL for API calls (default: http://localhost:4000)
   baseUrl?: string
 
   // Container tags for organizing memories (cannot be used with projectId)
@@ -290,7 +290,7 @@ cp .env.example .env
 - `OPENAI_API_KEY`: Your OpenAI API key for tool integration tests
 
 **Optional:**
-- `SUPERMEMORY_BASE_URL`: Custom Supermemory base URL (defaults to `https://api.supermemory.ai`)
+- `SUPERMEMORY_BASE_URL`: Custom Supermemory base URL (defaults to `http://localhost:4000`)
 - `PROVIDER_NAME`: Provider name (defaults to `openai`) - one of: `openai`, `anthropic`, `openrouter`, `deepinfra`, `groq`, `google`, `cloudflare`
 - `PROVIDER_URL`: Custom provider URL (use instead of `PROVIDER_NAME`)
 - `MODEL_NAME`: Model to use in tests (defaults to `gpt-3.5-turbo`)

@@ -1,6 +1,15 @@
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig, type WxtViteConfig } from "wxt"
 
+const DEFAULT_APP_URL = "http://localhost:3000"
+const DEFAULT_API_URL = "http://localhost:4000"
+
+const APP_URL = process.env.SUPERMEMORY_APP_URL ?? DEFAULT_APP_URL
+const API_URL = process.env.SUPERMEMORY_API_URL ?? DEFAULT_API_URL
+
+const appOrigin = new URL(APP_URL)
+const apiOrigin = new URL(API_URL)
+
 // See https://wxt.dev/api/config.html
 export default defineConfig({
 	modules: ["@wxt-dev/module-react"],
@@ -10,14 +19,14 @@ export default defineConfig({
 		}) as WxtViteConfig,
 	manifest: {
 		name: "supermemory",
-		homepage_url: "https://supermemory.ai",
+		homepage_url: APP_URL,
 		version: "6.0.003",
 		permissions: ["contextMenus", "storage", "activeTab", "webRequest", "tabs"],
 		host_permissions: [
 			"*://x.com/*",
 			"*://twitter.com/*",
-			"*://supermemory.ai/*",
-			"*://api.supermemory.ai/*",
+			`${appOrigin.protocol}//${appOrigin.host}/*`,
+			`${apiOrigin.protocol}//${apiOrigin.host}/*`,
 			"*://chatgpt.com/*",
 			"*://chat.openai.com/*",
 			"https://*.posthog.com/*",

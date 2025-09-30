@@ -4,10 +4,18 @@ import { usePathname, useSearchParams } from "next/navigation"
 import posthog from "posthog-js"
 import { Suspense, useEffect } from "react"
 import { useSession } from "./auth"
+import { BACKEND_URL } from "./env"
+
+const telemetryEnabled = (process.env.NEXT_PUBLIC_TELEMETRY_ENABLED ?? "true") !== "false"
+const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY ?? ""
 
 function PostHogPageTracking() {
 	const pathname = usePathname()
 	const searchParams = useSearchParams()
+
+	if (!telemetryEnabled || !posthogKey) {
+		return null
+	}
 
 	// Page tracking
 	useEffect(() => {
@@ -37,9 +45,18 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
 	const { data: session } = useSession()
 
 	useEffect(() => {
+		if (!telemetryEnabled || !posthogKey) {
+			posthog.opt_out_capturing()
+			return
+		}
+		posthog.opt_in_capturing()
+	}, [])
+
+	useEffect(() => {
+		if (!telemetryEnabled || !posthogKey) return
 		if (typeof window !== "undefined") {
-			posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY ?? "", {
-				api_host: process.env.NEXT_PUBLIC_BACKEND_URL + "/orange",
+			posthog.init(posthogKey, {
+				api_host: `${BACKEND_URL.replace(/\/$/, "")}/orange`,
 				ui_host: "https://us.i.posthog.com",
 				person_profiles: "identified_only",
 				capture_pageview: false,
@@ -50,6 +67,7 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
 
 	// User identification
 	useEffect(() => {
+		if (!telemetryEnabled || !posthogKey) return
 		if (session?.user) {
 			posthog.identify(session.user.id, {
 				email: session.user.email,

@@ -6,7 +6,8 @@
       "@/*": ["./*"],
       "@ui/*": ["../../packages/ui/*"],
       "@lib/*": ["../../packages/lib/*"],
-      "@hooks/*": ["../../packages/hooks/*"]
+      "@hooks/*": ["../../packages/hooks/*"],
+      "@lib/autumn-stub": ["../../packages/lib/autumn-stub"]
     },
     "plugins": [
       {

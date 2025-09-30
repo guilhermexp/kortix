@@ -1,5 +1,6 @@
 import { createFetch, createSchema } from "@better-fetch/fetch"
 import { z } from "zod"
+import { BACKEND_URL } from "./env"
 import {
 	AnalyticsChatResponseSchema,
 	AnalyticsMemoryResponseSchema,
@@ -204,7 +205,7 @@ export const apiSchema = createSchema({
 })
 
 export const $fetch = createFetch({
-	baseURL: `${process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://api.supermemory.ai"}/v3`,
+	baseURL: `${BACKEND_URL.replace(/\/$/, "")}/v3`,
 	credentials: "include",
 	retry: {
 		attempts: 3,

@@ -2,7 +2,7 @@
 
 Memory tools for OpenAI function calling with Supermemory integration.
 
-This package provides memory management tools for the official [OpenAI Python SDK](https://github.com/openai/openai-python) using [Supermemory](https://supermemory.ai) capabilities.
+This package provides memory management tools for the official [OpenAI Python SDK](https://github.com/openai/openai-python) using [Supermemory](http://localhost:3000) capabilities.
 
 ## Installation
 
@@ -224,6 +224,6 @@ MIT License - see LICENSE file for details.
 
 ## Links
 
-- [Supermemory](https://supermemory.ai) - Infinite context memory platform
+- [Supermemory](http://localhost:3000) - Infinite context memory platform
 - [OpenAI Python SDK](https://github.com/openai/openai-python) - Official OpenAI Python library
-- [Documentation](https://docs.supermemory.ai) - Full API documentation
+- [Documentação](../..//apps/docs) - Referência hospedada junto ao backend self-hosted

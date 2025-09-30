@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import "./App.css"
 import { validateAuthToken } from "../../utils/api"
-import { MESSAGE_TYPES, STORAGE_KEYS } from "../../utils/constants"
+import { API_ENDPOINTS, MESSAGE_TYPES, STORAGE_KEYS } from "../../utils/constants"
 import {
 	useDefaultProject,
 	useProjects,
@@ -585,11 +585,8 @@ function App() {
 							<button
 								className="w-full py-3 px-6 bg-gray-700 text-white border-none rounded-3xl text-base font-medium cursor-pointer transition-colors duration-200 hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
 								onClick={() => {
-									chrome.tabs.create({
-										url: import.meta.env.PROD
-											? "https://app.supermemory.ai/login"
-											: "http://localhost:3000/login",
-									})
+									const loginUrl = `${API_ENDPOINTS.SUPERMEMORY_WEB.replace(/\/$/, "")}/login`
+									chrome.tabs.create({ url: loginUrl })
 								}}
 								type="button"
 							>

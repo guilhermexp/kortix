@@ -10,6 +10,7 @@ import {
 } from "@ui/components/card";
 import { ShareIcon } from "lucide-react";
 import Link from "next/link";
+import { APP_URL } from "@lib/env";
 
 export default function ReferralHomePage() {
 	return (
@@ -43,7 +44,7 @@ export default function ReferralHomePage() {
 						<div className="text-center">
 							<Link
 								className="text-orange-500 hover:text-orange-400 text-sm underline"
-								href="https://supermemory.ai"
+								href={APP_URL}
 							>
 								Learn more about supermemory
 							</Link>

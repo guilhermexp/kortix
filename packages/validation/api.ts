@@ -1036,7 +1036,7 @@ export const AnalyticsMemoryResponseSchema = z.object({
 })
 
 export const MemoryEntryAPISchema = MemoryEntrySchema.extend({
-	sourceAddedAt: z.date().nullable(), // From join relationship
+	sourceAddedAt: z.union([z.date(), z.string()]).nullable(), // From join relationship
 	sourceRelevanceScore: z.number().nullable(), // From join relationship
 	sourceMetadata: z.record(z.unknown()).nullable(), // From join relationship
 	spaceContainerTag: z.string().nullable(), // From join relationship

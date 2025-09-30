@@ -66,18 +66,18 @@ Next.js application providing user interface for:
 ## Development Workflow
 
 ### Content Processing Pipeline
-All content goes through the `IngestContentWorkflow` which handles:
-- Content type detection and extraction
-- AI-powered summarization and automatic tagging
-- Vector embedding generation using Cloudflare AI
-- Chunking for semantic search optimization
-- Space relationship management
+Todo conteúdo passa pelo serviço de ingestão em `apps/api/src/services/ingestion.ts`, responsável por:
+- Detectar tipo de documento e extrair o texto relevante
+- Gerar resumo e metadados automáticos (quando habilitado)
+- Criar embeddings via provedor configurado (`GOOGLE_API_KEY` → Gemini por padrão)
+- Dividir em chunks e indexar no Postgres/pgvector
+- Registrar relacionamentos entre memórias quando aplicável
 
 ### Environment Configuration
-- Uses `wrangler.jsonc` for Cloudflare Workers configuration
-- Supports staging and production environments
-- Requires Cloudflare bindings: Hyperdrive (DB), AI, KV storage, Workflows
-- Cron triggers every 4 hours for connection imports
+- Utiliza arquivos `.env` (ex.: `apps/api/.env.local`, `apps/web/.env.local`)
+- Configuração de Supabase (URL, service role, connection string) e provedor de LLM
+- Variáveis compartilhadas via `packages/lib/env.ts`
+- Jobs assíncronos executados por worker Bun ou Supabase Queue
 
 ### Error Handling & Monitoring
 - HTTPException for consistent API error responses
@@ -92,9 +92,9 @@ All content goes through the `IngestContentWorkflow` which handles:
 - Configuration in `biome.json` at repository root
 
 ### TypeScript
-- Strict TypeScript configuration with `@total-typescript/tsconfig`
-- Type checking with `bun run check-types`
-- Cloudflare Workers type generation with `cf-typegen`
+- Configuração strict usando `@total-typescript/tsconfig`
+- Checagem com `bun run check-types`
+- Sem tooling específico de Cloudflare; tipos compartilhados vivem em `packages/*`
 
 ### Database Management
 - Drizzle ORM with schema located in shared packages
@@ -114,6 +114,6 @@ All content goes through the `IngestContentWorkflow` which handles:
 - Automatic content type detection and validation
 
 ### Deployment
-- Cloudflare Workers for scalable serverless deployment
-- Source map uploads to Sentry for production debugging
-- Environment-specific configuration management
+- Backend Bun rodando em servidor/container próprio (porta 4000 por padrão)
+- Frontend Next.js 15 com build `bun run --cwd apps/web build`
+- Observabilidade e variáveis por ambiente controladas via `.env` ou secret manager

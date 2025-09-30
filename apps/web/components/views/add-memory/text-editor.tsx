@@ -435,9 +435,9 @@ export function TextEditor({
 						placeholder={placeholder}
 						renderPlaceholder={({ children, attributes }) => {
 							return (
-								<div {...attributes} className="mt-2">
+								<span {...attributes} className="block mt-2">
 									{children}
-								</div>
+								</span>
 							);
 						}}
 						onKeyDown={handleKeyDown}

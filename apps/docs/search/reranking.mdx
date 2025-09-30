@@ -80,7 +80,7 @@ The reranker is particularly effective at:
     ```bash
     # Without reranking
     echo "Standard ranking:"
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -91,7 +91,7 @@ The reranker is particularly effective at:
 
     # With reranking
     echo "Reranked results:"
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -200,7 +200,7 @@ Reranking excels with complex, multi-faceted queries:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -282,7 +282,7 @@ Reranking also improves memory search results:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v4/search" \
+    curl -X POST "http://localhost:4000/v4/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -369,7 +369,7 @@ Reranking understands domain-specific relationships:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "https://api.supermemory.ai/v3/search" \
+    curl -X POST "http://localhost:4000/v3/search" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{

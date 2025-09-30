@@ -35,7 +35,7 @@ print(result)
 ```
 
 ```bash cURL
-curl -X POST "https://api.supermemory.ai/v3/documents" \
+curl -X POST "http://localhost:4000/v3/documents" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -98,7 +98,7 @@ client.memories.add(
 ```
 
 ```bash cURL
-curl -X POST "https://api.supermemory.ai/v3/documents" \
+curl -X POST "http://localhost:4000/v3/documents" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"content": "Your content here", "containerTag": "project"}'
@@ -129,7 +129,7 @@ client.memories.upload_file(
 ```
 
 ```bash cURL
-curl -X POST "https://api.supermemory.ai/v3/documents/file" \
+curl -X POST "http://localhost:4000/v3/documents/file" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -F "file=@document.pdf" \
   -F "containerTags=project"
@@ -158,7 +158,7 @@ client.memories.update("doc_id", {
 ```
 
 ```bash cURL
-curl -X PATCH "https://api.supermemory.ai/v3/documents/doc_id" \
+curl -X PATCH "http://localhost:4000/v3/documents/doc_id" \
   -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"content": "Updated content"}'

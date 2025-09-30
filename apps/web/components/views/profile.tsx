@@ -4,7 +4,8 @@ import { authClient } from "@lib/auth"
 import { useAuth } from "@lib/auth-context"
 import { Button } from "@repo/ui/components/button"
 import { HeadingH3Bold } from "@repo/ui/text/heading/heading-h3-bold"
-import { useCustomer } from "autumn-js/react"
+import { useCustomer } from "@lib/autumn-stub"
+import { APP_URL } from "@lib/env"
 import {
 	CheckCircle,
 	CreditCard,
@@ -29,6 +30,7 @@ export function ProfileView() {
 		openBillingPortal,
 		attach,
 	} = useCustomer()
+	const appOrigin = APP_URL.replace(/\/$/, "")
 	const [isLoading, setIsLoading] = useState(false)
 	const [billingData, setBillingData] = useState<{
 		isPro: boolean
@@ -68,9 +70,9 @@ export function ProfileView() {
 		}
 	}, [isCustomerLoading, customer])
 
-	const handleLogout = () => {
+	const handleLogout = async () => {
 		analytics.userSignedOut()
-		authClient.signOut()
+		await authClient.signOut()
 		router.push("/login")
 	}
 
@@ -79,7 +81,7 @@ export function ProfileView() {
 		try {
 			const upgradeResult = await attach({
 				productId: "consumer_pro",
-				successUrl: "https://app.supermemory.ai/",
+				successUrl: `${appOrigin}/`,
 			})
 			if (
 				upgradeResult.statusCode === 200 &&
@@ -110,7 +112,7 @@ export function ProfileView() {
 	// Handle manage billing
 	const handleManageBilling = async () => {
 		await openBillingPortal({
-			returnUrl: "https://app.supermemory.ai",
+			returnUrl: appOrigin,
 		})
 	}
 

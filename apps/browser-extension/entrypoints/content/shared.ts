@@ -1,4 +1,4 @@
-import { MESSAGE_TYPES, STORAGE_KEYS } from "../../utils/constants"
+import { DOMAINS, MESSAGE_TYPES, STORAGE_KEYS } from "../../utils/constants"
 import { DOMUtils } from "../../utils/ui-components"
 
 export async function saveMemory() {
@@ -52,15 +52,9 @@ export function setupStorageListener() {
 		const bearerToken = event.data.token
 		const userData = event.data.userData
 		if (bearerToken && userData) {
-			if (
-				!(
-					window.location.hostname === "localhost" ||
-					window.location.hostname === "supermemory.ai" ||
-					window.location.hostname === "app.supermemory.ai"
-				)
-			) {
+			if (!DOMAINS.SUPERMEMORY.includes(window.location.hostname)) {
 				console.log(
-					"Bearer token and user data is only allowed to be used on localhost or supermemory.ai",
+					"Bearer token and user data can only be used on trusted Supermemory origins",
 				)
 				return
 			}
