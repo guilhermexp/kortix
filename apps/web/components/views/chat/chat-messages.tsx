@@ -1,6 +1,7 @@
 "use client";
 
 import { useChat, useCompletion } from "@ai-sdk/react";
+import { BACKEND_URL } from "@lib/env";
 import { cn } from "@lib/utils";
 import { Button } from "@ui/components/button";
 import { Input } from "@ui/components/input";
@@ -226,7 +227,7 @@ export function ChatMessages() {
 		useChat({
 			id: currentChatId ?? undefined,
 			transport: new DefaultChatTransport({
-				api: `${process.env.NEXT_PUBLIC_BACKEND_URL}/chat`,
+				api: `${BACKEND_URL}/chat`,
 				credentials: "include",
 				body: { metadata: { projectId: selectedProject } },
 			}),
@@ -274,7 +275,7 @@ export function ChatMessages() {
 
 	const [input, setInput] = useState("");
 	const { complete } = useCompletion({
-		api: `${process.env.NEXT_PUBLIC_BACKEND_URL}/chat/title`,
+		api: `${BACKEND_URL}/chat/title`,
 		credentials: "include",
 		onFinish: (_, completion) => {
 			const activeId = activeChatIdRef.current;
