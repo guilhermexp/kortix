@@ -1,0 +1,119 @@
+import { NextRequest } from "next/server"
+
+const API_URL = process.env.API_INTERNAL_URL || "http://localhost:4000"
+
+export async function GET(
+	request: NextRequest,
+	{ params }: { params: { path: string[] } }
+) {
+	return proxyRequest(request, params.path)
+}
+
+export async function POST(
+	request: NextRequest,
+	{ params }: { params: { path: string[] } }
+) {
+	return proxyRequest(request, params.path)
+}
+
+export async function PUT(
+	request: NextRequest,
+	{ params }: { params: { path: string[] } }
+) {
+	return proxyRequest(request, params.path)
+}
+
+export async function DELETE(
+	request: NextRequest,
+	{ params }: { params: { path: string[] } }
+) {
+	return proxyRequest(request, params.path)
+}
+
+export async function PATCH(
+	request: NextRequest,
+	{ params }: { params: { path: string[] } }
+) {
+	return proxyRequest(request, params.path)
+}
+
+async function proxyRequest(request: NextRequest, pathSegments: string[]) {
+	const path = pathSegments.join("/")
+	const searchParams = request.nextUrl.searchParams.toString()
+	const queryString = searchParams ? `?${searchParams}` : ""
+
+	const url = `${API_URL}/v3/${path}${queryString}`
+
+	const headers = new Headers()
+
+	// Forward relevant headers
+	const headersToForward = [
+		"content-type",
+		"authorization",
+		"cookie",
+		"x-supermemory-organization",
+		"x-supermemory-user",
+	]
+
+	for (const header of headersToForward) {
+		const value = request.headers.get(header)
+		if (value) {
+			headers.set(header, value)
+		}
+	}
+
+	const options: RequestInit = {
+		method: request.method,
+		headers,
+		credentials: "include",
+	}
+
+	// Add body for methods that support it
+	if (["POST", "PUT", "PATCH"].includes(request.method)) {
+		try {
+			const body = await request.text()
+			if (body) {
+				options.body = body
+			}
+		} catch (e) {
+			// No body
+		}
+	}
+
+	try {
+		const response = await fetch(url, options)
+
+		const responseHeaders = new Headers()
+
+		// Forward response headers
+		const headersToReturn = [
+			"content-type",
+			"set-cookie",
+			"cache-control",
+		]
+
+		for (const header of headersToReturn) {
+			const value = response.headers.get(header)
+			if (value) {
+				responseHeaders.set(header, value)
+			}
+		}
+
+		const data = await response.text()
+
+		return new Response(data, {
+			status: response.status,
+			statusText: response.statusText,
+			headers: responseHeaders,
+		})
+	} catch (error) {
+		console.error(`Proxy error for /v3/${path}:`, error)
+		return new Response(
+			JSON.stringify({ error: { message: "Proxy request failed" } }),
+			{
+				status: 500,
+				headers: { "content-type": "application/json" },
+			}
+		)
+	}
+}
