@@ -71,6 +71,7 @@
 		"recharts": "2",
 		"shadcn-dropzone": "^0.2.1",
 		"slate": "^0.118.0",
+		"slate-dom": "^0.117.4",
 		"slate-react": "^0.117.4",
 		"sonner": "^2.0.5",
 		"streamdown": "^1.1.6",
