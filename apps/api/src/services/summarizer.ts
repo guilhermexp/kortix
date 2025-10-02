@@ -75,20 +75,39 @@ function buildFallbackSummary(text: string) {
 }
 
 export async function summarizeYoutubeVideo(url: string): Promise<string | null> {
-  if (!googleClient) return null
-
-  const modelId = env.CHAT_MODEL ?? "models/gemini-2.5-pro"
-
-  const prompt = [
-    "Você é um assistente do Supermemory encarregado de analisar vídeos do YouTube.",
-    "Gere um resumo em português destacando tema principal, tópicos importantes e, quando possível, passos ou recomendações mencionadas.",
-    "Inclua uma lista de 3 a 5 bullet points com fatos ou insights chave.",
-    "Se houver chamadas para ação, observações ou instruções relevantes, descreva-as de forma objetiva.",
-    `Link do vídeo: ${url}`,
-  ].join("\n\n")
+  if (!googleClient) {
+    console.warn("Google AI not configured, cannot analyze YouTube video")
+    return null
+  }
 
   try {
+    // Usar Gemini 2.0 Flash que suporta análise de vídeo do YouTube diretamente
+    const modelId = "models/gemini-2.0-flash-exp"
     const model = googleClient.getGenerativeModel({ model: modelId })
+
+    const prompt = [
+      "Você é um assistente do Supermemory analisando um vídeo do YouTube.",
+      "Assista ao vídeo e gere um resumo detalhado em português com:",
+      "",
+      "1. **Resumo Executivo** (2-3 frases): Tema principal e contexto geral",
+      "",
+      "2. **Pontos Principais** (5-10 bullet points):",
+      "   - Tópicos importantes discutidos",
+      "   - Insights e conclusões chave",
+      "   - Dados, estatísticas ou fatos relevantes mencionados",
+      "",
+      "3. **Instruções ou Ações** (se aplicável):",
+      "   - Passos práticos mencionados",
+      "   - Recomendações ou chamadas para ação",
+      "   - Links ou recursos mencionados",
+      "",
+      "4. **Contexto Visual** (se relevante):",
+      "   - Elementos visuais importantes (gráficos, demonstrações, etc.)",
+      "   - Apresentadores ou pessoas que aparecem",
+      "",
+      "Seja detalhado e objetivo. Extraia o máximo de informação útil do vídeo.",
+    ].join("\n")
+
     const result = await model.generateContent({
       contents: [
         {
@@ -96,23 +115,32 @@ export async function summarizeYoutubeVideo(url: string): Promise<string | null>
           parts: [
             {
               fileData: {
+                mimeType: "video/*",
                 fileUri: url,
-                mimeType: "video/mp4",
               },
-            } as any,
+            },
             { text: prompt },
           ],
         },
       ],
       generationConfig: {
-        maxOutputTokens: 512,
+        maxOutputTokens: 2048,
+        temperature: 0.4,
       },
     })
 
     const summary = result.response.text().trim()
-    return summary.length > 0 ? summary : null
-  } catch (error) {
-    console.warn("summarizeYoutubeVideo fallback", error)
+    
+    if (!summary || summary.length < 50) {
+      console.warn("YouTube video analysis returned empty or very short result")
+      return null
+    }
+    
+    return summary
+  } catch (error: any) {
+    console.error("summarizeYoutubeVideo error:", error?.message || error)
+    
+    // Se falhar com Gemini 2.0, não tentar fallback pois não funciona bem
     return null
   }
 }

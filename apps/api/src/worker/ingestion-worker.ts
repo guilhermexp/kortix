@@ -1,4 +1,14 @@
-import "dotenv/config"
+import { config as loadEnv } from "dotenv"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const apiRoot = join(__dirname, "../../")
+
+loadEnv({ path: join(apiRoot, ".env.local") })
+loadEnv({ path: join(apiRoot, ".env") })
+loadEnv()
 import { supabaseAdmin } from "../supabase"
 import { env } from "../env"
 import { processDocument } from "../services/ingestion"
