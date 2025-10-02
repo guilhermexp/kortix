@@ -174,7 +174,11 @@ const getDocumentPreview = (document: DocumentWithMemories): PreviewData | null 
 	const firecrawlOgImage = safeHttpUrl(rawFirecrawl?.ogImage)
 	const finalPreviewImage = rawImage ?? metadataImage ?? firecrawlOgImage
 
-	const originalUrl = safeHttpUrl(metadata?.originalUrl) ?? safeHttpUrl(document.url)
+	// Get URL from multiple possible locations
+	const originalUrl = 
+		safeHttpUrl(metadata?.originalUrl) ?? 
+		safeHttpUrl(document.url) ??
+		safeHttpUrl(rawYoutube?.url)
 	const contentType =
 		(typeof rawExtraction?.contentType === "string" && rawExtraction.contentType) ||
 		(typeof rawExtraction?.content_type === "string" && rawExtraction.content_type) ||

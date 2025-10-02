@@ -163,7 +163,16 @@ export async function extractDocumentContent(
   if (env.FIRECRAWL_API_KEY) {
     try {
       const firecrawlResult = await convertUrlWithFirecrawl(probableUrl)
-      const markdown = firecrawlResult.markdown ?? ""
+      let markdown = firecrawlResult.markdown ?? ""
+      
+      // Clean up escaped markdown from Firecrawl
+      markdown = markdown
+        .replace(/\\\\/g, "\\")  // Replace double backslashes with single
+        .replace(/\\\[/g, "[")   // Fix escaped brackets
+        .replace(/\\\]/g, "]")
+        .replace(/\\\(/g, "(")
+        .replace(/\\\)/g, ")")
+      
       const text = sanitiseText(markdown) || originalFallback
 
       if (text) {
