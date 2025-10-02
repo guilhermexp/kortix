@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react"
 
-const noop = () => {}
+const noop = (..._args: any[]) => {}
 
 const noopPosthog = {
   capture: noop,
