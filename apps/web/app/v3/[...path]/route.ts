@@ -4,37 +4,42 @@ const API_URL = process.env.API_INTERNAL_URL || "http://localhost:4000"
 
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { path: string[] } }
+	{ params }: { params: Promise<{ path: string[] }> }
 ) {
-	return proxyRequest(request, params.path)
+	const { path } = await params
+	return proxyRequest(request, path)
 }
 
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: { path: string[] } }
+	{ params }: { params: Promise<{ path: string[] }> }
 ) {
-	return proxyRequest(request, params.path)
+	const { path } = await params
+	return proxyRequest(request, path)
 }
 
 export async function PUT(
 	request: NextRequest,
-	{ params }: { params: { path: string[] } }
+	{ params }: { params: Promise<{ path: string[] }> }
 ) {
-	return proxyRequest(request, params.path)
+	const { path } = await params
+	return proxyRequest(request, path)
 }
 
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: { path: string[] } }
+	{ params }: { params: Promise<{ path: string[] }> }
 ) {
-	return proxyRequest(request, params.path)
+	const { path } = await params
+	return proxyRequest(request, path)
 }
 
 export async function PATCH(
 	request: NextRequest,
-	{ params }: { params: { path: string[] } }
+	{ params }: { params: Promise<{ path: string[] }> }
 ) {
-	return proxyRequest(request, params.path)
+	const { path } = await params
+	return proxyRequest(request, path)
 }
 
 async function proxyRequest(request: NextRequest, pathSegments: string[]) {
