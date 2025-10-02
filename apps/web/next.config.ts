@@ -10,7 +10,17 @@ const nextConfig: NextConfig = {
 	},
 	poweredByHeader: false,
 	async rewrites() {
-		return []
+		const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000"
+		return [
+			{
+				source: "/api/:path*",
+				destination: `${backendUrl}/api/:path*`,
+			},
+			{
+				source: "/chat/:path*",
+				destination: `${backendUrl}/chat/:path*`,
+			},
+		]
 	},
 	skipTrailingSlashRedirect: true,
 }
