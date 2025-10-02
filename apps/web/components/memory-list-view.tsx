@@ -18,7 +18,16 @@ import {
 import { colors } from "@repo/ui/memory-graph/constants"
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { Brain, ExternalLink, Sparkles, Trash2 } from "lucide-react"
+import {
+	Brain,
+	Clapperboard,
+	ExternalLink,
+	Image as ImageIcon,
+	Link2,
+	Play,
+	Sparkles,
+	Trash2,
+} from "lucide-react"
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { z } from "zod"
 import useResizeObserver from "@/hooks/use-resize-observer"
@@ -32,6 +41,197 @@ import { formatDate, getSourceUrl } from "./memories"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
+
+type BaseRecord = Record<string, unknown>
+
+type PreviewData =
+	| {
+		kind: "image"
+		src: string
+		label: string
+		href?: string
+	}
+	| {
+		kind: "video"
+		src?: string
+		label: string
+		href?: string
+	}
+	| {
+		kind: "link"
+		src?: string
+		label: string
+		href: string
+	}
+
+const asRecord = (value: unknown): BaseRecord | null => {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		return null
+	}
+	return value as BaseRecord
+}
+
+const safeHttpUrl = (value: unknown): string | undefined => {
+	if (typeof value !== "string") return undefined
+	const trimmed = value.trim()
+	if (!trimmed) return undefined
+	if (trimmed.startsWith("data:")) return trimmed
+	try {
+		const url = new URL(trimmed)
+		if (url.protocol === "http:" || url.protocol === "https:") {
+			return url.toString()
+		}
+	} catch {}
+	return undefined
+}
+
+const pickFirstUrl = (
+	record: BaseRecord | null,
+	keys: string[],
+): string | undefined => {
+	if (!record) return undefined
+	for (const key of keys) {
+		const candidate = record[key]
+		const url = safeHttpUrl(candidate)
+		if (url) return url
+	}
+	return undefined
+}
+
+const formatPreviewLabel = (type?: string | null): string => {
+	if (!type) return "Link"
+	return type
+		.split(/[_-]/g)
+		.filter(Boolean)
+		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+		.join(" ")
+}
+
+const isYouTubeUrl = (value?: string): boolean => {
+	if (!value) return false
+	try {
+		const parsed = new URL(value)
+		const host = parsed.hostname.toLowerCase()
+		if (!host.includes("youtube.com") && !host.includes("youtu.be")) return false
+		return true
+	} catch {
+		return false
+	}
+}
+
+const getYouTubeId = (value?: string): string | undefined => {
+	if (!value) return undefined
+	try {
+		const parsed = new URL(value)
+		if (parsed.hostname.includes("youtu.be")) {
+			return parsed.pathname.replace(/^\//, "") || undefined
+		}
+		if (parsed.searchParams.has("v")) {
+			return parsed.searchParams.get("v") ?? undefined
+		}
+		const pathSegments = parsed.pathname.split("/").filter(Boolean)
+		if (pathSegments[0] === "embed" && pathSegments[1]) {
+			return pathSegments[1]
+		}
+	} catch {}
+	return undefined
+}
+
+const getYouTubeThumbnail = (value?: string): string | undefined => {
+	const videoId = getYouTubeId(value)
+	if (!videoId) return undefined
+	return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+}
+
+const getDocumentPreview = (document: DocumentWithMemories): PreviewData | null => {
+	const metadata = asRecord(document.metadata)
+	const raw = asRecord(document.raw)
+	const rawExtraction = asRecord(raw?.extraction)
+	const rawYoutube = asRecord(rawExtraction?.youtube)
+	const rawFirecrawl = asRecord(raw?.firecrawl)
+	const rawFirecrawlMetadata = asRecord(rawFirecrawl?.metadata)
+	const rawGemini = asRecord(raw?.geminiFile)
+
+	const imageKeys = [
+		"previewImage",
+		"preview_image",
+		"image",
+		"ogImage",
+		"og_image",
+		"thumbnail",
+		"thumbnailUrl",
+		"thumbnail_url",
+	]
+
+	const metadataImage = pickFirstUrl(metadata, imageKeys)
+	const rawImage =
+		pickFirstUrl(rawExtraction, imageKeys) ??
+		pickFirstUrl(rawFirecrawl, imageKeys) ??
+		pickFirstUrl(rawFirecrawlMetadata, imageKeys) ??
+		pickFirstUrl(rawGemini, imageKeys)
+
+	const originalUrl = safeHttpUrl(metadata?.originalUrl) ?? safeHttpUrl(document.url)
+	const contentType =
+		(typeof rawExtraction?.contentType === "string" && rawExtraction.contentType) ||
+		(typeof rawExtraction?.content_type === "string" && rawExtraction.content_type) ||
+		(typeof raw?.contentType === "string" && raw.contentType) ||
+		(typeof raw?.content_type === "string" && raw.content_type) ||
+		undefined
+
+	const normalizedType = document.type?.toLowerCase() ?? ""
+	const label = formatPreviewLabel(document.type)
+
+	if (normalizedType === "image" || contentType?.startsWith("image/")) {
+		const src = rawImage ?? metadataImage ?? originalUrl
+		if (src) {
+			return {
+				kind: "image",
+				src,
+				href: originalUrl ?? undefined,
+				label: label || "Image",
+			}
+		}
+	}
+
+	// Check for YouTube video data first
+	const youtubeUrl = safeHttpUrl(rawYoutube?.url) ?? safeHttpUrl(rawYoutube?.embedUrl)
+	const youtubeThumbnail = safeHttpUrl(rawYoutube?.thumbnail)
+	
+	const isVideoDocument =
+		normalizedType === "video" ||
+		contentType?.startsWith("video/") ||
+		!!youtubeUrl ||
+		(isYouTubeUrl(originalUrl) && !!originalUrl)
+
+	if (isVideoDocument) {
+		return {
+			kind: "video",
+			src: youtubeThumbnail ?? rawImage ?? metadataImage ?? getYouTubeThumbnail(originalUrl),
+			href: youtubeUrl ?? originalUrl ?? undefined,
+			label: contentType === "video/youtube" ? "YouTube" : (label || "Video"),
+		}
+	}
+
+	if (rawImage ?? metadataImage) {
+		return {
+			kind: "image",
+			src: (rawImage ?? metadataImage)!,
+			href: originalUrl ?? undefined,
+			label: label || "Preview",
+		}
+	}
+
+	if (originalUrl) {
+		return {
+			kind: "link",
+			src: rawImage ?? metadataImage,
+			href: originalUrl,
+			label: label || "Link",
+		}
+	}
+
+	return null
+}
 
 interface MemoryListViewProps {
 	children?: React.ReactNode
@@ -83,6 +283,20 @@ const DocumentCard = memo(
 		const forgottenMemories = document.memoryEntries.filter(
 			(m) => m.isForgotten,
 		)
+		const preview = useMemo(() => getDocumentPreview(document), [document])
+
+		const PreviewBadgeIcon = useMemo(() => {
+			switch (preview?.kind) {
+				case "image":
+					return ImageIcon
+				case "video":
+					return Clapperboard
+				case "link":
+					return Link2
+				default:
+					return null
+			}
+		}, [preview?.kind])
 
 		return (
 			<Card
@@ -131,6 +345,49 @@ const DocumentCard = memo(
 					</div>
 				</CardHeader>
 				<CardContent className="relative z-10 px-0">
+					{preview && (
+						<div
+							className="mb-3 rounded-lg overflow-hidden border"
+							style={{
+								borderColor: "rgba(255, 255, 255, 0.08)",
+								backgroundColor: "rgba(255, 255, 255, 0.03)",
+							}}
+						>
+							<div className="relative w-full aspect-[16/10] overflow-hidden">
+								<div className="absolute inset-0 bg-gradient-to-br from-[#0f1624] via-[#101c2d] to-[#161f33]" />
+								{preview.src && (
+									<img
+										alt={`${preview.label} preview`}
+										className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+										loading="lazy"
+										src={preview.src}
+									/>
+								)}
+								<div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45" />
+								{preview.kind === "video" && (
+									<div className="absolute inset-0 flex items-center justify-center">
+										<div className="rounded-full border border-white/40 bg-black/40 p-2 backdrop-blur-sm">
+											<Play className="h-5 w-5 text-white" />
+										</div>
+									</div>
+								)}
+								{PreviewBadgeIcon && (
+									<div
+										className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
+										style={{
+											backgroundColor: "rgba(12, 18, 30, 0.55)",
+											color: "rgba(255, 255, 255, 0.92)",
+											backdropFilter: "blur(12px)",
+											WebkitBackdropFilter: "blur(12px)",
+										}}
+									>
+										<PreviewBadgeIcon className="h-3 w-3" />
+										<span>{preview.label}</span>
+									</div>
+								)}
+							</div>
+						</div>
+					)}
 					{document.content && (
 						<p
 							className="text-xs line-clamp-2 mb-3"

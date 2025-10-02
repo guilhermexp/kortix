@@ -57,6 +57,18 @@ function isYouTubeUrl(url: string): boolean {
   }
 }
 
+function extractYouTubeVideoId(url: string): string {
+  try {
+    const parsed = new URL(url)
+    if (parsed.hostname.includes("youtu.be")) {
+      return parsed.pathname.slice(1).split("?")[0]
+    }
+    return parsed.searchParams.get("v") || "unknown"
+  } catch {
+    return "unknown"
+  }
+}
+
 function shouldUseGemini(mime: string) {
   const m = mime.toLowerCase()
   if (m.startsWith("image/")) return true
@@ -128,15 +140,19 @@ export async function extractDocumentContent(
   if (probableUrl && isYouTubeUrl(probableUrl)) {
     const summary = await summarizeYoutubeVideo(probableUrl)
     if (summary) {
+      const videoId = extractYouTubeVideoId(probableUrl)
       return {
         text: summary,
-        title: (input.metadata as any)?.title ?? null,
+        title: (input.metadata as any)?.title ?? `Vídeo do YouTube: ${videoId}`,
         source: "youtube",
         url: probableUrl,
-        contentType: "text/youtube-summary",
+        contentType: "video/youtube",
         raw: {
           youtube: {
             url: probableUrl,
+            videoId,
+            thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+            embedUrl: `https://www.youtube.com/embed/${videoId}`,
           },
         },
         wordCount: countWords(summary),
