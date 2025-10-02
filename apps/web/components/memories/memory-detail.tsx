@@ -25,6 +25,7 @@ import { memo } from 'react';
 import type { z } from 'zod';
 import { formatDate, getSourceUrl } from '.';
 import { Label1Regular } from '@ui/text/label/label-1-regular';
+import { MarkdownContent } from '../markdown-content';
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>;
 type DocumentWithMemories = DocumentsResponse['documents'][0];
@@ -260,12 +261,11 @@ export const MemoryDetail = memo(
             {hasContent && (
               <TabsContent value="content" className="mt-3">
                 <div className="p-3 rounded-lg max-h-48 overflow-y-auto custom-scrollbar bg-white/[0.03] border border-white/[0.08]">
-                  <p
-                    className="text-sm leading-relaxed whitespace-pre-wrap"
+                  <MarkdownContent
+                    content={document.content}
+                    className="text-sm leading-relaxed"
                     style={{ color: colors.text.primary }}
-                  >
-                    {document.content}
-                  </p>
+                  />
                 </div>
               </TabsContent>
             )}
@@ -273,12 +273,11 @@ export const MemoryDetail = memo(
             {hasSummary && (
               <TabsContent value="summary" className="mt-3">
                 <div className="p-3 rounded-lg max-h-48 overflow-y-auto custom-scrollbar bg-indigo-500/5 border border-indigo-500/15">
-                  <p
-                    className="text-sm leading-relaxed whitespace-pre-wrap"
+                  <MarkdownContent
+                    content={document.summary}
+                    className="text-sm leading-relaxed"
                     style={{ color: colors.text.muted }}
-                  >
-                    {document.summary}
-                  </p>
+                  />
                 </div>
               </TabsContent>
             )}
