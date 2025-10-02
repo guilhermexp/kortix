@@ -170,6 +170,10 @@ const getDocumentPreview = (document: DocumentWithMemories): PreviewData | null 
 		pickFirstUrl(rawFirecrawlMetadata, imageKeys) ??
 		pickFirstUrl(rawGemini, imageKeys)
 
+	// Check Firecrawl metadata directly for Open Graph images
+	const firecrawlOgImage = safeHttpUrl(rawFirecrawl?.ogImage)
+	const finalPreviewImage = rawImage ?? metadataImage ?? firecrawlOgImage
+
 	const originalUrl = safeHttpUrl(metadata?.originalUrl) ?? safeHttpUrl(document.url)
 	const contentType =
 		(typeof rawExtraction?.contentType === "string" && rawExtraction.contentType) ||
@@ -182,7 +186,7 @@ const getDocumentPreview = (document: DocumentWithMemories): PreviewData | null 
 	const label = formatPreviewLabel(document.type)
 
 	if (normalizedType === "image" || contentType?.startsWith("image/")) {
-		const src = rawImage ?? metadataImage ?? originalUrl
+		const src = finalPreviewImage ?? originalUrl
 		if (src) {
 			return {
 				kind: "image",
@@ -206,30 +210,23 @@ const getDocumentPreview = (document: DocumentWithMemories): PreviewData | null 
 	if (isVideoDocument) {
 		return {
 			kind: "video",
-			src: youtubeThumbnail ?? rawImage ?? metadataImage ?? getYouTubeThumbnail(originalUrl),
+			src: youtubeThumbnail ?? finalPreviewImage ?? getYouTubeThumbnail(originalUrl),
 			href: youtubeUrl ?? originalUrl ?? undefined,
 			label: contentType === "video/youtube" ? "YouTube" : (label || "Video"),
 		}
 	}
 
-	if (rawImage ?? metadataImage) {
+	if (finalPreviewImage) {
 		return {
 			kind: "image",
-			src: (rawImage ?? metadataImage)!,
+			src: finalPreviewImage,
 			href: originalUrl ?? undefined,
 			label: label || "Preview",
 		}
 	}
 
-	if (originalUrl) {
-		return {
-			kind: "link",
-			src: rawImage ?? metadataImage,
-			href: originalUrl,
-			label: label || "Link",
-		}
-	}
-
+	// For links without preview images, don't render preview at all
+	// The card will just show the title and content
 	return null
 }
 
