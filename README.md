@@ -88,10 +88,40 @@ spec/         → PRD, technical specs, schema status
 | `SUMMARY_MODEL` | `apps/api/.env.local` | (Opcional) modelo usado para resumos automáticos |
 | `FIRECRAWL_API_KEY` | `apps/api/.env.local` | (Opcional) chave do Firecrawl para normalizar páginas web |
 
+## Deployment
+
+### Railway
+
+For production deployment on Railway, see [`RAILWAY_DEPLOYMENT.md`](RAILWAY_DEPLOYMENT.md) for complete setup instructions, including:
+
+- Service configuration and environment variables
+- All code fixes required for Railway deployment
+- Troubleshooting guide for common issues
+- Architecture and networking details
+
+**Important**: When deploying to Railway, set `NEXT_PUBLIC_BACKEND_URL=""` (empty string) to enable relative URLs via Next.js proxy.
+
+### Local Development
+
+All code changes for Railway deployment are **fully compatible** with local development:
+
+```bash
+# Terminal 1: API
+cd apps/api
+bun run dev  # Runs on localhost:4000
+
+# Terminal 2: Web
+cd apps/web
+bun run dev  # Runs on localhost:3000
+```
+
+The `BACKEND_URL` constant automatically uses `http://localhost:4000` in development.
+
 ## Documentation
 
 - Architecture & requirements: [`spec/TECH_SPEC.md`](spec/TECH_SPEC.md)
 - Product scope & milestones: [`spec/PRD.md`](spec/PRD.md)
+- Railway deployment guide: [`RAILWAY_DEPLOYMENT.md`](RAILWAY_DEPLOYMENT.md)
 - Developer docs site (Mintlify): `apps/docs/` — run with `bunx mintlify dev` (uses ` NEXT_PUBLIC_BACKEND_URL`).
 
 ## Contributing
