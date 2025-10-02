@@ -2,6 +2,9 @@ import { NextRequest } from "next/server"
 
 const API_URL = process.env.API_INTERNAL_URL || "http://localhost:4000"
 
+export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
+
 export async function GET(
 	request: NextRequest,
 	{ params }: { params: Promise<{ path: string[] }> }
@@ -48,6 +51,8 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
 	const queryString = searchParams ? `?${searchParams}` : ""
 
 	const url = `${API_URL}/v3/${path}${queryString}`
+
+	console.log(`[V3 PROXY] ${request.method} /v3/${path} -> ${url}`)
 
 	const headers = new Headers()
 
