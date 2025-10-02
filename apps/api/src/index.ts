@@ -458,6 +458,7 @@ app.post("/chat/title", async (c) => {
 serve({
   fetch: app.fetch,
   port: env.PORT,
+  hostname: "0.0.0.0",
 })
 
-console.log(`API server running on http://localhost:${env.PORT}`)
+console.log(`API server running on http://0.0.0.0:${env.PORT}`)
