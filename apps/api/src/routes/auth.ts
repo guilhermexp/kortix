@@ -132,8 +132,8 @@ export async function signOut(c: Context) {
     serializeCookie(SESSION_COOKIE, "", {
       maxAge: 0,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: true,
+      sameSite: "none",
     }),
   )
   return c.json({ ok: true })
@@ -187,8 +187,8 @@ function setSessionCookie(c: Context, token: string) {
   const cookie = serializeCookie(SESSION_COOKIE, token, {
     maxAge: SESSION_TTL_SECONDS,
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: true,
+    sameSite: "none",
   })
   c.header("Set-Cookie", cookie)
 }
