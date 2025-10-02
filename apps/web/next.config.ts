@@ -10,7 +10,8 @@ const nextConfig: NextConfig = {
 	},
 	poweredByHeader: false,
 	async rewrites() {
-		const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000"
+		// Use internal Railway URL for server-side rewrites, localhost for dev
+		const backendUrl = process.env.API_INTERNAL_URL || "http://localhost:4000"
 		return [
 			{
 				source: "/api/:path*",
