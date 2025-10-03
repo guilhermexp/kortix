@@ -371,7 +371,7 @@ export async function listDocumentsWithMemories(
     const { data: memoryRows, error: memoryError } = await client
       .from("memories")
       .select(
-        "id, document_id, space_id, org_id, user_id, content, metadata, memory_embedding, memory_embedding_model, memory_embedding_new, memory_embedding_new_model, is_latest, version, is_inference, is_forgotten, forget_after, forget_reason, source_count, created_at, updated_at",
+        "id, document_id, space_id, org_id, user_id, memory, metadata, memory_embedding, memory_embedding_model, memory_embedding_new, memory_embedding_new_model, is_latest, version, is_inference, is_forgotten, forget_after, forget_reason, source_count, created_at, updated_at",
       )
       .eq("org_id", organizationId)
       .in("document_id", docIds)
@@ -390,7 +390,7 @@ export async function listDocumentsWithMemories(
 
     const memoryEntries = memoryRows.map((row) => ({
       id: row.id,
-      memory: row.content ?? "",
+      memory: row.memory ?? "",
       spaceId: row.space_id ?? spaceIds[0] ?? "",
       orgId: row.org_id,
       userId: row.user_id ?? null,
@@ -535,7 +535,7 @@ export async function listDocumentsWithMemoriesByIds(
     const { data: memoryRows, error: memoryError } = await client
       .from("memories")
       .select(
-        "id, document_id, space_id, org_id, user_id, content, metadata, memory_embedding, memory_embedding_model, memory_embedding_new, memory_embedding_new_model, is_latest, version, is_inference, is_forgotten, forget_after, forget_reason, source_count, created_at, updated_at",
+        "id, document_id, space_id, org_id, user_id, memory, metadata, memory_embedding, memory_embedding_model, memory_embedding_new, memory_embedding_new_model, is_latest, version, is_inference, is_forgotten, forget_after, forget_reason, source_count, created_at, updated_at",
       )
       .eq("org_id", organizationId)
       .in("document_id", docIds)
@@ -554,7 +554,7 @@ export async function listDocumentsWithMemoriesByIds(
 
     const memoryEntries = memoryRows.map((row) => ({
       id: row.id,
-      memory: row.content ?? "",
+      memory: row.memory ?? "",
       spaceId: row.space_id ?? spaceIds[0] ?? "",
       orgId: row.org_id,
       userId: row.user_id ?? null,
