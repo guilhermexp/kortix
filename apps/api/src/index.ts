@@ -47,6 +47,7 @@ import { getSettings, updateSettings } from "./routes/settings"
 import { getWaitlistStatus } from "./routes/waitlist"
 import { generateChatTitle, handleChat } from "./routes/chat"
 import { createScopedSupabase } from "./supabase"
+import { registerMcpRoutes } from "./routes/mcp"
 
 const app = new Hono<{ Variables: { session: SessionContext } }>()
 
@@ -103,6 +104,8 @@ app.post(
   zValidator("json", CreateApiKeySchema),
   async (c) => createApiKeyHandler(c),
 )
+
+registerMcpRoutes(app)
 
 app.use("/v3/*", requireAuth)
 app.use("/chat", requireAuth)

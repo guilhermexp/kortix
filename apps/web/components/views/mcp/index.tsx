@@ -177,7 +177,7 @@ export function MCPView() {
 								Install Now
 							</Button>
 						</DialogTrigger>
-						{apiKey && <InstallationDialogContent />}
+						{apiKey && <InstallationDialogContent apiKey={apiKey} />}
 					</Dialog>
 					<motion.a
 						className="inline-block"
