@@ -241,7 +241,7 @@ export async function extractDocumentContent(
           console.log(`Using MarkItDown for uploaded ${mimeType}`)
           const markitdownResult = await convertWithMarkItDown(buffer, filename)
           const markdown = markitdownResult.markdown
-          const cleanedMarkdown = cleanExtractedContent(markdown)
+          const cleanedMarkdown = cleanExtractedContent(markdown, undefined)
           const text = sanitiseText(cleanedMarkdown) || originalFallback
 
           if (text && text.length > 100) {
