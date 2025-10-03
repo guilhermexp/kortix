@@ -30,6 +30,16 @@ Este documento descreve o deployment completo da aplicação Supermemory no Rail
 - **Build Command**: `npm install --legacy-peer-deps && cd apps/web && bun run build`
 - **Start Command**: `cd apps/web && next start`
 
+#### 3. MarkItDown Service (NEW)
+- **Service ID**: TBD (a ser criado)
+- **URL Pública**: TBD (https://markitdown-production.up.railway.app)
+- **URL Interna**: http://markitdown.railway.internal:5000
+- **Porta**: 5000
+- **Root Directory**: `apps/markitdown`
+- **Build**: Docker (via Dockerfile)
+- **Purpose**: Converte documentos Office (DOCX, PPTX, XLSX) e PDFs para Markdown
+- **Technology**: Python 3.11 + Microsoft MarkItDown library
+
 ## Variáveis de Ambiente Configuradas
 
 ### API Service
@@ -54,6 +64,15 @@ DEFAULT_ADMIN_EMAIL=admin@local.host
 INGESTION_POLL_MS=5000
 INGESTION_BATCH_SIZE=5
 INGESTION_MAX_ATTEMPTS=5
+MARKITDOWN_INTERNAL_URL=http://markitdown.railway.internal:5000
+MARKITDOWN_PUBLIC_URL=https://markitdown-production.up.railway.app
+```
+
+### MarkItDown Service
+
+```env
+PORT=5000
+ALLOWED_ORIGINS=https://repoapi-production-d4f7.up.railway.app
 ```
 
 ### Web Service
@@ -445,6 +464,119 @@ api: `${BACKEND_URL}/chat`
 
 7. **Environment Variables**: São persistentes no Railway - só precisam ser configuradas uma vez.
 
+## Serviço MarkItDown (Novo)
+
+### Visão Geral
+
+O MarkItDown é um serviço Python que converte diversos formatos de documentos para Markdown usando a biblioteca oficial da Microsoft. Funciona como um terceiro serviço no mesmo projeto Railway.
+
+### Formatos Suportados
+
+- **Documentos Office**: DOCX, PPTX, XLSX
+- **PDFs**: Documentos PDF (com fallback para Gemini em PDFs complexos)
+- **Imagens**: PNG, JPEG, GIF (com EXIF e OCR)
+- **Áudio**: MP3, WAV (com transcrição)
+- **Web**: HTML, URLs
+- **Dados**: CSV, JSON, XML
+- **Arquivos**: EPUB, ZIP (processa conteúdo)
+- **YouTube**: Transcrições de vídeos
+
+### Arquitetura de Roteamento Inteligente
+
+A API usa roteamento inteligente para escolher a melhor ferramenta:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ Requisição de Documento                             │
+└──────────────────┬──────────────────────────────────┘
+                   │
+                   ▼
+        ┌──────────────────────┐
+        │ Detectar Tipo        │
+        └──────────┬───────────┘
+                   │
+      ┌────────────┼────────────┬────────────────┐
+      │            │            │                │
+      ▼            ▼            ▼                ▼
+┌──────────┐ ┌──────────┐ ┌──────────┐    ┌──────────┐
+│  YouTube │ │  Office  │ │  Images  │    │   Web    │
+│          │ │   PDFs   │ │  Audio   │    │  Pages   │
+│  Gemini  │ │ MarkItDown│ │  Video   │    │Firecrawl │
+│  2.0     │ │          │ │  Gemini  │    │          │
+└──────────┘ └──────────┘ └──────────┘    └──────────┘
+```
+
+**Regras de Roteamento:**
+
+1. **YouTube** → Gemini 2.0 Flash (análise nativa de vídeo)
+2. **Office docs** (DOCX/PPTX/XLSX) → MarkItDown (local, economiza Gemini)
+3. **PDFs simples** → MarkItDown (tenta primeiro)
+4. **PDFs complexos** → Gemini (fallback se MarkItDown falhar)
+5. **Imagens/Áudio/Vídeo** → Gemini (forte em mídia)
+6. **Web pages** → Firecrawl (melhor para scraping)
+
+### Deploy do MarkItDown Service
+
+**Via Railway Dashboard:**
+
+1. No projeto existente, clicar em "New Service"
+2. Conectar ao mesmo repositório GitHub
+3. Configurar:
+   - **Root Directory**: `apps/markitdown`
+   - **Build**: Dockerfile
+   - **Environment Variables**:
+     - `PORT=5000`
+     - `ALLOWED_ORIGINS=https://repoapi-production-d4f7.up.railway.app`
+4. Deploy
+
+**Private Network:**
+- Railway automaticamente cria: `http://markitdown.railway.internal:5000`
+- A API usa esta URL internamente (sem custos de egress)
+- Fallback para URL pública se private network falhar
+
+### Benefícios
+
+- ✅ **Economia**: Reduz uso do Gemini API em 30-50% (office docs locais)
+- ✅ **Privacidade**: Documentos não saem do Railway
+- ✅ **Velocidade**: Private network = baixa latência
+- ✅ **Formatos**: Suporta XLSX e EPUB (que Gemini não tem)
+- ✅ **Microsoft**: Biblioteca oficial e bem mantida (80k stars)
+
+### Custos Estimados
+
+- **Docker image**: ~600MB (otimizado, CPU-only)
+- **RAM**: ~1GB durante conversão
+- **Custo adicional**: ~$5-10/mês no plano Railway pago
+- **Economia Gemini**: ~$3-7/mês
+- **ROI**: Neutro/positivo + benefícios de privacidade
+
+### Testes Locais
+
+```bash
+# Na raiz do monorepo
+cd apps/markitdown
+
+# Construir imagem Docker
+docker build -t markitdown:latest .
+
+# Rodar localmente
+docker run -p 5000:5000 markitdown:latest
+
+# Testar health check
+curl http://localhost:5000/health
+
+# Testar conversão
+curl -X POST http://localhost:5000/convert \
+  -F "file=@test-document.docx"
+```
+
+### Monitoramento
+
+- **Health check**: `GET /health`
+- **Logs**: Ver logs do serviço no Railway Dashboard
+- **Metrics**: API automaticamente faz health check antes de usar
+- **Fallback**: Se MarkItDown falhar, usa Gemini automaticamente
+
 ## Checklist para Novo Deployment
 
 Se você precisar fazer deploy em um novo ambiente Railway:
@@ -452,12 +584,15 @@ Se você precisar fazer deploy em um novo ambiente Railway:
 - [ ] Criar projeto no Railway
 - [ ] Criar serviço API do repositório GitHub
 - [ ] Criar serviço Web do repositório GitHub
+- [ ] Criar serviço MarkItDown do repositório GitHub (opcional mas recomendado)
 - [ ] Configurar variáveis de ambiente da API (ver seção acima)
 - [ ] Configurar variáveis de ambiente do Web (ver seção acima)
+- [ ] Configurar variáveis de ambiente do MarkItDown (se criado)
 - [ ] **IMPORTANTE**: Setar `NEXT_PUBLIC_BACKEND_URL=""` (string vazia)
 - [ ] Aguardar primeiro deploy
 - [ ] Testar endpoints: `/api/auth/session`, `/v3/projects`, `/chat`
 - [ ] Verificar se cookies estão funcionando (login/logout)
+- [ ] Testar MarkItDown: enviar um DOCX e verificar logs
 - [ ] Configurar deploy automático (já vem ativo por padrão)
 
 ## Referências

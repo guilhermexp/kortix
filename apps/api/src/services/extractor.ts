@@ -5,6 +5,7 @@ import { env } from "../env"
 import { convertUrlWithFirecrawl } from "./firecrawl"
 import { summarizeYoutubeVideo } from "./summarizer"
 import { summarizeBinaryWithGemini } from "./gemini-files"
+import { convertWithMarkItDown, checkMarkItDownHealth } from "./markitdown"
 
 const DEFAULT_USER_AGENT =
   "SupermemoryBot/1.0 (+https://supermemory.ai self-hosted extractor)"
@@ -47,6 +48,59 @@ function countWords(value: string): number {
   return normalised.split(/\s+/).length
 }
 
+/**
+ * Remove common UI noise from extracted content (navigation, alerts, notifications, etc.)
+ */
+function cleanExtractedContent(text: string, url?: string): string {
+  let cleaned = text
+
+  // Common UI patterns to remove (case-insensitive, multiline)
+  const uiNoisePatterns = [
+    // GitHub-specific UI elements
+    /\[Skip to content\]\([^\)]*\)/gi,
+    /You signed (in|out) with another (tab|window)/gi,
+    /Reload to refresh your session/gi,
+    /You switched accounts on another (tab|window)/gi,
+    /Dismiss alert\s*\{\{?\s*message\s*\}\}?/gi,
+    /You must be signed in to change notification settings/gi,
+    /Notifications?\s*You must be signed in/gi,
+    
+    // Star/Fork badges with backslash escapes (e.g., "Star\ 2.9k")
+    /\b(Star|Fork|Watch|Unwatch)(ing)?\\?\s+[\d.,]+[kKmMbB]?/g,
+    /[\d.,]+[kKmMbB]?\\?\s+(stars?|forks?|watching)/gi,
+    
+    // Navigation and action buttons
+    /\[Reload\]\([^\)]*\)/gi,
+    /\[Notifications?\]\([^\)]*\)/gi,
+    /Go to (file|Branches|Tags)/gi,
+    
+    // Cookie/privacy banners
+    /This (site|website) uses cookies/gi,
+    /By (clicking|continuing|using) .{0,30}(accept|agree|consent)/gi,
+    
+    // Generic navigation
+    /\[Skip to main content\]/gi,
+    /\[Skip navigation\]/gi,
+  ]
+
+  for (const pattern of uiNoisePatterns) {
+    cleaned = cleaned.replace(pattern, '')
+  }
+
+  // Remove empty markdown links []() or [text]()
+  cleaned = cleaned.replace(/\[[^\]]*\]\(\s*\)/g, '')
+
+  // Remove excessive whitespace and empty lines
+  cleaned = cleaned
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+
+  return cleaned.trim()
+}
+
 function isYouTubeUrl(url: string): boolean {
   try {
     const parsed = new URL(url)
@@ -85,8 +139,9 @@ async function extractFromHtml(html: string, url?: string) {
   const reader = new Readability(dom.window.document)
   const article = reader.parse()
   if (article?.textContent && article.textContent.trim().length > 100) {
+    const cleanedText = cleanExtractedContent(sanitiseText(article.textContent), url)
     return {
-      text: sanitiseText(article.textContent),
+      text: cleanedText,
       title: article.title ?? dom.window.document.title ?? null,
       raw: {
         byline: article.byline,
@@ -96,8 +151,9 @@ async function extractFromHtml(html: string, url?: string) {
     }
   }
   const fallback = dom.window.document.body?.textContent ?? ""
+  const cleanedFallback = cleanExtractedContent(sanitiseText(fallback), url)
   return {
-    text: sanitiseText(fallback),
+    text: cleanedFallback,
     title: dom.window.document.title ?? null,
     raw: null,
   }
@@ -113,6 +169,47 @@ async function extractFromPdf(buffer: Buffer) {
       metadata,
     } as Record<string, unknown>,
   }
+}
+
+/**
+ * Check if content type is an Office document (DOCX, PPTX, XLSX, etc.)
+ */
+function isOfficeDocument(contentType: string): boolean {
+  const lower = contentType.toLowerCase()
+  return (
+    lower.includes("officedocument") ||
+    lower.includes("msword") ||
+    lower.includes("ms-excel") ||
+    lower.includes("ms-powerpoint") ||
+    lower.includes("spreadsheetml") ||
+    lower.includes("presentationml") ||
+    lower.includes("wordprocessingml")
+  )
+}
+
+/**
+ * Check if MarkItDown should be used for this content type
+ */
+function shouldUseMarkItDown(contentType: string): boolean {
+  const lower = contentType.toLowerCase()
+  
+  // Office documents - MarkItDown is excellent for these
+  if (isOfficeDocument(lower)) {
+    return true
+  }
+  
+  // PDFs - use MarkItDown for simpler PDFs
+  // Complex PDFs with tables will be handled by Gemini as fallback
+  if (lower.includes("pdf")) {
+    return true
+  }
+  
+  // Excel files
+  if (lower.includes("excel") || lower.includes("spreadsheet")) {
+    return true
+  }
+  
+  return false
 }
 
 export async function extractDocumentContent(
@@ -173,6 +270,9 @@ export async function extractDocumentContent(
         .replace(/\\\(/g, "(")
         .replace(/\\\)/g, ")")
       
+      // Remove UI noise (navigation, alerts, notifications, etc.)
+      markdown = cleanExtractedContent(markdown, probableUrl)
+      
       const text = sanitiseText(markdown) || originalFallback
 
       if (text) {
@@ -206,6 +306,47 @@ export async function extractDocumentContent(
   }
 
   const contentType = response.headers.get("content-type")?.toLowerCase() ?? ""
+
+  // INTELLIGENT ROUTING: Try MarkItDown for Office documents and PDFs
+  if (shouldUseMarkItDown(contentType) && process.env.MARKITDOWN_INTERNAL_URL) {
+    try {
+      const isHealthy = await checkMarkItDownHealth()
+      
+      if (isHealthy) {
+        console.log(`Using MarkItDown for ${contentType}`)
+        const buffer = Buffer.from(await response.arrayBuffer())
+        const filename = (() => {
+          try {
+            const pathname = new URL(probableUrl).pathname
+            const name = pathname.split("/").filter(Boolean).pop()
+            return name ?? "document"
+          } catch {
+            return "document"
+          }
+        })()
+
+        const markitdownResult = await convertWithMarkItDown(buffer, filename)
+        const markdown = markitdownResult.markdown
+        const cleanedMarkdown = cleanExtractedContent(markdown, probableUrl)
+        const text = sanitiseText(cleanedMarkdown) || originalFallback
+
+        if (text && text.length > 100) {
+          return {
+            text,
+            title: markitdownResult.metadata?.title ?? (input.metadata as any)?.title ?? null,
+            source: "markitdown",
+            url: probableUrl,
+            contentType: "text/markdown",
+            raw: { markitdown: markitdownResult.metadata },
+            wordCount: countWords(text),
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("MarkItDown extraction failed, falling back to Gemini:", error)
+      // Fall through to Gemini
+    }
+  }
 
   if (shouldUseGemini(contentType)) {
     const contentLength = Number.parseInt(response.headers.get("content-length") ?? "0", 10)
