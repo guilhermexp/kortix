@@ -14,6 +14,19 @@ import { processDocument } from "../services/ingestion"
 
 const defaultContainerTag = "sm_project_default"
 const RUN_SYNC_INGESTION = (process.env.INGESTION_MODE ?? "sync") === "sync"
+const ALLOWED_DOCUMENT_TYPES = new Set([
+  "text",
+  "pdf",
+  "tweet",
+  "google_doc",
+  "google_slide",
+  "google_sheet",
+  "image",
+  "video",
+  "notion_doc",
+  "webpage",
+  "onedrive",
+])
 
 const DocumentDetailSchema = z.object({
   id: z.string(),
@@ -371,7 +384,7 @@ export async function listDocumentsWithMemories(
     const { data: memoryRows, error: memoryError } = await client
       .from("memories")
       .select(
-        "id, document_id, space_id, org_id, user_id, memory, metadata, memory_embedding, memory_embedding_model, memory_embedding_new, memory_embedding_new_model, is_latest, version, is_inference, is_forgotten, forget_after, forget_reason, source_count, created_at, updated_at",
+        "id, document_id, space_id, org_id, user_id, content, metadata, memory_embedding, memory_embedding_model, memory_embedding_new, memory_embedding_new_model, is_latest, version, is_inference, is_forgotten, forget_after, forget_reason, source_count, created_at, updated_at",
       )
       .eq("org_id", organizationId)
       .in("document_id", docIds)
@@ -390,7 +403,7 @@ export async function listDocumentsWithMemories(
 
     const memoryEntries = memoryRows.map((row) => ({
       id: row.id,
-      memory: row.memory ?? "",
+      memory: row.content ?? "",
       spaceId: row.space_id ?? spaceIds[0] ?? "",
       orgId: row.org_id,
       userId: row.user_id ?? null,
@@ -421,6 +434,9 @@ export async function listDocumentsWithMemories(
     let normalizedType = doc.type ?? "text"
     if (normalizedType === "url") {
       normalizedType = "webpage"
+    }
+    if (!ALLOWED_DOCUMENT_TYPES.has(normalizedType)) {
+      normalizedType = "text"
     }
 
     // Clean metadata to ensure it only contains string/number/boolean values
@@ -535,7 +551,7 @@ export async function listDocumentsWithMemoriesByIds(
     const { data: memoryRows, error: memoryError } = await client
       .from("memories")
       .select(
-        "id, document_id, space_id, org_id, user_id, memory, metadata, memory_embedding, memory_embedding_model, memory_embedding_new, memory_embedding_new_model, is_latest, version, is_inference, is_forgotten, forget_after, forget_reason, source_count, created_at, updated_at",
+        "id, document_id, space_id, org_id, user_id, content, metadata, memory_embedding, memory_embedding_model, memory_embedding_new, memory_embedding_new_model, is_latest, version, is_inference, is_forgotten, forget_after, forget_reason, source_count, created_at, updated_at",
       )
       .eq("org_id", organizationId)
       .in("document_id", docIds)
@@ -554,7 +570,7 @@ export async function listDocumentsWithMemoriesByIds(
 
     const memoryEntries = memoryRows.map((row) => ({
       id: row.id,
-      memory: row.memory ?? "",
+      memory: row.content ?? "",
       spaceId: row.space_id ?? spaceIds[0] ?? "",
       orgId: row.org_id,
       userId: row.user_id ?? null,
@@ -585,6 +601,9 @@ export async function listDocumentsWithMemoriesByIds(
     let normalizedType = doc.type ?? "text"
     if (normalizedType === "url") {
       normalizedType = "webpage"
+    }
+    if (!ALLOWED_DOCUMENT_TYPES.has(normalizedType)) {
+      normalizedType = "text"
     }
 
     // Clean metadata to ensure it only contains string/number/boolean values

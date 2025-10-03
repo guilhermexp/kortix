@@ -223,6 +223,102 @@ export async function extractDocumentContent(
 
   const originalFallback = sanitiseText(input.originalContent ?? "")
 
+  const dataUrlMatch = input.originalContent?.match(/^data:([^;]+);base64,(.+)$/)
+  if (dataUrlMatch) {
+    const [, mimeType, base64Data] = dataUrlMatch
+    const buffer = Buffer.from(base64Data, "base64")
+    const filename = (input.metadata as any)?.filename ?? "uploaded-file"
+
+    if (mimeType.startsWith("text/") || ["application/json", "application/xml", "application/yaml", "application/x-yaml"].includes(mimeType)) {
+      const decoded = buffer.toString("utf-8")
+      if (mimeType.includes("html")) {
+        const htmlResult = await extractFromHtml(decoded, input.url ?? undefined)
+        const text = sanitiseText(htmlResult.text)
+        return {
+          text,
+          title: htmlResult.title ?? (input.metadata as any)?.title ?? filename,
+          source: "upload",
+          url: input.url ?? null,
+          contentType: mimeType,
+          raw: {
+            ...htmlResult.raw,
+            upload: { filename, mimeType, size: buffer.length },
+          },
+          wordCount: countWords(text),
+        }
+      }
+
+      const cleaned = cleanExtractedContent(decoded)
+      const text = sanitiseText(cleaned)
+      return {
+        text,
+        title: (input.metadata as any)?.title ?? filename,
+        source: "upload",
+        url: input.url ?? null,
+        contentType: mimeType,
+        raw: { upload: { filename, mimeType, size: buffer.length } },
+        wordCount: countWords(text),
+      }
+    }
+
+    if (shouldTryMarkItDownFirst(mimeType) && process.env.MARKITDOWN_INTERNAL_URL) {
+      try {
+        const isHealthy = await checkMarkItDownHealth()
+        if (isHealthy) {
+          const markitdownResult = await convertWithMarkItDown(buffer, filename)
+          const markdown = cleanExtractedContent(markitdownResult.markdown)
+          const text = sanitiseText(markdown) || originalFallback
+
+          if (text && text.length > 100) {
+            return {
+              text,
+              title:
+                markitdownResult.metadata?.title ?? (input.metadata as any)?.title ?? filename,
+              source: "markitdown",
+              url: null,
+              contentType: "text/markdown",
+              raw: {
+                markitdown: markitdownResult.metadata,
+                upload: { filename, mimeType, size: buffer.length },
+              },
+              wordCount: countWords(text),
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("MarkItDown failed for uploaded file, falling back to Gemini:", error)
+      }
+    }
+
+    if (shouldUseGemini(mimeType)) {
+      const geminiResult = await summarizeBinaryWithGemini(buffer, mimeType, filename)
+      const text = sanitiseText(geminiResult.text || "") || originalFallback
+
+      return {
+        text,
+        title: (input.metadata as any)?.title ?? filename,
+        source: mimeType,
+        url: null,
+        contentType: mimeType,
+        raw: {
+          ...geminiResult.metadata,
+          upload: { filename, mimeType, size: buffer.length },
+        },
+        wordCount: countWords(text),
+      }
+    }
+
+    return {
+      text: `Uploaded file: ${filename} (${mimeType}, ${buffer.length} bytes)`,
+      title: filename,
+      source: "upload",
+      url: null,
+      contentType: mimeType,
+      raw: { upload: { filename, mimeType, size: buffer.length } },
+      wordCount: 0,
+    }
+  }
+
   if (!probableUrl) {
     const text = originalFallback
     return {
