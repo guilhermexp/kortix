@@ -186,6 +186,64 @@ app.post("/v3/documents", zValidator("json", MemoryAddSchema), async (c) => {
   }
 })
 
+// File upload endpoint for multipart/form-data
+app.post("/v3/documents/file", async (c) => {
+  const { organizationId, userId } = c.var.session
+  
+  try {
+    const body = await c.req.parseBody()
+    const file = body.file
+    
+    if (!file || !(file instanceof File)) {
+      return c.json({ error: { message: "No file uploaded" } }, 400)
+    }
+    
+    // Read file content
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    const filename = file.name
+    const mimeType = file.type
+    
+    // Parse containerTags if provided
+    let containerTags: string[] | undefined
+    if (body.containerTags && typeof body.containerTags === 'string') {
+      try {
+        containerTags = JSON.parse(body.containerTags)
+      } catch {
+        containerTags = undefined
+      }
+    }
+    
+    // Create data URL for the file content
+    // This will be processed by the extractor service
+    const base64Content = buffer.toString('base64')
+    const dataUrl = `data:${mimeType};base64,${base64Content}`
+    
+    const payload = {
+      content: dataUrl,
+      containerTags,
+      metadata: {
+        filename,
+        mimeType,
+        size: file.size,
+        type: 'file',
+        source: 'upload',
+      },
+    }
+    
+    const supabase = createScopedSupabase(organizationId, userId)
+    const doc = await addDocument({ organizationId, userId, payload, client: supabase })
+    
+    return c.json(doc, 201)
+  } catch (error) {
+    console.error("File upload failed", error)
+    return c.json(
+      { error: { message: error instanceof Error ? error.message : "File upload failed" } },
+      500
+    )
+  }
+})
+
 app.post(
   "/v3/documents/list",
   zValidator("json", ListMemoriesQuerySchema.partial().optional()),
