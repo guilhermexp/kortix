@@ -186,6 +186,85 @@ app.post("/v3/documents", zValidator("json", MemoryAddSchema), async (c) => {
   }
 })
 
+app.post("/v3/documents/file", async (c) => {
+  const { organizationId, userId } = c.var.session
+
+  try {
+    const body = await c.req.parseBody()
+    const file = body.file
+
+    if (!file || !(file instanceof File)) {
+      return c.json({ error: { message: "No file uploaded" } }, 400)
+    }
+
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    const filename = file.name || "uploaded-file"
+    const mimeType = file.type || "application/octet-stream"
+
+    let containerTags: string[] | undefined
+    const rawContainerTags = body.containerTags
+    if (Array.isArray(rawContainerTags)) {
+      containerTags = rawContainerTags.map((value) => String(value)).filter(Boolean)
+    } else if (typeof rawContainerTags === "string" && rawContainerTags.trim().length > 0) {
+      try {
+        const parsed = JSON.parse(rawContainerTags)
+        if (Array.isArray(parsed)) {
+          containerTags = parsed.map((value) => String(value)).filter(Boolean)
+        } else {
+          containerTags = [rawContainerTags]
+        }
+      } catch {
+        containerTags = [rawContainerTags]
+      }
+    }
+
+    const rawMetadata = body.metadata
+    let extraMetadata: Record<string, unknown> | undefined
+    if (typeof rawMetadata === "string" && rawMetadata.trim().length > 0) {
+      try {
+        const parsed = JSON.parse(rawMetadata)
+        if (parsed && typeof parsed === "object") {
+          extraMetadata = parsed as Record<string, unknown>
+        }
+      } catch {
+        extraMetadata = undefined
+      }
+    }
+
+    const base64Content = buffer.toString("base64")
+    const dataUrl = `data:${mimeType};base64,${base64Content}`
+
+    const payload = {
+      content: dataUrl,
+      containerTags,
+      metadata: {
+        ...(extraMetadata ?? {}),
+        filename,
+        mimeType,
+        size: file.size,
+        type: "file",
+        source: "upload",
+      },
+    }
+
+    const supabase = createScopedSupabase(organizationId, userId)
+    const doc = await addDocument({ organizationId, userId, payload, client: supabase })
+
+    return c.json(doc, 201)
+  } catch (error) {
+    console.error("File upload failed", error)
+    return c.json(
+      {
+        error: {
+          message: error instanceof Error ? error.message : "File upload failed",
+        },
+      },
+      500,
+    )
+  }
+})
+
 app.post(
   "/v3/documents/list",
   zValidator("json", ListMemoriesQuerySchema.partial().optional()),
