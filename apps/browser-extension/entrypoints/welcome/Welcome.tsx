@@ -75,8 +75,10 @@ function Welcome() {
 					<button
 						className="min-w-[200px] px-8 py-4 bg-gray-700 text-white border-none rounded-3xl text-base font-semibold cursor-pointer transition-colors duration-200 mb-4 outline-none hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
 						onClick={() => {
-							const loginUrl = `${API_ENDPOINTS.SUPERMEMORY_WEB.replace(/\/$/, "")}/login`
-							chrome.tabs.create({ url: loginUrl })
+							const baseUrl = API_ENDPOINTS.SUPERMEMORY_WEB
+							const loginUrl = new URL("/login", baseUrl)
+							loginUrl.searchParams.set("extension-auth-success", "1")
+							chrome.tabs.create({ url: loginUrl.toString() })
 						}}
 						type="button"
 					>

@@ -1,8 +1,8 @@
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig, type WxtViteConfig } from "wxt"
 
-const DEFAULT_APP_URL = "http://localhost:3000"
-const DEFAULT_API_URL = "http://localhost:4000"
+const DEFAULT_APP_URL = "https://repoweb-production.up.railway.app"
+const DEFAULT_API_URL = "https://repoapi-production-d4f7.up.railway.app"
 
 const APP_URL = process.env.SUPERMEMORY_APP_URL ?? DEFAULT_APP_URL
 const API_URL = process.env.SUPERMEMORY_API_URL ?? DEFAULT_API_URL

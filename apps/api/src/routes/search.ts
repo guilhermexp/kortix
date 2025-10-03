@@ -7,6 +7,15 @@ import {
 } from "../services/embedding"
 import { generateEmbedding } from "../services/embedding-provider"
 
+function formatEmbeddingForSql(values: number[]): string {
+  const sanitized = values.map((value) => {
+    if (!Number.isFinite(value)) return "0"
+    const rounded = Math.abs(value) < 1e-6 ? 0 : value
+    return Number(rounded.toFixed(6)).toString()
+  })
+  return `[${sanitized.join(",")}]`
+}
+
 export async function searchDocuments(client: SupabaseClient, orgId: string, body: unknown) {
   const payload = SearchRequestSchema.parse(body)
   const start = Date.now()
@@ -14,15 +23,70 @@ export async function searchDocuments(client: SupabaseClient, orgId: string, bod
   const queryEmbedding = await generateEmbedding(payload.q)
   const baseLimit = Math.max(50, (payload.limit ?? 10) * 8)
 
-  const { data, error } = await client
-    .from("document_chunks")
-    .select(
-      "id, document_id, content, metadata, embedding, documents(id, title, type, content, summary, metadata, created_at, updated_at, status)",
-    )
-    .eq("org_id", orgId)
-    .limit(baseLimit)
+  let chunkRows: Array<
+    {
+      id: string
+      document_id: string
+      content: string
+      metadata: Record<string, unknown> | null
+      documents: any
+      distance?: number | string | null
+      embedding?: number[] | null
+    }
+  > = []
+  let vectorQueryUsed = false
 
-  if (error) throw error
+  const embeddingSqlLiteral = `'${formatEmbeddingForSql(queryEmbedding)}'::vector`
+  const selectColumns = [
+    "id",
+    "document_id",
+    "content",
+    "metadata",
+    "documents(id, title, type, content, summary, metadata, created_at, updated_at, status)",
+    `distance:embedding <=> ${embeddingSqlLiteral}`,
+  ].join(", ")
+
+  try {
+    let builder = client
+      .from("document_chunks")
+      .select(selectColumns)
+      .eq("org_id", orgId)
+      .order("distance", { ascending: true })
+      .limit(baseLimit)
+
+    if (payload.docId) {
+      builder = builder.eq("document_id", payload.docId)
+    }
+
+    const { data, error } = await builder
+
+    if (error) throw error
+    if (Array.isArray(data)) {
+      chunkRows = data
+      vectorQueryUsed = true
+    }
+  } catch (error) {
+    console.warn("Vectorised chunk search failed, falling back to local similarity", error)
+
+    let fallbackBuilder = client
+      .from("document_chunks")
+      .select(
+        "id, document_id, content, metadata, embedding, documents(id, title, type, content, summary, metadata, created_at, updated_at, status)",
+      )
+      .eq("org_id", orgId)
+      .limit(baseLimit)
+
+    if (payload.docId) {
+      fallbackBuilder = fallbackBuilder.eq("document_id", payload.docId)
+    }
+
+    const { data: fallbackData, error: fallbackError } = await fallbackBuilder
+
+    if (fallbackError) throw fallbackError
+    if (Array.isArray(fallbackData)) {
+      chunkRows = fallbackData
+    }
+  }
 
   const containerTagsFilter = payload.containerTags ?? []
   const chunkThreshold = payload.chunkThreshold ?? 0
@@ -30,7 +94,7 @@ export async function searchDocuments(client: SupabaseClient, orgId: string, bod
 
   const onlyMatchingChunks = payload.onlyMatchingChunks ?? true
 
-  const chunkResults = (data ?? [])
+  const chunkResults = chunkRows
     .map((chunk) => {
       const doc = chunk.documents
       if (!doc) return null
@@ -51,11 +115,21 @@ export async function searchDocuments(client: SupabaseClient, orgId: string, bod
         return null
       }
 
-      const embedding = Array.isArray(chunk.embedding)
-        ? ensureVectorSize(chunk.embedding as number[])
-        : generateDeterministicEmbedding(chunk.content)
+      let score: number | null = null
 
-      const score = cosineSimilarity(queryEmbedding, embedding)
+      if (vectorQueryUsed && chunk.distance !== undefined && chunk.distance !== null) {
+        const distance = Number(chunk.distance)
+        if (Number.isFinite(distance)) {
+          score = Math.max(0, Math.min(1, 1 - distance))
+        }
+      }
+
+      if (score === null) {
+        const embedding = Array.isArray(chunk.embedding)
+          ? ensureVectorSize(chunk.embedding as number[])
+          : generateDeterministicEmbedding(chunk.content)
+        score = cosineSimilarity(queryEmbedding, embedding)
+      }
 
       return {
         chunkId: chunk.id,

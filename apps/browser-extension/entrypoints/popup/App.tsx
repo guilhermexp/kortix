@@ -585,8 +585,10 @@ function App() {
 							<button
 								className="w-full py-3 px-6 bg-gray-700 text-white border-none rounded-3xl text-base font-medium cursor-pointer transition-colors duration-200 hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
 								onClick={() => {
-									const loginUrl = `${API_ENDPOINTS.SUPERMEMORY_WEB.replace(/\/$/, "")}/login`
-									chrome.tabs.create({ url: loginUrl })
+								const baseUrl = API_ENDPOINTS.SUPERMEMORY_WEB
+								const loginUrl = new URL("/login", baseUrl)
+								loginUrl.searchParams.set("extension-auth-success", "1")
+								chrome.tabs.create({ url: loginUrl.toString() })
 								}}
 								type="button"
 							>

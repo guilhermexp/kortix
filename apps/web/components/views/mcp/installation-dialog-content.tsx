@@ -43,7 +43,11 @@ interface Project {
 	isExperimental?: boolean;
 }
 
-export function InstallationDialogContent() {
+interface InstallationDialogContentProps {
+	apiKey: string;
+}
+
+export function InstallationDialogContent({ apiKey }: InstallationDialogContentProps) {
 	const [client, setClient] = useState<keyof typeof clients>("cursor");
 	const [selectedProject, setSelectedProject] = useState<string | null>("none");
 
@@ -65,7 +69,7 @@ export function InstallationDialogContent() {
 	// Generate installation command based on selected project
 	function generateInstallCommand() {
 		const base = MCP_SERVER_URL.replace(/\/$/, "");
-		let command = `npx -y install-mcp@latest ${base} --client ${client} --oauth=yes`;
+		let command = `npx -y install-mcp@latest ${base} --client ${client} --oauth=yes --header 'Authorization: Bearer ${apiKey}'`;
 
 		if (selectedProject && selectedProject !== "none") {
 			// Remove the "sm_project_" prefix from the containerTag
@@ -87,6 +91,30 @@ export function InstallationDialogContent() {
 			</DialogHeader>
 
 			<div className="space-y-4">
+				<div className="space-y-2">
+					<Label htmlFor="api-key-input">API Key</Label>
+					<div className="flex items-center gap-2">
+						<Input
+							id="api-key-input"
+							className="font-mono text-xs flex-1"
+							readOnly
+							value={apiKey}
+						/>
+						<Button
+							onClick={() => {
+								navigator.clipboard.writeText(apiKey);
+								toast.success("API key copied to clipboard");
+							}}
+							variant="outline"
+						>
+							<CopyIcon className="size-4" />
+						</Button>
+					</div>
+					<p className="text-xs text-muted-foreground">
+						Keep this key safe. It authenticates your MCP client with your Supermemory workspace.
+					</p>
+				</div>
+
 				<div className="space-y-2">
 					<Label htmlFor="client-select">Client Application</Label>
 					<Select
@@ -138,7 +166,7 @@ export function InstallationDialogContent() {
 					</Select>
 				</div>
 
-				<div className="space-y-2">
+			<div className="space-y-2">
 					<Label htmlFor="command-input">Installation Command</Label>
 					<Input
 						id="command-input"

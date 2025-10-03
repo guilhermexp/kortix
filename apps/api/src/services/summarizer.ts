@@ -15,7 +15,7 @@ export async function generateSummary(
   if (!trimmed) return null
 
   if (!googleClient) {
-    return buildFallbackSummary(trimmed)
+    return buildFallbackSummary(trimmed, context)
   }
 
   const snippet = trimmed.slice(0, SUMMARY_MAX_CHARS)
@@ -37,20 +37,22 @@ export async function generateSummary(
 
     const textPart = result.response.text().trim()
     if (!textPart) {
-      return buildFallbackSummary(trimmed)
+      return buildFallbackSummary(trimmed, context)
     }
     return textPart
   } catch (error) {
     console.warn("generateSummary fallback", error)
-    return buildFallbackSummary(trimmed)
+    return buildFallbackSummary(trimmed, context)
   }
 }
 
 function buildPrompt(snippet: string, context?: { title?: string | null; url?: string | null }) {
   const header: string[] = [
     "Você é um assistente que resume conteúdos para o aplicativo Supermemory.",
-    "Produza um resumo conciso em português (3 a 5 frases), destacando o assunto principal e pontos-chave.",
-    "Se houver instruções ou passos, liste-os de forma breve.",
+    "Responda SEMPRE no formato Markdown com as seguintes seções, mesmo que alguma fique vazia:",
+    "## Resumo Executivo — 2 a 3 frases diretas sobre o tema principal.",
+    "## Pontos-Chave — Liste 4 a 6 bullets curtos com fatos relevantes, insights ou argumentos.",
+    "## Próximas Ações — Liste bullets apenas se o conteúdo trouxer recomendações, passos ou instruções; caso contrário escreva `- (sem ações recomendadas)`.",
   ]
 
   if (context?.title) {
@@ -60,18 +62,67 @@ function buildPrompt(snippet: string, context?: { title?: string | null; url?: s
     header.push(`Fonte: ${context.url}`)
   }
 
-  header.push("Conteúdo a ser resumido:\n\n" + snippet)
+  header.push(
+    "Não inclua textos introdutórios como 'Segue o resumo'. Seja direto e objetivo.\n\nConteúdo a ser resumido:\n\n" +
+      snippet,
+  )
+
   return header.join("\n\n")
 }
 
-function buildFallbackSummary(text: string) {
+function buildFallbackSummary(text: string, context?: { title?: string | null; url?: string | null }) {
   const sentences = text
     .replace(/\s+/g, " ")
     .split(/[.!?]+/)
     .map((s) => s.trim())
     .filter(Boolean)
-  const summary = sentences.slice(0, 3).join(". ")
-  return summary ? summary + (summary.endsWith(".") ? "" : ".") : text.slice(0, 200)
+
+  const executive = sentences.slice(0, 2)
+  const remaining = sentences.slice(2)
+
+  const points = remaining.slice(0, 5).map((sentence) => `- ${sentence}`)
+
+  const actions: string[] = []
+  if (remaining.length === 0) {
+    actions.push("- (sem ações recomendadas)")
+  } else {
+    const actionCandidates = remaining
+      .filter((sentence) => /deve|faça|passo|recomenda|sugere|precisa|evite|comece|conclua/i.test(sentence))
+      .slice(0, 4)
+    if (actionCandidates.length > 0) {
+      for (const candidate of actionCandidates) {
+        actions.push(`- ${candidate}`)
+      }
+    } else {
+      actions.push("- (sem ações recomendadas)")
+    }
+  }
+
+  const parts: string[] = ["## Resumo Executivo"]
+  if (executive.length > 0) {
+    for (const sentence of executive) {
+      parts.push(`- ${sentence}`)
+    }
+  } else {
+    parts.push(`- ${text.slice(0, 200)}`)
+  }
+
+  parts.push("\n## Pontos-Chave")
+  if (points.length > 0) {
+    parts.push(...points)
+  } else {
+    parts.push("- (informações limitadas para destacar)")
+  }
+
+  parts.push("\n## Próximas Ações")
+  parts.push(...actions)
+
+  if (context?.url) {
+    parts.push("\n## Fonte")
+    parts.push(`- ${context.url}`)
+  }
+
+  return parts.join("\n")
 }
 
 export async function summarizeYoutubeVideo(url: string): Promise<string | null> {

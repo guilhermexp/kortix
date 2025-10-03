@@ -1,5 +1,5 @@
-const DEFAULT_API_URL = "http://localhost:4000"
-const DEFAULT_APP_URL = "http://localhost:3000"
+const DEFAULT_API_URL = "https://repoapi-production-d4f7.up.railway.app"
+const DEFAULT_APP_URL = "https://repoweb-production.up.railway.app"
 
 const SUPERMEMORY_API =
 	(import.meta.env.VITE_SUPERMEMORY_API as string | undefined) ?? DEFAULT_API_URL

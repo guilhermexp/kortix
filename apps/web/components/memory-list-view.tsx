@@ -148,8 +148,10 @@ const getDocumentPreview = (document: DocumentWithMemories): PreviewData | null 
 	const raw = asRecord(document.raw)
 	const rawExtraction = asRecord(raw?.extraction)
 	const rawYoutube = asRecord(rawExtraction?.youtube)
-	const rawFirecrawl = asRecord(raw?.firecrawl)
-	const rawFirecrawlMetadata = asRecord(rawFirecrawl?.metadata)
+	const rawFirecrawl =
+		asRecord(raw?.firecrawl) ?? asRecord(rawExtraction?.firecrawl)
+	const rawFirecrawlMetadata =
+		asRecord(rawFirecrawl?.metadata) ?? rawFirecrawl
 	const rawGemini = asRecord(raw?.geminiFile)
 
 	const imageKeys = [
@@ -171,7 +173,9 @@ const getDocumentPreview = (document: DocumentWithMemories): PreviewData | null 
 		pickFirstUrl(rawGemini, imageKeys)
 
 	// Check Firecrawl metadata directly for Open Graph images
-	const firecrawlOgImage = safeHttpUrl(rawFirecrawl?.ogImage)
+	const firecrawlOgImage =
+		safeHttpUrl(rawFirecrawlMetadata?.ogImage) ??
+		safeHttpUrl(rawFirecrawl?.ogImage)
 	const finalPreviewImage = rawImage ?? metadataImage ?? firecrawlOgImage
 
 	// Get URL from multiple possible locations
