@@ -123,14 +123,24 @@ function extractYouTubeVideoId(url: string): string {
   }
 }
 
+/**
+ * Check if content type should use Gemini for processing
+ * NOTE: Office documents are handled by MarkItDown first (see shouldUseMarkItDown)
+ * This is only used when MarkItDown is unavailable or fails
+ */
 function shouldUseGemini(mime: string) {
   const m = mime.toLowerCase()
+  // Media files - Gemini is best for these
   if (m.startsWith("image/")) return true
   if (m.startsWith("audio/")) return true
   if (m.startsWith("video/")) return true
+  
+  // Office documents - only if MarkItDown is not available
+  // This acts as a fallback
   if (m.includes("officedocument")) return true
   if (m.includes("msword") || m.includes("mspowerpoint") || m.includes("excel")) return true
   if (m.includes("application/epub+zip")) return true
+  
   return false
 }
 
@@ -172,40 +182,32 @@ async function extractFromPdf(buffer: Buffer) {
 }
 
 /**
- * Check if content type is an Office document (DOCX, PPTX, XLSX, etc.)
+ * Check if MarkItDown should be prioritized for this content type
+ * MarkItDown is better for:
+ * - Office documents (DOCX, PPTX, XLSX)
+ * - PDFs (tries first, falls back to Gemini if needed)
+ * 
+ * Returns true if we should TRY MarkItDown first
+ * Falls back to Gemini if MarkItDown fails or is unavailable
  */
-function isOfficeDocument(contentType: string): boolean {
-  const lower = contentType.toLowerCase()
-  return (
-    lower.includes("officedocument") ||
-    lower.includes("msword") ||
-    lower.includes("ms-excel") ||
-    lower.includes("ms-powerpoint") ||
-    lower.includes("spreadsheetml") ||
-    lower.includes("presentationml") ||
-    lower.includes("wordprocessingml")
-  )
-}
-
-/**
- * Check if MarkItDown should be used for this content type
- */
-function shouldUseMarkItDown(contentType: string): boolean {
+function shouldTryMarkItDownFirst(contentType: string): boolean {
   const lower = contentType.toLowerCase()
   
-  // Office documents - MarkItDown is excellent for these
-  if (isOfficeDocument(lower)) {
+  // Office documents - MarkItDown excels at these
+  if (lower.includes("officedocument") ||
+      lower.includes("msword") ||
+      lower.includes("ms-excel") ||
+      lower.includes("ms-powerpoint") ||
+      lower.includes("spreadsheetml") ||
+      lower.includes("presentationml") ||
+      lower.includes("wordprocessingml") ||
+      lower.includes("excel") ||
+      lower.includes("spreadsheet")) {
     return true
   }
   
-  // PDFs - use MarkItDown for simpler PDFs
-  // Complex PDFs with tables will be handled by Gemini as fallback
+  // PDFs - try MarkItDown first, Gemini as fallback for complex tables
   if (lower.includes("pdf")) {
-    return true
-  }
-  
-  // Excel files
-  if (lower.includes("excel") || lower.includes("spreadsheet")) {
     return true
   }
   
@@ -307,8 +309,9 @@ export async function extractDocumentContent(
 
   const contentType = response.headers.get("content-type")?.toLowerCase() ?? ""
 
-  // INTELLIGENT ROUTING: Try MarkItDown for Office documents and PDFs
-  if (shouldUseMarkItDown(contentType) && process.env.MARKITDOWN_INTERNAL_URL) {
+  // INTELLIGENT ROUTING: Try MarkItDown first for Office docs and PDFs
+  // Falls back to Gemini if MarkItDown fails or is unavailable
+  if (shouldTryMarkItDownFirst(contentType) && process.env.MARKITDOWN_INTERNAL_URL) {
     try {
       const isHealthy = await checkMarkItDownHealth()
       
