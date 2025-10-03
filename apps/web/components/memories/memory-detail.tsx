@@ -262,7 +262,7 @@ export const MemoryDetail = memo(
               <TabsContent value="content" className="mt-3">
                 <div className="p-3 rounded-lg max-h-48 overflow-y-auto custom-scrollbar bg-white/[0.03] border border-white/[0.08]">
                   <MarkdownContent
-                    content={document.content}
+                    content={document.content ?? ""}
                     className="text-sm leading-relaxed"
                     style={{ color: colors.text.primary }}
                   />
@@ -274,7 +274,7 @@ export const MemoryDetail = memo(
               <TabsContent value="summary" className="mt-3">
                 <div className="p-3 rounded-lg max-h-48 overflow-y-auto custom-scrollbar bg-indigo-500/5 border border-indigo-500/15">
                   <MarkdownContent
-                    content={document.summary}
+                    content={document.summary ?? ""}
                     className="text-sm leading-relaxed"
                     style={{ color: colors.text.muted }}
                   />
