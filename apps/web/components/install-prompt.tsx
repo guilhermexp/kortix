@@ -33,9 +33,10 @@ export function InstallPrompt() {
 						(isIOSDevice || "serviceWorker" in navigator))),
 		)
 
-		const handleBeforeInstallPrompt = (event: DeferredPromptEvent) => {
+		const handleBeforeInstallPrompt = (event: Event) => {
 			event.preventDefault()
-			setDeferredPrompt(event)
+			const deferredEvent = event as DeferredPromptEvent
+			setDeferredPrompt(deferredEvent)
 			if (!hasSeenPrompt) {
 				setShowPrompt(true)
 			}

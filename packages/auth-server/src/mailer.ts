@@ -17,13 +17,14 @@ export async function sendEmail({ to, subject, text, html }: SendEmailParams) {
 	}
 
 	try {
-		const payload: Parameters<typeof resendClient.emails.send>[0] = {
+		const payload = {
 			from: env.RESEND_FROM_EMAIL,
 			to,
 			subject,
 			text,
 			html,
 		}
+		// @ts-expect-error - Resend v3 types require 'react' but text/html still work
 		await resendClient.emails.send(payload)
 	} catch (error) {
 		console.error("[mailer] resend send failed", error)

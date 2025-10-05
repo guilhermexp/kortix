@@ -223,12 +223,12 @@ const isBlockActive = (
 const toggleBlock = (editor: CustomEditor, format: string, level?: number) => {
 	const isActive = isBlockActive(editor, format, level)
 	const newType = (isActive ? "paragraph" : format) as CustomElement["type"]
-	const newProperties: Partial<HeadingElement> & Partial<CustomElement> = {
+	const newProperties: Partial<CustomElement> = {
 		type: newType,
 	}
 
 	if (newType === "heading" && level && !isActive) {
-		newProperties.level = level
+		;(newProperties as Partial<HeadingElement>).level = level
 	}
 
 	Transforms.setNodes<CustomElement>(editor, newProperties)
