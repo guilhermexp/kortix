@@ -277,7 +277,7 @@ export const MemoryDetail = memo(
 
 						{hasSummary && (
 							<TabsContent className="mt-3 flex-1" value="summary">
-								<div className="p-3 rounded-lg h-full overflow-y-auto custom-scrollbar bg-indigo-500/5 border border-indigo-500/15">
+								<div className="p-3 rounded-lg max-h-96 overflow-y-auto custom-scrollbar bg-indigo-500/5 border border-indigo-500/15">
 									<MarkdownContent
 										className="text-sm leading-relaxed"
 										content={document.summary ?? ""}
