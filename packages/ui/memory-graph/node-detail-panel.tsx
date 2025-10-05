@@ -75,7 +75,7 @@ const getDocumentIcon = (type: string) => {
 };
 
 export const NodeDetailPanel = memo<NodeDetailPanelProps>(
-	({ node, onClose, variant = "console" }) => {
+	({ node, onClose }) => {
 		// Use explicit classes that Tailwind can detect
 		const getPositioningClasses = () => {
 			// Both variants use the same positioning for nodeDetail
@@ -86,6 +86,7 @@ export const NodeDetailPanel = memo<NodeDetailPanelProps>(
 
 		const isDocument = node.type === "document";
 		const data = node.data;
+		const memoryEntry = isDocument ? null : (data as MemoryEntry);
 
 		return (
 			<motion.div
@@ -207,43 +208,41 @@ export const NodeDetailPanel = memo<NodeDetailPanelProps>(
 								)}
 							</>
 						) : (
-							<>
-								<div>
-									<span className="text-xs text-slate-400 uppercase tracking-wide">
-										Memory
-									</span>
-									<p className="text-sm text-slate-200 mt-1">
-										{(data as MemoryEntry).memory}
-									</p>
-									{(data as MemoryEntry).isForgotten && (
-										<Badge className="mt-2" variant="destructive">
-											Forgotten
-										</Badge>
-									)}
-									{(data as MemoryEntry).forgetAfter && (
-										<p className="text-xs text-slate-400 mt-1">
-											Expires:{" "}
-											{(data as MemoryEntry).forgetAfter
-												? new Date(
-														(data as MemoryEntry).forgetAfter!,
-													).toLocaleDateString()
-												: ""}{" "}
-											{"forgetReason" in data &&
-												data.forgetReason &&
-												`- ${data.forgetReason}`}
+							memoryEntry && (
+								<>
+									<div>
+										<span className="text-xs text-slate-400 uppercase tracking-wide">
+											Memory
+										</span>
+										<p className="text-sm text-slate-200 mt-1">
+											{memoryEntry.memory}
 										</p>
-									)}
-								</div>
+										{memoryEntry.isForgotten && (
+											<Badge className="mt-2" variant="destructive">
+												Forgotten
+											</Badge>
+										)}
+										{memoryEntry.forgetAfter && (
+											<p className="text-xs text-slate-400 mt-1">
+												Expires:{" "}
+												{new Date(memoryEntry.forgetAfter).toLocaleDateString()}{" "}
+												{"forgetReason" in data && data.forgetReason
+													? `- ${data.forgetReason}`
+													: ""}
+											</p>
+										)}
+									</div>
 
-								<div>
-									<span className="text-xs text-slate-400 uppercase tracking-wide">
-										Space
-									</span>
-									<p className="text-sm text-slate-200 mt-1">
-										{(data as MemoryEntry).spaceId || "Default"}
-									</p>
-								</div>
-							</>
+									<div>
+										<span className="text-xs text-slate-400 uppercase tracking-wide">
+											Space
+										</span>
+										<p className="text-sm text-slate-200 mt-1">
+											{memoryEntry.spaceId || "Default"}
+										</p>
+									</div>
+								</>
+							)
 						)}
 
 						<div className="pt-2 border-t border-slate-700/50">

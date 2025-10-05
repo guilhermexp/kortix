@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server"
+import type { NextRequest } from "next/server"
 
 const API_URL = process.env.API_INTERNAL_URL || "http://localhost:4000"
 
@@ -7,7 +7,7 @@ export const runtime = "nodejs"
 
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: Promise<{ path: string[] }> }
+	{ params }: { params: Promise<{ path: string[] }> },
 ) {
 	const { path } = await params
 	return proxyRequest(request, path)
@@ -15,7 +15,7 @@ export async function GET(
 
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: Promise<{ path: string[] }> }
+	{ params }: { params: Promise<{ path: string[] }> },
 ) {
 	const { path } = await params
 	return proxyRequest(request, path)
@@ -23,7 +23,7 @@ export async function POST(
 
 export async function PUT(
 	request: NextRequest,
-	{ params }: { params: Promise<{ path: string[] }> }
+	{ params }: { params: Promise<{ path: string[] }> },
 ) {
 	const { path } = await params
 	return proxyRequest(request, path)
@@ -31,7 +31,7 @@ export async function PUT(
 
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: Promise<{ path: string[] }> }
+	{ params }: { params: Promise<{ path: string[] }> },
 ) {
 	const { path } = await params
 	return proxyRequest(request, path)
@@ -39,7 +39,7 @@ export async function DELETE(
 
 export async function PATCH(
 	request: NextRequest,
-	{ params }: { params: Promise<{ path: string[] }> }
+	{ params }: { params: Promise<{ path: string[] }> },
 ) {
 	const { path } = await params
 	return proxyRequest(request, path)
@@ -85,7 +85,7 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
 			if (body) {
 				options.body = body
 			}
-		} catch (e) {
+		} catch (_error) {
 			// No body
 		}
 	}
@@ -96,11 +96,7 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
 		const responseHeaders = new Headers()
 
 		// Forward response headers
-		const headersToReturn = [
-			"content-type",
-			"set-cookie",
-			"cache-control",
-		]
+		const headersToReturn = ["content-type", "set-cookie", "cache-control"]
 
 		for (const header of headersToReturn) {
 			const value = response.headers.get(header)
@@ -123,7 +119,7 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
 			{
 				status: 500,
 				headers: { "content-type": "application/json" },
-			}
+			},
 		)
 	}
 }

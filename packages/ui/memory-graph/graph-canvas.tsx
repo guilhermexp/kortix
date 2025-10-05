@@ -12,7 +12,6 @@ import { colors } from "./constants";
 import type {
 	DocumentWithMemories,
 	GraphCanvasProps,
-	GraphNode,
 	MemoryEntry,
 } from "./types";
 
@@ -57,7 +56,10 @@ export const GraphCanvas = memo<GraphCanvasProps>(
 			(x: number, y: number): string | null => {
 				// Check from top-most to bottom-most: memory nodes are drawn after documents
 				for (let i = nodes.length - 1; i >= 0; i--) {
-					const node = nodes[i]!;
+					const node = nodes[i];
+					if (!node) {
+						continue;
+					}
 					const screenX = node.x * zoom + panX;
 					const screenY = node.y * zoom + panY;
 					const nodeSize = node.size * zoom;

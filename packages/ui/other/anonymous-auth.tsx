@@ -16,7 +16,10 @@ export const AnonymousAuth = ({
 				await authClient.signIn.anonymous();
 				router.push(dashboardPath);
 			} catch (error) {
-				console.error("[ANONYMOUS_AUTH] Failed to create anonymous session", error);
+				console.error(
+					"[ANONYMOUS_AUTH] Failed to create anonymous session",
+					error,
+				);
 				router.push(loginPath);
 			}
 		})();

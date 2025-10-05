@@ -52,11 +52,11 @@ export const colors = {
 export const LAYOUT_CONSTANTS = {
 	centerX: 400,
 	centerY: 300,
-	clusterRadius: 300, // Memory "bubble" size around a doc - smaller bubble
-	spaceSpacing: 1600, // How far apart the *spaces* (groups of docs) sit - push spaces way out
-	documentSpacing: 1000, // How far the first doc in a space sits from its space-centre - push docs way out
-	minDocDist: 900, // Minimum distance two documents in the **same space** are allowed to be - sets repulsion radius
-	memoryClusterRadius: 300,
+	clusterRadius: 150, // Memory "bubble" size around a doc - smaller bubble
+	spaceSpacing: 400, // How far apart the *spaces* (groups of docs) sit - reduced for better visualization
+	documentSpacing: 250, // How far the first doc in a space sits from its space-centre - reduced for better visualization
+	minDocDist: 200, // Minimum distance two documents in the **same space** are allowed to be - reduced for better visualization
+	memoryClusterRadius: 150,
 };
 
 // Graph view settings

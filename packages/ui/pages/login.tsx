@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { signIn, signUp } from "@lib/auth";
 import { LogoFull } from "@repo/ui/assets/Logo";
 import { Button } from "@repo/ui/components/button";
-import { Input } from "@ui/components/input";
 import { HeadingH1Medium } from "@repo/ui/text/heading/heading-h1-medium";
 import { HeadingH3Medium } from "@repo/ui/text/heading/heading-h3-medium";
+import { Input } from "@ui/components/input";
 import Link from "next/link";
+import { useState } from "react";
 
 export function LoginPage() {
 	const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
@@ -50,11 +50,10 @@ export function LoginPage() {
 		<section className="min-h-screen flex flex-col lg:grid lg:grid-cols-12 items-center justify-center p-6 md:p-10 lg:px-[5rem] lg:py-[3rem] gap-6 lg:gap-[5rem] bg-[#0f1419] text-white">
 			<div className="hidden lg:flex lg:col-span-6 flex-col gap-6">
 				<LogoFull className="w-48 text-white" />
-				<HeadingH1Medium>
-					Sua memória, acessível e privada.
-				</HeadingH1Medium>
+				<HeadingH1Medium>Sua memória, acessível e privada.</HeadingH1Medium>
 				<p className="text-white/70 max-w-lg">
-					Crie uma conta ou entre com seu email e senha para começar a usar o supermemory self-hosted.
+					Crie uma conta ou entre com seu email e senha para começar a usar o
+					supermemory self-hosted.
 				</p>
 			</div>
 
@@ -119,12 +118,17 @@ export function LoginPage() {
 							onChange={(event) => setPassword(event.target.value)}
 							required
 							placeholder="Sua senha"
-							autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+							autoComplete={
+								mode === "sign-in" ? "current-password" : "new-password"
+							}
 							className="bg-white/10 border-white/20 text-white"
 						/>
 						{mode === "sign-in" && (
 							<div className="text-xs text-right">
-								<Link className="text-white/60 hover:text-white" href="/reset-password">
+								<Link
+									className="text-white/60 hover:text-white"
+									href="/reset-password"
+								>
 									Esqueceu a senha?
 								</Link>
 							</div>
@@ -141,8 +145,8 @@ export function LoginPage() {
 						{isLoading
 							? "Processando..."
 							: mode === "sign-in"
-							? "Entrar"
-							: "Criar conta"}
+								? "Entrar"
+								: "Criar conta"}
 					</Button>
 				</form>
 
@@ -151,10 +155,17 @@ export function LoginPage() {
 						Self-host login simples
 					</HeadingH3Medium>
 					<p>
-						Esqueceu a senha? <Link className="underline" href="/reset-password">Recupere o acesso por aqui</Link>.
+						Esqueceu a senha?{" "}
+						<Link className="underline" href="/reset-password">
+							Recupere o acesso por aqui
+						</Link>
+						.
 					</p>
 					<p className="mt-2">
-						Precisa de ajuda? <Link className="underline" href="mailto:suporte@supermemory.ai">suporte@supermemory.ai</Link>
+						Precisa de ajuda?{" "}
+						<Link className="underline" href="mailto:support@your-domain.com">
+							support@your-domain.com
+						</Link>
 					</p>
 				</div>
 			</div>

@@ -80,14 +80,13 @@ export function Combobox({
 	return (
 		<Popover onOpenChange={setOpen} open={open}>
 			<PopoverTrigger asChild>
-				{/** biome-ignore lint/a11y/useSemanticElements: shadcn*/}
 				<Button
 					aria-expanded={open}
+					aria-haspopup="listbox"
 					className={cn(
 						"w-full justify-between min-h-10 h-auto",
 						triggerClassName,
 					)}
-					role="combobox"
 					variant="outline"
 				>
 					<div className="flex flex-wrap gap-1 items-center w-full">

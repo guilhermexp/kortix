@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bunx mintlify@latest dev --no-open --port 3003"
+    "dev": "bunx mintlify@latest dev --no-open --port 3003",
+    "test": "echo \"No tests yet for @repo/docs\""
   },
   "devDependencies": {
     "@types/bun": "latest",

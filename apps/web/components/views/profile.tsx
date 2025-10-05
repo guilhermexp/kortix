@@ -2,10 +2,10 @@
 
 import { authClient } from "@lib/auth"
 import { useAuth } from "@lib/auth-context"
-import { Button } from "@repo/ui/components/button"
-import { HeadingH3Bold } from "@repo/ui/text/heading/heading-h3-bold"
 import { useCustomer } from "@lib/autumn-stub"
 import { APP_URL } from "@lib/env"
+import { Button } from "@repo/ui/components/button"
+import { HeadingH3Bold } from "@repo/ui/text/heading/heading-h3-bold"
 import {
 	CheckCircle,
 	CreditCard,

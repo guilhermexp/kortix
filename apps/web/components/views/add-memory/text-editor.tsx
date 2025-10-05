@@ -1,8 +1,8 @@
-"use client";
+"use client"
 
-import { cn } from "@lib/utils";
-import { Button } from "@repo/ui/components/button";
-import isHotkey from "is-hotkey";
+import { cn } from "@lib/utils"
+import { Button } from "@repo/ui/components/button"
+import isHotkey from "is-hotkey"
 import {
 	Bold,
 	Code,
@@ -12,16 +12,16 @@ import {
 	Italic,
 	List,
 	Quote,
-} from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+} from "lucide-react"
+import { useCallback, useMemo, useState } from "react"
 import {
 	type BaseEditor,
 	createEditor,
 	type Descendant,
 	Editor,
 	Transforms,
-} from "slate";
-import type { ReactEditor as ReactEditorType } from "slate-react";
+} from "slate"
+import type { ReactEditor as ReactEditorType } from "slate-react"
 import {
 	Editable,
 	ReactEditor,
@@ -29,51 +29,51 @@ import {
 	type RenderLeafProps,
 	Slate,
 	withReact,
-} from "slate-react";
+} from "slate-react"
 
-type CustomEditor = BaseEditor & ReactEditorType;
+type CustomEditor = BaseEditor & ReactEditorType
 
 type ParagraphElement = {
-	type: "paragraph";
-	children: CustomText[];
-};
+	type: "paragraph"
+	children: CustomText[]
+}
 
 type HeadingElement = {
-	type: "heading";
-	level: number;
-	children: CustomText[];
-};
+	type: "heading"
+	level: number
+	children: CustomText[]
+}
 
 type ListItemElement = {
-	type: "list-item";
-	children: CustomText[];
-};
+	type: "list-item"
+	children: CustomText[]
+}
 
 type BlockQuoteElement = {
-	type: "block-quote";
-	children: CustomText[];
-};
+	type: "block-quote"
+	children: CustomText[]
+}
 
 type CustomElement =
 	| ParagraphElement
 	| HeadingElement
 	| ListItemElement
-	| BlockQuoteElement;
+	| BlockQuoteElement
 
 type FormattedText = {
-	text: string;
-	bold?: true;
-	italic?: true;
-	code?: true;
-};
+	text: string
+	bold?: true
+	italic?: true
+	code?: true
+}
 
-type CustomText = FormattedText;
+type CustomText = FormattedText
 
 declare module "slate" {
 	interface CustomTypes {
-		Editor: CustomEditor;
-		Element: CustomElement;
-		Text: CustomText;
+		Editor: CustomEditor
+		Element: CustomElement
+		Text: CustomText
 	}
 }
 
@@ -82,15 +82,15 @@ const HOTKEYS: Record<string, keyof CustomText> = {
 	"mod+b": "bold",
 	"mod+i": "italic",
 	"mod+`": "code",
-};
+}
 
 interface TextEditorProps {
-	value?: string;
-	onChange?: (value: string) => void;
-	onBlur?: () => void;
-	placeholder?: string;
-	disabled?: boolean;
-	className?: string;
+	value?: string
+	onChange?: (value: string) => void
+	onBlur?: () => void
+	placeholder?: string
+	disabled?: boolean
+	className?: string
 }
 
 const initialValue: Descendant[] = [
@@ -98,114 +98,114 @@ const initialValue: Descendant[] = [
 		type: "paragraph",
 		children: [{ text: "" }],
 	},
-];
+]
 
 const serialize = (nodes: Descendant[]): string => {
-	return nodes.map((n) => serializeNode(n)).join("\n");
-};
+	return nodes.map((n) => serializeNode(n)).join("\n")
+}
 
 const serializeNode = (node: CustomElement | CustomText): string => {
 	if ("text" in node) {
-		let text = node.text;
-		if (node.bold) text = `**${text}**`;
-		if (node.italic) text = `*${text}*`;
-		if (node.code) text = `\`${text}\``;
-		return text;
+		let text = node.text
+		if (node.bold) text = `**${text}**`
+		if (node.italic) text = `*${text}*`
+		if (node.code) text = `\`${text}\``
+		return text
 	}
 
 	const children = node.children
 		? node.children.map(serializeNode).join("")
-		: "";
+		: ""
 
 	switch (node.type) {
 		case "paragraph":
-			return children;
+			return children
 		case "heading":
-			return `${"#".repeat(node.level || 1)} ${children}`;
+			return `${"#".repeat(node.level || 1)} ${children}`
 		case "list-item":
-			return `- ${children}`;
+			return `- ${children}`
 		case "block-quote":
-			return `> ${children}`;
+			return `> ${children}`
 		default:
-			return children;
+			return children
 	}
-};
+}
 
 const deserialize = (text: string): Descendant[] => {
 	if (!text.trim()) {
-		return initialValue;
+		return initialValue
 	}
 
-	const lines = text.split("\n");
-	const nodes: Descendant[] = [];
+	const lines = text.split("\n")
+	const nodes: Descendant[] = []
 
 	for (const line of lines) {
-		const trimmedLine = line.trim();
+		const trimmedLine = line.trim()
 
 		if (trimmedLine.startsWith("# ")) {
 			nodes.push({
 				type: "heading",
 				level: 1,
 				children: [{ text: trimmedLine.slice(2) }],
-			});
+			})
 		} else if (trimmedLine.startsWith("## ")) {
 			nodes.push({
 				type: "heading",
 				level: 2,
 				children: [{ text: trimmedLine.slice(3) }],
-			});
+			})
 		} else if (trimmedLine.startsWith("### ")) {
 			nodes.push({
 				type: "heading",
 				level: 3,
 				children: [{ text: trimmedLine.slice(4) }],
-			});
+			})
 		} else if (trimmedLine.startsWith("- ")) {
 			nodes.push({
 				type: "list-item",
 				children: [{ text: trimmedLine.slice(2) }],
-			});
+			})
 		} else if (trimmedLine.startsWith("> ")) {
 			nodes.push({
 				type: "block-quote",
 				children: [{ text: trimmedLine.slice(2) }],
-			});
+			})
 		} else {
 			nodes.push({
 				type: "paragraph",
 				children: [{ text: line }],
-			});
+			})
 		}
 	}
 
-	return nodes.length > 0 ? nodes : initialValue;
-};
+	return nodes.length > 0 ? nodes : initialValue
+}
 
 const isMarkActive = (editor: CustomEditor, format: keyof CustomText) => {
-	const marks = Editor.marks(editor);
-	return marks ? marks[format as keyof typeof marks] === true : false;
-};
+	const marks = Editor.marks(editor)
+	return marks ? marks[format as keyof typeof marks] === true : false
+}
 
 const toggleMark = (editor: CustomEditor, format: keyof CustomText) => {
-	const isActive = isMarkActive(editor, format);
+	const isActive = isMarkActive(editor, format)
 
 	if (isActive) {
-		Editor.removeMark(editor, format);
+		Editor.removeMark(editor, format)
 	} else {
-		Editor.addMark(editor, format, true);
+		Editor.addMark(editor, format, true)
 	}
 
 	// Focus back to editor after toggling
-	ReactEditor.focus(editor);
-};
+	ReactEditor.focus(editor)
+}
 
 const isBlockActive = (
 	editor: CustomEditor,
 	format: string,
 	level?: number,
 ) => {
-	const { selection } = editor;
-	if (!selection) return false;
+	const { selection } = editor
+	if (!selection) return false
 
 	const [match] = Array.from(
 		Editor.nodes(editor, {
@@ -215,26 +215,27 @@ const isBlockActive = (
 				(n as CustomElement).type === format &&
 				(level === undefined || (n as HeadingElement).level === level),
 		}),
-	);
+	)
 
-	return !!match;
-};
+	return !!match
+}
 
 const toggleBlock = (editor: CustomEditor, format: string, level?: number) => {
-	const isActive = isBlockActive(editor, format, level);
-	const newProperties: any = {
-		type: isActive ? "paragraph" : format,
-	};
-
-	if (format === "heading" && level && !isActive) {
-		newProperties.level = level;
+	const isActive = isBlockActive(editor, format, level)
+	const newType = (isActive ? "paragraph" : format) as CustomElement["type"]
+	const newProperties: Partial<HeadingElement> & Partial<CustomElement> = {
+		type: newType,
 	}
 
-	Transforms.setNodes(editor, newProperties);
+	if (newType === "heading" && level && !isActive) {
+		newProperties.level = level
+	}
+
+	Transforms.setNodes<CustomElement>(editor, newProperties)
 
 	// Focus back to editor after toggling
-	ReactEditor.focus(editor);
-};
+	ReactEditor.focus(editor)
+}
 
 export function TextEditor({
 	value = "",
@@ -244,23 +245,23 @@ export function TextEditor({
 	disabled = false,
 	className,
 }: TextEditorProps) {
-	const editor = useMemo(() => withReact(createEditor()) as CustomEditor, []);
+	const editor = useMemo(() => withReact(createEditor()) as CustomEditor, [])
 	const [editorValue, setEditorValue] = useState<Descendant[]>(() =>
 		deserialize(value),
-	);
-	const [selection, setSelection] = useState(editor.selection);
+	)
+	const [selection, setSelection] = useState(editor.selection)
 
 	const renderElement = useCallback((props: RenderElementProps) => {
 		switch (props.element.type) {
 			case "heading": {
-				const element = props.element as HeadingElement;
+				const element = props.element as HeadingElement
 				const HeadingTag = `h${element.level || 1}` as
 					| "h1"
 					| "h2"
 					| "h3"
 					| "h4"
 					| "h5"
-					| "h6";
+					| "h6"
 				return (
 					<HeadingTag
 						{...props.attributes}
@@ -273,14 +274,14 @@ export function TextEditor({
 					>
 						{props.children}
 					</HeadingTag>
-				);
+				)
 			}
 			case "list-item":
 				return (
 					<li {...props.attributes} className="ml-4 list-disc">
 						{props.children}
 					</li>
-				);
+				)
 			case "block-quote":
 				return (
 					<blockquote
@@ -289,92 +290,104 @@ export function TextEditor({
 					>
 						{props.children}
 					</blockquote>
-				);
+				)
 			default:
 				return (
 					<p {...props.attributes} className="mb-2">
 						{props.children}
 					</p>
-				);
+				)
 		}
-	}, []);
+	}, [])
 
 	const renderLeaf = useCallback((props: RenderLeafProps) => {
-		let { attributes, children, leaf } = props;
+		let { attributes, children, leaf } = props
 
 		if (leaf.bold) {
-			children = <strong>{children}</strong>;
+			children = <strong>{children}</strong>
 		}
 
 		if (leaf.italic) {
-			children = <em>{children}</em>;
+			children = <em>{children}</em>
 		}
 
 		if (leaf.code) {
 			children = (
 				<code className="bg-white/10 px-1 rounded text-sm">{children}</code>
-			);
+			)
 		}
 
-		return <span {...attributes}>{children}</span>;
-	}, []);
+		return <span {...attributes}>{children}</span>
+	}, [])
 
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {
 			// Handle hotkeys for formatting
 			for (const hotkey in HOTKEYS) {
 				if (isHotkey(hotkey, event)) {
-					event.preventDefault();
-					const mark = HOTKEYS[hotkey];
+					event.preventDefault()
+					const mark = HOTKEYS[hotkey]
 					if (mark) {
-						toggleMark(editor, mark);
+						toggleMark(editor, mark)
 					}
-					return;
+					return
 				}
 			}
 
 			// Handle block formatting hotkeys
 			if (isHotkey("mod+shift+1", event)) {
-				event.preventDefault();
-				toggleBlock(editor, "heading", 1);
-				return;
+				event.preventDefault()
+				toggleBlock(editor, "heading", 1)
+				return
 			}
 			if (isHotkey("mod+shift+2", event)) {
-				event.preventDefault();
-				toggleBlock(editor, "heading", 2);
-				return;
+				event.preventDefault()
+				toggleBlock(editor, "heading", 2)
+				return
 			}
 			if (isHotkey("mod+shift+3", event)) {
-				event.preventDefault();
-				toggleBlock(editor, "heading", 3);
-				return;
+				event.preventDefault()
+				toggleBlock(editor, "heading", 3)
+				return
 			}
 			if (isHotkey("mod+shift+8", event)) {
-				event.preventDefault();
-				toggleBlock(editor, "list-item");
-				return;
+				event.preventDefault()
+				toggleBlock(editor, "list-item")
+				return
 			}
 			if (isHotkey("mod+shift+.", event)) {
-				event.preventDefault();
-				toggleBlock(editor, "block-quote");
-				return;
+				event.preventDefault()
+				toggleBlock(editor, "block-quote")
+				return
 			}
 		},
 		[editor],
-	);
+	)
 
 	const handleSlateChange = useCallback(
 		(newValue: Descendant[]) => {
-			setEditorValue(newValue);
-			const serializedValue = serialize(newValue);
-			onChange?.(serializedValue);
+			setEditorValue(newValue)
+			const serializedValue = serialize(newValue)
+			onChange?.(serializedValue)
 		},
 		[onChange],
-	);
+	)
 
 	// Memoized active states that update when selection changes
-	const activeStates = useMemo(
-		() => ({
+	const activeStates = useMemo(() => {
+		if (!selection) {
+			return {
+				bold: false,
+				italic: false,
+				code: false,
+				heading1: false,
+				heading2: false,
+				heading3: false,
+				listItem: false,
+				blockQuote: false,
+			}
+		}
+		return {
 			bold: isMarkActive(editor, "bold"),
 			italic: isMarkActive(editor, "italic"),
 			code: isMarkActive(editor, "code"),
@@ -383,9 +396,8 @@ export function TextEditor({
 			heading3: isBlockActive(editor, "heading", 3),
 			listItem: isBlockActive(editor, "list-item"),
 			blockQuote: isBlockActive(editor, "block-quote"),
-		}),
-		[editor, selection],
-	);
+		}
+	}, [editor, selection])
 
 	const ToolbarButton = ({
 		icon: Icon,
@@ -393,14 +405,12 @@ export function TextEditor({
 		onMouseDown,
 		title,
 	}: {
-		icon: React.ComponentType<{ className?: string }>;
-		isActive: boolean;
-		onMouseDown: (event: React.MouseEvent) => void;
-		title: string;
+		icon: React.ComponentType<{ className?: string }>
+		isActive: boolean
+		onMouseDown: (event: React.MouseEvent) => void
+		title: string
 	}) => (
 		<Button
-			variant="ghost"
-			size="sm"
 			className={cn(
 				"h-8 w-8 !p-0 text-white/70 transition-all duration-200 rounded-sm",
 				"hover:bg-white/15 hover:text-white hover:scale-105",
@@ -408,8 +418,10 @@ export function TextEditor({
 				isActive && "bg-white/20 text-white",
 			)}
 			onMouseDown={onMouseDown}
+			size="sm"
 			title={title}
 			type="button"
+			variant="ghost"
 		>
 			<Icon
 				className={cn(
@@ -418,7 +430,7 @@ export function TextEditor({
 				)}
 			/>
 		</Button>
-	);
+	)
 
 	return (
 		<div className={cn("flex flex-col", className)}>
@@ -426,27 +438,27 @@ export function TextEditor({
 				<Slate
 					editor={editor}
 					initialValue={editorValue}
-					onValueChange={handleSlateChange}
 					onSelectionChange={() => setSelection(editor.selection)}
+					onValueChange={handleSlateChange}
 				>
 					<Editable
+						className={cn(
+							"outline-none w-full h-full text-white placeholder:text-white/50",
+							disabled && "opacity-50 cursor-not-allowed",
+						)}
+						onBlur={onBlur}
+						onKeyDown={handleKeyDown}
+						placeholder={placeholder}
+						readOnly={disabled}
 						renderElement={renderElement}
 						renderLeaf={renderLeaf}
-						placeholder={placeholder}
 						renderPlaceholder={({ children, attributes }) => {
 							return (
 								<span {...attributes} className="block mt-2">
 									{children}
 								</span>
-							);
+							)
 						}}
-						onKeyDown={handleKeyDown}
-						onBlur={onBlur}
-						readOnly={disabled}
-						className={cn(
-							"outline-none w-full h-full text-white placeholder:text-white/50",
-							disabled && "opacity-50 cursor-not-allowed",
-						)}
 						style={{
 							minHeight: "11rem",
 							maxHeight: "15rem",
@@ -464,8 +476,8 @@ export function TextEditor({
 						icon={Bold}
 						isActive={activeStates.bold}
 						onMouseDown={(event) => {
-							event.preventDefault();
-							toggleMark(editor, "bold");
+							event.preventDefault()
+							toggleMark(editor, "bold")
 						}}
 						title="Bold (Ctrl/Cmd+B)"
 					/>
@@ -473,8 +485,8 @@ export function TextEditor({
 						icon={Italic}
 						isActive={activeStates.italic}
 						onMouseDown={(event) => {
-							event.preventDefault();
-							toggleMark(editor, "italic");
+							event.preventDefault()
+							toggleMark(editor, "italic")
 						}}
 						title="Italic (Ctrl/Cmd+I)"
 					/>
@@ -482,8 +494,8 @@ export function TextEditor({
 						icon={Code}
 						isActive={activeStates.code}
 						onMouseDown={(event) => {
-							event.preventDefault();
-							toggleMark(editor, "code");
+							event.preventDefault()
+							toggleMark(editor, "code")
 						}}
 						title="Code (Ctrl/Cmd+`)"
 					/>
@@ -497,8 +509,8 @@ export function TextEditor({
 						icon={Heading1}
 						isActive={activeStates.heading1}
 						onMouseDown={(event) => {
-							event.preventDefault();
-							toggleBlock(editor, "heading", 1);
+							event.preventDefault()
+							toggleBlock(editor, "heading", 1)
 						}}
 						title="Heading 1 (Ctrl/Cmd+Shift+1)"
 					/>
@@ -506,8 +518,8 @@ export function TextEditor({
 						icon={Heading2}
 						isActive={activeStates.heading2}
 						onMouseDown={(event) => {
-							event.preventDefault();
-							toggleBlock(editor, "heading", 2);
+							event.preventDefault()
+							toggleBlock(editor, "heading", 2)
 						}}
 						title="Heading 2 (Ctrl/Cmd+Shift+2)"
 					/>
@@ -515,8 +527,8 @@ export function TextEditor({
 						icon={Heading3}
 						isActive={activeStates.heading3}
 						onMouseDown={(event) => {
-							event.preventDefault();
-							toggleBlock(editor, "heading", 3);
+							event.preventDefault()
+							toggleBlock(editor, "heading", 3)
 						}}
 						title="Heading 3"
 					/>
@@ -524,8 +536,8 @@ export function TextEditor({
 						icon={List}
 						isActive={activeStates.listItem}
 						onMouseDown={(event) => {
-							event.preventDefault();
-							toggleBlock(editor, "list-item");
+							event.preventDefault()
+							toggleBlock(editor, "list-item")
 						}}
 						title="Bullet List"
 					/>
@@ -533,13 +545,13 @@ export function TextEditor({
 						icon={Quote}
 						isActive={activeStates.blockQuote}
 						onMouseDown={(event) => {
-							event.preventDefault();
-							toggleBlock(editor, "block-quote");
+							event.preventDefault()
+							toggleBlock(editor, "block-quote")
 						}}
 						title="Quote"
 					/>
 				</div>
 			</div>
 		</div>
-	);
+	)
 }

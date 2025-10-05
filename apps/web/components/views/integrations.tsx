@@ -1,6 +1,8 @@
 import { $fetch } from "@lib/api"
 import { authClient } from "@lib/auth"
 import { useAuth } from "@lib/auth-context"
+import { useCustomer } from "@lib/autumn-stub"
+import { APP_URL } from "@lib/env"
 import { generateId } from "@lib/generate-id"
 import {
 	ADD_MEMORY_SHORTCUT_URL,
@@ -19,8 +21,6 @@ import { Skeleton } from "@repo/ui/components/skeleton"
 import type { ConnectionResponseSchema } from "@repo/validation/api"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { GoogleDrive, Notion, OneDrive } from "@ui/assets/icons"
-import { useCustomer } from "@lib/autumn-stub"
-import { APP_URL } from "@lib/env"
 import { Check, Copy, Smartphone, Trash2 } from "lucide-react"
 import { motion } from "motion/react"
 import Image from "next/image"
@@ -54,31 +54,31 @@ type ConnectorProvider = keyof typeof CONNECTORS
 
 const ChromeIcon = ({ className }: { className?: string }) => (
 	<svg
-		xmlns="http://www.w3.org/2000/svg"
+		className={className}
 		preserveAspectRatio="xMidYMid"
 		viewBox="0 0 190.5 190.5"
-		className={className}
+		xmlns="http://www.w3.org/2000/svg"
 	>
 		<title>Google Chrome Icon</title>
 		<path
-			fill="#fff"
 			d="M95.252 142.873c26.304 0 47.627-21.324 47.627-47.628s-21.323-47.628-47.627-47.628-47.627 21.324-47.627 47.628 21.323 47.628 47.627 47.628z"
+			fill="#fff"
 		/>
 		<path
-			fill="#229342"
 			d="m54.005 119.07-41.24-71.43a95.227 95.227 0 0 0-.003 95.25 95.234 95.234 0 0 0 82.496 47.61l41.24-71.43v-.011a47.613 47.613 0 0 1-17.428 17.443 47.62 47.62 0 0 1-47.632.007 47.62 47.62 0 0 1-17.433-17.437z"
+			fill="#229342"
 		/>
 		<path
-			fill="#fbc116"
 			d="m136.495 119.067-41.239 71.43a95.229 95.229 0 0 0 82.489-47.622A95.24 95.24 0 0 0 190.5 95.248a95.237 95.237 0 0 0-12.772-47.623H95.249l-.01.007a47.62 47.62 0 0 1 23.819 6.372 47.618 47.618 0 0 1 17.439 17.431 47.62 47.62 0 0 1-.001 47.633z"
+			fill="#fbc116"
 		/>
 		<path
-			fill="#1a73e8"
 			d="M95.252 132.961c20.824 0 37.705-16.881 37.705-37.706S116.076 57.55 95.252 57.55 57.547 74.431 57.547 95.255s16.881 37.706 37.705 37.706z"
+			fill="#1a73e8"
 		/>
 		<path
-			fill="#e33b2e"
 			d="M95.252 47.628h82.479A95.237 95.237 0 0 0 142.87 12.76 95.23 95.23 0 0 0 95.245 0a95.222 95.222 0 0 0-47.623 12.767 95.23 95.23 0 0 0-34.856 34.872l41.24 71.43.011.006a47.62 47.62 0 0 1-.015-47.633 47.61 47.61 0 0 1 41.252-23.815z"
+			fill="#e33b2e"
 		/>
 	</svg>
 )
@@ -300,32 +300,32 @@ export function IntegrationsView() {
 					</div>
 					<div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
 						<Button
-							variant="ghost"
 							className="flex-1 text-white hover:bg-blue-500/10 bg-[#171F59]/75 "
-							onClick={() => handleShortcutClick("add")}
 							disabled={createApiKeyMutation.isPending}
+							onClick={() => handleShortcutClick("add")}
+							variant="ghost"
 						>
 							<Image
-								src="/images/ios-shortcuts.png"
 								alt="iOS Shortcuts"
-								width={20}
 								height={20}
+								src="/images/ios-shortcuts.png"
+								width={20}
 							/>
 							{createApiKeyMutation.isPending
 								? "Creating..."
 								: "Add Memory Shortcut"}
 						</Button>
 						<Button
-							variant="ghost"
 							className="flex-1 text-white  hover:bg-blue-500/10 bg-[#171F59]/75"
-							onClick={() => handleShortcutClick("search")}
 							disabled={createApiKeyMutation.isPending}
+							onClick={() => handleShortcutClick("search")}
+							variant="ghost"
 						>
 							<Image
-								src="/images/ios-shortcuts.png"
 								alt="iOS Shortcuts"
-								width={20}
 								height={20}
+								src="/images/ios-shortcuts.png"
+								width={20}
 							/>
 							{createApiKeyMutation.isPending
 								? "Creating..."
@@ -550,9 +550,9 @@ export function IntegrationsView() {
 														</span>
 													</div>
 													<motion.div
+														className="flex-shrink-0"
 														whileHover={{ scale: 1.02 }}
 														whileTap={{ scale: 0.98 }}
-														className="flex-shrink-0"
 													>
 														<Button
 															className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border-blue-600/30 min-w-[80px] disabled:cursor-not-allowed"
@@ -589,10 +589,10 @@ export function IntegrationsView() {
 					More integrations are coming soon! Have a suggestion? Share it with us
 					on{" "}
 					<a
-						href="https://x.com/supermemoryai"
-						target="_blank"
-						rel="noopener noreferrer"
 						className="text-orange-500 hover:text-orange-400 underline"
+						href="https://x.com/supermemoryai"
+						rel="noopener noreferrer"
+						target="_blank"
 					>
 						X
 					</a>
@@ -601,7 +601,7 @@ export function IntegrationsView() {
 			</div>
 
 			{/* API Key Modal */}
-			<Dialog open={showApiKeyModal} onOpenChange={handleDialogClose}>
+			<Dialog onOpenChange={handleDialogClose} open={showApiKeyModal}>
 				<DialogPortal>
 					<DialogContent className="bg-[#0f1419] border-white/10 text-white md:max-w-md z-[100]">
 						<DialogHeader>
@@ -620,24 +620,24 @@ export function IntegrationsView() {
 							{/* API Key Section */}
 							<div className="space-y-2">
 								<label
-									htmlFor={apiKeyId}
 									className="text-sm font-medium text-white/80"
+									htmlFor={apiKeyId}
 								>
 									Your API Key
 								</label>
 								<div className="flex items-center gap-2">
 									<input
+										className="flex-1 bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-sm text-white font-mono"
 										id={apiKeyId}
+										readOnly
 										type="text"
 										value={apiKey}
-										readOnly
-										className="flex-1 bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-sm text-white font-mono"
 									/>
 									<Button
+										className="text-white/70 hover:text-white hover:bg-white/10"
+										onClick={handleCopyApiKey}
 										size="sm"
 										variant="ghost"
-										onClick={handleCopyApiKey}
-										className="text-white/70 hover:text-white hover:bg-white/10"
 									>
 										{copied ? (
 											<Check className="h-4 w-4 text-green-400" />
@@ -683,16 +683,16 @@ export function IntegrationsView() {
 
 							<div className="flex gap-2 pt-2">
 								<Button
-									onClick={handleOpenShortcut}
 									className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
 									disabled={!selectedShortcutType}
+									onClick={handleOpenShortcut}
 								>
 									<Image
-										src="/images/ios-shortcuts.png"
 										alt="iOS Shortcuts"
-										width={16}
-										height={16}
 										className="mr-2"
+										height={16}
+										src="/images/ios-shortcuts.png"
+										width={16}
 									/>
 									Add to Shortcuts
 								</Button>

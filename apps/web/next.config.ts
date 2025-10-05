@@ -52,7 +52,3 @@ export default withSentryConfig(nextConfig, {
 	// https://vercel.com/docs/cron-jobs
 	automaticVercelMonitors: true,
 })
-
-import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare"
-
-initOpenNextCloudflareForDev()

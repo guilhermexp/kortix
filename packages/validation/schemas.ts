@@ -89,9 +89,15 @@ export const DocumentSchema = z.object({
 	chunkCount: z.number().default(0),
 	averageChunkSize: z.number().nullable().optional(),
 
-	summaryEmbedding: z.union([z.array(z.number()), z.string()]).nullable().optional(),
+	summaryEmbedding: z
+		.union([z.array(z.number()), z.string()])
+		.nullable()
+		.optional(),
 	summaryEmbeddingModel: z.string().nullable().optional(),
-	summaryEmbeddingNew: z.union([z.array(z.number()), z.string()]).nullable().optional(),
+	summaryEmbeddingNew: z
+		.union([z.array(z.number()), z.string()])
+		.nullable()
+		.optional(),
 	summaryEmbeddingModelNew: z.string().nullable().optional(),
 
 	// Timestamps
@@ -265,9 +271,15 @@ export const MemoryEntrySchema = z.object({
 	forgetReason: z.string().nullable().optional(),
 
 	// Embeddings
-	memoryEmbedding: z.union([z.array(z.number()), z.string()]).nullable().optional(),
+	memoryEmbedding: z
+		.union([z.array(z.number()), z.string()])
+		.nullable()
+		.optional(),
 	memoryEmbeddingModel: z.string().nullable().optional(),
-	memoryEmbeddingNew: z.union([z.array(z.number()), z.string()]).nullable().optional(),
+	memoryEmbeddingNew: z
+		.union([z.array(z.number()), z.string()])
+		.nullable()
+		.optional(),
 	memoryEmbeddingNewModel: z.string().nullable().optional(),
 
 	metadata: z.record(z.unknown()).nullable().optional(),

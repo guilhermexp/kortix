@@ -1,11 +1,15 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind CSS directive */
 @source "../../apps/**/*.tsx";
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind CSS directive */
 @source "../../packages/**/*.tsx";
 
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind CSS directive */
 @custom-variant dark (&:is(.dark *));
 
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind CSS directive */
 @theme inline {
 	--color-background: var(--color-sm-shark-alt);
 	--color-background: var(--color-sm-shark-alt);
@@ -153,9 +157,11 @@
 
 @layer base {
 	* {
+		/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind CSS directive */
 		@apply border-border outline-ring/50;
 	}
 	body {
+		/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind CSS directive */
 		@apply bg-background text-foreground;
 	}
 }

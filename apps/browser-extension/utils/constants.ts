@@ -1,10 +1,12 @@
-const DEFAULT_API_URL = "https://repoapi-production-d4f7.up.railway.app"
-const DEFAULT_APP_URL = "https://repoweb-production.up.railway.app"
+const DEFAULT_API_URL = "http://localhost:4000"
+const DEFAULT_APP_URL = "http://localhost:3000"
 
 const SUPERMEMORY_API =
-	(import.meta.env.VITE_SUPERMEMORY_API as string | undefined) ?? DEFAULT_API_URL
+	(import.meta.env.VITE_SUPERMEMORY_API as string | undefined) ??
+	DEFAULT_API_URL
 const SUPERMEMORY_WEB =
-	(import.meta.env.VITE_SUPERMEMORY_APP as string | undefined) ?? DEFAULT_APP_URL
+	(import.meta.env.VITE_SUPERMEMORY_APP as string | undefined) ??
+	DEFAULT_APP_URL
 
 /**
  * API Endpoints

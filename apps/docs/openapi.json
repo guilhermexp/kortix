@@ -1,34 +1,32 @@
 {
-  "openapi": "3.1.0",
-  "info": {
-    "title": "Supermemory Self-Hosted API",
-    "version": "0.1.0",
-    "description": "Placeholder OpenAPI document. TODO: replace with generated spec from packages/lib/api.ts."
-  },
-  "servers": [
-    { "url": "http://localhost:4000" }
-  ],
-  "paths": {
-    "/health": {
-      "get": {
-        "summary": "Backend healthcheck placeholder",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { "type": "string", "example": "ok" }
-                  },
-                  "required": ["status"]
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
+	"openapi": "3.1.0",
+	"info": {
+		"title": "Supermemory Self-Hosted API",
+		"version": "0.1.0",
+		"description": "Placeholder OpenAPI document. TODO: replace with generated spec from packages/lib/api.ts."
+	},
+	"servers": [{ "url": "http://localhost:4000" }],
+	"paths": {
+		"/health": {
+			"get": {
+				"summary": "Backend healthcheck placeholder",
+				"responses": {
+					"200": {
+						"description": "OK",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"status": { "type": "string", "example": "ok" }
+									},
+									"required": ["status"]
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 }

@@ -13,25 +13,24 @@ import { memo, useEffect, useState } from "react";
 import { colors } from "./constants";
 import type { GraphEdge, GraphNode, LegendProps } from "./types";
 
-// Cookie utility functions for legend state
-const setCookie = (name: string, value: string, days = 365) => {
-	if (typeof document === "undefined") return;
-	const expires = new Date();
-	expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-	document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+const LEGEND_STORAGE_KEY = "legendCollapsed";
+
+const getLegendPreference = () => {
+	if (typeof window === "undefined") return null;
+	try {
+		return window.localStorage.getItem(LEGEND_STORAGE_KEY);
+	} catch {
+		return null;
+	}
 };
 
-const getCookie = (name: string): string | null => {
-	if (typeof document === "undefined") return null;
-	const nameEQ = `${name}=`;
-	const ca = document.cookie.split(";");
-	for (let i = 0; i < ca.length; i++) {
-		let c = ca[i];
-		if (!c) continue;
-		while (c.charAt(0) === " ") c = c.substring(1, c.length);
-		if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+const setLegendPreference = (value: string) => {
+	if (typeof window === "undefined") return;
+	try {
+		window.localStorage.setItem(LEGEND_STORAGE_KEY, value);
+	} catch {
+		// Ignore storage errors
 	}
-	return null;
 };
 
 interface ExtendedLegendProps extends LegendProps {
@@ -54,18 +53,10 @@ export const Legend = memo(function Legend({
 	const [isExpanded, setIsExpanded] = useState(true);
 	const [isInitialized, setIsInitialized] = useState(false);
 
-	const relationData = isExperimental
-		? [
-				["updates", colors.relations.updates],
-				["extends", colors.relations.extends],
-				["derives", colors.relations.derives],
-			]
-		: [["updates", colors.relations.updates]];
-
 	// Load saved preference on client side
 	useEffect(() => {
 		if (!isInitialized) {
-			const savedState = getCookie("legendCollapsed");
+			const savedState = getLegendPreference();
 			if (savedState === "true") {
 				setIsExpanded(false);
 			} else if (savedState === "false") {
@@ -81,7 +72,7 @@ export const Legend = memo(function Legend({
 	// Save to cookie when state changes
 	const handleToggleExpanded = (expanded: boolean) => {
 		setIsExpanded(expanded);
-		setCookie("legendCollapsed", expanded ? "false" : "true");
+		setLegendPreference(expanded ? "false" : "true");
 	};
 
 	// Use explicit classes that Tailwind can detect

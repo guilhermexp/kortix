@@ -4,10 +4,10 @@ import { env } from "./env"
 import * as schema from "./schema"
 
 export const pool = new Pool({
-  connectionString: env.SUPABASE_DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+	connectionString: env.SUPABASE_DATABASE_URL,
+	ssl: { rejectUnauthorized: false },
 })
 
 export const db = drizzle(pool, {
-  schema,
+	schema,
 })

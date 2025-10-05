@@ -354,8 +354,10 @@ export function useGraphInteractions(
 
 		if (touches.length >= 2) {
 			// Start gesture with two or more fingers
-			const touch1 = touches[0]!;
-			const touch2 = touches[1]!;
+			const [touch1, touch2] = touches;
+			if (!touch1 || !touch2) {
+				return;
+			}
 
 			const distance = Math.sqrt(
 				(touch2.x - touch1.x) ** 2 + (touch2.y - touch1.y) ** 2,
@@ -388,8 +390,10 @@ export function useGraphInteractions(
 			}));
 
 			if (touches.length >= 2 && touchState.isGesturing) {
-				const touch1 = touches[0]!;
-				const touch2 = touches[1]!;
+				const [touch1, touch2] = touches;
+				if (!touch1 || !touch2) {
+					return;
+				}
 
 				const distance = Math.sqrt(
 					(touch2.x - touch1.x) ** 2 + (touch2.y - touch1.y) ** 2,
@@ -434,7 +438,10 @@ export function useGraphInteractions(
 				});
 			} else if (touches.length === 1 && !touchState.isGesturing && isPanning) {
 				// Single finger pan (only if not in gesture mode)
-				const touch = touches[0]!;
+				const touch = touches[0];
+				if (!touch) {
+					return;
+				}
 				const newPanX = touch.x - panStart.x;
 				const newPanY = touch.y - panStart.y;
 				setPanX(newPanX);

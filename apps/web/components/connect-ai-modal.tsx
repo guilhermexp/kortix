@@ -1,6 +1,8 @@
 "use client"
 
 import { $fetch } from "@lib/api"
+import { DOCS_URL, MCP_SERVER_URL } from "@lib/env"
+import { cn } from "@lib/utils"
 import { useForm } from "@tanstack/react-form"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Button } from "@ui/components/button"
@@ -27,10 +29,9 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { z } from "zod/v4"
 import { analytics } from "@/lib/analytics"
-import { cn } from "@lib/utils"
-import { MCP_SERVER_URL, DOCS_URL } from "@lib/env"
 
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+const escapeRegExp = (value: string) =>
+	value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 const MCP_SERVER_BASE = MCP_SERVER_URL.replace(/\/$/, "")
 const MCP_SSE_PLACEHOLDER = `${MCP_SERVER_BASE}/your-user-id/sse`
 const MCP_SSE_PATTERN = new RegExp(
@@ -558,11 +559,11 @@ export function ConnectAIModal({
 								Use this URL to configure supermemory in your AI assistant
 							</p>
 						</div>
-							<div className="p-1 bg-white/5 rounded-lg border border-white/10 items-center flex px-2">
-								<CopyableCell
-									className="font-mono text-xs text-blue-400"
-									value={MCP_SERVER_BASE}
-								/>
+						<div className="p-1 bg-white/5 rounded-lg border border-white/10 items-center flex px-2">
+							<CopyableCell
+								className="font-mono text-xs text-blue-400"
+								value={MCP_SERVER_BASE}
+							/>
 						</div>
 					</div>
 
@@ -637,7 +638,7 @@ export function ConnectAIModal({
 														id="mcpUrl"
 														onBlur={handleBlur}
 														onChange={(e) => handleChange(e.target.value)}
-													placeholder={MCP_SSE_PLACEHOLDER}
+														placeholder={MCP_SSE_PLACEHOLDER}
 														value={state.value}
 													/>
 													{state.meta.errors.length > 0 && (

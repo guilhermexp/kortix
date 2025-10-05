@@ -9,7 +9,8 @@ function Welcome() {
 					<img
 						alt="supermemory"
 						className="h-16 mb-6 mx-auto"
-						src="https://assets.supermemory.ai/brand/wordmark/dark-transparent.svg"
+						src="/icon-128.png"
+						style={{ objectFit: "contain" }}
 					/>
 					<p className="text-gray-600 text-lg font-normal max-w-2xl mx-auto">
 						Your AI second brain for saving and organizing everything that

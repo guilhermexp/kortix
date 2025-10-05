@@ -273,18 +273,39 @@ export function useGraphData(
 		});
 
 		// Document-to-document similarity edges
+		// DISABLED: These edges create visual clutter with long diagonal lines
+		// when documents are in concentric rings within the same space.
+		// The doc-memory edges already show the relationships clearly.
+		/*
 		for (let i = 0; i < filteredDocuments.length; i++) {
 			const docI = filteredDocuments[i];
 			if (!docI) continue;
+
+			// Get space for document I
+			const spaceI =
+				docI.memoryEntries[0]?.spaceContainerTag ??
+				docI.memoryEntries[0]?.spaceId ??
+				"default";
 
 			for (let j = i + 1; j < filteredDocuments.length; j++) {
 				const docJ = filteredDocuments[j];
 				if (!docJ) continue;
 
+				// Get space for document J
+				const spaceJ =
+					docJ.memoryEntries[0]?.spaceContainerTag ??
+					docJ.memoryEntries[0]?.spaceId ??
+					"default";
+
+				// Skip edges between documents in different spaces to prevent diagonal lines
+				if (spaceI !== spaceJ) continue;
+
 				// Parse embeddings (handle both string and array formats)
-				const parseEmbedding = (emb: string | number[] | null | undefined): number[] | null => {
+				const parseEmbedding = (
+					emb: string | number[] | null | undefined,
+				): number[] | null => {
 					if (!emb) return null;
-					if (typeof emb === 'string') {
+					if (typeof emb === "string") {
 						try {
 							return JSON.parse(emb);
 						} catch {
@@ -307,10 +328,12 @@ export function useGraphData(
 						visualProps: getConnectionVisualProps(sim),
 						color: getMagicalConnectionColor(sim, 200),
 						edgeType: "doc-doc",
+						edge Type: "doc-doc",
 					});
 				}
 			}
 		}
+		*/
 
 		return { nodes: allNodes, edges: allEdges };
 	}, [data, selectedSpace, nodePositions, draggingNodeId]);

@@ -1,9 +1,8 @@
 "use client"
 
 import { useIsMobile } from "@hooks/use-mobile"
+import { useDeleteDocument } from "@lib/queries"
 import { cn } from "@lib/utils"
-import { Badge } from "@repo/ui/components/badge"
-import { Card, CardContent, CardHeader } from "@repo/ui/components/card"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -15,6 +14,8 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "@repo/ui/components/alert-dialog"
+import { Badge } from "@repo/ui/components/badge"
+import { Card, CardContent, CardHeader } from "@repo/ui/components/card"
 import { colors } from "@repo/ui/memory-graph/constants"
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
 import { useVirtualizer } from "@tanstack/react-virtual"
@@ -32,12 +33,10 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { z } from "zod"
 import useResizeObserver from "@/hooks/use-resize-observer"
 import { analytics } from "@/lib/analytics"
-import { useDeleteDocument } from "@lib/queries"
-import { useProject } from "@/stores"
-
-import { MemoryDetail } from "./memories/memory-detail"
 import { getDocumentIcon } from "@/lib/document-icon"
+import { useProject } from "@/stores"
 import { formatDate, getSourceUrl } from "./memories"
+import { MemoryDetail } from "./memories/memory-detail"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
@@ -46,23 +45,23 @@ type BaseRecord = Record<string, unknown>
 
 type PreviewData =
 	| {
-		kind: "image"
-		src: string
-		label: string
-		href?: string
-	}
+			kind: "image"
+			src: string
+			label: string
+			href?: string
+	  }
 	| {
-		kind: "video"
-		src?: string
-		label: string
-		href?: string
-	}
+			kind: "video"
+			src?: string
+			label: string
+			href?: string
+	  }
 	| {
-		kind: "link"
-		src?: string
-		label: string
-		href: string
-	}
+			kind: "link"
+			src?: string
+			label: string
+			href: string
+	  }
 
 const asRecord = (value: unknown): BaseRecord | null => {
 	if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -75,7 +74,13 @@ const safeHttpUrl = (value: unknown): string | undefined => {
 	if (typeof value !== "string") return undefined
 	const trimmed = value.trim()
 	if (!trimmed) return undefined
-	if (trimmed.startsWith("data:")) return trimmed
+	// Only accept data URLs that are images, not text or other types
+	if (trimmed.startsWith("data:")) {
+		if (trimmed.startsWith("data:image/")) {
+			return trimmed
+		}
+		return undefined
+	}
 	try {
 		const url = new URL(trimmed)
 		if (url.protocol === "http:" || url.protocol === "https:") {
@@ -112,7 +117,8 @@ const isYouTubeUrl = (value?: string): boolean => {
 	try {
 		const parsed = new URL(value)
 		const host = parsed.hostname.toLowerCase()
-		if (!host.includes("youtube.com") && !host.includes("youtu.be")) return false
+		if (!host.includes("youtube.com") && !host.includes("youtu.be"))
+			return false
 		return true
 	} catch {
 		return false
@@ -143,15 +149,16 @@ const getYouTubeThumbnail = (value?: string): string | undefined => {
 	return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
 }
 
-const getDocumentPreview = (document: DocumentWithMemories): PreviewData | null => {
+const getDocumentPreview = (
+	document: DocumentWithMemories,
+): PreviewData | null => {
 	const metadata = asRecord(document.metadata)
 	const raw = asRecord(document.raw)
 	const rawExtraction = asRecord(raw?.extraction)
 	const rawYoutube = asRecord(rawExtraction?.youtube)
 	const rawFirecrawl =
 		asRecord(raw?.firecrawl) ?? asRecord(rawExtraction?.firecrawl)
-	const rawFirecrawlMetadata =
-		asRecord(rawFirecrawl?.metadata) ?? rawFirecrawl
+	const rawFirecrawlMetadata = asRecord(rawFirecrawl?.metadata) ?? rawFirecrawl
 	const rawGemini = asRecord(raw?.geminiFile)
 
 	const imageKeys = [
@@ -179,13 +186,15 @@ const getDocumentPreview = (document: DocumentWithMemories): PreviewData | null 
 	const finalPreviewImage = rawImage ?? metadataImage ?? firecrawlOgImage
 
 	// Get URL from multiple possible locations
-	const originalUrl = 
-		safeHttpUrl(metadata?.originalUrl) ?? 
+	const originalUrl =
+		safeHttpUrl(metadata?.originalUrl) ??
 		safeHttpUrl(document.url) ??
 		safeHttpUrl(rawYoutube?.url)
 	const contentType =
-		(typeof rawExtraction?.contentType === "string" && rawExtraction.contentType) ||
-		(typeof rawExtraction?.content_type === "string" && rawExtraction.content_type) ||
+		(typeof rawExtraction?.contentType === "string" &&
+			rawExtraction.contentType) ||
+		(typeof rawExtraction?.content_type === "string" &&
+			rawExtraction.content_type) ||
 		(typeof raw?.contentType === "string" && raw.contentType) ||
 		(typeof raw?.content_type === "string" && raw.content_type) ||
 		undefined
@@ -206,9 +215,10 @@ const getDocumentPreview = (document: DocumentWithMemories): PreviewData | null 
 	}
 
 	// Check for YouTube video data first
-	const youtubeUrl = safeHttpUrl(rawYoutube?.url) ?? safeHttpUrl(rawYoutube?.embedUrl)
+	const youtubeUrl =
+		safeHttpUrl(rawYoutube?.url) ?? safeHttpUrl(rawYoutube?.embedUrl)
 	const youtubeThumbnail = safeHttpUrl(rawYoutube?.thumbnail)
-	
+
 	const isVideoDocument =
 		normalizedType === "video" ||
 		contentType?.startsWith("video/") ||
@@ -218,9 +228,12 @@ const getDocumentPreview = (document: DocumentWithMemories): PreviewData | null 
 	if (isVideoDocument) {
 		return {
 			kind: "video",
-			src: youtubeThumbnail ?? finalPreviewImage ?? getYouTubeThumbnail(originalUrl),
+			src:
+				youtubeThumbnail ??
+				finalPreviewImage ??
+				getYouTubeThumbnail(originalUrl),
 			href: youtubeUrl ?? originalUrl ?? undefined,
-			label: contentType === "video/youtube" ? "YouTube" : (label || "Video"),
+			label: contentType === "video/youtube" ? "YouTube" : label || "Video",
 		}
 	}
 
@@ -324,7 +337,7 @@ const DocumentCard = memo(
 									document.url ? "max-w-[190px]" : "max-w-[200px]",
 								)}
 							>
-								{document.title || "Untitled Document"}
+								{document.title?.startsWith("data:") ? "Untitled Document" : (document.title || "Untitled Document")}
 							</p>
 						</div>
 						{document.url && (
@@ -393,7 +406,7 @@ const DocumentCard = memo(
 							</div>
 						</div>
 					)}
-					{document.content && (
+					{document.content && !document.content.startsWith("data:") && (
 						<p
 							className="text-xs line-clamp-2 mb-3"
 							style={{ color: colors.text.muted }}
@@ -559,9 +572,10 @@ export const MemoryListView = ({
 		overscan: 5,
 		estimateSize: () => 200,
 	})
+	const virtualRows = virtualizer.getVirtualItems()
 
 	useEffect(() => {
-		const [lastItem] = [...virtualizer.getVirtualItems()].reverse()
+		const [lastItem] = [...virtualRows].reverse()
 
 		if (!lastItem || !hasMore || isLoadingMore) {
 			return
@@ -574,7 +588,7 @@ export const MemoryListView = ({
 		hasMore,
 		isLoadingMore,
 		loadMoreDocuments,
-		virtualizer.getVirtualItems(),
+		virtualRows,
 		virtualItems.length,
 	])
 
@@ -617,8 +631,8 @@ export const MemoryListView = ({
 					</div>
 				) : (
 					<div
-						ref={parentRef}
 						className="h-full overflow-auto mt-20 custom-scrollbar"
+						ref={parentRef}
 					>
 						<GreetingMessage />
 
@@ -634,10 +648,10 @@ export const MemoryListView = ({
 
 								return (
 									<div
-										key={virtualRow.key}
-										data-index={virtualRow.index}
-										ref={virtualizer.measureElement}
 										className="absolute top-0 left-0 w-full"
+										data-index={virtualRow.index}
+										key={virtualRow.key}
+										ref={virtualizer.measureElement}
 										style={{
 											transform: `translateY(${virtualRow.start + virtualRow.index * gap}px)`,
 										}}
@@ -651,10 +665,10 @@ export const MemoryListView = ({
 										>
 											{rowItems.map((document, columnIndex) => (
 												<DocumentCard
-													key={`${document.id}-${virtualRow.index}-${columnIndex}`}
 													document={document}
-													onOpenDetails={handleOpenDetails}
+													key={`${document.id}-${virtualRow.index}-${columnIndex}`}
 													onDelete={handleDeleteDocument}
+													onOpenDetails={handleOpenDetails}
 												/>
 											))}
 										</div>
@@ -679,9 +693,9 @@ export const MemoryListView = ({
 
 			<MemoryDetail
 				document={selectedDocument}
+				isMobile={isMobile}
 				isOpen={isDetailOpen}
 				onClose={handleCloseDetails}
-				isMobile={isMobile}
 			/>
 		</>
 	)

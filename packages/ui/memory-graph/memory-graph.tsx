@@ -199,32 +199,47 @@ export const MemoryGraph = ({
 	const handleCenter = useCallback(() => {
 		if (nodes.length > 0) {
 			// Calculate center of all nodes
-			let sumX = 0
-			let sumY = 0
-			let count = 0
-			
+			let sumX = 0;
+			let sumY = 0;
+			let count = 0;
+
 			nodes.forEach((node) => {
-				sumX += node.x
-				sumY += node.y
-				count++
-			})
-			
+				sumX += node.x;
+				sumY += node.y;
+				count++;
+			});
+
 			if (count > 0) {
-				const centerX = sumX / count
-				const centerY = sumY / count
-				centerViewportOn(centerX, centerY, containerSize.width, containerSize.height)
+				const centerX = sumX / count;
+				const centerY = sumY / count;
+				centerViewportOn(
+					centerX,
+					centerY,
+					containerSize.width,
+					containerSize.height,
+				);
 			}
 		}
-	}, [nodes, centerViewportOn, containerSize.width, containerSize.height])
+	}, [nodes, centerViewportOn, containerSize.width, containerSize.height]);
 
 	const handleAutoFit = useCallback(() => {
-		if (nodes.length > 0 && containerSize.width > 0 && containerSize.height > 0) {
+		if (
+			nodes.length > 0 &&
+			containerSize.width > 0 &&
+			containerSize.height > 0
+		) {
 			autoFitToViewport(nodes, containerSize.width, containerSize.height, {
 				occludedRightPx,
 				animate: true,
-			})
+			});
 		}
-	}, [nodes, containerSize.width, containerSize.height, occludedRightPx, autoFitToViewport])
+	}, [
+		nodes,
+		containerSize.width,
+		containerSize.height,
+		occludedRightPx,
+		autoFitToViewport,
+	]);
 
 	// Get selected node data
 	const selectedNodeData = useMemo(() => {
@@ -321,7 +336,8 @@ export const MemoryGraph = ({
 					<GlassMenuEffect rounded="rounded-xl" />
 
 					<div className="relative z-10 text-slate-200 px-6 py-4">
-						Error loading documents: {error.message}
+						Error loading documents:{" "}
+						{error?.message ? String(error.message) : "Unknown error"}
 					</div>
 				</div>
 			</div>
@@ -376,9 +392,8 @@ export const MemoryGraph = ({
 
 			{/* Show welcome screen when no memories exist */}
 			{!isLoading &&
-				(!data || nodes.filter((n) => n.type === "document").length === 0) && (
-					<>{children}</>
-				)}
+				(!data || nodes.filter((n) => n.type === "document").length === 0) &&
+				children}
 
 			{/* Graph container */}
 			<div
@@ -421,8 +436,12 @@ export const MemoryGraph = ({
 				{containerSize.width > 0 && (
 					<NavigationControls
 						onCenter={handleCenter}
-						onZoomIn={() => zoomIn(containerSize.width / 2, containerSize.height / 2)}
-						onZoomOut={() => zoomOut(containerSize.width / 2, containerSize.height / 2)}
+						onZoomIn={() =>
+							zoomIn(containerSize.width / 2, containerSize.height / 2)
+						}
+						onZoomOut={() =>
+							zoomOut(containerSize.width / 2, containerSize.height / 2)
+						}
 						onAutoFit={handleAutoFit}
 						nodes={nodes}
 						className="absolute bottom-4 left-4"

@@ -1,49 +1,58 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { env } from "../env"
 import {
-  VECTOR_SIZE,
-  ensureVectorSize,
-  generateDeterministicEmbedding,
+	ensureVectorSize,
+	generateDeterministicEmbedding,
+	VECTOR_SIZE,
 } from "./embedding"
 
-const googleClient = env.GOOGLE_API_KEY ? new GoogleGenerativeAI(env.GOOGLE_API_KEY) : null
-const embeddingModel = googleClient?.getGenerativeModel({ model: env.EMBEDDING_MODEL })
+const googleClient = env.GOOGLE_API_KEY
+	? new GoogleGenerativeAI(env.GOOGLE_API_KEY)
+	: null
+const embeddingModel = googleClient?.getGenerativeModel({
+	model: env.EMBEDDING_MODEL,
+})
 
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const normalizedText = text.trim()
-  if (!normalizedText) {
-    return new Array<number>(VECTOR_SIZE).fill(0)
-  }
+	const normalizedText = text.trim()
+	if (!normalizedText) {
+		return new Array<number>(VECTOR_SIZE).fill(0)
+	}
 
-  if (!embeddingModel) {
-    return ensureVectorSize(generateDeterministicEmbedding(normalizedText))
-  }
+	if (!embeddingModel) {
+		return ensureVectorSize(generateDeterministicEmbedding(normalizedText))
+	}
 
-  try {
-    const result = await embeddingModel.embedContent({
-      content: {
-        parts: [{ text: normalizedText }],
-      },
-    })
-    const values = result?.embedding?.values
-    if (Array.isArray(values) && values.length > 0) {
-      return ensureVectorSize(values, VECTOR_SIZE)
-    }
-  } catch (error) {
-    console.warn("Embedding provider failed, falling back to deterministic vector", error)
-  }
+	try {
+		const result = await embeddingModel.embedContent({
+			content: {
+				parts: [{ text: normalizedText }],
+			},
+		})
+		const values = result?.embedding?.values
+		if (Array.isArray(values) && values.length > 0) {
+			return ensureVectorSize(values, VECTOR_SIZE)
+		}
+	} catch (error) {
+		console.warn(
+			"Embedding provider failed, falling back to deterministic vector",
+			error,
+		)
+	}
 
-  return ensureVectorSize(generateDeterministicEmbedding(normalizedText))
+	return ensureVectorSize(generateDeterministicEmbedding(normalizedText))
 }
 
-export async function generateEmbeddingsBatch(texts: string[]): Promise<number[][]> {
-  const results: number[][] = []
-  for (const text of texts) {
-    // Process sequentially to respect provider rate limits.
-    // Adjust to parallel batches if higher throughput is required later.
-    // eslint-disable-next-line no-await-in-loop
-    const embedding = await generateEmbedding(text)
-    results.push(embedding)
-  }
-  return results
+export async function generateEmbeddingsBatch(
+	texts: string[],
+): Promise<number[][]> {
+	const results: number[][] = []
+	for (const text of texts) {
+		// Process sequentially to respect provider rate limits.
+		// Adjust to parallel batches if higher throughput is required later.
+		// eslint-disable-next-line no-await-in-loop
+		const embedding = await generateEmbedding(text)
+		results.push(embedding)
+	}
+	return results
 }

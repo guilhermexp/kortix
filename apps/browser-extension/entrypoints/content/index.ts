@@ -2,9 +2,17 @@ import { DOMAINS, MESSAGE_TYPES } from "../../utils/constants"
 import { DOMUtils } from "../../utils/ui-components"
 import { initializeChatGPT } from "./chatgpt"
 import { initializeClaude } from "./claude"
-import { saveMemory, setupGlobalKeyboardShortcut, setupStorageListener } from "./shared"
+import {
+	saveMemory,
+	setupGlobalKeyboardShortcut,
+	setupStorageListener,
+} from "./shared"
 import { initializeT3 } from "./t3"
-import { handleTwitterNavigation, initializeTwitter, updateTwitterImportUI } from "./twitter"
+import {
+	handleTwitterNavigation,
+	initializeTwitter,
+	updateTwitterImportUI,
+} from "./twitter"
 
 export default defineContentScript({
 	matches: ["<all_urls>"],

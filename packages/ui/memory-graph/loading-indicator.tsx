@@ -7,7 +7,7 @@ import { memo } from "react";
 import type { LoadingIndicatorProps } from "./types";
 
 export const LoadingIndicator = memo<LoadingIndicatorProps>(
-	({ isLoading, isLoadingMore, totalLoaded, variant = "console" }) => {
+	({ isLoading, isLoadingMore, totalLoaded }) => {
 		// Use explicit classes that Tailwind can detect
 		const getPositioningClasses = () => {
 			// Both variants use the same positioning for loadingIndicator

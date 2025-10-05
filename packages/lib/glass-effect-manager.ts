@@ -109,15 +109,18 @@ class GlassEffectManager {
 		`
 
 		const createShader = (type: number, source: string) => {
-			const shader = this.gl!.createShader(type)
+			const gl = this.gl
+			if (!gl) return null
+
+			const shader = gl.createShader(type)
 			if (!shader) return null
 
-			this.gl!.shaderSource(shader, source)
-			this.gl!.compileShader(shader)
+			gl.shaderSource(shader, source)
+			gl.compileShader(shader)
 
-			if (!this.gl!.getShaderParameter(shader, this.gl!.COMPILE_STATUS)) {
-				console.error("Shader error:", this.gl!.getShaderInfoLog(shader))
-				this.gl!.deleteShader(shader)
+			if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+				console.error("Shader error:", gl.getShaderInfoLog(shader))
+				gl.deleteShader(shader)
 				return null
 			}
 			return shader
@@ -133,7 +136,6 @@ class GlassEffectManager {
 		this.gl.attachShader(this.program, vs)
 		this.gl.attachShader(this.program, fs)
 		this.gl.linkProgram(this.program)
-		// biome-ignore  lint/correctness/useHookAtTopLevel: Well, not a hook
 		this.gl.useProgram(this.program)
 
 		// Buffer setup
@@ -215,7 +217,9 @@ class GlassEffectManager {
 
 	private startRenderLoop() {
 		const render = () => {
-			if (!this.gl || !this.program || this.effects.size === 0) {
+			const gl = this.gl
+			const canvas = this.canvas
+			if (!gl || !canvas || !this.program || this.effects.size === 0) {
 				this.animationFrame = requestAnimationFrame(render)
 				return
 			}
@@ -232,48 +236,38 @@ class GlassEffectManager {
 				}
 
 				// Set canvas size if needed
-				if (
-					this.canvas!.width !== effect.width ||
-					this.canvas!.height !== effect.height
-				) {
-					this.canvas!.width = effect.width
-					this.canvas!.height = effect.height
-					this.gl.viewport(0, 0, effect.width, effect.height)
+				if (canvas.width !== effect.width || canvas.height !== effect.height) {
+					canvas.width = effect.width
+					canvas.height = effect.height
+					gl.viewport(0, 0, effect.width, effect.height)
 				}
 
 				// Clear and render
-				this.gl.clearColor(0, 0, 0, 0)
-				this.gl.clear(this.gl.COLOR_BUFFER_BIT)
+				gl.clearColor(0, 0, 0, 0)
+				gl.clear(gl.COLOR_BUFFER_BIT)
 
 				// Set uniforms
 				if (this.uniforms.resolution) {
-					this.gl.uniform2f(
-						this.uniforms.resolution,
-						effect.width,
-						effect.height,
-					)
+					gl.uniform2f(this.uniforms.resolution, effect.width, effect.height)
 				}
 				if (this.uniforms.time) {
-					this.gl.uniform1f(this.uniforms.time, currentTime)
+					gl.uniform1f(this.uniforms.time, currentTime)
 				}
 				if (this.uniforms.mouse) {
-					this.gl.uniform2f(this.uniforms.mouse, mousePos.x, mousePos.y)
+					gl.uniform2f(this.uniforms.mouse, mousePos.x, mousePos.y)
 				}
 				if (this.uniforms.expanded) {
-					this.gl.uniform1f(
-						this.uniforms.expanded,
-						effect.isExpanded ? 1.0 : 0.0,
-					)
+					gl.uniform1f(this.uniforms.expanded, effect.isExpanded ? 1.0 : 0.0)
 				}
 
 				// Draw
-				this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4)
+				gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
 				// Copy to target canvas
 				const targetCtx = effect.targetCanvas.getContext("2d")
 				if (targetCtx) {
 					targetCtx.clearRect(0, 0, effect.width, effect.height)
-					targetCtx.drawImage(this.canvas!, 0, 0)
+					targetCtx.drawImage(canvas, 0, 0)
 				}
 			}
 
