@@ -1,6 +1,5 @@
 import { createFetch, createSchema } from "@better-fetch/fetch"
 import { z } from "zod"
-import { BACKEND_URL } from "./env"
 import {
 	ConnectionResponseSchema,
 	CreateProjectSchema,
@@ -20,6 +19,7 @@ import {
 	type SearchResult,
 	SettingsRequestSchema,
 } from "../validation/api"
+import { BACKEND_URL } from "./env"
 
 // Settings response schema - this is custom to console (not in shared validation)
 const SettingsResponseSchema = z.object({
@@ -165,7 +165,6 @@ export const apiSchema = createSchema({
 	"@get/waitlist/status": {
 		output: WaitlistStatusResponseSchema,
 	},
-
 })
 
 export const $fetch = createFetch({

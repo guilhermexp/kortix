@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server"
-import { APP_URL, APP_HOSTNAME } from "@lib/env"
+import { APP_HOSTNAME, APP_URL } from "@lib/env"
+import { type NextRequest, NextResponse } from "next/server"
 
 export default async function middleware(request: NextRequest) {
 	console.debug("[MIDDLEWARE] === MIDDLEWARE START ===")

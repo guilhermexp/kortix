@@ -1,37 +1,37 @@
-import { useAuth } from "@lib/auth-context";
+import { useAuth } from "@lib/auth-context"
+import { useCustomer } from "@lib/autumn-stub"
+import { APP_URL } from "@lib/env"
 import {
 	fetchConnectionsFeature,
 	fetchMemoriesFeature,
 	fetchSubscriptionStatus,
-} from "@lib/queries";
-import { Button } from "@ui/components/button";
-import { HeadingH3Bold } from "@ui/text/heading/heading-h3-bold";
-import { useCustomer } from "@lib/autumn-stub";
-import { APP_URL } from "@lib/env";
-import { CheckCircle, LoaderIcon, X } from "lucide-react";
-import { motion } from "motion/react";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { analytics } from "@/lib/analytics";
+} from "@lib/queries"
+import { Button } from "@ui/components/button"
+import { HeadingH3Bold } from "@ui/text/heading/heading-h3-bold"
+import { CheckCircle, LoaderIcon, X } from "lucide-react"
+import { motion } from "motion/react"
+import Link from "next/link"
+import { useEffect, useState } from "react"
+import { analytics } from "@/lib/analytics"
 
 export function BillingView() {
-	const autumn = useCustomer();
-	const appOrigin = APP_URL.replace(/\/$/, "");
-	const { user } = useAuth();
-	const [isLoading, setIsLoading] = useState(false);
+	const autumn = useCustomer()
+	const appOrigin = APP_URL.replace(/\/$/, "")
+	const { user } = useAuth()
+	const [isLoading, setIsLoading] = useState(false)
 
 	useEffect(() => {
-		analytics.billingViewed();
-	}, []);
+		analytics.billingViewed()
+	}, [])
 
-	const { data: memoriesCheck } = fetchMemoriesFeature(autumn as any);
+	const { data: memoriesCheck } = fetchMemoriesFeature(autumn)
 
-	const memoriesUsed = memoriesCheck?.usage ?? 0;
-	const memoriesLimit = memoriesCheck?.included_usage ?? 0;
+	const memoriesUsed = memoriesCheck?.usage ?? 0
+	const memoriesLimit = memoriesCheck?.included_usage ?? 0
 
-	const { data: connectionsCheck } = fetchConnectionsFeature(autumn as any);
+	const { data: connectionsCheck } = fetchConnectionsFeature(autumn)
 
-	const connectionsUsed = connectionsCheck?.usage ?? 0;
+	const connectionsUsed = connectionsCheck?.usage ?? 0
 
 	// Fetch subscription status with React Query
 	const {
@@ -39,34 +39,34 @@ export function BillingView() {
 			consumer_pro: null,
 		},
 		isLoading: isCheckingStatus,
-	} = fetchSubscriptionStatus(autumn as any);
+	} = fetchSubscriptionStatus(autumn)
 
 	// Handle upgrade
 	const handleUpgrade = async () => {
-		analytics.upgradeInitiated();
-		setIsLoading(true);
+		analytics.upgradeInitiated()
+		setIsLoading(true)
 		try {
 			await autumn.attach({
 				productId: "consumer_pro",
 				successUrl: `${appOrigin}/`,
-			});
-			analytics.upgradeCompleted();
-			window.location.reload();
+			})
+			analytics.upgradeCompleted()
+			window.location.reload()
 		} catch (error) {
-			console.error(error);
-			setIsLoading(false);
+			console.error(error)
+			setIsLoading(false)
 		}
-	};
+	}
 
 	// Handle manage billing
 	const handleManageBilling = async () => {
-		analytics.billingPortalOpened();
-			await autumn.openBillingPortal({
-				returnUrl: appOrigin,
-			});
-	};
+		analytics.billingPortalOpened()
+		await autumn.openBillingPortal({
+			returnUrl: appOrigin,
+		})
+	}
 
-	const isPro = status.consumer_pro;
+	const isPro = status.consumer_pro
 
 	if (user?.isAnonymous) {
 		return (
@@ -87,7 +87,7 @@ export function BillingView() {
 					</Button>
 				</motion.div>
 			</motion.div>
-		);
+		)
 	}
 
 	if (isPro) {
@@ -149,7 +149,7 @@ export function BillingView() {
 					</Button>
 				</motion.div>
 			</motion.div>
-		);
+		)
 	}
 
 	return (
@@ -259,5 +259,5 @@ export function BillingView() {
 				</p>
 			</div>
 		</motion.div>
-	);
+	)
 }

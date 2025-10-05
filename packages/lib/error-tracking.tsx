@@ -12,7 +12,7 @@ export function useErrorTracking() {
 
 	const trackError = (
 		error: Error | unknown,
-		context?: Record<string, any>,
+		context?: Record<string, unknown>,
 	) => {
 		const errorDetails = {
 			error_message: error instanceof Error ? error.message : String(error),
@@ -116,7 +116,10 @@ export function useInteractionTracking() {
 	const { data: session } = useSession()
 	const pathname = usePathname()
 
-	const trackInteraction = (action: string, details?: Record<string, any>) => {
+	const trackInteraction = (
+		action: string,
+		details?: Record<string, unknown>,
+	) => {
 		posthog.capture("user_interaction", {
 			action,
 			pathname,
@@ -129,7 +132,7 @@ export function useInteractionTracking() {
 	const trackFormSubmission = (
 		formName: string,
 		success: boolean,
-		details?: Record<string, any>,
+		details?: Record<string, unknown>,
 	) => {
 		posthog.capture("form_submission", {
 			form_name: formName,

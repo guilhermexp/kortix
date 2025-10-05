@@ -1,28 +1,28 @@
 {
-  "mcpServers": {
-    "supabase": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@supabase/mcp-server-supabase",
-        "--project-ref=lrqjdzqyaoiovnzfbnrj"
-      ],
-      "env": {
-        "SUPABASE_ACCESS_TOKEN": "sbp_bdc3fc8278d07bdd10180d323c479d0fac988325"
-      }
-    },
-    "railway-mcp": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@smithery/cli@latest",
-        "run",
-        "@jason-tan-swe/railway-mcp",
-        "--key",
-        "7c42b68b-05b6-4d09-bbed-a19497f86338",
-        "--profile",
-        "logical-possum-E7cg3V"
-      ]
-    }
-  }
+	"mcpServers": {
+		"supabase": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@supabase/mcp-server-supabase",
+				"--project-ref=lrqjdzqyaoiovnzfbnrj"
+			],
+			"env": {
+				"SUPABASE_ACCESS_TOKEN": "sbp_bdc3fc8278d07bdd10180d323c479d0fac988325"
+			}
+		},
+		"railway-mcp": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@smithery/cli@latest",
+				"run",
+				"@jason-tan-swe/railway-mcp",
+				"--key",
+				"7c42b68b-05b6-4d09-bbed-a19497f86338",
+				"--profile",
+				"logical-possum-E7cg3V"
+			]
+		}
+	}
 }

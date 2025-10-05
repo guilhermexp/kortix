@@ -2,9 +2,13 @@
 
 import { useIsMobile } from "@hooks/use-mobile"
 import { useAuth } from "@lib/auth-context"
+import { APP_URL } from "@lib/env"
 import { $fetch } from "@repo/lib/api"
 import { MemoryGraph } from "@repo/ui/memory-graph"
-import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
+import type {
+	DocumentsWithMemoriesResponseSchema,
+	ProjectSchema,
+} from "@repo/validation/api"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { Logo, LogoFull } from "@ui/assets/Logo"
 import { Button } from "@ui/components/button"
@@ -19,8 +23,7 @@ import {
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { APP_URL } from "@lib/env"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { z } from "zod"
 import { ConnectAIModal } from "@/components/connect-ai-modal"
 import { InstallPrompt } from "@/components/install-prompt"
@@ -39,11 +42,12 @@ import { useGraphHighlights } from "@/stores/highlights"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
+type Project = z.infer<typeof ProjectSchema>
 
 const MemoryGraphPage = () => {
 	const { documentIds: allHighlightDocumentIds } = useGraphHighlights()
 	const isMobile = useIsMobile()
-	const { viewMode, setViewMode, isInitialized } = useViewMode()
+	const { viewMode, setViewMode } = useViewMode()
 	const { selectedProject } = useProject()
 	const { setSteps, isTourCompleted } = useTour()
 	const { isOpen, setIsOpen } = useChatOpen()
@@ -54,7 +58,7 @@ const MemoryGraphPage = () => {
 	const [isHelpHovered, setIsHelpHovered] = useState(false)
 
 	// Fetch projects meta to detect experimental flag
-	const { data: projectsMeta = [] } = useQuery({
+	const { data: projectsMeta = [] } = useQuery<Project[]>({
 		queryKey: ["projects"],
 		queryFn: async () => {
 			const response = await $fetch("@get/projects")
@@ -63,9 +67,10 @@ const MemoryGraphPage = () => {
 		staleTime: 5 * 60 * 1000,
 	})
 
-	const isCurrentProjectExperimental = !!projectsMeta.find(
-		(p: any) => p.containerTag === selectedProject,
-	)?.isExperimental
+	const isCurrentProjectExperimental = Boolean(
+		projectsMeta.find((project) => project.containerTag === selectedProject)
+			?.isExperimental,
+	)
 
 	// Tour state
 	const [showTourDialog, setShowTourDialog] = useState(false)
@@ -278,9 +283,7 @@ const MemoryGraphPage = () => {
 	})
 
 	const baseDocuments = useMemo(() => {
-		return (
-			data?.pages.flatMap((p: DocumentsResponse) => p.documents ?? []) ?? []
-		)
+		return data?.pages.flatMap((pageData) => pageData.documents ?? []) ?? []
 	}, [data])
 
 	const allDocuments = useMemo(() => {
@@ -303,28 +306,35 @@ const MemoryGraphPage = () => {
 		return
 	}, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
+	const previousProjectRef = useRef<string | null>(null)
+
 	// Reset injected docs when project changes
 	useEffect(() => {
+		const projectKey = selectedProject ?? null
+		if (previousProjectRef.current === projectKey) {
+			return
+		}
+		previousProjectRef.current = projectKey
 		setInjectedDocs([])
 	}, [selectedProject])
 
 	// Surgical fetch of missing highlighted documents (customId-based IDs from search)
 	useEffect(() => {
 		if (!isOpen) return
-		if (!allHighlightDocumentIds || allHighlightDocumentIds.length === 0) return
+		if (allHighlightDocumentIds.length === 0) return
 		const present = new Set<string>()
-		for (const d of [...baseDocuments, ...injectedDocs]) {
-			if (d.id) present.add(d.id)
-			if ((d as any).customId) present.add((d as any).customId as string)
+		for (const doc of [...baseDocuments, ...injectedDocs]) {
+			present.add(doc.id)
+			if (doc.customId) {
+				present.add(doc.customId)
+			}
 		}
-		const missing = allHighlightDocumentIds.filter(
-			(id: string) => !present.has(id),
-		)
+		const missing = allHighlightDocumentIds.filter((id) => !present.has(id))
 		if (missing.length === 0) return
 		let cancelled = false
 		const run = async () => {
 			try {
-				const resp = await $fetch("@post/documents/documents/by-ids", {
+				const response = await $fetch("@post/documents/documents/by-ids", {
 					body: {
 						ids: missing,
 						by: "customId",
@@ -332,26 +342,37 @@ const MemoryGraphPage = () => {
 					},
 					disableValidation: true,
 				})
-				if (cancelled || (resp as any)?.error) return
-				const extraDocs = (resp as any)?.data?.documents as
-					| DocumentWithMemories[]
-					| undefined
-				if (!extraDocs || extraDocs.length === 0) return
+				if (cancelled || response.error) return
+				const extraDocs = response.data?.documents ?? []
+				if (extraDocs.length === 0) return
 				setInjectedDocs((prev) => {
 					const seen = new Set<string>([
-						...prev.map((d) => d.id),
-						...baseDocuments.map((d) => d.id),
+						...prev.flatMap(
+							(document) =>
+								[document.id, document.customId].filter(Boolean) as string[],
+						),
+						...baseDocuments.flatMap(
+							(document) =>
+								[document.id, document.customId].filter(Boolean) as string[],
+						),
 					])
 					const merged = [...prev]
-					for (const doc of extraDocs) {
-						if (!seen.has(doc.id)) {
-							merged.push(doc)
-							seen.add(doc.id)
+					for (const document of extraDocs) {
+						if (!seen.has(document.id)) {
+							merged.push(document)
+							seen.add(document.id)
+						}
+						if (document.customId) {
+							seen.add(document.customId)
 						}
 					}
 					return merged
 				})
-			} catch {}
+			} catch (fetchError) {
+				if (process.env.NODE_ENV !== "production") {
+					console.error(fetchError)
+				}
+			}
 		}
 		void run()
 		return () => {
@@ -359,11 +380,10 @@ const MemoryGraphPage = () => {
 		}
 	}, [
 		isOpen,
-		allHighlightDocumentIds.join("|"),
+		allHighlightDocumentIds,
 		baseDocuments,
 		injectedDocs,
 		selectedProject,
-		$fetch,
 	])
 
 	// Handle view mode change

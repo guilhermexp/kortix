@@ -1,42 +1,42 @@
 export const analytics = {
-  userSignedOut: () => {},
-  tourStarted: () => {},
-  tourCompleted: () => {},
-  tourSkipped: () => {},
+	userSignedOut: () => {},
+	tourStarted: () => {},
+	tourCompleted: () => {},
+	tourSkipped: () => {},
 
-  memoryAdded: (_props: {
-    type: "note" | "link" | "file"
-    project_id?: string
-    content_length?: number
-    file_size?: number
-    file_type?: string
-  }) => {},
+	memoryAdded: (_props: {
+		type: "note" | "link" | "file"
+		project_id?: string
+		content_length?: number
+		file_size?: number
+		file_type?: string
+	}) => {},
 
-  memoryDetailOpened: () => {},
+	memoryDetailOpened: () => {},
 
-  projectCreated: () => {},
+	projectCreated: () => {},
 
-  newChatStarted: () => {},
-  chatHistoryViewed: () => {},
-  chatDeleted: () => {},
+	newChatStarted: () => {},
+	chatHistoryViewed: () => {},
+	chatDeleted: () => {},
 
-  viewModeChanged: (_mode: "graph" | "list") => {},
+	viewModeChanged: (_mode: "graph" | "list") => {},
 
-  documentCardClicked: () => {},
+	documentCardClicked: () => {},
 
-  billingViewed: () => {},
-  upgradeInitiated: () => {},
-  upgradeCompleted: () => {},
-  billingPortalOpened: () => {},
+	billingViewed: () => {},
+	upgradeInitiated: () => {},
+	upgradeCompleted: () => {},
+	billingPortalOpened: () => {},
 
-  connectionAdded: (_provider: string) => {},
-  connectionDeleted: () => {},
-  connectionAuthStarted: () => {},
-  connectionAuthCompleted: () => {},
-  connectionAuthFailed: () => {},
+	connectionAdded: (_provider: string) => {},
+	connectionDeleted: () => {},
+	connectionAuthStarted: () => {},
+	connectionAuthCompleted: () => {},
+	connectionAuthFailed: () => {},
 
-  mcpViewOpened: () => {},
-  mcpInstallCmdCopied: () => {},
+	mcpViewOpened: () => {},
+	mcpInstallCmdCopied: () => {},
 
-  extensionInstallClicked: () => {},
+	extensionInstallClicked: () => {},
 }

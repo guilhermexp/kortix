@@ -1,8 +1,6 @@
 import { $fetch } from "@lib/api"
-import {
-	fetchConsumerProProduct,
-	fetchMemoriesFeature,
-} from "@repo/lib/queries"
+import { useCustomer } from "@lib/autumn-stub"
+import { fetchMemoriesFeature } from "@repo/lib/queries"
 import { Button } from "@repo/ui/components/button"
 import {
 	Dialog,
@@ -22,7 +20,6 @@ import {
 	DropzoneContent,
 	DropzoneEmptyState,
 } from "@ui/components/shadcn-io/dropzone"
-import { useCustomer } from "@lib/autumn-stub"
 import {
 	Brain,
 	FileIcon,
@@ -65,6 +62,112 @@ const TextEditor = dynamic(
 		ssr: false,
 	},
 )
+
+type DocumentListItem = {
+	id: string
+	title: string | null
+	content: string | null
+	url: string | null
+	description?: string | null
+	containerTags?: string[]
+	createdAt: string
+	updatedAt: string
+	status?: string | null
+	type?: string | null
+	metadata?: Record<string, unknown> | null
+	memoryEntries: unknown[]
+	isOptimistic?: boolean
+	[key: string]: unknown
+}
+
+type DocumentsPagination = {
+	currentPage: number
+	limit: number
+	totalItems: number
+	totalPages: number
+	[key: string]: unknown
+}
+
+type DocumentsListData = {
+	documents?: DocumentListItem[]
+	pagination?: DocumentsPagination
+	[key: string]: unknown
+}
+
+type InfiniteDocumentsListData = {
+	pages: DocumentsListData[]
+	pageParams: unknown[]
+}
+
+type DocumentsQueryData = DocumentsListData | InfiniteDocumentsListData
+
+type MemoryStatusResponse = {
+	status?: string | null
+	content?: string | null
+	[key: string]: unknown
+}
+
+const isDocumentsListData = (value: unknown): value is DocumentsListData => {
+	if (!value || typeof value !== "object") return false
+	const maybe = value as DocumentsListData
+	return Array.isArray(maybe.documents) || maybe.pagination !== undefined
+}
+
+const isInfiniteDocumentsListData = (
+	value: unknown,
+): value is InfiniteDocumentsListData => {
+	if (!value || typeof value !== "object") return false
+	const maybe = value as Partial<InfiniteDocumentsListData>
+	return Array.isArray(maybe.pages) && Array.isArray(maybe.pageParams)
+}
+
+const withOptimisticMemory = (
+	list: DocumentsListData | undefined,
+	memory: DocumentListItem,
+): DocumentsListData => {
+	const existingDocuments = list?.documents ?? []
+	const updatedDocuments = [memory, ...existingDocuments]
+	const pagination = list?.pagination
+		? {
+				...list.pagination,
+				totalItems:
+					typeof list.pagination.totalItems === "number"
+						? list.pagination.totalItems + 1
+						: existingDocuments.length + 1,
+			}
+		: {
+				currentPage: 1,
+				limit: 10,
+				totalItems: existingDocuments.length + 1,
+				totalPages: 1,
+			}
+
+	return {
+		...(list ?? {}),
+		documents: updatedDocuments,
+		pagination,
+	}
+}
+
+const mergeOptimisticMemory = (
+	data: DocumentsQueryData | undefined,
+	memory: DocumentListItem,
+): DocumentsQueryData => {
+	if (isInfiniteDocumentsListData(data)) {
+		const [firstPage, ...restPages] = data.pages
+		const updatedFirstPage = withOptimisticMemory(firstPage, memory)
+		return {
+			...data,
+			pages: [updatedFirstPage, ...restPages],
+		}
+	}
+
+	if (isDocumentsListData(data)) {
+		return withOptimisticMemory(data, memory)
+	}
+
+	return withOptimisticMemory(undefined, memory)
+}
 
 // // Processing status component
 // function ProcessingStatus({ status }: { status: string }) {
@@ -255,13 +358,13 @@ export function AddMemoryView({
 				const memoryId = response.data.id
 
 				// Polling function to check status
-				const pollForCompletion = async (): Promise<any> => {
+				const pollForCompletion = async (): Promise<MemoryStatusResponse> => {
 					let attempts = 0
 					const maxAttempts = 60 // Maximum 5 minutes (60 attempts * 5 seconds)
 
 					while (attempts < maxAttempts) {
 						try {
-							const memory = await $fetch<{ status: string; content: string }>(
+							const memory = await $fetch<MemoryStatusResponse>(
 								`@get/documents/${memoryId}`,
 							)
 
@@ -325,14 +428,14 @@ export function AddMemoryView({
 			console.log("✅ Cancelled queries")
 
 			// Snapshot the previous value
-			const previousMemories = queryClient.getQueryData([
+			const previousMemories = queryClient.getQueryData<DocumentsQueryData>([
 				"documents-with-memories",
 				project,
 			])
 			console.log("📸 Previous memories:", previousMemories)
 
 			// Create optimistic memory
-			const optimisticMemory = {
+			const optimisticMemory: DocumentListItem = {
 				id: `temp-${Date.now()}`,
 				content: contentType === "link" ? "" : content,
 				url: contentType === "link" ? content : null,
@@ -357,27 +460,16 @@ export function AddMemoryView({
 			console.log("🎯 Created optimistic memory:", optimisticMemory)
 
 			// Optimistically update to include the new memory
-			queryClient.setQueryData(
+			queryClient.setQueryData<DocumentsQueryData | undefined>(
 				["documents-with-memories", project],
-				(old: any) => {
-					console.log("🔄 Old data:", old)
-					const newData = old
-						? {
-								...old,
-								documents: [optimisticMemory, ...(old.documents || [])],
-								totalCount: (old.totalCount || 0) + 1,
-							}
-						: { documents: [optimisticMemory], totalCount: 1 }
-					console.log("✨ New data:", newData)
-					return newData
-				},
+				(oldData) => mergeOptimisticMemory(oldData, optimisticMemory),
 			)
 
 			console.log("✅ onMutate completed")
 			return { previousMemories, optimisticId: optimisticMemory.id }
 		},
 		// If the mutation fails, roll back to the previous value
-		onError: (error, variables, context) => {
+		onError: (_error, variables, context) => {
 			if (context?.previousMemories) {
 				queryClient.setQueryData(
 					["documents-with-memories", variables.project],
@@ -476,13 +568,13 @@ export function AddMemoryView({
 			})
 
 			// Snapshot the previous value
-			const previousMemories = queryClient.getQueryData([
+			const previousMemories = queryClient.getQueryData<DocumentsQueryData>([
 				"documents-with-memories",
 				project,
 			])
 
 			// Create optimistic memory for the file
-			const optimisticMemory = {
+			const optimisticMemory: DocumentListItem = {
 				id: `temp-file-${Date.now()}`,
 				content: "",
 				url: null,
@@ -499,19 +591,13 @@ export function AddMemoryView({
 					mimeType: file.type,
 				},
 				memoryEntries: [],
+				isOptimistic: true,
 			}
 
 			// Optimistically update to include the new memory
-			queryClient.setQueryData(
+			queryClient.setQueryData<DocumentsQueryData | undefined>(
 				["documents-with-memories", project],
-				(old: any) => {
-					if (!old) return { documents: [optimisticMemory], totalCount: 1 }
-					return {
-						...old,
-						documents: [optimisticMemory, ...(old.documents || [])],
-						totalCount: (old.totalCount || 0) + 1,
-					}
-				},
+				(oldData) => mergeOptimisticMemory(oldData, optimisticMemory),
 			)
 
 			// Return a context object with the snapshotted value

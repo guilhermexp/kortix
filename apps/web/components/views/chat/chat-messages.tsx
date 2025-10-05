@@ -1,11 +1,11 @@
-"use client";
+"use client"
 
-import { useChat, useCompletion } from "@ai-sdk/react";
-import { BACKEND_URL } from "@lib/env";
-import { cn } from "@lib/utils";
-import { Button } from "@ui/components/button";
-import { Input } from "@ui/components/input";
-import { DefaultChatTransport } from "ai";
+import { useChat, useCompletion } from "@ai-sdk/react"
+import { BACKEND_URL } from "@lib/env"
+import { cn } from "@lib/utils"
+import { Button } from "@ui/components/button"
+import { Input } from "@ui/components/input"
+import { DefaultChatTransport } from "ai"
 import {
 	ArrowUp,
 	Check,
@@ -14,37 +14,142 @@ import {
 	Copy,
 	RotateCcw,
 	X,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
-import { Streamdown } from "streamdown";
-import { TextShimmer } from "@/components/text-shimmer";
-import { usePersistentChat, useProject } from "@/stores";
-import { useGraphHighlights } from "@/stores/highlights";
-import { Spinner } from "../../spinner";
+} from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
+import { Streamdown } from "streamdown"
+import { TextShimmer } from "@/components/text-shimmer"
+import { usePersistentChat, useProject } from "@/stores"
+import { useGraphHighlights } from "@/stores/highlights"
+import { Spinner } from "../../spinner"
 
 interface MemoryResult {
-	documentId?: string;
-	title?: string;
-	content?: string;
-	url?: string;
-	score?: number;
+	documentId?: string
+	title?: string
+	content?: string
+	url?: string
+	score?: number
 }
 
 interface ExpandableMemoriesProps {
-	foundCount: number;
-	results: MemoryResult[];
+	foundCount: number
+	results: MemoryResult[]
+}
+
+type ToolState =
+	| "input-available"
+	| "input-streaming"
+	| "output-available"
+	| "output-error"
+
+type TextPart = {
+	type: "text"
+	text: string
+}
+
+type SearchMemoriesPart =
+	| {
+			type: "tool-searchMemories"
+			state: Exclude<ToolState, "output-available">
+	  }
+	| {
+			type: "tool-searchMemories"
+			state: "output-available"
+			output: {
+				count?: unknown
+				results?: unknown
+			}
+	  }
+
+type SearchMemoriesOutputPart = Extract<
+	SearchMemoriesPart,
+	{ state: "output-available" }
+>
+
+type AddMemoryPart = {
+	type: "tool-addMemory"
+	state: ToolState
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null
+}
+
+function isTextPart(part: unknown): part is TextPart {
+	return isObject(part) && part.type === "text" && typeof part.text === "string"
+}
+
+function isToolState(value: unknown): value is ToolState {
+	return (
+		typeof value === "string" &&
+		[
+			"input-available",
+			"input-streaming",
+			"output-available",
+			"output-error",
+		].includes(value)
+	)
+}
+
+function isSearchMemoriesPart(part: unknown): part is SearchMemoriesPart {
+	return (
+		isObject(part) &&
+		part.type === "tool-searchMemories" &&
+		isToolState(part.state)
+	)
+}
+
+function isSearchMemoriesOutputPart(
+	part: unknown,
+): part is SearchMemoriesOutputPart {
+	return (
+		isSearchMemoriesPart(part) &&
+		part.state === "output-available" &&
+		"output" in part &&
+		isObject(part.output ?? null)
+	)
+}
+
+function isAddMemoryPart(part: unknown): part is AddMemoryPart {
+	return (
+		isObject(part) && part.type === "tool-addMemory" && isToolState(part.state)
+	)
+}
+
+function toMemoryResult(value: unknown): MemoryResult | null {
+	if (!isObject(value)) return null
+	const { documentId, title, content, url, score } = value
+	const parsedScore =
+		typeof score === "number"
+			? score
+			: typeof score === "string"
+				? Number.parseFloat(score)
+				: undefined
+	return {
+		documentId: typeof documentId === "string" ? documentId : undefined,
+		title: typeof title === "string" ? title : undefined,
+		content: typeof content === "string" ? content : undefined,
+		url: typeof url === "string" ? url : undefined,
+		score: Number.isFinite(parsedScore) ? parsedScore : undefined,
+	}
+}
+
+function toMemoryResults(value: unknown): MemoryResult[] {
+	if (!Array.isArray(value)) return []
+	return value
+		.map((item) => toMemoryResult(item))
+		.filter((item): item is MemoryResult => item !== null)
 }
 
 function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
-	const [isExpanded, setIsExpanded] = useState(false);
+	const [isExpanded, setIsExpanded] = useState(false)
 
 	if (foundCount === 0) {
 		return (
 			<div className="text-sm flex items-center gap-2 text-muted-foreground">
 				<Check className="size-4" /> No memories found
 			</div>
-		);
+		)
 	}
 
 	return (
@@ -69,7 +174,7 @@ function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
 						const isClickable =
 							result.url &&
 							(result.url.startsWith("http://") ||
-								result.url.startsWith("https://"));
+								result.url.startsWith("https://"))
 
 						const content = (
 							<>
@@ -94,7 +199,7 @@ function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
 									</div>
 								)}
 							</>
-						);
+						)
 
 						if (isClickable) {
 							return (
@@ -107,7 +212,7 @@ function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
 								>
 									{content}
 								</a>
-							);
+							)
 						}
 
 						return (
@@ -117,84 +222,84 @@ function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
 							>
 								{content}
 							</div>
-						);
+						)
 					})}
 				</div>
 			)}
 		</div>
-	);
+	)
 }
 
 function useStickyAutoScroll(triggerKeys: ReadonlyArray<unknown>) {
-	const scrollContainerRef = useRef<HTMLDivElement>(null);
-	const bottomRef = useRef<HTMLDivElement>(null);
-	const [isAutoScroll, setIsAutoScroll] = useState(true);
-	const [isFarFromBottom, setIsFarFromBottom] = useState(false);
+	const scrollContainerRef = useRef<HTMLDivElement>(null)
+	const bottomRef = useRef<HTMLDivElement>(null)
+	const [isAutoScroll, setIsAutoScroll] = useState(true)
+	const [isFarFromBottom, setIsFarFromBottom] = useState(false)
 
-	const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
-		const node = bottomRef.current;
-		if (node) node.scrollIntoView({ behavior, block: "end" });
-	};
+	const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
+		const node = bottomRef.current
+		if (node) node.scrollIntoView({ behavior, block: "end" })
+	}, [])
 
 	useEffect(function observeBottomVisibility() {
-		const container = scrollContainerRef.current;
-		const sentinel = bottomRef.current;
-		if (!container || !sentinel) return;
+		const container = scrollContainerRef.current
+		const sentinel = bottomRef.current
+		if (!container || !sentinel) return
 
 		const observer = new IntersectionObserver(
 			(entries) => {
-				if (!entries || entries.length === 0) return;
-				const isIntersecting = entries.some((e) => e.isIntersecting);
-				setIsAutoScroll(isIntersecting);
+				if (!entries || entries.length === 0) return
+				const isIntersecting = entries.some((e) => e.isIntersecting)
+				setIsAutoScroll(isIntersecting)
 			},
 			{ root: container, rootMargin: "0px 0px 80px 0px", threshold: 0 },
-		);
-		observer.observe(sentinel);
-		return () => observer.disconnect();
-	}, []);
+		)
+		observer.observe(sentinel)
+		return () => observer.disconnect()
+	}, [])
 
 	useEffect(
 		function observeContentResize() {
-			const container = scrollContainerRef.current;
-			if (!container) return;
+			const container = scrollContainerRef.current
+			if (!container) return
 			const resizeObserver = new ResizeObserver(() => {
-				if (isAutoScroll) scrollToBottom("auto");
+				if (isAutoScroll) scrollToBottom("auto")
 				const distanceFromBottom =
-					container.scrollHeight - container.scrollTop - container.clientHeight;
-				setIsFarFromBottom(distanceFromBottom > 100);
-			});
-			resizeObserver.observe(container);
-			return () => resizeObserver.disconnect();
+					container.scrollHeight - container.scrollTop - container.clientHeight
+				setIsFarFromBottom(distanceFromBottom > 100)
+			})
+			resizeObserver.observe(container)
+			return () => resizeObserver.disconnect()
 		},
-		[isAutoScroll],
-	);
+		[isAutoScroll, scrollToBottom],
+	)
 
 	function enableAutoScroll() {
-		setIsAutoScroll(true);
+		setIsAutoScroll(true)
 	}
 
 	useEffect(
 		function autoScrollOnNewContent() {
-			if (isAutoScroll) scrollToBottom("auto");
+			if (isAutoScroll) scrollToBottom("auto")
 		},
 		[isAutoScroll, scrollToBottom, ...triggerKeys],
-	);
+	)
 
-	const recomputeDistanceFromBottom = () => {
-		const container = scrollContainerRef.current;
-		if (!container) return;
+	const recomputeDistanceFromBottom = useCallback(() => {
+		const container = scrollContainerRef.current
+		if (!container) return
 		const distanceFromBottom =
-			container.scrollHeight - container.scrollTop - container.clientHeight;
-		setIsFarFromBottom(distanceFromBottom > 100);
-	};
+			container.scrollHeight - container.scrollTop - container.clientHeight
+		setIsFarFromBottom(distanceFromBottom > 100)
+	}, [])
 
 	useEffect(() => {
-		recomputeDistanceFromBottom();
-	}, [recomputeDistanceFromBottom, ...triggerKeys]);
+		recomputeDistanceFromBottom()
+	}, [recomputeDistanceFromBottom, ...triggerKeys])
 
-	function onScroll() {
-		recomputeDistanceFromBottom();
-	}
+	const onScroll = useCallback(() => {
+		recomputeDistanceFromBottom()
+	}, [recomputeDistanceFromBottom])
 
 	return {
 		scrollContainerRef,
@@ -204,11 +309,11 @@ function useStickyAutoScroll(triggerKeys: ReadonlyArray<unknown>) {
 		onScroll,
 		enableAutoScroll,
 		scrollToBottom,
-	} as const;
+	} as const
 }
 
 export function ChatMessages() {
-	const { selectedProject } = useProject();
+	const { selectedProject } = useProject()
 	const {
 		currentChatId,
 		setCurrentChatId,
@@ -216,12 +321,12 @@ export function ChatMessages() {
 		getCurrentConversation,
 		setConversationTitle,
 		getCurrentChat,
-	} = usePersistentChat();
+	} = usePersistentChat()
 
-	const activeChatIdRef = useRef<string | null>(null);
-	const shouldGenerateTitleRef = useRef<boolean>(false);
+	const activeChatIdRef = useRef<string | null>(null)
+	const shouldGenerateTitleRef = useRef<boolean>(false)
 
-	const { setDocumentIds } = useGraphHighlights();
+	const { setDocumentIds } = useGraphHighlights()
 
 	const { messages, sendMessage, status, stop, setMessages, id, regenerate } =
 		useChat({
@@ -233,91 +338,88 @@ export function ChatMessages() {
 			}),
 			maxSteps: 2,
 			onFinish: (result) => {
-				const activeId = activeChatIdRef.current;
-				if (!activeId) return;
-				if (result.message.role !== "assistant") return;
+				const activeId = activeChatIdRef.current
+				if (!activeId) return
+				if (result.message.role !== "assistant") return
 
 				if (shouldGenerateTitleRef.current) {
-					const textPart = result.message.parts.find(
-						(p: any) => p?.type === "text",
-					) as any;
-					const text = textPart?.text?.trim();
+					const textPart = result.message.parts.find((part) => isTextPart(part))
+					const text = textPart?.text.trim()
 					if (text) {
-						shouldGenerateTitleRef.current = false;
-						complete(text);
+						shouldGenerateTitleRef.current = false
+						complete(text)
 					}
 				}
 			},
-		});
+		})
+
+	const [input, setInput] = useState("")
 
 	useEffect(() => {
-		activeChatIdRef.current = currentChatId ?? id ?? null;
-	}, [currentChatId, id]);
+		activeChatIdRef.current = currentChatId ?? id ?? null
+	}, [currentChatId, id])
 
 	useEffect(() => {
 		if (id && id !== currentChatId) {
-			setCurrentChatId(id);
+			setCurrentChatId(id)
 		}
-	}, [id, currentChatId, setCurrentChatId]);
+	}, [id, currentChatId, setCurrentChatId])
 
 	useEffect(() => {
-		const msgs = getCurrentConversation();
-		setMessages(msgs ?? []);
-		setInput("");
-	}, [currentChatId]);
+		const activeId = currentChatId
+		const msgs = getCurrentConversation()
+		setMessages(msgs ?? [])
+		setInput("")
+		if (!activeId) {
+			shouldGenerateTitleRef.current = false
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [currentChatId])
 
 	useEffect(() => {
-		const activeId = currentChatId ?? id;
+		const activeId = currentChatId ?? id
 		if (activeId && messages.length > 0) {
-			setConversation(activeId, messages);
+			setConversation(activeId, messages)
 		}
-	}, [messages, currentChatId, id, setConversation]);
+	}, [messages, currentChatId, id, setConversation])
 
-	const [input, setInput] = useState("");
 	const { complete } = useCompletion({
 		api: `${BACKEND_URL}/chat/title`,
 		credentials: "include",
 		onFinish: (_, completion) => {
-			const activeId = activeChatIdRef.current;
-			if (!completion || !activeId) return;
-			setConversationTitle(activeId, completion.trim());
+			const activeId = activeChatIdRef.current
+			if (!completion || !activeId) return
+			setConversationTitle(activeId, completion.trim())
 		},
-	});
+	})
 
 	// Update graph highlights from the most recent tool-searchMemories output
 	useEffect(() => {
 		try {
 			const lastAssistant = [...messages]
 				.reverse()
-				.find((m) => m.role === "assistant");
-			if (!lastAssistant) return;
-			const lastSearchPart = [...(lastAssistant.parts as any[])]
+				.find((m) => m.role === "assistant")
+			if (!lastAssistant) return
+			const lastSearchPart = [...lastAssistant.parts]
 				.reverse()
-				.find(
-					(p) =>
-						p?.type === "tool-searchMemories" &&
-						p?.state === "output-available",
-				);
-			if (!lastSearchPart) return;
-			const output = (lastSearchPart as any).output;
-			const ids = Array.isArray(output?.results)
-				? ((output.results as any[])
-						.map((r) => r?.documentId)
-						.filter(Boolean) as string[])
-				: [];
+				.find((part) => isSearchMemoriesOutputPart(part))
+			if (!lastSearchPart) return
+			const ids = toMemoryResults(lastSearchPart.output?.results)
+				.map((result) => result.documentId)
+				.filter((id): id is string => typeof id === "string")
 			if (ids.length > 0) {
-				setDocumentIds(ids);
+				setDocumentIds(ids)
 			}
 		} catch {}
-	}, [messages, setDocumentIds]);
+	}, [messages, setDocumentIds])
 
 	useEffect(() => {
-		const currentSummary = getCurrentChat();
+		const currentSummary = getCurrentChat()
 		const hasTitle = Boolean(
 			currentSummary?.title && currentSummary.title.trim().length > 0,
-		);
-		shouldGenerateTitleRef.current = !hasTitle;
-	}, [getCurrentChat]);
+		)
+		shouldGenerateTitleRef.current = !hasTitle
+	}, [getCurrentChat])
 	const {
 		scrollContainerRef,
 		bottomRef,
@@ -325,7 +427,7 @@ export function ChatMessages() {
 		onScroll,
 		enableAutoScroll,
 		scrollToBottom,
-	} = useStickyAutoScroll([messages, status]);
+	} = useStickyAutoScroll([messages, status])
 
 	return (
 		<>
@@ -344,128 +446,108 @@ export function ChatMessages() {
 							key={message.id}
 						>
 							<div className="flex flex-col gap-2 max-w-4/5 bg-white/10 py-3 px-4 rounded-lg">
-								{message.parts
-									.filter((part) =>
-										["text", "tool-searchMemories", "tool-addMemory"].includes(
-											part.type,
-										),
-									)
-									.map((part) => {
-										switch (part.type) {
-											case "text":
-												return (
-													<div key={message.id + part.type}>
-														<Streamdown>{part.text}</Streamdown>
-													</div>
-												);
-											case "tool-searchMemories": {
-												switch (part.state) {
-													case "input-available":
-													case "input-streaming":
-														return (
-															<div
-																className="text-sm flex items-center gap-2 text-muted-foreground"
-																key={message.id + part.type}
-															>
-																<Spinner className="size-4" /> Searching
-																memories...
-															</div>
-														);
-													case "output-error":
-														return (
-															<div
-																className="text-sm flex items-center gap-2 text-muted-foreground"
-																key={message.id + part.type}
-															>
-																<X className="size-4" /> Error recalling
-																memories
-															</div>
-														);
-													case "output-available": {
-														const output = part.output;
-														const foundCount =
-															typeof output === "object" &&
-															output !== null &&
-															"count" in output
-																? Number(output.count) || 0
-																: 0;
-														// @ts-expect-error
-														const results = Array.isArray(output?.results)
-															? // @ts-expect-error
-																output.results
-															: [];
+								{message.parts.map((part, index) => {
+									if (isTextPart(part)) {
+										return (
+											<div key={`${message.id}-text-${index}`}>
+												<Streamdown>{part.text}</Streamdown>
+											</div>
+										)
+									}
 
-														return (
-															<ExpandableMemories
-																foundCount={foundCount}
-																key={message.id + part.type}
-																results={results}
-															/>
-														);
-													}
-													default:
-														return null;
-												}
-											}
-											case "tool-addMemory": {
-												switch (part.state) {
-													case "input-available":
-														return (
-															<div
-																className="text-sm flex items-center gap-2 text-muted-foreground"
-																key={message.id + part.type}
-															>
-																<Spinner className="size-4" /> Adding memory...
-															</div>
-														);
-													case "output-error":
-														return (
-															<div
-																className="text-sm flex items-center gap-2 text-muted-foreground"
-																key={message.id + part.type}
-															>
-																<X className="size-4" /> Error adding memory
-															</div>
-														);
-													case "output-available":
-														return (
-															<div
-																className="text-sm flex items-center gap-2 text-muted-foreground"
-																key={message.id + part.type}
-															>
-																<Check className="size-4" /> Memory added
-															</div>
-														);
-													case "input-streaming":
-														return (
-															<div
-																className="text-sm flex items-center gap-2 text-muted-foreground"
-																key={message.id + part.type}
-															>
-																<Spinner className="size-4" /> Adding memory...
-															</div>
-														);
-													default:
-														return null;
-												}
+									if (isSearchMemoriesPart(part)) {
+										switch (part.state) {
+											case "input-available":
+											case "input-streaming":
+												return (
+													<div
+														className="text-sm flex items-center gap-2 text-muted-foreground"
+														key={`${message.id}-search-${index}`}
+													>
+														<Spinner className="size-4" /> Searching memories...
+													</div>
+												)
+											case "output-error":
+												return (
+													<div
+														className="text-sm flex items-center gap-2 text-muted-foreground"
+														key={`${message.id}-search-${index}`}
+													>
+														<X className="size-4" /> Error recalling memories
+													</div>
+												)
+											case "output-available": {
+												const countValue = part.output?.count
+												const foundCount =
+													typeof countValue === "number"
+														? countValue
+														: typeof countValue === "string"
+															? Number(countValue)
+															: 0
+												const results = toMemoryResults(part.output?.results)
+
+												return (
+													<ExpandableMemories
+														foundCount={foundCount}
+														key={`${message.id}-search-${index}`}
+														results={results}
+													/>
+												)
 											}
 											default:
-												return null;
+												return null
 										}
-									})}
+									}
+
+									if (isAddMemoryPart(part)) {
+										switch (part.state) {
+											case "input-available":
+											case "input-streaming":
+												return (
+													<div
+														className="text-sm flex items-center gap-2 text-muted-foreground"
+														key={`${message.id}-add-${index}`}
+													>
+														<Spinner className="size-4" /> Adding memory...
+													</div>
+												)
+											case "output-error":
+												return (
+													<div
+														className="text-sm flex items-center gap-2 text-muted-foreground"
+														key={`${message.id}-add-${index}`}
+													>
+														<X className="size-4" /> Error adding memory
+													</div>
+												)
+											case "output-available":
+												return (
+													<div
+														className="text-sm flex items-center gap-2 text-muted-foreground"
+														key={`${message.id}-add-${index}`}
+													>
+														<Check className="size-4" /> Memory added
+													</div>
+												)
+											default:
+												return null
+										}
+									}
+
+									return null
+								})}
 							</div>
 							{message.role === "assistant" && (
 								<div className="flex items-center gap-0.5 mt-0.5">
 									<Button
 										className="size-7 text-muted-foreground hover:text-foreground"
 										onClick={() => {
-											navigator.clipboard.writeText(
-												message.parts
-													.filter((p) => p.type === "text")
-													?.map((p) => (p as any).text)
-													.join("\n") ?? "",
-											);
-											toast.success("Copied to clipboard");
+											const combinedText = message.parts
+												.filter((part) => isTextPart(part))
+												.map((part) => part.text)
+												.join("\n")
+											navigator.clipboard.writeText(combinedText)
+											toast.success("Copied to clipboard")
 										}}
 										size="icon"
 										variant="ghost"
@@ -504,8 +586,8 @@ export function ChatMessages() {
 							: "opacity-0 scale-95 pointer-events-none",
 					)}
 					onClick={() => {
-						enableAutoScroll();
-						scrollToBottom("smooth");
+						enableAutoScroll()
+						scrollToBottom("smooth")
 					}}
 					size="sm"
 					type="button"
@@ -518,17 +600,17 @@ export function ChatMessages() {
 			<form
 				className="flex gap-2 px-4 pb-4 pt-1 relative"
 				onSubmit={(e) => {
-					e.preventDefault();
-					if (status === "submitted") return;
+					e.preventDefault()
+					if (status === "submitted") return
 					if (status === "streaming") {
-						stop();
-						return;
+						stop()
+						return
 					}
 					if (input.trim()) {
-						enableAutoScroll();
-						scrollToBottom("auto");
-						sendMessage({ text: input });
-						setInput("");
+						enableAutoScroll()
+						scrollToBottom("auto")
+						sendMessage({ text: input })
+						setInput("")
 					}
 				}}
 			>
@@ -551,5 +633,5 @@ export function ChatMessages() {
 				</Button>
 			</form>
 		</>
-	);
+	)
 }

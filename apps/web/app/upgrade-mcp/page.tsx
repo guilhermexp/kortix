@@ -2,6 +2,7 @@
 
 import { $fetch } from "@lib/api"
 import { useSession } from "@lib/auth"
+import { MCP_SERVER_URL } from "@lib/env"
 import { useMutation } from "@tanstack/react-query"
 import { Logo, LogoFull } from "@ui/assets/Logo"
 import { Button } from "@ui/components/button"
@@ -14,7 +15,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Spinner } from "@/components/spinner"
-import { MCP_SERVER_URL } from "@lib/env"
 
 interface MigrateMCPRequest {
 	userId: string
@@ -54,17 +54,20 @@ export default function MigrateMCPPage() {
 	}, [session, router])
 
 	// Extract userId from MCP URL
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-const MCP_SERVER_BASE = MCP_SERVER_URL.replace(/\/$/, "")
-const MCP_SSE_PATTERN = new RegExp(`^${escapeRegExp(MCP_SERVER_BASE)}\\/[^/]+\\/sse$`)
-const MCP_SSE_PLACEHOLDER = `${MCP_SERVER_BASE}/your-user-id/sse`
+	const escapeRegExp = (value: string) =>
+		value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+	const MCP_SERVER_BASE = MCP_SERVER_URL.replace(/\/$/, "")
+	const MCP_SSE_PATTERN = new RegExp(
+		`^${escapeRegExp(MCP_SERVER_BASE)}\\/[^/]+\\/sse$`,
+	)
+	const MCP_SSE_PLACEHOLDER = `${MCP_SERVER_BASE}/your-user-id/sse`
 
-const getUserIdFromUrl = (url: string) => {
-	const trimmed = url.trim()
-	if (!MCP_SSE_PATTERN.test(trimmed)) return ""
-	const withoutBase = trimmed.replace(`${MCP_SERVER_BASE}/`, "")
-	return withoutBase.split("/")[0] || ""
-}
+	const getUserIdFromUrl = (url: string) => {
+		const trimmed = url.trim()
+		if (!MCP_SSE_PATTERN.test(trimmed)) return ""
+		const withoutBase = trimmed.replace(`${MCP_SERVER_BASE}/`, "")
+		return withoutBase.split("/")[0] || ""
+	}
 
 	const migrateMutation = useMutation({
 		mutationFn: async (data: MigrateMCPRequest) => {
@@ -194,7 +197,10 @@ const getUserIdFromUrl = (url: string) => {
 											disabled={migrateMutation.isPending}
 											id="mcpUrl"
 											onChange={(e) => setMcpUrl(e.target.value)}
-									placeholder={MCP_SSE_PLACEHOLDER.replace("your-user-id", "userId")}
+											placeholder={MCP_SSE_PLACEHOLDER.replace(
+												"your-user-id",
+												"userId",
+											)}
 											type="url"
 											value={mcpUrl}
 										/>

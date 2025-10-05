@@ -81,7 +81,11 @@ export class TwitterImporter {
 	 * @param cursor - Pagination cursor for Twitter API
 	 * @param totalImported - Number of tweets imported so far
 	 */
-	private async batchImportAll(cursor = "", totalImported = 0, uniqueGroupId = "twitter_bookmarks"): Promise<void> {
+	private async batchImportAll(
+		cursor = "",
+		totalImported = 0,
+		uniqueGroupId = "twitter_bookmarks",
+	): Promise<void> {
 		try {
 			// Use a local variable to track imported count
 			let importedCount = totalImported
@@ -147,7 +151,9 @@ export class TwitterImporter {
 						customId: tweet.id_str,
 					})
 					importedCount++
-					await this.config.onProgress(`Imported ${importedCount} tweets, so far...`)
+					await this.config.onProgress(
+						`Imported ${importedCount} tweets, so far...`,
+					)
 				} catch (error) {
 					console.error("Error importing tweet:", error)
 				}

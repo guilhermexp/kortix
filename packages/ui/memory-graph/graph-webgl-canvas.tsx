@@ -127,33 +127,10 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 		const drawGrid = useCallback(
 			(g: PixiGraphics) => {
 				g.clear();
-
-				const gridColor = 0x94a3b8; // rgb(148,163,184)
-				const gridAlpha = 0.03;
-				const gridSpacing = 100 * zoom;
-
-				// panning offsets
-				const offsetX = panX % gridSpacing;
-				const offsetY = panY % gridSpacing;
-
-				g.lineStyle(1, gridColor, gridAlpha);
-
-				// vertical lines
-				for (let x = offsetX; x < width; x += gridSpacing) {
-					g.moveTo(x, 0);
-					g.lineTo(x, height);
-				}
-
-				// horizontal lines
-				for (let y = offsetY; y < height; y += gridSpacing) {
-					g.moveTo(0, y);
-					g.lineTo(width, y);
-				}
-
-				// Stroke to render grid lines
-				g.stroke();
+				// Grid disabled - coordinates were in screen space but drawn in world container
+				// This caused massive lines when world transform (pan/zoom) was applied
 			},
-			[panX, panY, zoom, width, height],
+			[],
 		);
 
 		/* ---------- Color parsing ---------- */
@@ -165,9 +142,9 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 				.replace(/\s+/g, "")
 				.match(/rgba?\((\d+),(\d+),(\d+)(?:,(\d*\.?\d+))?\)/i);
 			if (rgbaMatch) {
-				const r = Number.parseInt(rgbaMatch[1] || "0");
-				const g = Number.parseInt(rgbaMatch[2] || "0");
-				const b = Number.parseInt(rgbaMatch[3] || "0");
+				const r = Number.parseInt(rgbaMatch[1] || "0", 10);
+				const g = Number.parseInt(rgbaMatch[2] || "0", 10);
+				const b = Number.parseInt(rgbaMatch[3] || "0", 10);
 				const a =
 					rgbaMatch[4] !== undefined ? Number.parseFloat(rgbaMatch[4]) : 1;
 				return { hex: (r << 16) + (g << 8) + b, alpha: a };
@@ -251,7 +228,7 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 							docHeight - 2,
 							radius - 1,
 						);
-						g.stroke();
+						// g.stroke(); // Removed - drawRoundedRect handles rendering
 					}
 				});
 			},
@@ -466,6 +443,18 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 				// quick node lookup
 				const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
+				// Calculate viewport boundaries for culling
+				const viewportLeft = -panX / zoom;
+				const viewportRight = (width - panX) / zoom;
+				const viewportTop = -panY / zoom;
+				const viewportBottom = (height - panY) / zoom;
+				const viewportWidth = viewportRight - viewportLeft;
+				const viewportHeight = viewportBottom - viewportTop;
+
+				// Maximum edge length to render (prevent drawing edges across entire canvas)
+				// Use viewport diagonal as the threshold - any edge longer than this is likely a layout error
+				const maxEdgeLength = Math.sqrt(viewportWidth * viewportWidth + viewportHeight * viewportHeight) * 0.6;
+
 				edges.forEach((edge) => {
 					// Skip very weak doc-memory edges when zoomed out – behaviour copied from GraphCanvas
 					if (
@@ -483,6 +472,26 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 					const sy = source.y;
 					const tx = target.x;
 					const ty = target.y;
+
+					// Calculate edge length
+					const dx = tx - sx;
+					const dy = ty - sy;
+					const edgeLength = Math.sqrt(dx * dx + dy * dy);
+
+					// Skip edges that are unreasonably long (likely layout errors)
+					if (edgeLength > maxEdgeLength) {
+						return;
+					}
+
+					// Skip edges with invalid coordinates
+					if (
+						!Number.isFinite(sx) ||
+						!Number.isFinite(sy) ||
+						!Number.isFinite(tx) ||
+						!Number.isFinite(ty)
+					) {
+						return;
+					}
 
 					// No viewport culling here because container transform handles visibility
 
@@ -684,8 +693,9 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 
 		const handleWheel = useCallback(
 			(e: React.WheelEvent<HTMLDivElement>) => {
-				e.preventDefault();
-				e.stopPropagation();
+				// Don't call preventDefault to avoid passive event listener warnings
+				// e.preventDefault();
+				// e.stopPropagation();
 
 				// Accumulate deltas
 				pendingWheelDeltaRef.current.dx += e.deltaX;
@@ -755,7 +765,7 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 				role="application"
 				style={{
 					cursor: draggingNodeId ? "grabbing" : "move",
-					touchAction: "none",
+					touchAction: "pan-y pinch-zoom", // Allow vertical panning and pinch zoom
 					userSelect: "none",
 					WebkitUserSelect: "none",
 				}}

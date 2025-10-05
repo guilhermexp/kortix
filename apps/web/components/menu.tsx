@@ -1,15 +1,14 @@
 "use client"
 
 import { useIsMobile } from "@hooks/use-mobile"
+import { useCustomer } from "@lib/autumn-stub"
 import {
 	fetchConsumerProProduct,
 	fetchMemoriesFeature,
 } from "@repo/lib/queries"
 import { Button } from "@repo/ui/components/button"
-import { ConnectAIModal } from "./connect-ai-modal"
 import { HeadingH2Bold } from "@repo/ui/text/heading/heading-h2-bold"
 import { GlassMenuEffect } from "@ui/other/glass-effect"
-import { useCustomer } from "@lib/autumn-stub"
 import { MessageSquareMore, Plus, Puzzle, User, X } from "lucide-react"
 import { AnimatePresence, LayoutGroup, motion } from "motion/react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -18,6 +17,7 @@ import { Drawer } from "vaul"
 import { useMobilePanel } from "@/lib/mobile-panel-context"
 import { TOUR_STEP_IDS } from "@/lib/tour-constants"
 import { useChatOpen } from "@/stores"
+import { ConnectAIModal } from "./connect-ai-modal"
 import { ProjectSelector } from "./project-selector"
 import { useTour } from "./tour"
 import { AddMemoryExpandedView, AddMemoryView } from "./views/add-memory"
@@ -479,7 +479,6 @@ function Menu({ id }: { id?: string }) {
 			{/* Mobile Menu with Vaul Drawer */}
 			{isMobile && (
 				<Drawer.Root
-					open={isMobileMenuOpen || !!expandedView}
 					onOpenChange={(open) => {
 						if (!open) {
 							setIsMobileMenuOpen(false)
@@ -487,6 +486,7 @@ function Menu({ id }: { id?: string }) {
 							setActivePanel(null)
 						}
 					}}
+					open={isMobileMenuOpen || !!expandedView}
 				>
 					{/* Menu Trigger Button */}
 					{!isMobileMenuOpen && !expandedView && (

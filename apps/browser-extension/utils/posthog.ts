@@ -1,14 +1,14 @@
 export async function identifyUser(): Promise<void> {
-  return
+	return
 }
 
 export async function getPostHogInstance(): Promise<null> {
-  return null
+	return null
 }
 
 export async function trackEvent(
-  _eventName: string,
-  _properties?: Record<string, unknown>,
+	_eventName: string,
+	_properties?: Record<string, unknown>,
 ): Promise<void> {
-  return
+	return
 }

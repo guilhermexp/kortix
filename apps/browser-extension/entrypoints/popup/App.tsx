@@ -2,7 +2,11 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import "./App.css"
 import { validateAuthToken } from "../../utils/api"
-import { API_ENDPOINTS, MESSAGE_TYPES, STORAGE_KEYS } from "../../utils/constants"
+import {
+	API_ENDPOINTS,
+	MESSAGE_TYPES,
+	STORAGE_KEYS,
+} from "../../utils/constants"
 import {
 	useDefaultProject,
 	useProjects,
@@ -216,8 +220,8 @@ function App() {
 				<img
 					alt="supermemory"
 					className="w-8 h-8 flex-shrink-0"
-					src="https://assets.supermemory.ai/brand/wordmark/dark-transparent.svg"
-					style={{ width: "80%", height: "45px" }}
+					src="/icon-128.png"
+					style={{ width: "80%", height: "45px", objectFit: "contain" }}
 				/>
 				{userSignedIn && (
 					<button
@@ -585,10 +589,10 @@ function App() {
 							<button
 								className="w-full py-3 px-6 bg-gray-700 text-white border-none rounded-3xl text-base font-medium cursor-pointer transition-colors duration-200 hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
 								onClick={() => {
-								const baseUrl = API_ENDPOINTS.SUPERMEMORY_WEB
-								const loginUrl = new URL("/login", baseUrl)
-								loginUrl.searchParams.set("extension-auth-success", "1")
-								chrome.tabs.create({ url: loginUrl.toString() })
+									const baseUrl = API_ENDPOINTS.SUPERMEMORY_WEB
+									const loginUrl = new URL("/login", baseUrl)
+									loginUrl.searchParams.set("extension-auth-success", "1")
+									chrome.tabs.create({ url: loginUrl.toString() })
 								}}
 								type="button"
 							>
