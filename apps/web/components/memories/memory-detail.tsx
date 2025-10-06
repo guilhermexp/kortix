@@ -32,6 +32,7 @@ import { memo, useEffect, useState } from "react"
 import type { z } from "zod"
 import { getDocumentIcon } from "@/lib/document-icon"
 import { MarkdownContent } from "../markdown-content"
+import { ImageGallery } from "./image-gallery"
 import { formatDate, getSourceUrl } from "."
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
@@ -275,17 +276,22 @@ export const MemoryDetail = memo(
 							)}
 						</TabsList>
 
-						{hasSummary && (
-							<TabsContent className="mt-3 flex-1" value="summary">
-								<div className="p-3 rounded-lg max-h-96 overflow-y-auto custom-scrollbar bg-indigo-500/5 border border-indigo-500/15">
+					{hasSummary && (
+						<TabsContent className="mt-3 flex-1 max-h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar" value="summary">
+							<div className="space-y-4 pb-6">
+								{/* Summary Text */}
+								<div className="p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/15">
 									<MarkdownContent
 										className="text-sm leading-relaxed"
 										content={document.summary ?? ""}
 										style={{ color: colors.text.muted }}
 									/>
 								</div>
-							</TabsContent>
-						)}
+								{/* Images Gallery */}
+								<ImageGallery document={document} />
+							</div>
+						</TabsContent>
+					)}
 
 						{hasContent && (
 							<TabsContent className="mt-3" value="content">
