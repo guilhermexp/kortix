@@ -144,24 +144,28 @@ export function TourProvider({
 		],
 	)
 
+	// Log tour step for debugging (moved from JSX)
+	React.useEffect(() => {
+		if (isActive && !isPaused) {
+			console.debug(
+				"Rendering TourHighlight for step:",
+				currentStep,
+				currentStep >= 0 && currentStep < steps.length
+					? steps[currentStep]
+					: "No step",
+			)
+		}
+	}, [isActive, isPaused, currentStep, steps])
+
 	return (
 		<TourContext.Provider value={value}>
 			{children}
 			{isActive && !isPaused && (
-				<>
-					{console.log(
-						"Rendering TourHighlight for step:",
-						currentStep,
-						currentStep >= 0 && currentStep < steps.length
-							? steps[currentStep]
-							: "No step",
-					)}
-					<TourHighlight
-						className={className}
-						currentStepIndex={currentStep}
-						steps={steps}
-					/>
-				</>
+				<TourHighlight
+					className={className}
+					currentStepIndex={currentStep}
+					steps={steps}
+				/>
 			)}
 		</TourContext.Provider>
 	)

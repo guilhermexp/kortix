@@ -614,6 +614,9 @@ export function IntegrationsView() {
 										: "iOS"}{" "}
 								Shortcut
 							</DialogTitle>
+							<DialogDescription className="text-white/60">
+								Follow these steps to set up your iOS shortcut with your API key
+							</DialogDescription>
 						</DialogHeader>
 
 						<div className="space-y-4">
