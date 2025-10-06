@@ -249,8 +249,39 @@ function shouldUseGemini(mime: string) {
 
 async function extractFromHtml(html: string, url?: string) {
 	const dom = new JSDOM(html, { url })
-	const reader = new Readability(dom.window.document)
+	const document = dom.window.document
+	const reader = new Readability(document)
 	const article = reader.parse()
+	
+	// Extract Open Graph metadata
+	const ogImage = 
+		document.querySelector('meta[property="og:image"]')?.getAttribute('content') ??
+		document.querySelector('meta[name="og:image"]')?.getAttribute('content') ??
+		document.querySelector('meta[property="twitter:image"]')?.getAttribute('content') ??
+		document.querySelector('meta[name="twitter:image"]')?.getAttribute('content')
+	
+	const ogTitle = 
+		document.querySelector('meta[property="og:title"]')?.getAttribute('content') ??
+		document.querySelector('meta[name="og:title"]')?.getAttribute('content')
+	
+	const ogDescription = 
+		document.querySelector('meta[property="og:description"]')?.getAttribute('content') ??
+		document.querySelector('meta[name="og:description"]')?.getAttribute('content') ??
+		document.querySelector('meta[name="description"]')?.getAttribute('content')
+	
+	// Extract favicon as fallback
+	const favicon = 
+		document.querySelector('link[rel="icon"]')?.getAttribute('href') ??
+		document.querySelector('link[rel="shortcut icon"]')?.getAttribute('href') ??
+		document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute('href')
+	
+	// Build metadata object
+	const metadata: Record<string, unknown> = {}
+	if (ogImage) metadata.ogImage = ogImage
+	if (ogTitle) metadata.ogTitle = ogTitle
+	if (ogDescription) metadata.ogDescription = ogDescription
+	if (favicon) metadata.favicon = favicon
+	
 	if (article?.textContent && article.textContent.trim().length > 100) {
 		const cleanedText = cleanExtractedContent(
 			sanitiseText(article.textContent),
@@ -258,20 +289,21 @@ async function extractFromHtml(html: string, url?: string) {
 		)
 		return {
 			text: cleanedText,
-			title: article.title ?? dom.window.document.title ?? null,
+			title: article.title ?? ogTitle ?? document.title ?? null,
 			raw: {
 				byline: article.byline,
 				length: article.length,
 				excerpt: article.excerpt,
+				...metadata,
 			},
 		}
 	}
-	const fallback = dom.window.document.body?.textContent ?? ""
+	const fallback = document.body?.textContent ?? ""
 	const cleanedFallback = cleanExtractedContent(sanitiseText(fallback), url)
 	return {
 		text: cleanedFallback,
-		title: dom.window.document.title ?? null,
-		raw: null,
+		title: ogTitle ?? document.title ?? null,
+		raw: Object.keys(metadata).length > 0 ? metadata : null,
 	}
 }
 
