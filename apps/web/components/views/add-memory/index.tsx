@@ -511,7 +511,7 @@ export function AddMemoryView({
 		},
 		onSuccess: (_data, variables) => {
 			analytics.memoryAdded({
-				type: variables.contentType === "link" ? "link" : variables.contentType === "repository" ? "repository" : "note",
+				type: variables.contentType === "link" || variables.contentType === "repository" ? "link" : "note",
 				project_id: variables.project,
 				content_length: variables.content.length,
 			})
