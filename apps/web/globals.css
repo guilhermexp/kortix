@@ -1,3 +1,12 @@
 @import "tailwindcss";
 /* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind CSS plugin directive */
 @plugin "@tailwindcss/typography";
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}

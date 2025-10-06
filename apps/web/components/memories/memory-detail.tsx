@@ -172,6 +172,20 @@ export const MemoryDetail = memo(
 		onClose: () => void
 		isMobile: boolean
 	}) => {
+		const [activeTab, setActiveTab] = useState(() => {
+			if (!document) return "summary"
+			const hasSummary = document.summary && document.summary.trim().length > 0
+			const hasContent = document.content && document.content.trim().length > 0
+			return hasSummary ? "summary" : hasContent ? "content" : "summary"
+		})
+
+		useEffect(() => {
+			if (!document) return
+			const hasSummary = document.summary && document.summary.trim().length > 0
+			const hasContent = document.content && document.content.trim().length > 0
+			setActiveTab(hasSummary ? "summary" : hasContent ? "content" : "summary")
+		}, [document?.id])
+
 		if (!document) return null
 
 		const activeMemories = document.memoryEntries.filter((m) => !m.isForgotten)
@@ -227,18 +241,6 @@ export const MemoryDetail = memo(
 				</div>
 			</div>
 		)
-
-		const [activeTab, setActiveTab] = useState(() => {
-			const hasSummary = document.summary && document.summary.trim().length > 0
-			const hasContent = document.content && document.content.trim().length > 0
-			return hasSummary ? "summary" : hasContent ? "content" : "summary"
-		})
-
-		useEffect(() => {
-			const hasSummary = document.summary && document.summary.trim().length > 0
-			const hasContent = document.content && document.content.trim().length > 0
-			setActiveTab(hasSummary ? "summary" : hasContent ? "content" : "summary")
-		}, [document.id])
 
 		const ContentAndSummarySection = () => {
 			const hasContent = document.content && document.content.trim().length > 0

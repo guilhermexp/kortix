@@ -26,6 +26,7 @@ const ALLOWED_DOCUMENT_TYPES = new Set([
 	"notion_doc",
 	"webpage",
 	"onedrive",
+	"repository",
 ])
 
 type DocumentSpaceRelation = {

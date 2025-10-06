@@ -23,6 +23,7 @@ import {
 import {
 	Brain,
 	FileIcon,
+	GitBranch,
 	Link as LinkIcon,
 	Loader2,
 	PlugIcon,
@@ -196,14 +197,14 @@ export function AddMemoryView({
 	initialTab = "note",
 }: {
 	onClose?: () => void
-	initialTab?: "note" | "link" | "file" | "connect"
+	initialTab?: "note" | "link" | "file" | "connect" | "repository"
 }) {
 	const queryClient = useQueryClient()
 	const { selectedProject, setSelectedProject } = useProject()
 	const [showAddDialog, setShowAddDialog] = useState(true)
 	const [selectedFiles, setSelectedFiles] = useState<File[]>([])
 	const [activeTab, setActiveTab] = useState<
-		"note" | "link" | "file" | "connect"
+		"note" | "link" | "file" | "connect" | "repository"
 	>(initialTab)
 	const autumn = useCustomer()
 	const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false)
@@ -285,11 +286,11 @@ export function AddMemoryView({
 		},
 	})
 
-	// Re-validate content field when tab changes between note/link
+	// Re-validate content field when tab changes between note/link/repository
 	// biome-ignore  lint/correctness/useExhaustiveDependencies: It is what it is
 	useEffect(() => {
-		// Trigger validation of the content field when switching between note/link
-		if (activeTab === "note" || activeTab === "link") {
+		// Trigger validation of the content field when switching between note/link/repository
+		if (activeTab === "note" || activeTab === "link" || activeTab === "repository") {
 			const currentValue = addContentForm.getFieldValue("content")
 			if (currentValue) {
 				addContentForm.validateField("content", "change")
@@ -332,22 +333,47 @@ export function AddMemoryView({
 		}: {
 			content: string
 			project: string
-			contentType: "note" | "link"
+			contentType: "note" | "link" | "repository"
 		}) => {
 			// close the modal
 			onClose?.()
 
 			const processingPromise = (async () => {
 				// First, create the memory
-				const response = await $fetch("@post/documents", {
-					body: {
-						content: content,
-						containerTags: [project],
-						metadata: {
-							sm_source: "consumer", // Use "consumer" source to bypass limits
+				// Use different endpoint for repository
+				const response = contentType === "repository"
+					? await fetch(
+						`${process.env.NEXT_PUBLIC_BACKEND_URL}/v3/documents/repository`,
+						{
+							method: "POST",
+							headers: {
+								"Content-Type": "application/json",
+							},
+							credentials: "include",
+							body: JSON.stringify({
+								url: content,
+								containerTags: [project],
+								metadata: {
+									sm_source: "consumer",
+								},
+							}),
+						}
+					).then(async (res) => {
+						if (!res.ok) {
+							const error = await res.json()
+							throw new Error(error.error?.message || "Failed to add repository")
+						}
+						return res.json()
+					}).then(data => ({ data, error: null }))
+					: await $fetch("@post/documents", {
+						body: {
+							content: content,
+							containerTags: [project],
+							metadata: {
+								sm_source: "consumer", // Use "consumer" source to bypass limits
+							},
 						},
-					},
-				})
+					})
 
 				if (response.error) {
 					throw new Error(
@@ -411,7 +437,7 @@ export function AddMemoryView({
 
 			toast.promise(processingPromise, {
 				loading: "Processing...",
-				success: `${contentType === "link" ? "Link" : "Note"} created successfully!`,
+				success: `${contentType === "link" ? "Link" : contentType === "repository" ? "Repository" : "Note"} created successfully!`,
 				error: (err) =>
 					`Failed to add ${contentType}: ${err instanceof Error ? err.message : "Unknown error"}`,
 			})
@@ -437,14 +463,20 @@ export function AddMemoryView({
 			// Create optimistic memory
 			const optimisticMemory: DocumentListItem = {
 				id: `temp-${Date.now()}`,
-				content: contentType === "link" ? "" : content,
-				url: contentType === "link" ? content : null,
+				content: contentType === "link" || contentType === "repository" ? "" : content,
+				url: contentType === "link" || contentType === "repository" ? content : null,
 				title:
-					contentType === "link" ? "Processing..." : content.substring(0, 100),
+					contentType === "link"
+						? "Processing..."
+						: contentType === "repository"
+							? "Indexing repository..."
+							: content.substring(0, 100),
 				description:
 					contentType === "link"
 						? "Extracting content..."
-						: "Processing content...",
+						: contentType === "repository"
+							? "Fetching repository files..."
+							: "Processing content...",
 				containerTags: [project],
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
@@ -479,7 +511,7 @@ export function AddMemoryView({
 		},
 		onSuccess: (_data, variables) => {
 			analytics.memoryAdded({
-				type: variables.contentType === "link" ? "link" : "note",
+				type: variables.contentType === "link" ? "link" : variables.contentType === "repository" ? "repository" : "note",
 				project_id: variables.project,
 				content_length: variables.content.length,
 			})
@@ -689,6 +721,12 @@ export function AddMemoryView({
 												isActive={activeTab === "connect"}
 												label="Connect"
 												onClick={() => setActiveTab("connect")}
+											/>
+											<TabButton
+												icon={GitBranch}
+												isActive={activeTab === "repository"}
+												label="Repo"
+												onClick={() => setActiveTab("repository")}
 											/>
 										</div>
 									</div>
@@ -1098,6 +1136,138 @@ export function AddMemoryView({
 										<ConnectionsTabContent />
 									</div>
 								)}
+
+								{activeTab === "repository" && (
+									<div className="space-y-4">
+										<form
+											onSubmit={(e) => {
+												e.preventDefault()
+												e.stopPropagation()
+												addContentForm.handleSubmit()
+											}}
+										>
+											<div className="grid gap-4">
+												{/* Repository URL Input */}
+												<motion.div
+													animate={{ opacity: 1, y: 0 }}
+													className="flex flex-col gap-2"
+													initial={{ opacity: 0, y: 10 }}
+													transition={{ delay: 0.1 }}
+												>
+													<label
+														className="text-sm font-medium"
+														htmlFor="repo-content"
+													>
+														GitHub Repository URL
+													</label>
+													<addContentForm.Field
+														name="content"
+														validators={{
+															onChange: ({ value }) => {
+																if (!value || value.trim() === "") {
+																	return "Repository URL is required"
+																}
+																try {
+																	const url = new URL(value)
+																	if (!url.hostname.includes("github.com")) {
+																		return "Please enter a valid GitHub repository URL"
+																	}
+																	return undefined
+																} catch {
+																	return "Please enter a valid URL"
+																}
+															},
+														}}
+													>
+														{({ state, handleChange, handleBlur }) => (
+															<>
+																<Input
+																	className={`bg-white/5 border-white/10 text-white ${
+																		addContentMutation.isPending
+																			? "opacity-50"
+																			: ""
+																	}`}
+																	disabled={addContentMutation.isPending}
+																	id="repo-content"
+																	onBlur={handleBlur}
+																	onChange={(e) => handleChange(e.target.value)}
+																	placeholder="https://github.com/owner/repository"
+																	value={state.value}
+																/>
+																{state.meta.errors.length > 0 && (
+																	<motion.p
+																		animate={{ opacity: 1, height: "auto" }}
+																		className="text-sm text-red-400 mt-1"
+																		exit={{ opacity: 0, height: 0 }}
+																		initial={{ opacity: 0, height: 0 }}
+																	>
+																		{state.meta.errors
+																			.map((error) =>
+																				typeof error === "string"
+																					? error
+																					: (error?.message ??
+																						`Error: ${JSON.stringify(error)}`),
+																			)
+																			.join(", ")}
+																	</motion.p>
+																)}
+															</>
+														)}
+													</addContentForm.Field>
+													<p className="text-xs text-white/50">
+														The repository will be indexed and made searchable in your memory
+													</p>
+												</motion.div>
+											</div>
+											<div className="mt-6 flex justify-between items-end w-full">
+												<div className="flex items-end gap-4">
+													{/* Left side - Project Selection */}
+													<motion.div
+														animate={{ opacity: 1, y: 0 }}
+														className={`flex flex-col gap-2 ${
+															addContentMutation.isPending ? "opacity-50" : ""
+														}`}
+														initial={{ opacity: 0, y: 10 }}
+														transition={{ delay: 0.15 }}
+													>
+														<addContentForm.Field name="project">
+															{({ state, handleChange }) => (
+																<ProjectSelection
+																	disabled={addContentMutation.isPending}
+																	id="repo-project"
+																	isLoading={isLoadingProjects}
+																	onCreateProject={() =>
+																		setShowCreateProjectDialog(true)
+																	}
+																	onProjectChange={handleChange}
+																	projects={projects}
+																	selectedProject={state.value}
+																/>
+															)}
+														</addContentForm.Field>
+													</motion.div>
+
+													<MemoryUsageRing
+														memoriesLimit={memoriesLimit}
+														memoriesUsed={memoriesUsed}
+													/>
+												</div>
+
+												<ActionButtons
+													isSubmitDisabled={!addContentForm.state.canSubmit}
+													isSubmitting={addContentMutation.isPending}
+													onCancel={() => {
+														setShowAddDialog(false)
+														onClose?.()
+														addContentForm.reset()
+													}}
+													submitIcon={Plus}
+													submitText="Add Repository"
+												/>
+											</div>
+										</form>
+									</div>
+								)}
 							</div>
 						</motion.div>
 					</DialogContent>
@@ -1195,10 +1365,10 @@ export function AddMemoryView({
 export function AddMemoryExpandedView() {
 	const [showDialog, setShowDialog] = useState(false)
 	const [selectedTab, setSelectedTab] = useState<
-		"note" | "link" | "file" | "connect"
+		"note" | "link" | "file" | "connect" | "repository"
 	>("note")
 
-	const handleOpenDialog = (tab: "note" | "link" | "file" | "connect") => {
+	const handleOpenDialog = (tab: "note" | "link" | "file" | "connect" | "repository") => {
 		setSelectedTab(tab)
 		setShowDialog(true)
 	}
@@ -1260,6 +1430,18 @@ export function AddMemoryExpandedView() {
 						>
 							<PlugIcon className="h-4 w-4 mr-2" />
 							Connect
+						</Button>
+					</motion.div>
+
+					<motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+						<Button
+							className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+							onClick={() => handleOpenDialog("repository")}
+							size="sm"
+							variant="outline"
+						>
+							<GitBranch className="h-4 w-4 mr-2" />
+							Repository
 						</Button>
 					</motion.div>
 				</div>
