@@ -9,6 +9,7 @@ import {
 	convertUrlWithMarkItDown,
 	convertWithMarkItDown,
 } from "./markitdown"
+import { ingestRepository } from "./repository-ingest"
 import { summarizeYoutubeVideo } from "./summarizer"
 
 const DEFAULT_USER_AGENT = "SupermemorySelfHosted/1.0 (+self-hosted extractor)"
@@ -403,6 +404,15 @@ async function tryMarkItDownOnUrl(url: string) {
 export async function extractDocumentContent(
 	input: ExtractionInput,
 ): Promise<ExtractionResult> {
+	// Check if this is a GitHub repository
+	const metadataType = readRecordString(input.metadata, "type")
+	if (metadataType === "repository" || input.type === "repository") {
+		const repoUrl = input.url ?? input.originalContent ?? ""
+		if (repoUrl.includes("github.com")) {
+			return await extractFromRepository(repoUrl)
+		}
+	}
+
 	const probableUrl = isProbablyUrl(
 		input.url ?? input.originalContent ?? undefined,
 	)
@@ -782,4 +792,31 @@ export async function extractDocumentContent(
 	throw new Error(
 		`Tipo de conteúdo não suportado para ingestão automática (${contentType || "desconhecido"})`,
 	)
+}
+
+/**
+ * Extract content from a GitHub repository
+ */
+export async function extractFromRepository(
+	repoUrl: string,
+	githubToken?: string,
+): Promise<ExtractionResult> {
+	const result = await ingestRepository(repoUrl, githubToken)
+
+	// Combine summary and content
+	const fullText = `${result.summary}\n\n${result.tree}\n\n${result.content}`
+
+	return {
+		text: sanitiseText(fullText),
+		title: `Repository: ${repoUrl}`,
+		source: "github_repository",
+		url: repoUrl,
+		contentType: "repository",
+		raw: {
+			summary: result.summary,
+			tree: result.tree,
+			stats: result.stats,
+		},
+		wordCount: countWords(fullText),
+	}
 }

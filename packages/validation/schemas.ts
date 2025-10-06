@@ -20,6 +20,7 @@ export const DocumentTypeEnum = z.enum([
 	"notion_doc",
 	"webpage",
 	"onedrive",
+	"repository",
 ])
 export type DocumentType = z.infer<typeof DocumentTypeEnum>
 
