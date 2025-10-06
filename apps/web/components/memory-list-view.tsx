@@ -70,7 +70,7 @@ const asRecord = (value: unknown): BaseRecord | null => {
 	return value as BaseRecord
 }
 
-const safeHttpUrl = (value: unknown): string | undefined => {
+const safeHttpUrl = (value: unknown, baseUrl?: string): string | undefined => {
 	if (typeof value !== "string") return undefined
 	const trimmed = value.trim()
 	if (!trimmed) return undefined
@@ -81,23 +81,36 @@ const safeHttpUrl = (value: unknown): string | undefined => {
 		}
 		return undefined
 	}
+	
+	// Try absolute URL first
 	try {
 		const url = new URL(trimmed)
 		if (url.protocol === "http:" || url.protocol === "https:") {
 			return url.toString()
 		}
-	} catch {}
+	} catch {
+		// If it fails, try as relative URL with baseUrl
+		if (baseUrl) {
+			try {
+				const url = new URL(trimmed, baseUrl)
+				if (url.protocol === "http:" || url.protocol === "https:") {
+					return url.toString()
+				}
+			} catch {}
+		}
+	}
 	return undefined
 }
 
 const pickFirstUrl = (
 	record: BaseRecord | null,
 	keys: string[],
+	baseUrl?: string,
 ): string | undefined => {
 	if (!record) return undefined
 	for (const key of keys) {
 		const candidate = record[key]
-		const url = safeHttpUrl(candidate)
+		const url = safeHttpUrl(candidate, baseUrl)
 		if (url) return url
 	}
 	return undefined
@@ -162,34 +175,39 @@ const getDocumentPreview = (
 	const rawGemini = asRecord(raw?.geminiFile)
 
 	const imageKeys = [
+		"ogImage",
+		"og_image",
 		"previewImage",
 		"preview_image",
 		"image",
-		"ogImage",
-		"og_image",
 		"thumbnail",
 		"thumbnailUrl",
 		"thumbnail_url",
+		"favicon",
 	]
 
-	const metadataImage = pickFirstUrl(metadata, imageKeys)
-	const rawImage =
-		pickFirstUrl(rawExtraction, imageKeys) ??
-		pickFirstUrl(rawFirecrawl, imageKeys) ??
-		pickFirstUrl(rawFirecrawlMetadata, imageKeys) ??
-		pickFirstUrl(rawGemini, imageKeys)
-
-	// Check Firecrawl metadata directly for Open Graph images
-	const firecrawlOgImage =
-		safeHttpUrl(rawFirecrawlMetadata?.ogImage) ??
-		safeHttpUrl(rawFirecrawl?.ogImage)
-	const finalPreviewImage = rawImage ?? metadataImage ?? firecrawlOgImage
-
-	// Get URL from multiple possible locations
+	// Get URL from multiple possible locations first (needed as baseUrl)
 	const originalUrl =
 		safeHttpUrl(metadata?.originalUrl) ??
 		safeHttpUrl(document.url) ??
 		safeHttpUrl(rawYoutube?.url)
+
+	// Now search for images with baseUrl context
+	const metadataImage = pickFirstUrl(metadata, imageKeys, originalUrl)
+	// Check raw object directly first (new extracted og:image metadata)
+	const rawDirectImage = pickFirstUrl(raw, imageKeys, originalUrl)
+	const rawImage =
+		pickFirstUrl(rawExtraction, imageKeys, originalUrl) ??
+		pickFirstUrl(rawFirecrawl, imageKeys, originalUrl) ??
+		pickFirstUrl(rawFirecrawlMetadata, imageKeys, originalUrl) ??
+		pickFirstUrl(rawGemini, imageKeys, originalUrl)
+
+	// Check Firecrawl metadata directly for Open Graph images
+	const firecrawlOgImage =
+		safeHttpUrl(rawFirecrawlMetadata?.ogImage, originalUrl) ??
+		safeHttpUrl(rawFirecrawl?.ogImage, originalUrl)
+	// Prioritize: raw direct (new og:image) > metadata > rawImage > firecrawl
+	const finalPreviewImage = rawDirectImage ?? metadataImage ?? rawImage ?? firecrawlOgImage
 	const contentType =
 		(typeof rawExtraction?.contentType === "string" &&
 			rawExtraction.contentType) ||
