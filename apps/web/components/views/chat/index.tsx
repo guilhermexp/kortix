@@ -21,8 +21,14 @@ import { ChatMessages } from "./chat-messages"
 export function ChatRewrite() {
 	const { setIsOpen } = useChatOpen()
 	const { selectedProject } = useProject()
-	const { conversations, currentChatId, setCurrentChatId, getCurrentChat } =
-		usePersistentChat()
+        const {
+                conversations,
+                currentChatId,
+                setCurrentChatId,
+                deleteConversation,
+                getCurrentChat,
+        } =
+                usePersistentChat()
 
 	const [isDialogOpen, setIsDialogOpen] = useState(false)
 
@@ -75,10 +81,10 @@ export function ChatRewrite() {
 								<div className="flex flex-col gap-1">
 									{sorted.map((c) => {
 										const isActive = c.id === currentChatId
-										return (
-											<div
-												aria-current={isActive ? "true" : undefined}
-												className={cn(
+                                                                                return (
+                                                                                        <div
+                                                                                                aria-current={isActive ? "true" : undefined}
+                                                                                                className={cn(
 													"group flex items-center justify-between rounded-md px-3 py-2",
 													"transition-colors",
 													isActive ? "bg-primary/10" : "hover:bg-muted",
@@ -107,16 +113,20 @@ export function ChatRewrite() {
 														Last updated {formatRelativeTime(c.lastUpdated)}
 													</div>
 												</button>
-												<Button
-													aria-label="Delete conversation"
-													onClick={(e) => {
-														e.stopPropagation()
-														analytics.chatDeleted()
-													}}
-													size="icon"
-													type="button"
-													variant="ghost"
-												>
+                                                                                                <Button
+                                                                                                        aria-label="Delete conversation"
+                                                                                                        onClick={(e) => {
+                                                                                                                e.stopPropagation()
+                                                                                                                analytics.chatDeleted()
+                                                                                                                if (isActive) {
+                                                                                                                        setCurrentChatId(null)
+                                                                                                                }
+                                                                                                                deleteConversation(c.id)
+                                                                                                        }}
+                                                                                                        size="icon"
+                                                                                                        type="button"
+                                                                                                        variant="ghost"
+                                                                                                >
 													<Trash2 className="size-4 text-muted-foreground" />
 												</Button>
 											</div>
