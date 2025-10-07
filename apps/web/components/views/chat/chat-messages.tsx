@@ -326,7 +326,7 @@ export function ChatMessages() {
 	const activeChatIdRef = useRef<string | null>(null)
 	const shouldGenerateTitleRef = useRef<boolean>(false)
 
-	const { setDocumentIds } = useGraphHighlights()
+        const { setDocumentIds, clear } = useGraphHighlights()
 
 	const { messages, sendMessage, status, stop, setMessages, id, regenerate } =
 		useChat({
@@ -394,24 +394,32 @@ export function ChatMessages() {
 	})
 
 	// Update graph highlights from the most recent tool-searchMemories output
-	useEffect(() => {
-		try {
-			const lastAssistant = [...messages]
-				.reverse()
-				.find((m) => m.role === "assistant")
-			if (!lastAssistant) return
-			const lastSearchPart = [...lastAssistant.parts]
-				.reverse()
-				.find((part) => isSearchMemoriesOutputPart(part))
-			if (!lastSearchPart) return
-			const ids = toMemoryResults(lastSearchPart.output?.results)
-				.map((result) => result.documentId)
-				.filter((id): id is string => typeof id === "string")
-			if (ids.length > 0) {
-				setDocumentIds(ids)
-			}
-		} catch {}
-	}, [messages, setDocumentIds])
+        useEffect(() => {
+                try {
+                        const lastAssistant = [...messages]
+                                .reverse()
+                                .find((m) => m.role === "assistant")
+                        if (!lastAssistant) {
+                                clear()
+                                return
+                        }
+                        const lastSearchPart = [...lastAssistant.parts]
+                                .reverse()
+                                .find((part) => isSearchMemoriesOutputPart(part))
+                        if (!lastSearchPart) {
+                                clear()
+                                return
+                        }
+                        const ids = toMemoryResults(lastSearchPart.output?.results)
+                                .map((result) => result.documentId)
+                                .filter((id): id is string => typeof id === "string")
+                        if (ids.length > 0) {
+                                setDocumentIds(ids)
+                                return
+                        }
+                } catch {}
+                clear()
+        }, [messages, setDocumentIds, clear])
 
 	useEffect(() => {
 		const currentSummary = getCurrentChat()
