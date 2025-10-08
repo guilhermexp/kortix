@@ -7,13 +7,14 @@ import { Button } from "@ui/components/button"
 import { Input } from "@ui/components/input"
 import { DefaultChatTransport } from "ai"
 import {
-	ArrowUp,
-	Check,
-	ChevronDown,
-	ChevronRight,
-	Copy,
-	RotateCcw,
-	X,
+    ArrowUp,
+    Check,
+    ChevronDown,
+    ChevronRight,
+    Copy,
+    RotateCcw,
+    X,
+    Plus,
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -353,7 +354,46 @@ export function ChatMessages() {
 			},
 		})
 
-	const [input, setInput] = useState("")
+    const [input, setInput] = useState("")
+    const [savingInput, setSavingInput] = useState(false)
+    const [savingMessageIds, setSavingMessageIds] = useState<Set<string>>(new Set())
+
+    async function saveMemory(content: string) {
+        const trimmed = content.trim()
+        if (!trimmed) {
+            toast.error("Nothing to save")
+            return
+        }
+        try {
+            const res = await fetch(`${BACKEND_URL}/v3/documents`, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    content: trimmed,
+                    containerTags: selectedProject ? [selectedProject] : undefined,
+                    metadata: {
+                        source: "chat",
+                        type: "text",
+                        from_chat: true,
+                        projectId: selectedProject,
+                    },
+                }),
+            })
+            if (!res.ok) {
+                let msg = "Failed to save memory"
+                try {
+                    const data = await res.json()
+                    msg = data?.error?.message || msg
+                } catch {}
+                throw new Error(msg)
+            }
+            toast.success("Memory added")
+        } catch (err) {
+            console.error(err)
+            toast.error(err instanceof Error ? err.message : "Failed to save memory")
+        }
+    }
 
 	useEffect(() => {
 		activeChatIdRef.current = currentChatId ?? id ?? null
@@ -547,29 +587,61 @@ export function ChatMessages() {
 							</div>
 							{message.role === "assistant" && (
 								<div className="flex items-center gap-0.5 mt-0.5">
-									<Button
-										className="size-7 text-muted-foreground hover:text-foreground"
-										onClick={() => {
-											const combinedText = message.parts
-												.filter((part) => isTextPart(part))
-												.map((part) => part.text)
-												.join("\n")
-											navigator.clipboard.writeText(combinedText)
-											toast.success("Copied to clipboard")
-										}}
-										size="icon"
-										variant="ghost"
-									>
-										<Copy className="size-3.5" />
-									</Button>
-									<Button
-										className="size-6 text-muted-foreground hover:text-foreground"
-										onClick={() => regenerate({ messageId: message.id })}
-										size="icon"
-										variant="ghost"
-									>
-										<RotateCcw className="size-3.5" />
-									</Button>
+                            <Button
+                                className="size-7 text-muted-foreground hover:text-foreground"
+                                onClick={() => {
+                                    const combinedText = message.parts
+                                        .filter((part) => isTextPart(part))
+                                        .map((part) => part.text)
+                                        .join("\n")
+                                    navigator.clipboard.writeText(combinedText)
+                                    toast.success("Copied to clipboard")
+                                }}
+                                size="icon"
+                                variant="ghost"
+                            >
+                                <Copy className="size-3.5" />
+                            </Button>
+                            <Button
+                                className="size-6 text-muted-foreground hover:text-foreground"
+                                onClick={async () => {
+                                    const id = message.id
+                                    if (!id) return
+                                    if (savingMessageIds.has(id)) return
+                                    const combinedText = message.parts
+                                        .filter((part) => isTextPart(part))
+                                        .map((part) => part.text)
+                                        .join("\n")
+                                    setSavingMessageIds((prev) => new Set(prev).add(id))
+                                    try {
+                                        await saveMemory(combinedText)
+                                    } finally {
+                                        setSavingMessageIds((prev) => {
+                                            const next = new Set(prev)
+                                            next.delete(id)
+                                            return next
+                                        })
+                                    }
+                                }}
+                                size="icon"
+                                variant="ghost"
+                                disabled={message.id ? savingMessageIds.has(message.id) : false}
+                                title="Add this reply to memory"
+                            >
+                                {message.id && savingMessageIds.has(message.id) ? (
+                                    <Spinner className="size-3.5" />
+                                ) : (
+                                    <Plus className="size-3.5" />
+                                )}
+                            </Button>
+                            <Button
+                                className="size-6 text-muted-foreground hover:text-foreground"
+                                onClick={() => regenerate({ messageId: message.id })}
+                                size="icon"
+                                variant="ghost"
+                            >
+                                <RotateCcw className="size-3.5" />
+                            </Button>
 								</div>
 							)}
 						</div>
@@ -623,18 +695,37 @@ export function ChatMessages() {
 				}}
 			>
 				<div className="absolute top-0 left-0 -mt-7 w-full h-7 bg-gradient-to-t from-background to-transparent" />
-				<Input
-					className="w-full"
-					disabled={status === "submitted"}
-					onChange={(e) => setInput(e.target.value)}
-					placeholder="Say something..."
-					value={input}
-				/>
-				<Button disabled={status === "submitted"} type="submit">
-					{status === "ready" ? (
-						<ArrowUp className="size-4" />
-					) : status === "submitted" ? (
-						<Spinner className="size-4" />
+                <Input
+                    className="w-full"
+                    disabled={status === "submitted"}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Say something..."
+                    value={input}
+                />
+                <Button
+                    type="button"
+                    variant="outline"
+                    disabled={savingInput || status === "submitted"}
+                    onClick={async () => {
+                        if (!input.trim()) {
+                            toast.error("Type something to save")
+                            return
+                        }
+                        setSavingInput(true)
+                        try {
+                            await saveMemory(input)
+                        } finally {
+                            setSavingInput(false)
+                        }
+                    }}
+                >
+                    {savingInput ? <Spinner className="size-4" /> : <Plus className="size-4" />}
+                </Button>
+                <Button disabled={status === "submitted"} type="submit">
+                    {status === "ready" ? (
+                        <ArrowUp className="size-4" />
+                    ) : status === "submitted" ? (
+                        <Spinner className="size-4" />
 					) : (
 						<X className="size-4" />
 					)}

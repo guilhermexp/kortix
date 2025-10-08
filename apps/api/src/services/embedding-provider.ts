@@ -1,15 +1,12 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
 import { env } from "../env"
 import {
 	ensureVectorSize,
 	generateDeterministicEmbedding,
 	VECTOR_SIZE,
 } from "./embedding"
+import { aiClient } from "./ai-provider"
 
-const googleClient = env.GOOGLE_API_KEY
-	? new GoogleGenerativeAI(env.GOOGLE_API_KEY)
-	: null
-const embeddingModel = googleClient?.getGenerativeModel({
+const embeddingModel = aiClient?.getGenerativeModel({
 	model: env.EMBEDDING_MODEL,
 })
 
