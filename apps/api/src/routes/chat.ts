@@ -2,8 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { createUIMessageStreamResponse } from "ai"
 import { z } from "zod"
 import { env } from "../env"
-import { searchDocuments } from "../services/search"
-import { addDocument } from "../services/documents"
+import { searchDocuments } from "./search"
+import { addDocument } from "./documents"
 import { aiClient } from "../services/ai-provider"
 
 // Base instructions for the chat assistant. Keep concise and action-oriented.

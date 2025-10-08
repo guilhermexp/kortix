@@ -183,7 +183,9 @@ class AIProviderWithFallback implements AIProvider {
 		choices: Array<{ message: { content: string } }>
 	}): GenerateContentResult {
 		const content = data.choices?.[0]?.message?.content ?? ""
-		return {
+
+		// Criar objeto compatível com GenerateContentResult do Gemini
+		const result: any = {
 			response: {
 				text: () => content,
 				candidates: [
@@ -194,10 +196,16 @@ class AIProviderWithFallback implements AIProvider {
 						},
 						finishReason: "STOP",
 						index: 0,
+						safetyRatings: [],
 					},
 				],
+				promptFeedback: {
+					safetyRatings: [],
+				},
 			},
-		} as unknown as GenerateContentResult
+		}
+
+		return result as GenerateContentResult
 	}
 
 	private async *streamOpenRouterResponse(
