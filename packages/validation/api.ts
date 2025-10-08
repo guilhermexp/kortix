@@ -1238,17 +1238,33 @@ export const ProjectSchema = z
 	})
 
 export const CreateProjectSchema = z
-	.object({
-		name: z.string().min(1).max(100).openapi({
-			description: "Name for the project",
-			example: "My Awesome Project",
-			minLength: 1,
-			maxLength: 100,
-		}),
-	})
-	.openapi({
-		description: "Request body for creating a new project",
-	})
+    .object({
+        name: z.string().min(1).max(100).openapi({
+            description: "Name for the project",
+            example: "My Awesome Project",
+            minLength: 1,
+            maxLength: 100,
+        }),
+    })
+    .openapi({
+        description: "Request body for creating a new project",
+    })
+
+// Update project (rename)
+export const UpdateProjectSchema = z
+    .object({
+        name: z
+            .string()
+            .min(1)
+            .max(100)
+            .openapi({
+                description: "New project name",
+                example: "Renamed Project",
+                minLength: 1,
+                maxLength: 100,
+            }),
+    })
+    .openapi({ description: "Request body for updating a project" })
 
 export const ListProjectsResponseSchema = z
 	.object({

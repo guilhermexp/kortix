@@ -6,14 +6,15 @@ loadEnv()
 import { serve } from "@hono/node-server"
 import { zValidator } from "@hono/zod-validator"
 import {
-	CreateProjectSchema,
-	DeleteProjectSchema,
-	DocumentsWithMemoriesQuerySchema,
-	ListMemoriesQuerySchema,
-	MemoryAddSchema,
-	MigrateMCPRequestSchema,
-	SearchRequestSchema,
-	SettingsRequestSchema,
+    CreateProjectSchema,
+    DeleteProjectSchema,
+    DocumentsWithMemoriesQuerySchema,
+    ListMemoriesQuerySchema,
+    MemoryAddSchema,
+    MigrateMCPRequestSchema,
+    SearchRequestSchema,
+    SettingsRequestSchema,
+    UpdateProjectSchema,
 } from "@repo/validation/api"
 import { Hono } from "hono"
 import { cors } from "hono/cors"
@@ -53,7 +54,7 @@ import {
 	updatePassword,
 	updatePasswordValidator,
 } from "./routes/password"
-import { createProject, deleteProject, listProjects } from "./routes/projects"
+import { createProject, deleteProject, listProjects, updateProject } from "./routes/projects"
 import { searchDocuments } from "./routes/search"
 import { getSettings, updateSettings } from "./routes/settings"
 import { getWaitlistStatus } from "./routes/waitlist"
@@ -158,9 +159,9 @@ app.post("/v3/projects", zValidator("json", CreateProjectSchema), async (c) => {
 })
 
 app.delete(
-	"/v3/projects/:projectId",
-	zValidator("json", DeleteProjectSchema.optional()),
-	async (c) => {
+    "/v3/projects/:projectId",
+    zValidator("json", DeleteProjectSchema.optional()),
+    async (c) => {
 		const { organizationId } = c.var.session
 		const projectId = c.req.param("projectId")
 		const body = c.req.valid("json") ?? { action: "delete" as const }
@@ -177,7 +178,30 @@ app.delete(
 			console.error("Failed to delete project", error)
 			return c.json({ error: { message: "Failed to delete project" } }, 400)
 		}
-	},
+    },
+)
+
+app.patch(
+    "/v3/projects/:projectId",
+    zValidator("json", UpdateProjectSchema),
+    async (c) => {
+        const { organizationId, userId } = c.var.session
+        const supabase = createScopedSupabase(organizationId, userId)
+        const body = c.req.valid("json")
+        const projectId = c.req.param("projectId")
+
+        try {
+            const project = await updateProject(supabase, {
+                organizationId,
+                projectId,
+                payload: body,
+            })
+            return c.json(project)
+        } catch (error) {
+            console.error("Failed to update project", error)
+            return c.json({ error: { message: "Failed to update project" } }, 400)
+        }
+    },
 )
 
 app.post("/v3/documents", zValidator("json", MemoryAddSchema), async (c) => {
@@ -648,10 +672,10 @@ app.patch(
 app.get("/v3/waitlist/status", (c) => c.json(getWaitlistStatus()))
 
 app.post("/chat", async (c) => {
-	const { organizationId } = c.var.session
-	const body = await c.req.json()
-	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
-	return handleChat({ orgId: organizationId, client: supabase, body })
+    const { organizationId, userId } = c.var.session
+    const body = await c.req.json()
+    const supabase = createScopedSupabase(organizationId, userId)
+    return handleChat({ orgId: organizationId, userId, client: supabase, body })
 })
 
 app.post("/chat/title", async (c) => {

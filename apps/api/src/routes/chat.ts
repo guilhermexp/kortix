@@ -1,18 +1,19 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createUIMessageStreamResponse } from "ai"
 import { z } from "zod"
 import { env } from "../env"
-import { searchDocuments } from "./search"
+import { searchDocuments } from "../services/search"
+import { addDocument } from "../services/documents"
+import { aiClient } from "../services/ai-provider"
 
-const googleApiKey =
-	env.GOOGLE_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY
-
-if (googleApiKey && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-	process.env.GOOGLE_GENERATIVE_AI_API_KEY = googleApiKey
-}
-
-const googleClient = googleApiKey ? new GoogleGenerativeAI(googleApiKey) : null
+// Base instructions for the chat assistant. Keep concise and action-oriented.
+const BASE_SYSTEM_RULES = [
+  "Você é o assistente do Supermemory.",
+  "- Use o contexto recuperado APENAS quando for relevante.",
+  "- Sempre que usar informações do contexto, CITE a(s) fonte(s) com título e URL no final da resposta em uma seção 'Fontes'.",
+  "- Não invente. Se não tiver certeza, explique as limitações e peça esclarecimentos.",
+  "- Prefira respostas objetivas e com passos práticos quando apropriado.",
+].join("\n")
 
 const chatRequestSchema = z.object({
 	messages: z
@@ -48,20 +49,22 @@ function isLegacyContentParts(value: unknown): value is LegacyContentPart[] {
 }
 
 export async function handleChat({
-	orgId,
-	client,
-	body,
+    orgId,
+    userId,
+    client,
+    body,
 }: {
-	orgId: string
-	client: SupabaseClient
-	body: unknown
+    orgId: string
+    userId: string
+    client: SupabaseClient
+    body: unknown
 }) {
-	if (!googleClient) {
-		throw new Error("Google Generative AI API key is not configured")
+	if (!aiClient) {
+		throw new Error("AI provider is not configured")
 	}
 
-	const payload = chatRequestSchema.parse(body ?? {})
-	const inputMessages = payload.messages ?? []
+    const payload = chatRequestSchema.parse(body ?? {})
+    const inputMessages = payload.messages ?? []
 
 	// Convert to AI SDK format
 	const messages = inputMessages
@@ -89,35 +92,81 @@ export async function handleChat({
 		})
 		.filter((msg) => msg.content.length > 0)
 
-	// Get last user message for context search
-	const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")
-	let systemMessage = ""
+    // Get last user messages for context search (use up to last 3)
+    const lastUserMessages = messages.filter((m) => m.role === "user")
+    const searchQuery = lastUserMessages
+        .slice(-3)
+        .map((m) => m.content)
+        .join("\n")
+    const lastUserTurn = [...messages].reverse().find((m) => m.role === "user")
+    let systemMessage = ""
+    // For UI tool parts: expose memory search results alongside the assistant message
+    let uiSearchResults: Array<{
+        documentId?: string
+        title?: string
+        content?: string
+        url?: string
+        score?: number
+    }> = []
+    // Optional project scoping (containerTags) from client metadata
+    const projectId = (() => {
+        const raw = (payload as { metadata?: unknown })?.metadata
+        if (raw && typeof raw === "object" && raw !== null) {
+            const maybe = (raw as Record<string, unknown>).projectId
+            return typeof maybe === "string" && maybe.trim().length > 0
+                ? maybe
+                : undefined
+        }
+        return undefined
+    })()
 
-	if (lastUserMessage) {
-		try {
-			const searchResponse = await searchDocuments(client, orgId, {
-				q: lastUserMessage.content,
-				limit: 5,
-				includeSummary: true,
-				includeFullDocs: false,
-				chunkThreshold: 0,
-				documentThreshold: 0,
-				onlyMatchingChunks: false,
-			})
+    if (searchQuery.trim().length > 0) {
+        try {
+            const searchResponse = await searchDocuments(client, orgId, {
+                q: searchQuery,
+                limit: 5,
+                includeSummary: true,
+                includeFullDocs: false,
+                chunkThreshold: 0,
+                documentThreshold: 0,
+                onlyMatchingChunks: false,
+                containerTags: projectId ? [projectId] : undefined,
+            })
 
-			if (searchResponse.results.length > 0) {
-				systemMessage = formatSearchResultsForSystemMessage(
-					searchResponse.results,
-				)
-			}
-		} catch (error) {
-			console.warn("handleChat search fallback", error)
-		}
-	}
+            if (searchResponse.results.length > 0) {
+                systemMessage = formatSearchResultsForSystemMessage(
+                    searchResponse.results,
+                )
+                // Map results for client UI (ChatMessages) to display expandable memory list
+                uiSearchResults = searchResponse.results.map((r) => {
+                    const url =
+                        (typeof r.metadata?.url === "string" && r.metadata.url) ||
+                        (typeof (r.metadata as Record<string, unknown> | null)?.source_url ===
+                            "string" &&
+                            (r.metadata as { source_url?: string })?.source_url) ||
+                        undefined
+                    const content = r.summary || r.chunks?.[0]?.content || undefined
+                    return {
+                        documentId: r.documentId,
+                        title: r.title || undefined,
+                        content,
+                        url,
+                        score: typeof r.score === "number" ? r.score : undefined,
+                    }
+                })
+            }
+        } catch (error) {
+            console.warn("handleChat search fallback", error)
+        }
+    }
 
-	const systemInstruction = systemMessage
-		? { role: "system" as const, parts: [{ text: systemMessage }] }
-		: undefined
+    const combinedInstruction = [BASE_SYSTEM_RULES, systemMessage]
+        .filter((t) => t && t.trim().length > 0)
+        .join("\n\n")
+
+    const systemInstruction = combinedInstruction
+        ? { role: "system" as const, parts: [{ text: combinedInstruction }] }
+        : undefined
 
 	const candidateModels = Array.from(
 		new Set(
@@ -151,7 +200,7 @@ export async function handleChat({
 
 	for (const modelId of candidateModels) {
 		try {
-			const model = googleClient.getGenerativeModel({ model: modelId })
+			const model = aiClient.getGenerativeModel({ model: modelId })
 
 			const contents = messages.map((msg) => ({
 				role: msg.role === "assistant" ? "model" : "user",
@@ -170,18 +219,115 @@ export async function handleChat({
 				},
 			})
 
-			const stream = new ReadableStream({
-				start(controller) {
-					const messageId = `chat-${Date.now()}`
-					controller.enqueue({ type: "text-start", id: messageId })
+            const stream = new ReadableStream({
+                start(controller) {
+                    const messageId = `chat-${Date.now()}`
+                    controller.enqueue({ type: "text-start", id: messageId })
 
-					;(async () => {
-						try {
-							for await (const chunk of response.stream) {
-								const delta = extractChunkText(chunk)
-								if (delta) {
-									controller.enqueue({
-										type: "text-delta",
+                    ;(async () => {
+                        try {
+                            // Emit UI tool parts to show memory search results in the chat panel
+                            if (uiSearchResults.length > 0) {
+                                controller.enqueue({
+                                    type: "assistant-part",
+                                    id: messageId,
+                                    part: { type: "tool-searchMemories", state: "input-available" },
+                                })
+                                controller.enqueue({
+                                    type: "assistant-part",
+                                    id: messageId,
+                                    part: { type: "tool-searchMemories", state: "input-streaming" },
+                                })
+                                controller.enqueue({
+                                    type: "assistant-part",
+                                    id: messageId,
+                                    part: {
+                                        type: "tool-searchMemories",
+                                        state: "output-available",
+                                        output: { count: uiSearchResults.length, results: uiSearchResults },
+                                    },
+                                })
+                            }
+                            // Detect and handle addMemory commands from the last user message
+                            const addMemoryText = (() => {
+                                const t = (lastUserTurn?.content ?? "").trim()
+                                if (!t) return null
+                                const lowered = t.toLowerCase()
+                                const triggers = [
+                                    "remember:",
+                                    "remember this",
+                                    "save:",
+                                    "save this",
+                                    "add to memory:",
+                                    "add to memory",
+                                    "add memory:",
+                                    "add memory",
+                                    "memoriza:",
+                                    "memoriza isso",
+                                    "salvar memória:",
+                                    "salvar memoria:",
+                                    "salvar isso",
+                                    "guardar:",
+                                    "guardar isto",
+                                    "lembra:",
+                                    "lembre:",
+                                ]
+                                const matched = triggers.find((k) => lowered.startsWith(k))
+                                if (matched) {
+                                    const content = t.slice(matched.length).trim()
+                                    return content.length > 0 ? content : null
+                                }
+                                return null
+                            })()
+
+                            if (addMemoryText) {
+                                controller.enqueue({
+                                    type: "assistant-part",
+                                    id: messageId,
+                                    part: { type: "tool-addMemory", state: "input-available" },
+                                })
+                                controller.enqueue({
+                                    type: "assistant-part",
+                                    id: messageId,
+                                    part: { type: "tool-addMemory", state: "input-streaming" },
+                                })
+                                ;(async () => {
+                                    try {
+                                        await addDocument({
+                                            organizationId: orgId,
+                                            userId,
+                                            client,
+                                            payload: {
+                                                content: addMemoryText,
+                                                containerTags: projectId ? [projectId] : undefined,
+                                                metadata: {
+                                                    source: "chat",
+                                                    type: "text",
+                                                    from_chat: true,
+                                                    ...(projectId ? { projectId } : {}),
+                                                },
+                                            },
+                                        })
+                                        controller.enqueue({
+                                            type: "assistant-part",
+                                            id: messageId,
+                                            part: { type: "tool-addMemory", state: "output-available" },
+                                        })
+                                    } catch (err) {
+                                        console.error("addMemory failed", err)
+                                        controller.enqueue({
+                                            type: "assistant-part",
+                                            id: messageId,
+                                            part: { type: "tool-addMemory", state: "output-error" },
+                                        })
+                                    }
+                                })()
+                            }
+                            for await (const chunk of response.stream) {
+                                const delta = extractChunkText(chunk)
+                                if (delta) {
+                                    controller.enqueue({
+                                        type: "text-delta",
 										id: messageId,
 										delta,
 									})

@@ -1,12 +1,8 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
 import { env } from "../env"
+import { aiClient } from "./ai-provider"
 
 const SUMMARY_MAX_CHARS = 6000
 const ANALYSIS_MAX_CHARS = 20000 // Maior limite para análise profunda
-
-const googleClient = env.GOOGLE_API_KEY
-	? new GoogleGenerativeAI(env.GOOGLE_API_KEY)
-	: null
 
 export async function generateSummary(
 	text: string,
@@ -15,14 +11,14 @@ export async function generateSummary(
 	const trimmed = text.trim()
 	if (!trimmed) return null
 
-	if (!googleClient) {
+	if (!aiClient) {
 		return buildFallbackSummary(trimmed, context)
 	}
 
 	const snippet = trimmed.slice(0, SUMMARY_MAX_CHARS)
 	const modelId = env.SUMMARY_MODEL ?? env.CHAT_MODEL ?? "models/gemini-2.5-pro"
 	try {
-		const model = googleClient.getGenerativeModel({ model: modelId })
+		const model = aiClient.getGenerativeModel({ model: modelId })
 		const prompt = buildPrompt(snippet, context)
 		const result = await model.generateContent({
 			contents: [
@@ -151,8 +147,8 @@ export async function generateDeepAnalysis(
 	const trimmed = text.trim()
 	if (!trimmed) return null
 
-	if (!googleClient) {
-		console.warn("Google AI not configured, cannot generate deep analysis")
+	if (!aiClient) {
+		console.warn("AI not configured, cannot generate deep analysis")
 		return null
 	}
 
@@ -160,7 +156,7 @@ export async function generateDeepAnalysis(
 
 	try {
 		// Usar Gemini 2.0 Flash - rápido e eficiente
-		const model = googleClient.getGenerativeModel({
+		const model = aiClient.getGenerativeModel({
 			model: "models/gemini-2.0-flash-exp",
 		})
 
@@ -277,15 +273,15 @@ function buildDeepAnalysisPrompt(
 export async function summarizeYoutubeVideo(
 	url: string,
 ): Promise<string | null> {
-	if (!googleClient) {
-		console.warn("Google AI not configured, cannot analyze YouTube video")
+	if (!aiClient) {
+		console.warn("AI not configured, cannot analyze YouTube video")
 		return null
 	}
 
 	try {
 		// Usar Gemini 2.0 Flash que suporta análise de vídeo do YouTube diretamente
 		const modelId = "models/gemini-2.0-flash-exp"
-		const model = googleClient.getGenerativeModel({ model: modelId })
+		const model = aiClient.getGenerativeModel({ model: modelId })
 
 		const prompt = [
 			"Analise este vídeo do YouTube e crie um resumo estruturado em português.",

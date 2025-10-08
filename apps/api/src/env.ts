@@ -10,6 +10,7 @@ const envSchema = z.object({
 	SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 	SUPABASE_ANON_KEY: z.string().min(1).optional(),
 	GOOGLE_API_KEY: z.string().min(1).optional(),
+	OPENROUTER_API_KEY: z.string().min(1).optional(),
 	EMBEDDING_MODEL: z.string().default("text-embedding-004"),
 	EMBEDDING_DIMENSION: z
 		.string()
@@ -55,6 +56,7 @@ const parsed = envSchema.safeParse({
 	SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
 	SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
 	GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
+	OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 	EMBEDDING_MODEL: process.env.EMBEDDING_MODEL,
 	EMBEDDING_DIMENSION: process.env.EMBEDDING_DIMENSION,
 	CHAT_MODEL: process.env.CHAT_MODEL,

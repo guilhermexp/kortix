@@ -3,6 +3,7 @@ import { z } from "zod"
 import {
 	ConnectionResponseSchema,
 	CreateProjectSchema,
+    UpdateProjectSchema,
 	DeleteProjectResponseSchema,
 	DeleteProjectSchema,
 	DocumentsWithMemoriesQuerySchema,
@@ -152,6 +153,11 @@ export const apiSchema = createSchema({
 	"@post/projects": {
 		input: CreateProjectSchema,
 		output: ProjectSchema,
+	},
+	"@patch/projects/:projectId": {
+		input: UpdateProjectSchema,
+		output: ProjectSchema,
+		params: z.object({ projectId: z.string() }),
 	},
 	"@delete/projects/:projectId": {
 		input: DeleteProjectSchema,
