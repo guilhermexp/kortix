@@ -644,10 +644,43 @@ export async function extractDocumentContent(
 		}
 	}
 
-	if (env.FIRECRAWL_API_KEY) {
-		try {
-			const firecrawlResult = await convertUrlWithFirecrawl(probableUrl)
-			let markdown = firecrawlResult.markdown ?? ""
+    // Prefer MarkItDown for generic web pages when enabled; fallback to Firecrawl
+    if (env.USE_MARKITDOWN_FOR_WEB) {
+        try {
+            const markitdownResult = await tryMarkItDownOnUrl(probableUrl)
+            if (markitdownResult) {
+                const markdown = cleanExtractedContent(
+                    markitdownResult.markdown,
+                    probableUrl,
+                )
+                const text = sanitiseText(markdown) || originalFallback
+                const markitdownTitle = readRecordString(
+                    markitdownResult.metadata,
+                    "title",
+                )
+
+                // Consider it a successful extraction if we have non-trivial text
+                if (text && text.length >= 120) {
+                    return {
+                        text,
+                        title: markitdownTitle ?? metadataTitle ?? null,
+                        source: "markitdown",
+                        url: probableUrl,
+                        contentType: "text/markdown",
+                        raw: { markitdown: markitdownResult.metadata },
+                        wordCount: countWords(text),
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn("markitdown-first extraction fallback", error)
+        }
+    }
+
+    if (env.FIRECRAWL_API_KEY) {
+        try {
+            const firecrawlResult = await convertUrlWithFirecrawl(probableUrl)
+            let markdown = firecrawlResult.markdown ?? ""
 
 			// Clean up escaped markdown from Firecrawl
 			markdown = markdown
@@ -676,10 +709,10 @@ export async function extractDocumentContent(
 					wordCount: countWords(text),
 				}
 			}
-		} catch (error) {
-			console.warn("firecrawl extraction fallback", error)
-		}
-	}
+        } catch (error) {
+            console.warn("firecrawl extraction fallback", error)
+        }
+    }
 
 	const response = await fetch(probableUrl, {
 		headers: {
