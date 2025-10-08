@@ -27,10 +27,10 @@ Os modelos Gemini são mapeados para seus equivalentes no OpenRouter:
 
 | Gemini Model | OpenRouter Model |
 |--------------|------------------|
-| gemini-2.5-pro | google/gemini-2.0-flash-exp:free |
-| gemini-2.5-flash | google/gemini-2.0-flash-exp:free |
-| gemini-2.0-flash | google/gemini-2.0-flash-exp:free |
-| gemini-2.0-flash-exp | google/gemini-2.0-flash-exp:free |
+| gemini-2.5-pro | google/gemini-2.5-flash-lite-preview-09-2025 |
+| gemini-2.5-flash | google/gemini-2.5-flash-lite-preview-09-2025 |
+| gemini-2.0-flash | google/gemini-2.5-flash-lite-preview-09-2025 |
+| gemini-2.0-flash-exp | google/gemini-2.5-flash-lite-preview-09-2025 |
 
 ## Configuração
 
@@ -101,9 +101,9 @@ O sistema registra quando ocorre fallback:
 - Após quota: fallback automático
 
 ### OpenRouter (Fallback)
-- Modelos gratuitos: `google/gemini-2.0-flash-exp:free`
+- Modelo usado: `google/gemini-2.5-flash-lite-preview-09-2025`
 - Rate limits: Varies by model
-- Custo zero para tier free
+- Mais leve e rápido que o flash padrão
 
 ## Troubleshooting
 

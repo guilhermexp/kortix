@@ -134,17 +134,18 @@ class AIProviderWithFallback implements AIProvider {
 		const cleanModel = geminiModel.replace(/^models\//, "")
 
 		// Mapear modelos Gemini para OpenRouter
+		// Usando gemini-2.5-flash-lite como fallback principal (mais barato e rápido)
 		const modelMap: Record<string, string> = {
-			"gemini-2.5-pro": "google/gemini-2.0-flash-exp:free",
-			"gemini-2.5-flash": "google/gemini-2.0-flash-exp:free",
-			"gemini-2.0-flash": "google/gemini-2.0-flash-exp:free",
-			"gemini-2.0-flash-exp": "google/gemini-2.0-flash-exp:free",
-			"gemini-pro": "google/gemini-pro",
-			"gemini-pro-vision": "google/gemini-pro-vision",
+			"gemini-2.5-pro": "google/gemini-2.5-flash-lite-preview-09-2025",
+			"gemini-2.5-flash": "google/gemini-2.5-flash-lite-preview-09-2025",
+			"gemini-2.0-flash": "google/gemini-2.5-flash-lite-preview-09-2025",
+			"gemini-2.0-flash-exp": "google/gemini-2.5-flash-lite-preview-09-2025",
+			"gemini-pro": "google/gemini-2.5-flash-lite-preview-09-2025",
+			"gemini-pro-vision": "google/gemini-2.5-flash-lite-preview-09-2025",
 		}
 
 		return (
-			modelMap[cleanModel] ?? "google/gemini-2.0-flash-exp:free" // fallback padrão
+			modelMap[cleanModel] ?? "google/gemini-2.5-flash-lite-preview-09-2025" // fallback padrão
 		)
 	}
 
