@@ -197,77 +197,45 @@ function buildDeepAnalysisPrompt(
 		contentType?: string | null
 	},
 ) {
-	const isGitHub = context?.url?.includes("github.com")
-	const isPDF = context?.contentType?.includes("pdf")
-	const isWebPage = context?.contentType?.includes("html") || context?.url
+	const parts: string[] = []
 
-	const header: string[] = [
-		"Você é um assistente analítico do Supermemory que cria resumos estruturados e insights profundos.",
-		"Analise o conteúdo abaixo e responda SEMPRE no formato Markdown com as seguintes seções:",
-		"",
-		"## Resumo Executivo",
-		"2-3 frases diretas sobre o tema principal, contexto e relevância do conteúdo.",
-		"",
-		"## Pontos-Chave",
-		"Liste 5-8 bullets com:",
-		"- Conceitos, ideias ou argumentos centrais",
-		"- Fatos, dados ou estatísticas importantes",
-		"- Insights ou conclusões relevantes",
-		"",
-	]
+	// Simple, direct instruction
+	parts.push("Analise esta página e crie um resumo estruturado em português.")
+	parts.push("")
 
-	// Ajustar seções baseado no tipo de conteúdo
-	if (isGitHub) {
-		header.push(
-			"## Tecnologias e Ferramentas",
-			"Se aplicável, liste:",
-			"- Linguagens de programação ou frameworks mencionados",
-			"- Bibliotecas, APIs ou dependências relevantes",
-			"- Arquitetura ou padrões de design",
-			"",
-		)
-	}
-
-	header.push(
-		"## Próximas Ações",
-		"Liste bullets se o conteúdo trouxer:",
-		"- Passos práticos, tutoriais ou instruções",
-		"- Recomendações ou melhores práticas",
-		"- Chamadas para ação ou tarefas sugeridas",
-		"Caso contrário, escreva: `- (sem ações práticas identificadas)`",
-		"",
-	)
-
-	if (isPDF || isWebPage) {
-		header.push(
-			"## Contexto Adicional",
-			"Se relevante, mencione:",
-			"- Autores, organizações ou fontes citadas",
-			"- Data de publicação ou atualização (se disponível)",
-			"- Público-alvo ou caso de uso",
-			"",
-		)
-	}
-
+	// Add context if available
 	if (context?.title) {
-		header.push(`**Título:** ${context.title}`)
+		parts.push(`Título: ${context.title}`)
 	}
 	if (context?.url) {
-		header.push(`**Fonte:** ${context.url}`)
+		parts.push(`URL: ${context.url}`)
+	}
+	if (context?.title || context?.url) {
+		parts.push("")
 	}
 
-	header.push(
-		"",
-		"**IMPORTANTE:** Seja objetivo, analítico e direto. Não inicie com frases como 'Aqui está' ou 'Segue o resumo'.",
-		"",
-		"---",
-		"",
-		"Conteúdo a ser analisado:",
-		"",
-		snippet,
-	)
+	// Format requirements
+	parts.push("Formato do resumo (markdown):")
+	parts.push("")
+	parts.push("## Resumo")
+	parts.push("2-3 frases explicando do que se trata.")
+	parts.push("")
+	parts.push("## Pontos Principais")
+	parts.push("- Liste 4-6 pontos-chave")
+	parts.push("- Conceitos importantes")
+	parts.push("- Informações relevantes")
+	parts.push("")
+	parts.push("## Ações")
+	parts.push("Se houver instruções, passos ou recomendações, liste aqui.")
+	parts.push("Caso contrário: `- (nenhuma ação identificada)`")
+	parts.push("")
+	parts.push("---")
+	parts.push("")
+	parts.push("Conteúdo:")
+	parts.push("")
+	parts.push(snippet)
 
-	return header.join("\n")
+	return parts.join("\n")
 }
 
 export async function summarizeYoutubeVideo(
