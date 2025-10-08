@@ -56,6 +56,7 @@ CHAT_MODEL=models/gemini-2.5-flash
 SUMMARY_MODEL=models/gemini-2.5-pro
 EMBEDDING_MODEL=text-embedding-004
 FIRECRAWL_API_KEY=***
+USE_MARKITDOWN_FOR_WEB=true
 RESEND_API_KEY=***
 RESEND_FROM_EMAIL=onboarding@resend.dev
 APP_URL=https://repoweb-production.up.railway.app
