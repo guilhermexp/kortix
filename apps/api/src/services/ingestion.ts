@@ -158,11 +158,19 @@ export async function processDocument(input: ProcessDocumentInput) {
 				}
 			: (document.raw ?? null)
 
-		const summary = await generateDeepAnalysis(extraction.text, {
-			title: extraction.title ?? document.title ?? null,
-			url: extraction.url ?? document.url ?? payloadUrl ?? null,
-			contentType: extraction.contentType ?? null,
-		})
+        const summary = await generateDeepAnalysis(extraction.text, {
+            title: extraction.title ?? document.title ?? null,
+            url: extraction.url ?? document.url ?? payloadUrl ?? null,
+            contentType: extraction.contentType ?? null,
+        })
+        try {
+            console.info("ingestion: summary-generated", {
+                documentId,
+                title: extraction.title ?? document.title ?? null,
+                chars: (summary ?? "").length,
+                words: (summary ?? "").split(/\s+/).filter(Boolean).length,
+            })
+        } catch {}
 
 		const chunks = chunkText(extraction.text)
 		await updateDocumentStatus(documentId, "chunking")
@@ -225,16 +233,35 @@ export async function processDocument(input: ProcessDocumentInput) {
 
 		if (documentUpdateError) throw documentUpdateError
 
-		const { error: memoryError } = await supabaseAdmin.from("memories").insert({
-			document_id: documentId,
-			space_id: spaceId,
-			org_id: organizationId,
-			user_id: userId,
-			content: extraction.text,
-			metadata: mergedMetadata,
-			memory_embedding: documentEmbedding,
-			memory_embedding_model: env.EMBEDDING_MODEL,
-		})
+        // Create a single "summary" memory entry instead of duplicating full page content
+        const memoryContent = (summary && summary.trim().length > 0)
+            ? summary.trim()
+            : extraction.text.slice(0, Math.min(2000, extraction.text.length))
+
+        const summaryEmbedding = await generateEmbedding(memoryContent)
+
+        const { error: memoryError } = await supabaseAdmin
+            .from("memories")
+            .insert({
+                document_id: documentId,
+                space_id: spaceId,
+                org_id: organizationId,
+                user_id: userId,
+                content: memoryContent,
+                metadata: {
+                    ...(mergedMetadata ?? {}),
+                    kind: "summary",
+                    generator: "gemini-sync",
+                },
+                memory_embedding: summaryEmbedding,
+                memory_embedding_model: env.EMBEDDING_MODEL,
+            })
+        try {
+            console.info("ingestion: memory-saved-summary", {
+                documentId,
+                preview: memoryContent.slice(0, 80),
+            })
+        } catch {}
 
 		if (memoryError) throw memoryError
 

@@ -6,24 +6,24 @@ export const colors = {
 		accent: "#252a35", // Card backgrounds
 	},
 	document: {
-		primary: "rgba(255, 255, 255, 0.06)", // Subtle glass white
-		secondary: "rgba(255, 255, 255, 0.12)", // More visible
-		accent: "rgba(255, 255, 255, 0.18)", // Hover state
-		border: "rgba(255, 255, 255, 0.25)", // Sharp borders
-		glow: "rgba(147, 197, 253, 0.4)", // Blue glow for interaction
+		primary: "rgba(255, 255, 255, 0.04)", // Subtle glass white
+		secondary: "rgba(255, 255, 255, 0.08)", // More visible
+		accent: "rgba(255, 255, 255, 0.12)", // Hover state
+		border: "rgba(255, 255, 255, 0.15)", // Sharp borders
+		glow: "rgba(147, 197, 253, 0.25)", // Blue glow for interaction
 	},
 	memory: {
-		primary: "rgba(147, 197, 253, 0.08)", // Subtle glass blue
-		secondary: "rgba(147, 197, 253, 0.16)", // More visible
-		accent: "rgba(147, 197, 253, 0.24)", // Hover state
-		border: "rgba(147, 197, 253, 0.35)", // Sharp borders
-		glow: "rgba(147, 197, 253, 0.5)", // Blue glow for interaction
+		primary: "rgba(147, 197, 253, 0.05)", // Subtle glass blue
+		secondary: "rgba(147, 197, 253, 0.10)", // More visible
+		accent: "rgba(147, 197, 253, 0.15)", // Hover state
+		border: "rgba(147, 197, 253, 0.20)", // Sharp borders
+		glow: "rgba(147, 197, 253, 0.30)", // Blue glow for interaction
 	},
 	connection: {
 		weak: "rgba(148, 163, 184, 0)", // Very subtle
-		memory: "rgba(148, 163, 184, 0.3)", // Very subtle
-		medium: "rgba(148, 163, 184, 0.125)", // Medium visibility
-		strong: "rgba(148, 163, 184, 0.4)", // Strong connection
+		memory: "rgba(148, 163, 184, 0.15)", // Very subtle
+		medium: "rgba(148, 163, 184, 0.08)", // Medium visibility
+		strong: "rgba(148, 163, 184, 0.20)", // Strong connection
 	},
 	text: {
 		primary: "#ffffff", // Pure white

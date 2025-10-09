@@ -334,17 +334,42 @@ const DocumentCard = memo(
 			}
 		}, [preview?.kind])
 
-		return (
-			<Card
-				className="h-full mx-4 p-4 transition-all cursor-pointer group relative overflow-hidden border border-white/10 gap-2 md:w-full rounded-lg"
-				onClick={() => {
-					analytics.documentCardClicked()
-					onOpenDetails(document)
-				}}
-				style={{
-					backgroundColor: "#0f1419",
-				}}
-			>
+    const processingStates = new Set([
+      "queued",
+      "fetching",
+      "extracting",
+      "chunking",
+      "embedding",
+      "processing",
+    ])
+
+    const isProcessing = document.status
+      ? processingStates.has(String(document.status).toLowerCase())
+      : false
+
+    return (
+      <Card
+        className="h-full mx-4 p-4 transition-all cursor-pointer group relative overflow-hidden border border-white/10 gap-2 md:w-full rounded-lg"
+        onClick={() => {
+          analytics.documentCardClicked()
+          onOpenDetails(document)
+        }}
+        style={{
+          backgroundColor: "#0f1419",
+        }}
+      >
+        {/* Inline processing feedback overlay inside the card */}
+        {isProcessing && (
+          <div className="absolute inset-0 z-20 bg-black/45 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+            <div className="px-3 py-2 rounded-md border border-white/10 bg-white/8 text-white/90 text-sm flex items-center gap-2 shadow-lg">
+              <svg className="animate-spin h-4 w-4 text-white/80" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+              </svg>
+              Processing...
+            </div>
+          </div>
+        )}
 				<CardHeader className="relative z-10 px-0">
 					<div className="flex items-center justify-between gap-2">
 						<div className="flex items-center gap-1">

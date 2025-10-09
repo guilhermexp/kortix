@@ -1,8 +1,7 @@
-import { Readability } from "@mozilla/readability"
-import { JSDOM } from "jsdom"
+// Removed Readability/JSDOM HTML extraction to simplify pipeline
 import pdfParse from "pdf-parse/lib/pdf-parse.js"
 import { env } from "../env"
-import { convertUrlWithFirecrawl } from "./firecrawl"
+// Removed Firecrawl fallback; use local MarkItDown only
 import { summarizeBinaryWithGemini } from "./gemini-files"
 import {
 	checkMarkItDownHealth,
@@ -247,65 +246,7 @@ function shouldUseGemini(mime: string) {
 	return false
 }
 
-async function extractFromHtml(html: string, url?: string) {
-	const dom = new JSDOM(html, { url })
-	const document = dom.window.document
-	const reader = new Readability(document)
-	const article = reader.parse()
-	
-	// Extract Open Graph metadata
-	const ogImage = 
-		document.querySelector('meta[property="og:image"]')?.getAttribute('content') ??
-		document.querySelector('meta[name="og:image"]')?.getAttribute('content') ??
-		document.querySelector('meta[property="twitter:image"]')?.getAttribute('content') ??
-		document.querySelector('meta[name="twitter:image"]')?.getAttribute('content')
-	
-	const ogTitle = 
-		document.querySelector('meta[property="og:title"]')?.getAttribute('content') ??
-		document.querySelector('meta[name="og:title"]')?.getAttribute('content')
-	
-	const ogDescription = 
-		document.querySelector('meta[property="og:description"]')?.getAttribute('content') ??
-		document.querySelector('meta[name="og:description"]')?.getAttribute('content') ??
-		document.querySelector('meta[name="description"]')?.getAttribute('content')
-	
-	// Extract favicon as fallback
-	const favicon = 
-		document.querySelector('link[rel="icon"]')?.getAttribute('href') ??
-		document.querySelector('link[rel="shortcut icon"]')?.getAttribute('href') ??
-		document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute('href')
-	
-	// Build metadata object
-	const metadata: Record<string, unknown> = {}
-	if (ogImage) metadata.ogImage = ogImage
-	if (ogTitle) metadata.ogTitle = ogTitle
-	if (ogDescription) metadata.ogDescription = ogDescription
-	if (favicon) metadata.favicon = favicon
-	
-	if (article?.textContent && article.textContent.trim().length > 100) {
-		const cleanedText = cleanExtractedContent(
-			sanitiseText(article.textContent),
-			url,
-		)
-		return {
-			text: cleanedText,
-			title: article.title ?? ogTitle ?? document.title ?? null,
-			raw: {
-				byline: article.byline,
-				length: article.length,
-				excerpt: article.excerpt,
-				...metadata,
-			},
-		}
-	}
-	const fallback = document.body?.textContent ?? ""
-	const cleanedFallback = cleanExtractedContent(sanitiseText(fallback), url)
-	return {
-		text: cleanedFallback,
-		title: ogTitle ?? document.title ?? null,
-		raw: Object.keys(metadata).length > 0 ? metadata : null,
-	}
-}
+// Readability-based HTML extractor removed
 
 async function extractFromPdf(buffer: Buffer) {
 	const { text, info, metadata } = await pdfParse(buffer)
@@ -406,17 +347,23 @@ function shouldTryMarkItDownFirst(
 }
 
 async function tryMarkItDownOnBuffer(buffer: Buffer, filename: string) {
-	const healthy = await checkMarkItDownHealth()
-	if (!healthy) return null
+  const healthy = await checkMarkItDownHealth()
+  if (!healthy) return null
 
-	try {
-		const result = await convertWithMarkItDown(buffer, filename)
-		if (!result?.markdown) return null
-		return result
-	} catch (error) {
-		console.warn("MarkItDown failed for uploaded buffer", error)
-		return null
-	}
+  try {
+    const result = await convertWithMarkItDown(buffer, filename)
+    if (!result?.markdown) return null
+    try {
+      console.info("extractor: markitdown-buffer", {
+        filename,
+        chars: result.markdown.length,
+      })
+    } catch {}
+    return result
+  } catch (error) {
+    console.warn("MarkItDown failed for uploaded buffer", error)
+    return null
+  }
 }
 
 async function tryMarkItDownOnUrl(url: string) {
@@ -586,11 +533,11 @@ export async function extractDocumentContent(
 		}
 	}
 
-	if (probableUrl && isYouTubeUrl(probableUrl)) {
-		const videoId = extractYouTubeVideoId(probableUrl)
-		const markitdownResult = await tryMarkItDownOnUrl(probableUrl)
+  if (probableUrl && isYouTubeUrl(probableUrl)) {
+    const videoId = extractYouTubeVideoId(probableUrl)
+    const markitdownResult = await tryMarkItDownOnUrl(probableUrl)
 
-		if (markitdownResult) {
+    if (markitdownResult) {
 			const markdown = cleanExtractedContent(
 				markitdownResult.markdown,
 				probableUrl,
@@ -602,12 +549,20 @@ export async function extractDocumentContent(
 			)
 
 			if (text) {
-				return {
-					text,
-					title:
-						markitdownTitle ?? metadataTitle ?? `Vídeo do YouTube: ${videoId}`,
-					source: "youtube",
-					url: probableUrl,
+        try {
+          console.info("extractor: markitdown-youtube", {
+            url: probableUrl,
+            videoId,
+            chars: text.length,
+            words: countWords(text),
+          })
+        } catch {}
+        return {
+          text,
+          title:
+            markitdownTitle ?? metadataTitle ?? `Vídeo do YouTube: ${videoId}`,
+          source: "youtube",
+          url: probableUrl,
 					contentType: "video/youtube",
 					raw: {
 						markitdown: markitdownResult.metadata,
@@ -623,14 +578,22 @@ export async function extractDocumentContent(
 			}
 		}
 
-		const summary = await summarizeYoutubeVideo(probableUrl)
-		if (summary) {
-			return {
-				text: summary,
-				title: metadataTitle ?? `Vídeo do YouTube: ${videoId}`,
-				source: "youtube",
-				url: probableUrl,
-				contentType: "video/youtube",
+    const summary = await summarizeYoutubeVideo(probableUrl)
+    if (summary) {
+      try {
+        console.info("extractor: youtube-summary", {
+          url: probableUrl,
+          videoId,
+          chars: summary.length,
+          words: countWords(summary),
+        })
+      } catch {}
+      return {
+        text: summary,
+        title: metadataTitle ?? `Vídeo do YouTube: ${videoId}`,
+        source: "youtube",
+        url: probableUrl,
+        contentType: "video/youtube",
 				raw: {
 					youtube: {
 						url: probableUrl,
@@ -644,8 +607,8 @@ export async function extractDocumentContent(
 		}
 	}
 
-    // Prefer MarkItDown for generic web pages when enabled; fallback to Firecrawl
-    if (env.USE_MARKITDOWN_FOR_WEB) {
+    // Prefer MarkItDown for generic web pages (local)
+    if (true /* always try MarkItDown for web */) {
         try {
             const markitdownResult = await tryMarkItDownOnUrl(probableUrl)
             if (markitdownResult) {
@@ -661,6 +624,14 @@ export async function extractDocumentContent(
 
                 // Consider it a successful extraction if we have non-trivial text
                 if (text && text.length >= 120) {
+                    try {
+                        console.info("extractor: markitdown-url", {
+                            url: probableUrl,
+                            title: markitdownTitle ?? metadataTitle ?? null,
+                            chars: text.length,
+                            words: countWords(text),
+                        })
+                    } catch {}
                     return {
                         text,
                         title: markitdownTitle ?? metadataTitle ?? null,
@@ -673,44 +644,7 @@ export async function extractDocumentContent(
                 }
             }
         } catch (error) {
-            console.warn("markitdown-first extraction fallback", error)
-        }
-    }
-
-    if (env.FIRECRAWL_API_KEY) {
-        try {
-            const firecrawlResult = await convertUrlWithFirecrawl(probableUrl)
-            let markdown = firecrawlResult.markdown ?? ""
-
-			// Clean up escaped markdown from Firecrawl
-			markdown = markdown
-				.replace(/\\\\/g, "\\") // Replace double backslashes with single
-				.replace(/\\\[/g, "[") // Fix escaped brackets
-				.replace(/\\\]/g, "]")
-				.replace(/\\\(/g, "(")
-				.replace(/\\\)/g, ")")
-
-			// Remove UI noise (navigation, alerts, notifications, etc.)
-			markdown = cleanExtractedContent(markdown, probableUrl)
-
-			const text = sanitiseText(markdown) || originalFallback
-
-			if (text) {
-				const metadata = firecrawlResult.metadata ?? {}
-				const firecrawlTitle = readRecordString(metadata, "title")
-				const title = firecrawlTitle ?? metadataTitle ?? null
-				return {
-					text,
-					title,
-					source: "web",
-					url: probableUrl,
-					contentType: "text/markdown",
-					raw: { firecrawl: metadata },
-					wordCount: countWords(text),
-				}
-			}
-        } catch (error) {
-            console.warn("firecrawl extraction fallback", error)
+            console.warn("markitdown extraction failed", error)
         }
     }
 
@@ -722,9 +656,25 @@ export async function extractDocumentContent(
 		},
 	})
 
-	if (!response.ok) {
-		throw new Error(`Falha ao buscar conteúdo remoto (${response.status})`)
-	}
+  if (!response.ok) {
+    // Do not crash the ingestion pipeline; fall back gracefully
+    try {
+      console.warn("extractor: fetch-not-ok", {
+        url: probableUrl,
+        status: response.status,
+      })
+    } catch {}
+    const ensuredText = originalFallback || ""
+    return {
+      text: ensuredText,
+      title: metadataTitle ?? null,
+      source: `http-${response.status}`,
+      url: probableUrl,
+      contentType: contentType || "text/plain",
+      raw: { fetchError: response.status },
+      wordCount: countWords(ensuredText),
+    }
+  }
 
 	const contentType = response.headers.get("content-type")?.toLowerCase() ?? ""
 	const contentLength = Number.parseInt(
@@ -810,18 +760,30 @@ export async function extractDocumentContent(
 		contentType.includes("text/html") ||
 		contentType.includes("application/xhtml")
 	) {
-		const html = await response.text()
-		const { text, title, raw } = await extractFromHtml(html, probableUrl)
-		const ensuredText = text || originalFallback
-		return {
-			text: ensuredText,
-			title: title ?? metadataTitle ?? null,
-			source: "web",
-			url: probableUrl,
-			contentType,
-			raw,
-			wordCount: countWords(ensuredText),
-		}
+    const html = await response.text()
+    // Minimal HTML to text stripping (no DOM): remove scripts/styles/tags, then clean noise
+    let plain = html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+    plain = cleanExtractedContent(plain, probableUrl)
+    const ensuredText = sanitiseText(plain) || originalFallback
+    try {
+      console.info("extractor: html-strip-fallback", {
+        url: probableUrl,
+        chars: ensuredText.length,
+        words: countWords(ensuredText),
+      })
+    } catch {}
+    return {
+      text: ensuredText,
+      title: metadataTitle ?? null,
+      source: "web",
+      url: probableUrl,
+      contentType,
+      raw: null,
+      wordCount: countWords(ensuredText),
+    }
 	}
 
 	if (contentType.includes("pdf")) {

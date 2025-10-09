@@ -507,7 +507,7 @@ export function ChatMessages() {
 
   useEffect(() => {
     const baseId = id ? id.split("::")[0] : null;
-    activeChatIdRef.current = currentChatId ?? baseId;
+    activeChatIdRef.current = currentChatId ?? baseId ?? null;
   }, [currentChatId, id]);
 
   useEffect(() => {
@@ -876,7 +876,7 @@ export function ChatMessages() {
 
             <Select
               value={mode}
-              onValueChange={setMode}
+              onValueChange={(value) => setMode(value as "simple" | "agentic" | "deep")}
               disabled={status === "submitted"}
             >
               <SelectTrigger className="h-8 min-w-[100px] text-[12px] px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/90">

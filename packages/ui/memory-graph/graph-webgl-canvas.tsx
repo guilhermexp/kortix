@@ -98,24 +98,12 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 				const worldY = (localY - panY) / zoom;
 
 				for (const node of nodes) {
-					if (node.type === "document") {
-						const halfW = (node.size * 1.4) / 2;
-						const halfH = (node.size * 0.9) / 2;
-						if (
-							worldX >= node.x - halfW &&
-							worldX <= node.x + halfW &&
-							worldY >= node.y - halfH &&
-							worldY <= node.y + halfH
-						) {
-							return node.id;
-						}
-					} else if (node.type === "memory") {
-						const r = node.size / 2;
-						const dx = worldX - node.x;
-						const dy = worldY - node.y;
-						if (dx * dx + dy * dy <= r * r) {
-							return node.id;
-						}
+					// Both documents and memories are now hexagons/circles
+					const r = node.size / 2;
+					const dx = worldX - node.x;
+					const dy = worldY - node.y;
+					if (dx * dx + dy * dy <= r * r) {
+						return node.id;
 					}
 				}
 				return null;
@@ -212,8 +200,7 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 					const screenY = node.y;
 					const nodeSize = node.size;
 
-					const docWidth = nodeSize * 1.4;
-					const docHeight = nodeSize * 0.9;
+					const radius = nodeSize / 2;
 
 					// Choose colors similar to canvas version
 					const fill = node.isDragging
@@ -231,41 +218,31 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 					const { hex: fillHex, alpha: fillAlpha } = toHexAlpha(fill);
 					const { hex: strokeHex, alpha: strokeAlpha } = toHexAlpha(strokeCol);
 
-            // Stroke first then fill for proper shape borders
-            const docStrokeWidth =
-                (node.isDragging ? 3 : node.isHovered ? 2 : 1) / zoom;
-            // Pixi v8 API
-            g.setStrokeStyle({ width: docStrokeWidth, color: strokeHex, alpha: strokeAlpha });
+					// Stroke first then fill for proper shape borders
+					const docStrokeWidth =
+						(node.isDragging ? 3 : node.isHovered ? 2 : 1) / zoom;
+					g.setStrokeStyle({ width: docStrokeWidth, color: strokeHex, alpha: strokeAlpha });
 
-            const radius = zoom < 0.3 ? 6 : 12;
-            g
-                .roundRect(
-                    screenX - docWidth / 2,
-                    screenY - docHeight / 2,
-                    docWidth,
-                    docHeight,
-                    radius,
-                )
-                .fill({ color: fillHex, alpha: fillAlpha })
-                .stroke();
-
-					// Inner highlight for glass effect (match GraphCanvas)
-					if (zoom >= 0.3 && (node.isHovered || node.isDragging)) {
-						const { hex: hlHex } = toHexAlpha("#ffffff");
-						// Inner highlight stroke width constant
-                const innerStroke = 1 / zoom;
-                g.setStrokeStyle({ width: innerStroke, color: hlHex, alpha: 0.1 });
-                g
-                    .roundRect(
-                        screenX - docWidth / 2 + 1,
-                        screenY - docHeight / 2 + 1,
-                        docWidth - 2,
-                        docHeight - 2,
-                        radius - 1,
-                    )
-                    .stroke();
-                // g.stroke(); // Removed - drawRoundedRect handles rendering
-            }
+					if (zoom < 0.3) {
+						// simplified circle when zoomed out
+						g
+							.circle(screenX, screenY, radius)
+							.fill({ color: fillHex, alpha: fillAlpha })
+							.stroke();
+					} else {
+						// hexagon (same as memories)
+						const sides = 6;
+						const points: number[] = [];
+						for (let i = 0; i < sides; i++) {
+							const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
+							points.push(screenX + radius * Math.cos(angle));
+							points.push(screenY + radius * Math.sin(angle));
+						}
+						g
+							.poly(points)
+							.fill({ color: fillHex, alpha: fillAlpha })
+							.stroke();
+					}
 				});
 			},
 			[nodes, zoom],

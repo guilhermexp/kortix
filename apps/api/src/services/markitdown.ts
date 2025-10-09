@@ -1,13 +1,17 @@
-const MARKITDOWN_INTERNAL_URL =
-	process.env.MARKITDOWN_INTERNAL_URL ||
-	"http://markitdown.railway.internal:5000"
-const MARKITDOWN_PUBLIC_URL = process.env.MARKITDOWN_PUBLIC_URL || ""
+import { spawn } from "node:child_process"
+import { writeFile, unlink } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
+const MARKITDOWN_PYTHON_PATH =
+	process.env.MARKITDOWN_PYTHON_PATH ||
+	"/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv/bin/python"
+const MARKITDOWN_VENV_PATH =
+	process.env.MARKITDOWN_VENV_PATH ||
+	"/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv"
 
 const REQUEST_TIMEOUT = 60_000 // 60 seconds
-const MAX_RETRIES = 2
-const HEALTH_CHECK_TTL = 30_000 // 30 seconds
-
-let lastHealthCheck: { healthy: boolean; timestamp: number } | null = null
+let markitdownAvailable: boolean | null = null
 
 type MarkItDownResponse = {
 	markdown: string
@@ -20,200 +24,121 @@ type MarkItDownResponse = {
 	}
 }
 
-type ConversionError = {
-	error: string
-	message: string
-	type?: string
-}
-
-function isMarkItDownError(data: unknown): data is ConversionError {
-	return typeof data === "object" && data !== null && "error" in data
-}
-
-async function fetchWithTimeout(
-	url: string,
-	options: RequestInit,
-	timeout: number,
-): Promise<Response> {
-	const controller = new AbortController()
-	const timeoutId = setTimeout(() => controller.abort(), timeout)
-
-	try {
-		const response = await fetch(url, {
-			...options,
-			signal: controller.signal,
+async function runMarkItDownCLI(filePath: string): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const args = ["-m", "markitdown", filePath]
+		const child = spawn(MARKITDOWN_PYTHON_PATH, args, {
+			timeout: REQUEST_TIMEOUT,
+			env: {
+				...process.env,
+				VIRTUAL_ENV: MARKITDOWN_VENV_PATH,
+			},
 		})
-		clearTimeout(timeoutId)
-		return response
-	} catch (error) {
-		clearTimeout(timeoutId)
-		throw error
-	}
-}
 
-async function tryConvert(
-	url: string,
-	body: FormData | string,
-	headers: Record<string, string>,
-	endpoint: "/convert" | "/convert/url" = "/convert",
-): Promise<MarkItDownResponse> {
-	const response = await fetchWithTimeout(
-		`${url}${endpoint}`,
-		{
-			method: "POST",
-			headers,
-			body,
-		},
-		REQUEST_TIMEOUT,
-	)
+		let stdout = ""
+		let stderr = ""
 
-	if (!response.ok) {
-		const errorData = await response.json().catch(() => ({}))
-		if (isMarkItDownError(errorData)) {
-			throw new Error(
-				`MarkItDown conversion failed: ${errorData.message} (${errorData.type || "unknown"})`,
-			)
-		}
-		throw new Error(`MarkItDown returned status ${response.status}`)
-	}
+		child.stdout.on("data", (data) => {
+			stdout += data.toString()
+		})
 
-	return await response.json()
+		child.stderr.on("data", (data) => {
+			stderr += data.toString()
+		})
+
+		child.on("close", (code) => {
+			if (code === 0) {
+				resolve(stdout)
+			} else {
+				reject(
+					new Error(
+						`MarkItDown CLI failed with code ${code}: ${stderr || stdout}`,
+					),
+				)
+			}
+		})
+
+		child.on("error", (error) => {
+			reject(error)
+		})
+	})
 }
 
 export async function convertWithMarkItDown(
 	buffer: Buffer,
 	filename?: string,
 ): Promise<MarkItDownResponse> {
-	const formData = new FormData()
-	formData.append("file", new Blob([buffer]), filename || "document")
+	const tempPath = join(tmpdir(), `markitdown-${Date.now()}-${filename || "file"}`)
 
-	const headers: Record<string, string> = {}
-	if (filename) {
-		headers["X-Filename"] = filename
-	}
+	try {
+		await writeFile(tempPath, buffer)
+		const markdown = await runMarkItDownCLI(tempPath)
 
-	let lastError: Error | null = null
-
-	// Try internal URL first (Railway private network)
-	for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-		try {
-			return await tryConvert(MARKITDOWN_INTERNAL_URL, formData, headers)
-		} catch (error) {
-			lastError = error instanceof Error ? error : new Error(String(error))
-			console.warn(
-				`MarkItDown internal URL attempt ${attempt + 1}/${MAX_RETRIES + 1} failed:`,
-				lastError.message,
-			)
-
-			if (attempt < MAX_RETRIES) {
-				// Exponential backoff
-				await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 1000))
-			}
+		return {
+			markdown,
+			metadata: {
+				filename: filename || "document",
+				size_bytes: buffer.length,
+				markdown_length: markdown.length,
+			},
 		}
+	} finally {
+		await unlink(tempPath).catch(() => {})
 	}
-
-	// Try public URL as fallback
-	if (MARKITDOWN_PUBLIC_URL) {
-		try {
-			console.log("Falling back to MarkItDown public URL")
-			return await tryConvert(MARKITDOWN_PUBLIC_URL, formData, headers)
-		} catch (error) {
-			lastError = error instanceof Error ? error : new Error(String(error))
-			console.error("MarkItDown public URL also failed:", lastError.message)
-		}
-	}
-
-	throw lastError || new Error("MarkItDown conversion failed after all retries")
 }
 
 export async function convertUrlWithMarkItDown(
 	url: string,
 ): Promise<MarkItDownResponse> {
-	const body = JSON.stringify({ url })
-	const headers = {
-		"Content-Type": "application/json",
+	// Fetch URL content first (CLI doesn't support URLs directly)
+	const response = await fetch(url)
+	if (!response.ok) {
+		throw new Error(`Failed to fetch URL ${url}: ${response.status}`)
 	}
 
-	let lastError: Error | null = null
+	const buffer = Buffer.from(await response.arrayBuffer())
+	const tempPath = join(tmpdir(), `markitdown-url-${Date.now()}.html`)
 
-	// Try internal URL first
-	for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-		try {
-			return await tryConvert(
-				MARKITDOWN_INTERNAL_URL,
-				body,
-				headers,
-				"/convert/url",
-			)
-		} catch (error) {
-			lastError = error instanceof Error ? error : new Error(String(error))
-			console.warn(
-				`MarkItDown URL conversion attempt ${attempt + 1}/${MAX_RETRIES + 1} failed:`,
-				lastError.message,
-			)
+	try {
+		await writeFile(tempPath, buffer)
+		const markdown = await runMarkItDownCLI(tempPath)
 
-			if (attempt < MAX_RETRIES) {
-				await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 1000))
-			}
+		return {
+			markdown,
+			metadata: {
+				url,
+				markdown_length: markdown.length,
+			},
 		}
+	} finally {
+		await unlink(tempPath).catch(() => {})
 	}
-
-	// Try public URL as fallback
-	if (MARKITDOWN_PUBLIC_URL) {
-		try {
-			console.log("Falling back to MarkItDown public URL for URL conversion")
-			return await tryConvert(
-				MARKITDOWN_PUBLIC_URL,
-				body,
-				headers,
-				"/convert/url",
-			)
-		} catch (error) {
-			lastError = error instanceof Error ? error : new Error(String(error))
-			console.error("MarkItDown public URL also failed:", lastError.message)
-		}
-	}
-
-	throw (
-		lastError || new Error("MarkItDown URL conversion failed after all retries")
-	)
 }
 
-async function probeHealth(url: string): Promise<boolean> {
+export async function checkMarkItDownHealth(): Promise<boolean> {
+	// Removed cache - always check for now to debug
+	// if (markitdownAvailable !== null) {
+	// 	return markitdownAvailable
+	// }
+
 	try {
-		const response = await fetchWithTimeout(
-			`${url}/health`,
-			{ method: "GET" },
-			5_000,
-		)
-		return response.ok
-	} catch {
+		// Test with a simple HTML file
+		const testHtml = "<html><body><h1>Test</h1><p>MarkItDown is working</p></body></html>"
+		const tempPath = join(tmpdir(), `markitdown-health-${Date.now()}.html`)
+
+		await writeFile(tempPath, testHtml)
+		const testResult = await runMarkItDownCLI(tempPath)
+		await unlink(tempPath).catch(() => {})
+
+		markitdownAvailable = testResult.length > 10
+		console.info("MarkItDown health check:", {
+			available: markitdownAvailable,
+			resultLength: testResult.length,
+		})
+		return markitdownAvailable
+	} catch (error) {
+		console.error("MarkItDown health check failed:", error)
+		markitdownAvailable = false
 		return false
 	}
-}
-
-export async function checkMarkItDownHealth(force = false): Promise<boolean> {
-	const now = Date.now()
-	if (
-		!force &&
-		lastHealthCheck &&
-		now - lastHealthCheck.timestamp < HEALTH_CHECK_TTL
-	) {
-		return lastHealthCheck.healthy
-	}
-
-	const urls = [MARKITDOWN_INTERNAL_URL, MARKITDOWN_PUBLIC_URL].filter(
-		(value): value is string => Boolean(value),
-	)
-
-	for (const url of urls) {
-		const healthy = await probeHealth(url)
-		if (healthy) {
-			lastHealthCheck = { healthy: true, timestamp: now }
-			return true
-		}
-	}
-
-	lastHealthCheck = { healthy: false, timestamp: now }
-	return false
 }
