@@ -124,14 +124,46 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 		);
 
 		/* ---------- Grid drawing ---------- */
-		const drawGrid = useCallback(
-			(g: PixiGraphics) => {
-				g.clear();
-				// Grid disabled - coordinates were in screen space but drawn in world container
-				// This caused massive lines when world transform (pan/zoom) was applied
-			},
-			[],
-		);
+        const drawGrid = useCallback(
+            (g: PixiGraphics) => {
+                g.clear();
+
+                // Much lighter grid: only major lines every N cells
+                const spacing = 120; // base cell size in screen pixels
+                const majorEvery = 4; // draw only every 4th line
+                const majorAlpha = 0.03; // very subtle
+                const color = 0xffffff;
+
+                // Align grid with world pan so it feels anchored
+                const offsetX = ((panX % spacing) + spacing) % spacing;
+                const offsetY = ((panY % spacing) + spacing) % spacing;
+
+                // Vertical major lines
+                let i = 0;
+                for (let x = -offsetX; x < width + spacing; x += spacing) {
+                    if (i % majorEvery === 0) {
+                        g.setStrokeStyle({ width: 1, color, alpha: majorAlpha });
+                        g.moveTo(x, 0);
+                        g.lineTo(x, height);
+                        g.stroke();
+                    }
+                    i++;
+                }
+
+                // Horizontal major lines
+                let j = 0;
+                for (let y = -offsetY; y < height + spacing; y += spacing) {
+                    if (j % majorEvery === 0) {
+                        g.setStrokeStyle({ width: 1, color, alpha: majorAlpha });
+                        g.moveTo(0, y);
+                        g.lineTo(width, y);
+                        g.stroke();
+                    }
+                    j++;
+                }
+            },
+            [panX, panY, width, height],
+        );
 
 		/* ---------- Color parsing ---------- */
 		const toHexAlpha = (input: string): { hex: number; alpha: number } => {
@@ -199,37 +231,41 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 					const { hex: fillHex, alpha: fillAlpha } = toHexAlpha(fill);
 					const { hex: strokeHex, alpha: strokeAlpha } = toHexAlpha(strokeCol);
 
-					// Stroke first then fill for proper shape borders
-					const docStrokeWidth =
-						(node.isDragging ? 3 : node.isHovered ? 2 : 1) / zoom;
-					g.lineStyle(docStrokeWidth, strokeHex, strokeAlpha);
-					g.beginFill(fillHex, fillAlpha);
+            // Stroke first then fill for proper shape borders
+            const docStrokeWidth =
+                (node.isDragging ? 3 : node.isHovered ? 2 : 1) / zoom;
+            // Pixi v8 API
+            g.setStrokeStyle({ width: docStrokeWidth, color: strokeHex, alpha: strokeAlpha });
 
-					const radius = zoom < 0.3 ? 6 : 12;
-					g.drawRoundedRect(
-						screenX - docWidth / 2,
-						screenY - docHeight / 2,
-						docWidth,
-						docHeight,
-						radius,
-					);
-					g.endFill();
+            const radius = zoom < 0.3 ? 6 : 12;
+            g
+                .roundRect(
+                    screenX - docWidth / 2,
+                    screenY - docHeight / 2,
+                    docWidth,
+                    docHeight,
+                    radius,
+                )
+                .fill({ color: fillHex, alpha: fillAlpha })
+                .stroke();
 
 					// Inner highlight for glass effect (match GraphCanvas)
 					if (zoom >= 0.3 && (node.isHovered || node.isDragging)) {
 						const { hex: hlHex } = toHexAlpha("#ffffff");
 						// Inner highlight stroke width constant
-						const innerStroke = 1 / zoom;
-						g.lineStyle(innerStroke, hlHex, 0.1);
-						g.drawRoundedRect(
-							screenX - docWidth / 2 + 1,
-							screenY - docHeight / 2 + 1,
-							docWidth - 2,
-							docHeight - 2,
-							radius - 1,
-						);
-						// g.stroke(); // Removed - drawRoundedRect handles rendering
-					}
+                const innerStroke = 1 / zoom;
+                g.setStrokeStyle({ width: innerStroke, color: hlHex, alpha: 0.1 });
+                g
+                    .roundRect(
+                        screenX - docWidth / 2 + 1,
+                        screenY - docHeight / 2 + 1,
+                        docWidth - 2,
+                        docHeight - 2,
+                        radius - 1,
+                    )
+                    .stroke();
+                // g.stroke(); // Removed - drawRoundedRect handles rendering
+            }
 				});
 			},
 			[nodes, zoom],
@@ -298,28 +334,31 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 					const globalAlpha = isLatest ? 1 : 0.4;
 					const finalFillAlpha = globalAlpha * fillAlpha;
 					const finalStrokeAlpha = globalAlpha * borderAlpha;
-					// Stroke first then fill for visible border
-					const memStrokeW =
-						(node.isDragging ? 3 : node.isHovered ? 2 : 1.5) / zoom;
-					g.lineStyle(memStrokeW, borderHex, finalStrokeAlpha);
-					g.beginFill(fillHex, finalFillAlpha);
+            // Stroke first then fill for visible border
+            const memStrokeW =
+                (node.isDragging ? 3 : node.isHovered ? 2 : 1.5) / zoom;
+            g.setStrokeStyle({ width: memStrokeW, color: borderHex, alpha: finalStrokeAlpha });
 
-					if (zoom < 0.3) {
-						// simplified circle when zoomed out
-						g.drawCircle(screenX, screenY, radius);
-					} else {
-						// hexagon
-						const sides = 6;
-						const points: number[] = [];
-						for (let i = 0; i < sides; i++) {
-							const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
-							points.push(screenX + radius * Math.cos(angle));
-							points.push(screenY + radius * Math.sin(angle));
-						}
-						g.drawPolygon(points);
-					}
-
-					g.endFill();
+            if (zoom < 0.3) {
+                // simplified circle when zoomed out
+                g
+                    .circle(screenX, screenY, radius)
+                    .fill({ color: fillHex, alpha: finalFillAlpha })
+                    .stroke();
+            } else {
+                // hexagon
+                const sides = 6;
+                const points: number[] = [];
+                for (let i = 0; i < sides; i++) {
+                    const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
+                    points.push(screenX + radius * Math.cos(angle));
+                    points.push(screenY + radius * Math.sin(angle));
+                }
+                g
+                    .poly(points)
+                    .fill({ color: fillHex, alpha: finalFillAlpha })
+                    .stroke();
+            }
 
 					// Status overlays (forgotten / new) – match GraphCanvas visuals
 					if (isForgotten) {
@@ -328,27 +367,27 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 						);
 						// Cross/ dot overlay stroke widths constant
 						const overlayStroke = 2 / zoom;
-						g.lineStyle(overlayStroke, crossHex, globalAlpha * crossAlpha);
-						const rCross = nodeSize * 0.25;
-						g.moveTo(screenX - rCross, screenY - rCross);
-						g.lineTo(screenX + rCross, screenY + rCross);
-						g.moveTo(screenX + rCross, screenY - rCross);
-						g.lineTo(screenX - rCross, screenY + rCross);
-						g.stroke();
-					} else if (isNew) {
-						const { hex: dotHex, alpha: dotAlpha } = toHexAlpha(
-							colors.status.new,
-						);
-						// Dot scales with node (GraphCanvas behaviour)
-						const dotRadius = Math.max(2, nodeSize * 0.15);
-						g.beginFill(dotHex, globalAlpha * dotAlpha);
-						g.drawCircle(
-							screenX + nodeSize * 0.25,
-							screenY - nodeSize * 0.25,
-							dotRadius,
-						);
-						g.endFill();
-					}
+                g.setStrokeStyle({ width: overlayStroke, color: crossHex, alpha: globalAlpha * crossAlpha });
+                const rCross = nodeSize * 0.25;
+                g.moveTo(screenX - rCross, screenY - rCross);
+                g.lineTo(screenX + rCross, screenY + rCross);
+                g.moveTo(screenX + rCross, screenY - rCross);
+                g.lineTo(screenX - rCross, screenY + rCross);
+                g.stroke();
+            } else if (isNew) {
+                const { hex: dotHex, alpha: dotAlpha } = toHexAlpha(
+                    colors.status.new,
+                );
+                // Dot scales with node (GraphCanvas behaviour)
+                const dotRadius = Math.max(2, nodeSize * 0.15);
+                g
+                    .circle(
+                        screenX + nodeSize * 0.25,
+                        screenY - nodeSize * 0.25,
+                        dotRadius,
+                    )
+                    .fill({ color: dotHex, alpha: globalAlpha * dotAlpha });
+            }
 				});
 			},
 			[nodes, zoom],
@@ -522,19 +561,19 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 
 					// Always use round line caps (same as Canvas 2D)
 					const screenLineWidth = lineWidth / zoom;
-					g.lineStyle(screenLineWidth, strokeHex, finalEdgeAlpha);
+            g.setStrokeStyle({ width: screenLineWidth, color: strokeHex, alpha: finalEdgeAlpha });
 
 					if (edge.edgeType === "version") {
 						// double line effect to match canvas (outer thicker, faint + inner thin)
-						g.lineStyle(3 / zoom, strokeHex, finalEdgeAlpha * 0.3);
-						g.moveTo(sx, sy);
-						g.lineTo(tx, ty);
-						g.stroke();
+                    g.setStrokeStyle({ width: 3 / zoom, color: strokeHex, alpha: finalEdgeAlpha * 0.3 });
+                    g.moveTo(sx, sy);
+                    g.lineTo(tx, ty);
+                    g.stroke();
 
-						g.lineStyle(1 / zoom, strokeHex, finalEdgeAlpha);
-						g.moveTo(sx, sy);
-						g.lineTo(tx, ty);
-						g.stroke();
+                    g.setStrokeStyle({ width: 1 / zoom, color: strokeHex, alpha: finalEdgeAlpha });
+                    g.moveTo(sx, sy);
+                    g.lineTo(tx, ty);
+                    g.stroke();
 
 						// arrow head
 						const angle = Math.atan2(ty - sy, tx - sx);
@@ -691,42 +730,41 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 
 		// Click handled in pointer up to avoid duplicate events
 
-		const handleWheel = useCallback(
-			(e: React.WheelEvent<HTMLDivElement>) => {
-				// Don't call preventDefault to avoid passive event listener warnings
-				// e.preventDefault();
-				// e.stopPropagation();
+    // Attach native wheel with passive: false to block page zoom/scroll
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const onWheelNative = (e: WheelEvent) => {
+            // Prevent page scroll/zoom and keep interaction inside canvas
+            e.preventDefault();
 
-				// Accumulate deltas
-				pendingWheelDeltaRef.current.dx += e.deltaX;
-				pendingWheelDeltaRef.current.dy += e.deltaY;
+            pendingWheelDeltaRef.current.dx += e.deltaX;
+            pendingWheelDeltaRef.current.dy += e.deltaY;
 
-				// Schedule a single update per frame
-				if (wheelRafRef.current === null) {
-					wheelRafRef.current = requestAnimationFrame(() => {
-						const { dx, dy } = pendingWheelDeltaRef.current;
-						pendingWheelDeltaRef.current = { dx: 0, dy: 0 };
+            if (wheelRafRef.current === null) {
+                wheelRafRef.current = requestAnimationFrame(() => {
+                    const { dx, dy } = pendingWheelDeltaRef.current;
+                    pendingWheelDeltaRef.current = { dx: 0, dy: 0 };
 
-						// @ts-expect-error
-						onWheel({
-							deltaY: dy,
-							deltaX: dx,
-							clientX: e.clientX,
-							clientY: e.clientY,
-							currentTarget: containerRef.current,
-							nativeEvent: e.nativeEvent,
-							preventDefault: () => {},
-							stopPropagation: () => {},
-						} as React.WheelEvent);
+                    // @ts-expect-error – construct minimal React-like event
+                    onWheel({
+                        deltaY: dy,
+                        deltaX: dx,
+                        clientX: (e as any).clientX,
+                        clientY: (e as any).clientY,
+                        currentTarget: el,
+                        nativeEvent: e as any,
+                        preventDefault: () => {},
+                        stopPropagation: () => {},
+                    } as React.WheelEvent);
 
-						wheelRafRef.current = null;
-
-						// nothing else – caching removed
-					});
-				}
-			},
-			[onWheel],
-		);
+                    wheelRafRef.current = null;
+                });
+            }
+        };
+        el.addEventListener("wheel", onWheelNative, { passive: false });
+        return () => el.removeEventListener("wheel", onWheelNative as EventListener);
+    }, [onWheel]);
 
 		// Cleanup any pending RAF on unmount
 		useEffect(() => {
@@ -738,47 +776,48 @@ export const GraphWebGLCanvas = memo<GraphCanvasProps>(
 		}, []);
 
 		return (
-			<div
-				className="absolute inset-0"
-				onDoubleClick={(ev) =>
-					onDoubleClick?.(ev as unknown as React.MouseEvent)
-				}
-				onKeyDown={(ev) => {
-					if (ev.key === "Enter")
-						handleClick(ev as unknown as React.MouseEvent<HTMLDivElement>);
-				}}
-				onPointerDown={handlePointerDown}
-				onPointerLeave={() => {
-					if (draggingNodeId) onNodeDragEnd();
-					if (isPanningRef.current) onPanEnd();
-					isPanningRef.current = false;
-					pointerDownPosRef.current = null;
-					pointerMovedRef.current = false;
-				}}
-				onPointerMove={handlePointerMove}
-				onPointerUp={handlePointerUp}
-				onTouchStart={onTouchStart}
-				onTouchMove={onTouchMove}
-				onTouchEnd={onTouchEnd}
-				onWheel={handleWheel}
-				ref={containerRef}
-				role="application"
-				style={{
-					cursor: draggingNodeId ? "grabbing" : "move",
-					touchAction: "pan-y pinch-zoom", // Allow vertical panning and pinch zoom
-					userSelect: "none",
-					WebkitUserSelect: "none",
-				}}
-			>
-				<Application
-					antialias
-					autoDensity
-					backgroundColor={0x0f1419}
-					height={height}
-					resolution={
-						typeof window !== "undefined" ? window.devicePixelRatio : 1
-					}
-					width={width}
+            <div
+                className="absolute inset-0"
+                onDoubleClick={(ev) =>
+                    onDoubleClick?.(ev as unknown as React.MouseEvent)
+                }
+                onKeyDown={(ev) => {
+                    if (ev.key === "Enter")
+                        handleClick(ev as unknown as React.MouseEvent<HTMLDivElement>);
+                }}
+                onPointerDown={handlePointerDown}
+                onPointerLeave={() => {
+                    if (draggingNodeId) onNodeDragEnd();
+                    if (isPanningRef.current) onPanEnd();
+                    isPanningRef.current = false;
+                    pointerDownPosRef.current = null;
+                    pointerMovedRef.current = false;
+                }}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+                ref={containerRef}
+                role="application"
+                style={{
+                    cursor: draggingNodeId ? "grabbing" : "move",
+                    touchAction: "none", // Prevent browser pinch-zoom/scroll; we handle it
+                    overscrollBehavior: "contain",
+                    userSelect: "none",
+                    WebkitUserSelect: "none",
+                }}
+            >
+                <Application
+                    antialias
+                    autoDensity
+                    // Make background transparent to match page theme and avoid seams
+                    backgroundAlpha={0}
+                    height={height}
+                    resolution={
+                        typeof window !== "undefined" ? window.devicePixelRatio : 1
+                    }
+                    width={width}
 				>
 					{/* Grid background (not affected by world transform) */}
 					<pixiGraphics ref={gridG} draw={() => {}} />

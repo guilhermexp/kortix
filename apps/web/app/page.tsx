@@ -5,10 +5,7 @@ import { useAuth } from "@lib/auth-context"
 import { APP_URL } from "@lib/env"
 import { $fetch } from "@repo/lib/api"
 import { MemoryGraph } from "@repo/ui/memory-graph"
-import type {
-	DocumentsWithMemoriesResponseSchema,
-	ProjectSchema,
-} from "@repo/validation/api"
+import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { Logo, LogoFull } from "@ui/assets/Logo"
 import { Button } from "@ui/components/button"
@@ -42,7 +39,8 @@ import { useGraphHighlights } from "@/stores/highlights"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
-type Project = z.infer<typeof ProjectSchema>
+// Experimental mode removed from UI; no project meta needed here
+// type Project = z.infer<typeof ProjectSchema>
 
 const MemoryGraphPage = () => {
 	const { documentIds: allHighlightDocumentIds } = useGraphHighlights()
@@ -57,20 +55,8 @@ const MemoryGraphPage = () => {
 	const [showConnectAIModal, setShowConnectAIModal] = useState(false)
 	const [isHelpHovered, setIsHelpHovered] = useState(false)
 
-	// Fetch projects meta to detect experimental flag
-	const { data: projectsMeta = [] } = useQuery<Project[]>({
-		queryKey: ["projects"],
-		queryFn: async () => {
-			const response = await $fetch("@get/projects")
-			return response.data?.projects ?? []
-		},
-		staleTime: 5 * 60 * 1000,
-	})
 
-	const isCurrentProjectExperimental = Boolean(
-		projectsMeta.find((project) => project.containerTag === selectedProject)
-			?.isExperimental,
-	)
+	const isCurrentProjectExperimental = false
 
 	// Tour state
 	const [showTourDialog, setShowTourDialog] = useState(false)
@@ -255,7 +241,10 @@ const MemoryGraphPage = () => {
 					limit: (pageParam as number) === 1 ? (IS_DEV ? 500 : 500) : PAGE_SIZE,
 					sort: "createdAt",
 					order: "desc",
-					containerTags: selectedProject ? [selectedProject] : undefined,
+                containerTags:
+                    selectedProject && selectedProject !== "sm_project_default"
+                        ? [selectedProject]
+                        : undefined,
 				},
 				disableValidation: true,
 			})
@@ -338,7 +327,10 @@ const MemoryGraphPage = () => {
 					body: {
 						ids: missing,
 						by: "customId",
-						containerTags: selectedProject ? [selectedProject] : undefined,
+                    containerTags:
+                        selectedProject && selectedProject !== "sm_project_default"
+                            ? [selectedProject]
+                            : undefined,
 					},
 					disableValidation: true,
 				})

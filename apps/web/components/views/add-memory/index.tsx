@@ -265,26 +265,33 @@ export function AddMemoryView({
 		},
 	})
 
-	const addContentForm = useForm({
-		defaultValues: {
-			content: "",
-			project: selectedProject || "sm_project_default",
-		},
-		onSubmit: async ({ value, formApi }) => {
-			addContentMutation.mutate({
-				content: value.content,
-				project: value.project,
-				contentType: activeTab as "note" | "link",
-			})
-			formApi.reset()
-		},
-		validators: {
-			onChange: z.object({
-				content: z.string().min(1, "Content is required"),
-				project: z.string(),
-			}),
-		},
-	})
+    const addContentForm = useForm({
+        defaultValues: {
+            content: "",
+            project:
+                selectedProject && selectedProject !== "sm_project_default"
+                    ? selectedProject
+                    : "",
+        },
+        onSubmit: async ({ value, formApi }) => {
+            addContentMutation.mutate({
+                content: value.content,
+                project: value.project,
+                contentType: activeTab as "note" | "link",
+            })
+            formApi.reset()
+        },
+        validators: {
+            onChange: z.object({
+                content: z.string().min(1, "Content is required"),
+                // Require a real project (not empty, not the All Projects viewer)
+                project: z
+                    .string()
+                    .min(1, "Select a project")
+                    .refine((v) => v !== "sm_project_default", "Select a project"),
+            }),
+        },
+    })
 
 	// Re-validate content field when tab changes between note/link/repository
 	// biome-ignore  lint/correctness/useExhaustiveDependencies: It is what it is
@@ -299,17 +306,20 @@ export function AddMemoryView({
 	}, [activeTab])
 
 	// Form for file upload metadata
-	const fileUploadForm = useForm({
-		defaultValues: {
-			title: "",
-			description: "",
-			project: selectedProject || "sm_project_default",
-		},
-		onSubmit: async ({ value, formApi }) => {
-			if (selectedFiles.length === 0) {
-				toast.error("Please select a file to upload")
-				return
-			}
+    const fileUploadForm = useForm({
+        defaultValues: {
+            title: "",
+            description: "",
+            project:
+                selectedProject && selectedProject !== "sm_project_default"
+                    ? selectedProject
+                    : "",
+        },
+        onSubmit: async ({ value, formApi }) => {
+            if (selectedFiles.length === 0) {
+                toast.error("Please select a file to upload")
+                return
+            }
 
 			for (const file of selectedFiles) {
 				fileUploadMutation.mutate({
@@ -460,9 +470,9 @@ export function AddMemoryView({
 			])
 			console.log("📸 Previous memories:", previousMemories)
 
-			// Create optimistic memory
-			const optimisticMemory: DocumentListItem = {
-				id: `temp-${Date.now()}`,
+            // Create optimistic memory
+            const optimisticMemory: DocumentListItem = {
+                id: `temp-${Date.now()}`,
 				content: contentType === "link" || contentType === "repository" ? "" : content,
 				url: contentType === "link" || contentType === "repository" ? content : null,
 				title:
@@ -477,12 +487,12 @@ export function AddMemoryView({
 						: contentType === "repository"
 							? "Fetching repository files..."
 							: "Processing content...",
-				containerTags: [project],
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				status: "queued",
-				type: contentType,
-				metadata: {
+                containerTags: [project],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                status: "queued",
+                type: contentType,
+                metadata: {
 					processingStage: "queued",
 					processingMessage: "Added to processing queue",
 				},

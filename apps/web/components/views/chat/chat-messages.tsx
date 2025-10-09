@@ -5,6 +5,19 @@ import { BACKEND_URL } from "@lib/env";
 import { cn } from "@lib/utils";
 import { Button } from "@ui/components/button";
 import { Input } from "@ui/components/input";
+import {
+  InputGroup,
+  InputGroupTextarea,
+  InputGroupAddon,
+  InputGroupButton,
+} from "@/components/ui/input-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@ui/components/select";
 import { DefaultChatTransport } from "ai";
 import {
   ArrowUp,
@@ -20,6 +33,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 import { TextShimmer } from "@/components/text-shimmer";
+import { DEFAULT_PROJECT_ID } from "@repo/lib/constants";
 import { usePersistentChat, useProject } from "@/stores";
 import { useGraphHighlights } from "@/stores/highlights";
 import { Spinner } from "../../spinner";
@@ -453,6 +467,10 @@ export function ChatMessages() {
       toast.error("Nothing to save");
       return;
     }
+    if (selectedProject === DEFAULT_PROJECT_ID) {
+      toast.error("Select a project to save");
+      return;
+    }
     try {
       const res = await fetch(`${BACKEND_URL}/v3/documents`, {
         method: "POST",
@@ -460,7 +478,10 @@ export function ChatMessages() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: trimmed,
-          containerTags: selectedProject ? [selectedProject] : undefined,
+          containerTags:
+            selectedProject && selectedProject !== DEFAULT_PROJECT_ID
+              ? [selectedProject]
+              : undefined,
           metadata: {
             source: "chat",
             type: "text",
@@ -570,75 +591,6 @@ export function ChatMessages() {
 
   return (
     <>
-      <div className="flex items-center justify-end gap-2 px-4 pt-2">
-        <label htmlFor="chat-model" className="text-xs text-muted-foreground">
-          Model
-        </label>
-        <select
-          id="chat-model"
-          className="border bg-transparent text-xs rounded px-2 py-1"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-        >
-          <option value="google/gemini-2.5-flash-preview-09-2025">
-            Gemini 2.5 Flash
-          </option>
-          <option value="xai/grok-4-fast">Grok 4 Fast</option>
-        </select>
-
-        <label
-          htmlFor="chat-mode"
-          className="text-xs text-muted-foreground flex items-center gap-1"
-        >
-          Mode
-          <Info
-            className="size-3.5 opacity-70"
-            title={
-              "Simple: resposta direta e rápida; Agentic: usa buscas iterativas e ferramentas; Deep: contexto amplo e resposta detalhada."
-            }
-          />
-        </label>
-        <select
-          id="chat-mode"
-          className="border bg-transparent text-xs rounded px-2 py-1"
-          value={mode}
-          onChange={(e) =>
-            setMode(e.target.value as "simple" | "agentic" | "deep")
-          }
-        >
-          <option value="simple">Simple</option>
-          <option value="agentic">Agentic</option>
-          <option value="deep">Deep</option>
-        </select>
-
-        <label htmlFor="chat-project" className="text-xs text-muted-foreground">
-          Project
-        </label>
-        <select
-          id="chat-project"
-          className="border bg-transparent text-xs rounded px-2 py-1 min-w-40"
-          value={project}
-          onChange={(e) => setProject(e.target.value)}
-          disabled={loadingProjects}
-        >
-          <option value="__ALL__">All Projects</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.containerTag}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-
-        <label htmlFor="chat-expand" className="text-xs text-muted-foreground">
-          More context
-        </label>
-        <input
-          id="chat-expand"
-          type="checkbox"
-          checked={expandContext}
-          onChange={(e) => setExpandContext(e.target.checked)}
-        />
-      </div>
       <div className="relative grow">
         <div
           className="flex flex-col gap-2 absolute inset-0 overflow-y-auto px-4 pt-4 pb-7 scroll-pb-7"
@@ -840,7 +792,7 @@ export function ChatMessages() {
       </div>
 
       <form
-        className="flex gap-2 px-4 pb-4 pt-1 relative"
+        className="px-4 pb-4 pt-1 relative"
         onSubmit={(e) => {
           e.preventDefault();
           if (status === "submitted") return;
@@ -857,45 +809,102 @@ export function ChatMessages() {
         }}
       >
         <div className="absolute top-0 left-0 -mt-7 w-full h-7 bg-gradient-to-t from-background to-transparent" />
-        <Input
-          className="w-full"
-          disabled={status === "submitted"}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Say something..."
-          value={input}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          disabled={savingInput || status === "submitted"}
-          onClick={async () => {
-            if (!input.trim()) {
-              toast.error("Type something to save");
-              return;
-            }
-            setSavingInput(true);
-            try {
-              await saveMemory(input);
-            } finally {
-              setSavingInput(false);
-            }
-          }}
-        >
-          {savingInput ? (
-            <Spinner className="size-4" />
-          ) : (
-            <Plus className="size-4" />
-          )}
-        </Button>
-        <Button disabled={status === "submitted"} type="submit">
-          {status === "ready" ? (
-            <ArrowUp className="size-4" />
-          ) : status === "submitted" ? (
-            <Spinner className="size-4" />
-          ) : (
-            <X className="size-4" />
-          )}
-        </Button>
+        <InputGroup>
+          <InputGroupTextarea
+            disabled={status === "submitted"}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask, Search or Chat..."
+            value={input}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (input.trim() && status !== "submitted") {
+                  enableAutoScroll();
+                  scrollToBottom("auto");
+                  sendMessage({ text: input });
+                  setInput("");
+                }
+              }
+            }}
+          />
+          {/* Left bottom corner: quick-save button */}
+          <InputGroupAddon align="inline-start" className="gap-1 bottom-0">
+            <InputGroupButton
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={savingInput || status === "submitted"}
+              className="h-6 w-6 p-0"
+              onClick={async () => {
+                if (!input.trim()) {
+                  toast.error("Type something to save");
+                  return;
+                }
+                setSavingInput(true);
+                try {
+                  await saveMemory(input);
+                } finally {
+                  setSavingInput(false);
+                }
+              }}
+            >
+              {savingInput ? (
+                <Spinner className="size-3.5" />
+              ) : (
+                <Plus className="size-3.5" />
+              )}
+            </InputGroupButton>
+          </InputGroupAddon>
+
+          {/* Right bottom corner: selectors together + send */}
+          <InputGroupAddon align="inline-end" className="gap-1 bottom-0">
+            <Select
+              value={model}
+              onValueChange={setModel}
+              disabled={status === "submitted"}
+            >
+              <SelectTrigger className="h-6 min-w-[72px] text-[11px] px-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
+                <SelectItem value="xai/grok-4-fast">Grok</SelectItem>
+                <SelectItem value="google/gemini-2.5-flash-preview-09-2025">
+                  Gemini
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={mode}
+              onValueChange={setMode}
+              disabled={status === "submitted"}
+            >
+              <SelectTrigger className="h-6 min-w-[80px] text-[11px] px-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
+                <SelectItem value="simple">Simple</SelectItem>
+                <SelectItem value="agentic">Agentic</SelectItem>
+                <SelectItem value="deep">Deep</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <InputGroupButton
+              type="submit"
+              size="sm"
+              className="h-7 w-7 p-0"
+              disabled={status === "submitted"}
+            >
+              {status === "ready" ? (
+                <ArrowUp className="size-3.5" />
+              ) : status === "submitted" ? (
+                <Spinner className="size-3.5" />
+              ) : (
+                <X className="size-3.5" />
+              )}
+            </InputGroupButton>
+          </InputGroupAddon>
+        </InputGroup>
       </form>
     </>
   );

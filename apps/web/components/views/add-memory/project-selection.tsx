@@ -60,13 +60,6 @@ export function ProjectSelection({
 				position="popper"
 				sideOffset={5}
 			>
-				<SelectItem
-					className="text-white hover:bg-white/10"
-					key="default"
-					value="sm_project_default"
-				>
-					Default Project
-				</SelectItem>
 				{projects
 					.filter((p) => p.containerTag !== "sm_project_default" && p.id)
 					.map((project) => (
