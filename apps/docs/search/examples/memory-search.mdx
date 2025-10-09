@@ -1,10 +1,14 @@
 ---
-title: "Memories Search (/v4/search)"
-description: "Minimal-latency search optimized for chatbots and conversational AI"
+title: "Memories Search (/v4/search) – Coming Soon"
+description: "Planned endpoint optimized for chatbots and conversational AI"
 ---
 
 
-Memories search (`POST /v4/search`) provides minimal-latency search optimized for real-time interactions. This endpoint prioritizes speed over extensive control, making it perfect for chatbots, Q&A systems, and any application where users expect immediate responses.
+<Warning>
+The `/v4/search` endpoint is not available in v1.2. The examples below are illustrative. Use `/v3/search` or `/v3/search/hybrid` meanwhile for production.
+</Warning>
+
+Memories search (`POST /v4/search`) will provide minimal-latency search optimized for real-time interactions. This endpoint prioritizes speed over extensive control, making it perfect for chatbots, Q&A systems, and any application where users expect immediate responses.
 
 ## Basic Search
 
@@ -42,12 +46,15 @@ Memories search (`POST /v4/search`) provides minimal-latency search optimized fo
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "http://localhost:4000/v4/search" \
+    # Not available in v1.2. Suggested alternative:
+    curl -X POST "http://localhost:4000/v3/search/hybrid" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
         "q": "machine learning applications",
-        "limit": 5
+        "limit": 5,
+        "mode": "hybrid",
+        "weightVector": 0.7
       }'
     ```
   </Tab>
@@ -107,14 +114,8 @@ Filter by user, project, or organization:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "http://localhost:4000/v4/search" \
-      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "q": "project updates",
-        "containerTag": "user_123",
-        "limit": 10
-      }'
+    # Not available in v1.2
+    # Use /v3/search or apply filtering via containerTags when using documents search
     ```
   </Tab>
 </Tabs>
@@ -144,14 +145,7 @@ Control result quality with similarity threshold:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "http://localhost:4000/v4/search" \
-      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "q": "artificial intelligence research",
-        "threshold": 0.7,
-        "limit": 10
-      }'
+    # Not available in v1.2
     ```
   </Tab>
 </Tabs>
@@ -181,14 +175,7 @@ Improve result quality with secondary ranking:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "http://localhost:4000/v4/search" \
-      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "q": "quantum computing breakthrough",
-        "rerank": true,
-        "limit": 5
-      }'
+    # Not available in v1.2
     ```
   </Tab>
 </Tabs>
@@ -218,14 +205,7 @@ Improve search accuracy with automatic query expansion:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "http://localhost:4000/v4/search" \
-      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "q": "How do neural networks learn?",
-        "rewriteQuery": true,
-        "limit": 5
-      }'
+    # Not available in v1.2
     ```
   </Tab>
 </Tabs>
@@ -263,18 +243,7 @@ Include documents, related memories, and summaries:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "http://localhost:4000/v4/search" \
-      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "q": "machine learning trends",
-        "include": {
-          "documents": true,
-          "relatedMemories": true,
-          "summaries": true
-        },
-        "limit": 5
-      }'
+    # Not available in v1.2
     ```
   </Tab>
 </Tabs>
@@ -314,19 +283,7 @@ Simple metadata filtering for Memories search:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "http://localhost:4000/v4/search" \
-      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "q": "research findings",
-        "filters": {
-          "AND": [
-            {"key": "category", "value": "science", "negate": false},
-            {"key": "status", "value": "published", "negate": false}
-          ]
-        },
-        "limit": 10
-      }'
+    # Not available in v1.2
     ```
   </Tab>
 </Tabs>
@@ -372,18 +329,7 @@ Optimal configuration for conversational AI:
   </Tab>
   <Tab title="cURL">
     ```bash
-    # Optimized for chatbot responses
-    curl -X POST "http://localhost:4000/v4/search" \
-      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "q": "user question here",
-        "containerTag": "user_123",
-        "threshold": 0.6,
-        "rerank": false,
-        "rewriteQuery": false,
-        "limit": 3
-      }'
+    # Not available in v1.2
     ```
   </Tab>
 </Tabs>
@@ -439,27 +385,7 @@ Combining features for comprehensive results:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "http://localhost:4000/v4/search" \
-      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "q": "machine learning model performance",
-        "containerTag": "research_team",
-        "filters": {
-          "AND": [
-            {"key": "topic", "value": "ai", "negate": false}
-          ]
-        },
-        "threshold": 0.7,
-        "rerank": true,
-        "rewriteQuery": false,
-        "include": {
-          "documents": true,
-          "relatedMemories": false,
-          "summaries": true
-        },
-        "limit": 5
-      }'
+    # Not available in v1.2
     ```
   </Tab>
 </Tabs>

@@ -15,13 +15,14 @@ import {
 	RotateCcw,
 	X,
 } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { Streamdown } from "streamdown"
 import { TextShimmer } from "@/components/text-shimmer"
-import { usePersistentChat, useProject } from "@/stores"
+import { usePersistentChat } from "@/stores"
 import { useGraphHighlights } from "@/stores/highlights"
 import { Spinner } from "../../spinner"
+import { Info } from "lucide-react"
 
 interface MemoryResult {
 	documentId?: string
@@ -326,17 +327,66 @@ export function ChatMessages() {
 	const activeChatIdRef = useRef<string | null>(null)
 	const shouldGenerateTitleRef = useRef<boolean>(false)
 
-        const { setDocumentIds, clear } = useGraphHighlights()
+    const { setDocumentIds, clear } = useGraphHighlights()
+
+    // Chat mode: simple | agentic | deep (default: simple)
+    const [mode, setMode] = useState<"simple" | "agentic" | "deep">("simple")
+    // Project scoping for chat (All Projects by default)
+    const [project, setProject] = useState<string>("__ALL__")
+    const [projects, setProjects] = useState<Array<{ id: string; name: string; containerTag: string }>>([])
+    const [loadingProjects, setLoadingProjects] = useState(false)
+
+    useEffect(() => {
+        let ignore = false
+        async function load() {
+            try {
+                setLoadingProjects(true)
+                const res = await fetch(`${BACKEND_URL}/v3/projects`, {
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                })
+                if (!res.ok) return
+                const data = await res.json()
+                if (ignore) return
+                const list = Array.isArray(data?.projects) ? data.projects : []
+                setProjects(
+                    list.map((p: any) => ({
+                        id: String(p.id),
+                        name: String(p.name ?? "Untitled Project"),
+                        containerTag: String(p.containerTag),
+                    })),
+                )
+            } catch {
+                // noop
+            } finally {
+                if (!ignore) setLoadingProjects(false)
+            }
+        }
+        load()
+        return () => {
+            ignore = true
+        }
+    }, [])
+
+	// Create transport with useMemo so it updates when mode changes
+    const transport = useMemo(
+        () =>
+            new DefaultChatTransport({
+                api: `${BACKEND_URL}/chat/v2`,
+                credentials: "include",
+                body: {
+                    mode,
+                    metadata: project && project !== "__ALL__" ? { projectId: project } : {},
+                },
+            }),
+        [mode, project]
+    )
 
 	const { messages, sendMessage, status, stop, setMessages, id, regenerate } =
 		useChat({
-			id: currentChatId ?? undefined,
-			transport: new DefaultChatTransport({
-				api: `${BACKEND_URL}/chat`,
-				credentials: "include",
-				body: { metadata: { projectId: selectedProject } },
-			}),
-			maxSteps: 2,
+			id: currentChatId ? `${currentChatId}::${mode}` : undefined,
+			transport,
+			maxSteps: 8,
 			onFinish: (result) => {
 				const activeId = activeChatIdRef.current
 				if (!activeId) return
@@ -356,30 +406,32 @@ export function ChatMessages() {
 	const [input, setInput] = useState("")
 
 	useEffect(() => {
-		activeChatIdRef.current = currentChatId ?? id ?? null
+		const baseId = id ? id.split("::")[0] : null
+		activeChatIdRef.current = currentChatId ?? baseId
 	}, [currentChatId, id])
 
 	useEffect(() => {
-		if (id && id !== currentChatId) {
-			setCurrentChatId(id)
+		const baseId = id?.split("::")[0]
+		if (baseId && baseId !== currentChatId) {
+			setCurrentChatId(baseId)
 		}
 	}, [id, currentChatId, setCurrentChatId])
 
 	useEffect(() => {
-		const activeId = currentChatId
+		const rawActiveId = (currentChatId ?? id)?.split("::")[0]
 		const msgs = getCurrentConversation()
 		setMessages(msgs ?? [])
 		setInput("")
-		if (!activeId) {
+		if (!rawActiveId) {
 			shouldGenerateTitleRef.current = false
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [currentChatId])
 
 	useEffect(() => {
-		const activeId = currentChatId ?? id
-		if (activeId && messages.length > 0) {
-			setConversation(activeId, messages)
+		const rawActiveId = (currentChatId ?? id)?.split("::")[0]
+		if (rawActiveId && messages.length > 0) {
+			setConversation(rawActiveId, messages)
 		}
 	}, [messages, currentChatId, id, setConversation])
 
@@ -439,6 +491,45 @@ export function ChatMessages() {
 
 	return (
 		<>
+            <div className="flex items-center justify-end gap-2 px-4 pt-2">
+                <label htmlFor="chat-mode" className="text-xs text-muted-foreground flex items-center gap-1">
+                    Mode
+                    <Info
+                        className="size-3.5 opacity-70"
+                        title={
+                            "Simple: resposta direta e rápida; Agentic: usa buscas iterativas e ferramentas; Deep: contexto amplo e resposta detalhada."
+                        }
+                    />
+                </label>
+                <select
+                    id="chat-mode"
+                    className="border bg-transparent text-xs rounded px-2 py-1"
+                    value={mode}
+                    onChange={(e) => setMode(e.target.value as "simple" | "agentic" | "deep")}
+                >
+                    <option value="simple">Simple</option>
+                    <option value="agentic">Agentic</option>
+                    <option value="deep">Deep</option>
+                </select>
+
+                <label htmlFor="chat-project" className="text-xs text-muted-foreground">
+                    Project
+                </label>
+                <select
+                    id="chat-project"
+                    className="border bg-transparent text-xs rounded px-2 py-1 min-w-40"
+                    value={project}
+                    onChange={(e) => setProject(e.target.value)}
+                    disabled={loadingProjects}
+                >
+                    <option value="__ALL__">All Projects</option>
+                    {projects.map((p) => (
+                        <option key={p.id} value={p.containerTag}>
+                            {p.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
 			<div className="relative grow">
 				<div
 					className="flex flex-col gap-2 absolute inset-0 overflow-y-auto px-4 pt-4 pb-7 scroll-pb-7"

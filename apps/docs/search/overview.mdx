@@ -14,12 +14,16 @@ sidebarTitle : "Overview"
     Full-featured search with extensive control over ranking, filtering, thresholds, and result structure. Searches through and returns relevant documents. More flexibility.
   </Card>
 
-  <Card title="Memories Search" icon="zap" href="/search/examples/memory-search">
-    **POST /v4/search**
+  <Card title="Memories Search (Coming Soon)" icon="zap" href="/search/examples/memory-search">
+    **POST /v4/search** — Not available in v1.2.
 
-    Minimal-latency search optimized for chatbots and conversational AI. Searches through and returns memories. Simple parameters, fast responses, easy to use.
+    Planned endpoint optimized for chatbots and conversational AI. For now, use `/v3/search` or `/v3/search/hybrid`.
   </Card>
 </CardGroup>
+
+<Warning>
+The `/v4/search` endpoint (Memories Search) is not implemented in this version. Please use `/v3/search` (documents) or `/v3/search/hybrid` (FTS + vector + RRF) instead.
+</Warning>
 
 ## Documents vs Memories Search: What's the Difference?
 
@@ -140,8 +144,8 @@ Refer to the [ingestion guide](/memory-api/ingesting) to learn more about the di
 
 The `/v3/search` endpoint returns the most relevant documents and chunks from those documents. Head over to the [response schema](/search/response-schema) page to understand more about the response structure.
 
-### Memories Search (`/v4/search`)
-**Search through user memories**:
+### Memories Search (`/v4/search`) — Coming Soon
+**Planned** search through user memories:
 
 - **Use cases**: Use this endpoint for use cases where understanding user context / preferences / memories is more important than literal document search.
   - Personalized chatbots (AI Companions)
@@ -151,7 +155,7 @@ The `/v3/search` endpoint returns the most relevant documents and chunks from th
 Companies like Composio [Rube.app](https://rube.app) use memories search for letting the MCP automate better based on the user prompts before.
 
 <Info>
-  This endpoint works best for conversational AI use cases like chatbots.
+  This endpoint is planned. Until it ships, prefer `/v3/search` or `/v3/search/hybrid` for conversational use cases.
 </Info>
 
 <Tabs>
@@ -181,15 +185,15 @@ Companies like Composio [Rube.app](https://rube.app) use memories search for let
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "http://localhost:4000/v4/search" \
+    # Not available in v1.2. Use /v3/search or /v3/search/hybrid instead
+    curl -X POST "http://localhost:4000/v3/search/hybrid" \
       -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
         "q": "machine learning accuracy",
         "limit": 5,
-        "containerTag": "research",
-        "threshold": 0.7,
-        "rerank": true
+        "mode": "hybrid",
+        "weightVector": 0.7
       }'
     ```
   </Tab>
@@ -243,7 +247,7 @@ Companies like Composio [Rube.app](https://rube.app) use memories search for let
 
 ```
 
-The `/v4/search` endpoint searches through and returns memories.
+The `/v4/search` endpoint will search through and return memories (planned).
 
 ## Search Flow Architecture
 

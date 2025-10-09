@@ -282,16 +282,7 @@ Reranking also improves memory search results:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "http://localhost:4000/v4/search" \
-      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "q": "explain transformer architecture attention mechanism",
-        "rerank": true,
-        "containerTag": "ai_notes",
-        "threshold": 0.6,
-        "limit": 5
-      }'
+    # Not available in v1.2. Consider /v3/search/hybrid with rerank enabled
     ```
   </Tab>
 </Tabs>
@@ -385,3 +376,6 @@ Reranking understands domain-specific relationships:
     ```
   </Tab>
 </Tabs>
+<Warning>
+The `/v4/search` (Memories Search) endpoint referenced below is not available in v1.2. Use `/v3/search` or `/v3/search/hybrid` instead. Memory-specific examples are illustrative for a future release.
+</Warning>
