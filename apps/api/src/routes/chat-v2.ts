@@ -1,4 +1,5 @@
 import { google } from "@ai-sdk/google";
+import { xai } from "@ai-sdk/xai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { streamText, tool } from "ai";
 import { z } from "zod";
@@ -30,6 +31,8 @@ const chatRequestSchema = z.object({
   ),
   mode: z.enum(["simple", "agentic", "deep"]).default("simple"),
   metadata: z.record(z.any()).optional(),
+  // Allow client to specify model (e.g., "google/gemini-2.5-flash" or "xai/grok-4-fast")
+  model: z.string().optional(),
 });
 
 // Tools are defined inline in the streamText configuration below
@@ -51,8 +54,13 @@ export async function handleChatV2({
     return new Response("Invalid chat payload", { status: 400 });
   }
   const { messages: inputMessages } = payload;
-  let requestedMode: any = (payload as any).mode ?? (payload.metadata as any)?.mode ?? "simple";
-  if (requestedMode !== "simple" && requestedMode !== "agentic" && requestedMode !== "deep") {
+  let requestedMode: any =
+    (payload as any).mode ?? (payload.metadata as any)?.mode ?? "simple";
+  if (
+    requestedMode !== "simple" &&
+    requestedMode !== "agentic" &&
+    requestedMode !== "deep"
+  ) {
     requestedMode = "simple";
   }
   const mode = requestedMode as "simple" | "agentic" | "deep";
@@ -62,14 +70,27 @@ export async function handleChatV2({
     payload.metadata && typeof (payload.metadata as any).projectId === "string"
       ? ((payload.metadata as any).projectId as string)
       : undefined;
+  const expandContext =
+    payload.metadata && typeof (payload.metadata as any).expandContext === "boolean"
+      ? Boolean((payload.metadata as any).expandContext)
+      : false;
 
   // Normalize incoming messages to simple {role, content} format
   const messages = inputMessages
     .map((m) => {
       let text = typeof m.content === "string" ? m.content : "";
-      if ((!text || text.trim().length === 0) && Array.isArray((m as any).parts)) {
-        const parts = (m as any).parts as Array<{ type: string; text?: string }>;
-        text = parts.map((p) => p.text ?? "").join(" ").trim();
+      if (
+        (!text || text.trim().length === 0) &&
+        Array.isArray((m as any).parts)
+      ) {
+        const parts = (m as any).parts as Array<{
+          type: string;
+          text?: string;
+        }>;
+        text = parts
+          .map((p) => p.text ?? "")
+          .join(" ")
+          .trim();
       }
       return { role: m.role, content: text } as const;
     })
@@ -93,14 +114,19 @@ export async function handleChatV2({
       typeof lastUserMessage?.content === "string"
         ? lastUserMessage.content.slice(0, 160)
         : "";
-    console.info("Chat V2 request", { mode, queryPreview: qPreview });
+    console.info("Chat V2 request", {
+      mode,
+      projectTag: activeProjectTag ?? "ALL",
+      queryPreview: qPreview,
+    });
   } catch {}
 
   if (lastUserMessage && typeof lastUserMessage.content === "string") {
     const userQuery = lastUserMessage.content;
-    const enumerative = /\b(todos|todas|listar|liste|quais s[ãa]o|quais sao|list\s+all|show\s+all)\b/i.test(
-      userQuery,
-    );
+    const enumerative =
+      /\b(todos|todas|listar|liste|lista|quais s[ãa]o|quais sao|list\s+all|show\s+all|o que (eu|n[oó]s)?\s*tenho)\b/i.test(
+        userQuery,
+      ) || expandContext;
 
     try {
       if (mode === "agentic" && env.ENABLE_AGENTIC_MODE) {
@@ -180,26 +206,54 @@ export async function handleChatV2({
     });
   } catch {}
 
-  // Configure model based on mode (all using 2.5 flash preview)
-  const modelConfig = {
-    simple: {
-      model: google("models/gemini-2.5-flash-preview-09-2025"),
-      maxTokens: 4096,
-      temperature: 0.7,
-    },
-    agentic: {
-      model: google("models/gemini-2.5-flash-preview-09-2025"),
-      maxTokens: 8192,
-      temperature: 0.6,
-    },
-    deep: {
-      model: google("models/gemini-2.5-flash-preview-09-2025"),
-      maxTokens: 16384,
-      temperature: 0.5,
-    },
+  // Parse model from request (format: "provider/model-name" or just "model-name")
+  const requestedModel = (payload as any).model as string | undefined;
+  let selectedModel: any;
+  let provider: string;
+  let modelName: string;
+
+  if (requestedModel) {
+    // Client specified a model (e.g., "xai/grok-4-fast" or "google/gemini-2.5-flash")
+    if (requestedModel.startsWith("xai/")) {
+      modelName = requestedModel.replace("xai/", "");
+      selectedModel = xai(modelName);
+      provider = "xai";
+    } else if (requestedModel.startsWith("google/")) {
+      modelName = requestedModel.replace("google/", "");
+      selectedModel = google(modelName);
+      provider = "google";
+    } else {
+      // Default to google if no provider prefix
+      modelName = requestedModel;
+      selectedModel = google(requestedModel);
+      provider = "google";
+    }
+  } else {
+    // Use default provider from env
+    provider = env.AI_PROVIDER;
+    if (provider === "xai") {
+      modelName = "grok-4-fast";
+      selectedModel = xai("grok-4-fast");
+    } else {
+      modelName = "models/gemini-2.5-flash-preview-09-2025";
+      selectedModel = google("models/gemini-2.5-flash-preview-09-2025");
+    }
+  }
+
+  // Log selected model
+  console.info("Chat V2 model", { provider, model: modelName });
+
+  // Configure maxTokens and temperature based on mode
+  const modeConfig = {
+    simple: { maxTokens: 4096, temperature: 0.7 },
+    agentic: { maxTokens: 8192, temperature: 0.6 },
+    deep: { maxTokens: 16384, temperature: 0.5 },
   };
 
-  const config = modelConfig[mode];
+  const config = {
+    model: selectedModel,
+    ...modeConfig[mode],
+  };
 
   // Define tools for agentic modes
   const tools =
@@ -216,10 +270,11 @@ export async function handleChatV2({
             execute: async ({ query, limit }) => {
               try {
                 // Fallback to last user message when query is missing/empty
-                const fallbackQuery =
-                  (typeof query === "string" && query.trim().length > 0
+                const fallbackQuery = (
+                  typeof query === "string" && query.trim().length > 0
                     ? query
-                    : (lastUserMessage?.content ?? "")).trim();
+                    : (lastUserMessage?.content ?? "")
+                ).trim();
 
                 if (!fallbackQuery) {
                   return { count: 0, results: [] };
@@ -232,7 +287,9 @@ export async function handleChatV2({
                   includeFullDocs: false,
                   chunkThreshold: 0.1,
                   documentThreshold: 0.1,
-                  containerTags: activeProjectTag ? [activeProjectTag] : undefined,
+                  containerTags: activeProjectTag
+                    ? [activeProjectTag]
+                    : undefined,
                 });
 
                 const results = response.results.map((r) => ({
@@ -245,7 +302,8 @@ export async function handleChatV2({
                         ? (r.metadata as any).url
                         : typeof (r.metadata as any).source_url === "string"
                           ? (r.metadata as any).source_url
-                          : undefined)) || undefined,
+                          : undefined)) ||
+                    undefined,
                   score: r.score,
                 }));
 
@@ -272,6 +330,7 @@ export async function handleChatV2({
       onFinish: ({ text, usage, finishReason }) => {
         console.info("Chat stream completed", {
           mode,
+          provider,
           model: config.model.modelId,
           tokensUsed: usage.totalTokens,
           finishReason,

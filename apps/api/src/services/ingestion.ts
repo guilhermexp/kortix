@@ -127,16 +127,18 @@ export async function processDocument(input: ProcessDocumentInput) {
 
 		await updateDocumentStatus(documentId, "extracting")
 
-		const mergedMetadata = mergeMetadata(document.metadata, payloadMetadata, {
-			extraction: {
-				contentType: extraction.contentType,
-				wordCount: extraction.wordCount,
-				fetchedAt: new Date().toISOString(),
-			},
-			source:
-				extraction.source ?? document.source ?? jobPayload?.source ?? null,
-			originalUrl: extraction.url ?? document.url ?? payloadUrl ?? null,
-		})
+        const mergedMetadata = mergeMetadata(document.metadata, payloadMetadata, {
+            // Ensure documents carry containerTags for project scoping and fallbacks
+            containerTags,
+            extraction: {
+                contentType: extraction.contentType,
+                wordCount: extraction.wordCount,
+                fetchedAt: new Date().toISOString(),
+            },
+            source:
+                extraction.source ?? document.source ?? jobPayload?.source ?? null,
+            originalUrl: extraction.url ?? document.url ?? payloadUrl ?? null,
+        })
 
 		const processingMetadata = mergeProcessingMetadata(
 			document.processingMetadata,

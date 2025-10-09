@@ -82,6 +82,32 @@ export function useProjectMutations() {
 		},
 	})
 
+	const renameProjectMutation = useMutation({
+		mutationFn: async ({ projectId, name }: { projectId: string; name: string }) => {
+			const response = await $fetch(`@patch/projects/${projectId}`, {
+				body: { name },
+			})
+
+			if (response.error) {
+				throw new Error(response.error?.message || "Failed to rename project")
+			}
+
+			return response.data
+		},
+		onSuccess: (data) => {
+			toast.success("Project renamed successfully")
+			queryClient.invalidateQueries({ queryKey: ["projects"] })
+
+			// If currently selected, no need to change containerTag
+			return data
+		},
+		onError: (error) => {
+			toast.error("Failed to rename project", {
+				description: error instanceof Error ? error.message : "Unknown error",
+			})
+		},
+	})
+
 	const switchProject = (containerTag: string) => {
 		setSelectedProject(containerTag)
 		toast.success("Project switched successfully")
@@ -90,6 +116,7 @@ export function useProjectMutations() {
 	return {
 		createProjectMutation,
 		deleteProjectMutation,
+		renameProjectMutation,
 		switchProject,
 	}
 }

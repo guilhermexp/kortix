@@ -58,6 +58,7 @@ export function ProjectSelector() {
 	const { selectedProject } = useProject()
 	const projectName = useProjectName()
 	const { switchProject, deleteProjectMutation } = useProjectMutations()
+	const { renameProjectMutation } = useProjectMutations()
 	const [deleteDialog, setDeleteDialog] = useState<{
 		open: boolean
 		project: null | { id: string; name: string; containerTag: string }
@@ -76,6 +77,13 @@ export function ProjectSelector() {
 		open: false,
 		projectId: "",
 	})
+
+	const [renameDialog, setRenameDialog] = useState<{
+		open: boolean
+		projectId: string
+		currentName: string
+		newName: string
+	}>({ open: false, projectId: "", currentName: "", newName: "" })
 
 	const { data: projects = [], isLoading } = useQuery({
 		queryKey: ["projects"],
@@ -225,6 +233,21 @@ export function ProjectSelector() {
 														align="end"
 														className="bg-black/90 border-white/10"
 													>
+														<DropdownMenuItem
+															className="text-xs cursor-pointer"
+															onClick={(e) => {
+																e.stopPropagation()
+																setRenameDialog({
+																	open: true,
+																	projectId: project.id,
+																	currentName: project.name,
+																	newName: project.name,
+																})
+															setIsOpen(false)
+														}}
+													>
+														Rename
+													</DropdownMenuItem>
 														{/* Show experimental toggle only if NOT experimental and NOT default project */}
 														{!project.isExperimental &&
 															project.containerTag !== DEFAULT_PROJECT_ID && (
@@ -301,6 +324,72 @@ export function ProjectSelector() {
 				onOpenChange={setShowCreateDialog}
 				open={showCreateDialog}
 			/>
+
+			{/* Rename Project Dialog */}
+			<AnimatePresence>
+				{renameDialog.open && (
+					<Dialog
+						onOpenChange={(open) => setRenameDialog({ ...renameDialog, open })}
+						open={renameDialog.open}
+					>
+						<DialogContent className="sm:max-w-md bg-black/90 backdrop-blur-xl border-white/10 text-white">
+							<motion.div animate={{ opacity: 1, scale: 1 }} initial={{ opacity: 0, scale: 0.95 }} exit={{ opacity: 0, scale: 0.95 }}>
+								<DialogHeader>
+									<DialogTitle>Rename Project</DialogTitle>
+									<DialogDescription className="text-white/60">
+										Change the display name (slug remains the same)
+									</DialogDescription>
+								</DialogHeader>
+								<div className="grid gap-4 py-2">
+									<Label htmlFor="renameInput" className="text-sm">New name</Label>
+									<input
+										id="renameInput"
+										className="bg-white/5 border border-white/10 rounded px-3 py-2 text-sm outline-none focus:border-white/20"
+										value={renameDialog.newName}
+										onChange={(e) => setRenameDialog({ ...renameDialog, newName: e.target.value })}
+										onKeyDown={(e) => {
+										if (e.key === 'Enter' && renameDialog.newName.trim()) {
+											renameProjectMutation.mutate(
+												{ projectId: renameDialog.projectId, name: renameDialog.newName.trim() },
+												{ onSuccess: () => setRenameDialog({ open: false, projectId: '', currentName: '', newName: '' }) }
+											)
+										}
+									}}
+								/>
+								</div>
+								<DialogFooter>
+									<Button
+										variant="outline"
+										className="bg-white/5 border-white/10 text-white"
+										onClick={() => setRenameDialog({ open: false, projectId: '', currentName: '', newName: '' })}
+									>
+										Cancel
+									</Button>
+									<Button
+										className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+										disabled={renameProjectMutation.isPending || !renameDialog.newName.trim()}
+										onClick={() =>
+											renameProjectMutation.mutate(
+												{ projectId: renameDialog.projectId, name: renameDialog.newName.trim() },
+												{ onSuccess: () => setRenameDialog({ open: false, projectId: '', currentName: '', newName: '' }) }
+											)
+										}
+									>
+										{renameProjectMutation.isPending ? (
+											<>
+												<Loader2 className="h-4 w-4 animate-spin mr-2" />
+												Renaming...
+											</>
+										) : (
+											"Save"
+										)}
+									</Button>
+								</DialogFooter>
+							</motion.div>
+						</DialogContent>
+					</Dialog>
+				)}
+			</AnimatePresence>
 
 			{/* Delete Project Dialog */}
 			<AnimatePresence>
