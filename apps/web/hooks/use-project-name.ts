@@ -19,7 +19,7 @@ export function useProjectName() {
 		| undefined
 
 	return useMemo(() => {
-		if (selectedProject === "sm_project_default") return "Default Project"
+    if (selectedProject === "sm_project_default") return "All Projects"
 		const found = projects?.find((p) => p.containerTag === selectedProject)
 		return found?.name ?? selectedProject
 	}, [projects, selectedProject])

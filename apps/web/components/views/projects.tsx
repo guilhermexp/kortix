@@ -150,30 +150,6 @@ export function ProjectsView() {
 		},
 	})
 
-	// Enable experimental mode mutation
-	const enableExperimentalMutation = useMutation({
-		mutationFn: async (projectId: string) => {
-			const response = await $fetch(
-				`@post/projects/${projectId}/enable-experimental`,
-			)
-			if (response.error) {
-				throw new Error(
-					response.error?.message || "Failed to enable experimental mode",
-				)
-			}
-			return response.data
-		},
-		onSuccess: () => {
-			toast.success("Experimental mode enabled for project")
-			queryClient.invalidateQueries({ queryKey: ["projects"] })
-			setExpDialog({ open: false, projectId: "" })
-		},
-		onError: (error) => {
-			toast.error("Failed to enable experimental mode", {
-				description: error instanceof Error ? error.message : "Unknown error",
-			})
-		},
-	})
 
 	// Handle project selection
 	const handleProjectSelect = (containerTag: string) => {
@@ -262,10 +238,10 @@ export function ProjectsView() {
 									<FolderIcon className="h-5 w-5 text-white/80" />
 								</motion.div>
 								<div>
-									<p className="font-medium text-white">Default Project</p>
-									<p className="text-sm text-white/60">
-										Your default memory storage
-									</p>
+                            <p className="font-medium text-white">All Projects</p>
+                            <p className="text-sm text-white/60">
+                                Global view across all projects
+                            </p>
 								</div>
 							</div>
 							{selectedProject === "sm_project_default" && (
@@ -338,32 +314,6 @@ export function ProjectsView() {
 												align="end"
 												className="bg-black/90 border-white/10"
 											>
-												{/* Show experimental toggle only if NOT experimental and NOT default project */}
-												{!project.isExperimental &&
-													project.containerTag !== "sm_project_default" && (
-														<DropdownMenuItem
-															className="text-blue-400 hover:text-blue-300 cursor-pointer"
-															onClick={(e) => {
-																e.stopPropagation()
-																setExpDialog({
-																	open: true,
-																	projectId: project.id,
-																})
-															}}
-														>
-															<div className="h-4 w-4 mr-2 rounded border border-blue-400" />
-															Enable Experimental Mode
-														</DropdownMenuItem>
-													)}
-												{project.isExperimental && (
-													<DropdownMenuItem
-														className="text-blue-300/50"
-														disabled
-													>
-														<div className="h-4 w-4 mr-2 rounded bg-blue-400" />
-														Experimental Mode Active
-													</DropdownMenuItem>
-												)}
 												<DropdownMenuItem
 													className="text-red-400 hover:text-red-300 cursor-pointer"
 													onClick={(e) => {
@@ -543,7 +493,7 @@ export function ProjectsView() {
 															className="text-white hover:bg-white/10"
 															value="sm_project_default"
 														>
-															Default Project
+                                                All Projects
 														</SelectItem>
 														{projects
 															.filter(
@@ -668,82 +618,6 @@ export function ProjectsView() {
 				)}
 			</AnimatePresence>
 
-			{/* Experimental Mode Confirmation Dialog */}
-			<AnimatePresence>
-				{expDialog.open && (
-					<Dialog
-						onOpenChange={(open) => setExpDialog({ ...expDialog, open })}
-						open={expDialog.open}
-					>
-						<DialogContent className="sm:max-w-lg bg-black/90 backdrop-blur-xl border-white/10 text-white">
-							<motion.div
-								animate={{ opacity: 1, scale: 1 }}
-								className="flex flex-col gap-4"
-								exit={{ opacity: 0, scale: 0.95 }}
-								initial={{ opacity: 0, scale: 0.95 }}
-							>
-								<DialogHeader>
-									<DialogTitle className="text-white">
-										Enable Experimental Mode?
-									</DialogTitle>
-									<DialogDescription className="text-white/60">
-										Experimental mode enables beta features and advanced memory
-										relationships for this project.
-										<br />
-										<br />
-										<span className="text-yellow-400 font-medium">
-											Warning:
-										</span>{" "}
-										This action is{" "}
-										<span className="text-red-400 font-bold">irreversible</span>
-										. Once enabled, you cannot return to regular mode for this
-										project.
-									</DialogDescription>
-								</DialogHeader>
-								<DialogFooter>
-									<motion.div
-										whileHover={{ scale: 1.05 }}
-										whileTap={{ scale: 0.95 }}
-									>
-										<Button
-											className="bg-white/5 hover:bg-white/10 border-white/10 text-white"
-											onClick={() =>
-												setExpDialog({ open: false, projectId: "" })
-											}
-											type="button"
-											variant="outline"
-										>
-											Cancel
-										</Button>
-									</motion.div>
-									<motion.div
-										whileHover={{ scale: 1.05 }}
-										whileTap={{ scale: 0.95 }}
-									>
-										<Button
-											className="bg-blue-600 hover:bg-blue-700 text-white"
-											disabled={enableExperimentalMutation.isPending}
-											onClick={() =>
-												enableExperimentalMutation.mutate(expDialog.projectId)
-											}
-											type="button"
-										>
-											{enableExperimentalMutation.isPending ? (
-												<>
-													<Loader2 className="h-4 w-4 animate-spin mr-2" />
-													Enabling...
-												</>
-											) : (
-												"Enable Experimental Mode"
-											)}
-										</Button>
-									</motion.div>
-								</DialogFooter>
-							</motion.div>
-						</DialogContent>
-					</Dialog>
-				)}
-			</AnimatePresence>
 		</div>
 	)
 }

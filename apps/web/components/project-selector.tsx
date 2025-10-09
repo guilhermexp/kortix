@@ -59,24 +59,18 @@ export function ProjectSelector() {
 	const projectName = useProjectName()
 	const { switchProject, deleteProjectMutation } = useProjectMutations()
 	const { renameProjectMutation } = useProjectMutations()
-	const [deleteDialog, setDeleteDialog] = useState<{
-		open: boolean
-		project: null | { id: string; name: string; containerTag: string }
-		action: "move" | "delete"
-		targetProjectId: string
-	}>({
-		open: false,
-		project: null,
-		action: "move",
-		targetProjectId: DEFAULT_PROJECT_ID,
-	})
-	const [expDialog, setExpDialog] = useState<{
-		open: boolean
-		projectId: string
-	}>({
-		open: false,
-		projectId: "",
-	})
+    const [deleteDialog, setDeleteDialog] = useState<{
+        open: boolean
+        project: null | { id: string; name: string; containerTag: string }
+        action: "move" | "delete"
+        targetProjectId: string
+    }>({
+        open: false,
+        project: null,
+        action: "move",
+        targetProjectId: "",
+    })
+    // Experimental mode removed
 
 	const [renameDialog, setRenameDialog] = useState<{
 		open: boolean
@@ -99,29 +93,7 @@ export function ProjectSelector() {
 		staleTime: 30 * 1000,
 	})
 
-	const enableExperimentalMutation = useMutation({
-		mutationFn: async (projectId: string) => {
-			const response = await $fetch(
-				`@post/projects/${projectId}/enable-experimental`,
-			)
-			if (response.error) {
-				throw new Error(
-					response.error?.message || "Failed to enable experimental mode",
-				)
-			}
-			return response.data
-		},
-		onSuccess: () => {
-			toast.success("Experimental mode enabled for project")
-			queryClient.invalidateQueries({ queryKey: ["projects"] })
-			setExpDialog({ open: false, projectId: "" })
-		},
-		onError: (error) => {
-			toast.error("Failed to enable experimental mode", {
-				description: error instanceof Error ? error.message : "Unknown error",
-			})
-		},
-	})
+    // (no enable experimental endpoint)
 
 	const handleProjectSelect = (containerTag: string) => {
 		switchProject(containerTag)
@@ -172,7 +144,7 @@ export function ProjectSelector() {
 							transition={{ duration: 0.15 }}
 						>
 							<div className="p-1.5 max-h-64 overflow-y-auto">
-								{/* Default Project */}
+            {/* All Projects (viewer) */}
 								<motion.button
 									className={`flex items-center justify-between w-full p-2 rounded-md transition-colors ${
 										selectedProject === DEFAULT_PROJECT_ID
@@ -184,9 +156,9 @@ export function ProjectSelector() {
 								>
 									<div className="flex items-center gap-2">
 										<FolderIcon className="h-3.5 w-3.5 text-white/70" />
-										<span className="text-xs font-medium text-white">
-											Default
-										</span>
+                        <span className="text-xs font-medium text-white">
+                            All Projects
+                        </span>
 									</div>
 								</motion.button>
 
@@ -248,33 +220,7 @@ export function ProjectSelector() {
 													>
 														Rename
 													</DropdownMenuItem>
-														{/* Show experimental toggle only if NOT experimental and NOT default project */}
-														{!project.isExperimental &&
-															project.containerTag !== DEFAULT_PROJECT_ID && (
-																<DropdownMenuItem
-																	className="text-blue-400 hover:text-blue-300 cursor-pointer text-xs"
-																	onClick={(e) => {
-																		e.stopPropagation()
-																		setExpDialog({
-																			open: true,
-																			projectId: project.id,
-																		})
-																		setIsOpen(false)
-																	}}
-																>
-																	<div className="h-3 w-3 mr-2 rounded border border-blue-400" />
-																	Enable Experimental Mode
-																</DropdownMenuItem>
-															)}
-														{project.isExperimental && (
-															<DropdownMenuItem
-																className="text-blue-300/50 text-xs"
-																disabled
-															>
-																<div className="h-3 w-3 mr-2 rounded bg-blue-400" />
-																Experimental Mode Active
-															</DropdownMenuItem>
-														)}
+                                    {/* Experimental toggle removed */}
 														<DropdownMenuItem
 															className="text-red-400 hover:text-red-300 cursor-pointer text-xs"
 															onClick={(e) => {
@@ -456,12 +402,7 @@ export function ProjectSelector() {
 														<SelectValue placeholder="Select target project..." />
 													</SelectTrigger>
 													<SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
-														<SelectItem
-															className="text-white hover:bg-white/10"
-															value={DEFAULT_PROJECT_ID}
-														>
-															Default Project
-														</SelectItem>
+                                            {/* All Projects is a global viewer; not a move target */}
 														{projects
 															.filter(
 																(p: Project) =>
@@ -597,82 +538,7 @@ export function ProjectSelector() {
 				)}
 			</AnimatePresence>
 
-			{/* Experimental Mode Confirmation Dialog */}
-			<AnimatePresence>
-				{expDialog.open && (
-					<Dialog
-						onOpenChange={(open) => setExpDialog({ ...expDialog, open })}
-						open={expDialog.open}
-					>
-						<DialogContent className="sm:max-w-lg bg-black/90 backdrop-blur-xl border-white/10 text-white">
-							<motion.div
-								animate={{ opacity: 1, scale: 1 }}
-								className="flex flex-col gap-4"
-								exit={{ opacity: 0, scale: 0.95 }}
-								initial={{ opacity: 0, scale: 0.95 }}
-							>
-								<DialogHeader>
-									<DialogTitle className="text-white">
-										Enable Experimental Mode?
-									</DialogTitle>
-									<DialogDescription className="text-white/60">
-										Experimental mode enables beta features and advanced memory
-										relationships for this project.
-										<br />
-										<br />
-										<span className="text-yellow-400 font-medium">
-											Warning:
-										</span>{" "}
-										This action is{" "}
-										<span className="text-red-400 font-bold">irreversible</span>
-										. Once enabled, you cannot return to regular mode for this
-										project.
-									</DialogDescription>
-								</DialogHeader>
-								<DialogFooter>
-									<motion.div
-										whileHover={{ scale: 1.05 }}
-										whileTap={{ scale: 0.95 }}
-									>
-										<Button
-											className="bg-white/5 hover:bg-white/10 border-white/10 text-white"
-											onClick={() =>
-												setExpDialog({ open: false, projectId: "" })
-											}
-											type="button"
-											variant="outline"
-										>
-											Cancel
-										</Button>
-									</motion.div>
-									<motion.div
-										whileHover={{ scale: 1.05 }}
-										whileTap={{ scale: 0.95 }}
-									>
-										<Button
-											className="bg-blue-600 hover:bg-blue-700 text-white"
-											disabled={enableExperimentalMutation.isPending}
-											onClick={() =>
-												enableExperimentalMutation.mutate(expDialog.projectId)
-											}
-											type="button"
-										>
-											{enableExperimentalMutation.isPending ? (
-												<>
-													<Loader2 className="h-4 w-4 animate-spin mr-2" />
-													Enabling...
-												</>
-											) : (
-												"Enable Experimental Mode"
-											)}
-										</Button>
-									</motion.div>
-								</DialogFooter>
-							</motion.div>
-						</DialogContent>
-					</Dialog>
-				)}
-			</AnimatePresence>
+            {/* Experimental Mode Confirmation Dialog removed */}
 		</div>
 	)
 }
