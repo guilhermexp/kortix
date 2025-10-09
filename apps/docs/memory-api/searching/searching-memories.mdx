@@ -23,14 +23,15 @@ description: "Learn how to search for and retrieve content from supermemory"
 
 ## Basic Search
 
-To search through your memories, send a POST request to `/search`:
+To search through your memories today, use `/v3/search` (documents) or `/v3/search/hybrid`. The `/v4/search` (memories) endpoint is planned and not available in v1.2.
 
 <CodeGroup>
 
 ```bash cURL
-curl http://localhost:4000/v3/search?q=machine+learning+concepts&limit=10 \
-  --request GET \
-  --header 'Authorization: Bearer SUPERMEMORY_API_KEY'
+curl -X POST http://localhost:4000/v3/search \
+  -H 'Authorization: Bearer SUPERMEMORY_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"q":"machine learning concepts","limit":10}'
 ```
 
 ```typescript Typescript
@@ -133,41 +134,22 @@ The search response includes:
 }
 ```
 
-## Including Forgotten Memories
+## Including Forgotten Memories (Planned)
 
-By default, the search API excludes memories that have been marked as forgotten or have passed their expiration date. To include these in your search results, set `include.forgottenMemories` to `true`:
+By default, the search API excludes memories that have been marked as forgotten or have passed their expiration date. A future `/v4/search` endpoint will support including these in results via `include.forgottenMemories`.
 
 <CodeGroup>
 
 ```bash cURL
-curl http://localhost:4000/v4/search \
-  --request POST \
-  --header 'Authorization: Bearer SUPERMEMORY_API_KEY' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "q": "old project notes",
-    "include": {
-      "forgottenMemories": true
-    }
-  }'
+# Not available in v1.2
 ```
 
 ```typescript Typescript
-await client.search.memories({
-  q: "old project notes",
-  include: {
-    forgottenMemories: true
-  }
-});
+// Not available in v1.2
 ```
 
 ```python Python
-await client.search.memories(
-    q="old project notes",
-    include={
-        "forgottenMemories": True
-    }
-)
+# Not available in v1.2
 ```
 
 </CodeGroup>
@@ -178,4 +160,5 @@ Forgotten memories are memories that have been explicitly forgotten using the fo
 
 ## Next Steps
 
-Explore more advanced features in our [API Reference](/api-reference/search-memories/search-memories).
+Explore more advanced features in the [Search Overview](/search/overview) and [Document Search Examples](/search/examples/document-search).
+

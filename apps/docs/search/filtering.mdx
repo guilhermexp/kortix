@@ -5,7 +5,7 @@ icon: "filter"
 ---
 
 
-Supermemory supports filtering search results using container tags, metadata conditions, and advanced filtering techniques for both `/v3/search` and `/v4/search` endpoints.
+Supermemory supports filtering search results using container tags, metadata conditions, and advanced filtering techniques for `/v3/search`. The `/v4/search` (memories) endpoint is planned and not available in v1.2.
 
 ## Container Tags
 
@@ -65,7 +65,7 @@ Container tags group memories by user, project, or organization. They're the pri
   </Tab>
 </Tabs>
 
-### Memory Search (v4/search)
+### Memory Search (v4/search) – Coming Soon
 
 <Tabs>
   <Tab title="TypeScript">
@@ -90,22 +90,15 @@ Container tags group memories by user, project, or organization. They're the pri
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "http://localhost:4000/v4/search" \
-      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "q": "research findings",
-        "containerTag": "user_123",
-        "limit": 5
-      }'
+    # Not available in v1.2
     ```
   </Tab>
 </Tabs>
 
 <Note>
-**Container Tag Differences**:
+**Container Tag Differences** (planned):
 - `/v3/search` uses `containerTags` (plural array) with exact array matching
-- `/v4/search` uses `containerTag` (singular string) for single tag filtering
+- `/v4/search` will use `containerTag` (singular string) for single tag filtering
 - Exact matching means `["user", "project"]` ≠ `["user"]`
 </Note>
 

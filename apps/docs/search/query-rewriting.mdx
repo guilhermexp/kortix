@@ -336,15 +336,7 @@ Query rewriting works with both document and memory search:
   </Tab>
   <Tab title="cURL">
     ```bash
-    curl -X POST "http://localhost:4000/v4/search" \
-      -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "q": "explain quantum entanglement simply",
-        "rewriteQuery": true,
-        "containerTag": "physics_notes",
-        "limit": 5
-      }'
+    # Not available in v1.2. Use /v3/search (documents) or /v3/search/hybrid.
     ```
   </Tab>
 </Tabs>
