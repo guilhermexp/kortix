@@ -56,8 +56,12 @@ export async function searchDocuments(
 
   let chunkRows: ChunkRow[] = [];
   let vectorQueryUsed = false;
-  let searchPath: "rpc_vector" | "fallback_local" | "raw_no_scores" | "none" =
-    "none";
+  let searchPath:
+    | "rpc_vector"
+    | "fallback_local"
+    | "raw_no_scores"
+    | "broad_recent"
+    | "none" = "none";
 
   // Try RPC vector search first (fast & relevant)
   try {
@@ -308,6 +312,80 @@ export async function searchDocuments(
       maxLength: 512,
     });
     reranked = true;
+  }
+
+  // Broad fallback: if no results, return recent documents (scoped) to support
+  // generic queries like "what do I have in this project?"
+  if (results.length === 0) {
+    try {
+      const containerTagsFilter = payload.containerTags ?? [];
+      let docsData: DocumentRow[] | null = null;
+
+      if (containerTagsFilter.length > 0) {
+        // Resolve docs via spaces/container_tag mapping for reliability
+        const { data: spaces } = await client
+          .from("spaces")
+          .select("id, container_tag")
+          .eq("organization_id", orgId)
+          .in("container_tag", containerTagsFilter);
+
+        const spaceIds = Array.isArray(spaces) ? spaces.map((s: any) => s.id) : [];
+
+        if (spaceIds.length > 0) {
+          const { data: mappings } = await client
+            .from("documents_to_spaces")
+            .select("document_id")
+            .in("space_id", spaceIds);
+
+          const docIds = Array.isArray(mappings)
+            ? [...new Set(mappings.map((m: any) => m.document_id))]
+            : [];
+
+          if (docIds.length > 0) {
+            const { data } = await client
+              .from("documents")
+              .select(
+                "id, title, type, content, summary, metadata, created_at, updated_at, status",
+              )
+              .eq("org_id", orgId)
+              .in("id", docIds)
+              .order("created_at", { ascending: false })
+              .limit(Math.max(20, payload.limit ?? 10));
+            if (Array.isArray(data)) docsData = data as any;
+          }
+        }
+      }
+
+      if (!docsData) {
+        // Fallback to recent docs without mapping (global)
+        const { data } = await client
+          .from("documents")
+          .select(
+            "id, title, type, content, summary, metadata, created_at, updated_at, status",
+          )
+          .eq("org_id", orgId)
+          .order("created_at", { ascending: false })
+          .limit(Math.max(20, payload.limit ?? 10));
+        if (Array.isArray(data)) docsData = data as any;
+      }
+
+      if (Array.isArray(docsData)) {
+        const limited = docsData.slice(0, payload.limit ?? 10);
+        results = limited.map((doc) => ({
+          documentId: doc.id,
+          createdAt: doc.created_at,
+          updatedAt: doc.updated_at,
+          metadata: doc.metadata ?? null,
+          title: doc.title ?? null,
+          type: doc.type ?? null,
+          score: 0.1,
+          summary: payload.includeSummary ? (doc.summary ?? null) : null,
+          content: payload.includeFullDocs ? (doc.content ?? null) : null,
+          chunks: [],
+        }));
+        searchPath = "broad_recent";
+      }
+    } catch {}
   }
   const response = SearchResponseSchema.parse({
     results,

@@ -1,8 +1,8 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
 import { env } from "../env"
+import { aiClient } from "./ai-provider"
 
-const chatClient = env.GOOGLE_API_KEY
-	? new GoogleGenerativeAI(env.GOOGLE_API_KEY).getGenerativeModel({
+const chatClient = aiClient
+	? aiClient.getGenerativeModel({
 			model: env.CHAT_MODEL,
 		})
 	: null

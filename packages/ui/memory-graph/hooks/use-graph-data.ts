@@ -272,68 +272,89 @@ export function useGraphData(
 			});
 		});
 
-		// Document-to-document similarity edges
-		// DISABLED: These edges create visual clutter with long diagonal lines
-		// when documents are in concentric rings within the same space.
-		// The doc-memory edges already show the relationships clearly.
-		/*
-		for (let i = 0; i < filteredDocuments.length; i++) {
-			const docI = filteredDocuments[i];
-			if (!docI) continue;
+    // Document-to-document similarity edges (within the same space)
+    // Enabled with sane defaults: threshold + Top-K per document to reduce clutter
+    {
+        const DOC_SIMILARITY_THRESHOLD = 0.72;
+        const TOP_K_PER_DOC = 3;
 
-			// Get space for document I
-			const spaceI =
-				docI.memoryEntries[0]?.spaceContainerTag ??
-				docI.memoryEntries[0]?.spaceId ??
-				"default";
+        // Helper to parse embeddings from vector/array/string
+        const parseEmbedding = (
+            emb: unknown,
+        ): number[] | null => {
+            if (!emb) return null;
+            if (Array.isArray(emb)) return emb as number[];
+            if (typeof emb === "string") {
+                try {
+                    const parsed = JSON.parse(emb);
+                    return Array.isArray(parsed) ? (parsed as number[]) : null;
+                } catch {
+                    return null;
+                }
+            }
+            return null;
+        };
 
-			for (let j = i + 1; j < filteredDocuments.length; j++) {
-				const docJ = filteredDocuments[j];
-				if (!docJ) continue;
+        // Build similarity edges per space to avoid long cross-space lines
+        documentsBySpace.forEach((spaceDocs) => {
+            const n = spaceDocs.length;
+            if (n === 0) return;
 
-				// Get space for document J
-				const spaceJ =
-					docJ.memoryEntries[0]?.spaceContainerTag ??
-					docJ.memoryEntries[0]?.spaceId ??
-					"default";
+            // Pre-parse embeddings
+            const embs: Array<number[] | null> = spaceDocs.map((d) =>
+                parseEmbedding(d.summaryEmbedding),
+            );
 
-				// Skip edges between documents in different spaces to prevent diagonal lines
-				if (spaceI !== spaceJ) continue;
+            // Collect top neighbors per document
+            const neighbors: Array<Array<{ j: number; sim: number }>> = Array.from(
+                { length: n },
+                () => [],
+            );
 
-				// Parse embeddings (handle both string and array formats)
-				const parseEmbedding = (
-					emb: string | number[] | null | undefined,
-				): number[] | null => {
-					if (!emb) return null;
-					if (typeof emb === "string") {
-						try {
-							return JSON.parse(emb);
-						} catch {
-							return null;
-						}
-					}
-					return Array.isArray(emb) ? emb : null;
-				};
+            for (let i = 0; i < n; i++) {
+                for (let j = i + 1; j < n; j++) {
+                    const sim = calculateSemanticSimilarity(embs[i], embs[j]);
+                    if (sim >= DOC_SIMILARITY_THRESHOLD) {
+                        neighbors[i].push({ j, sim });
+                        neighbors[j].push({ j: i, sim });
+                    }
+                }
+            }
 
-				const embI = parseEmbedding(docI.summaryEmbedding);
-				const embJ = parseEmbedding(docJ.summaryEmbedding);
+            // For each doc, keep top-K highest sims
+            const keep = new Set<string>();
+            for (let i = 0; i < n; i++) {
+                const top = neighbors[i]
+                    .sort((a, b) => b.sim - a.sim)
+                    .slice(0, TOP_K_PER_DOC);
+                for (const { j } of top) {
+                    const a = Math.min(i, j);
+                    const b = Math.max(i, j);
+                    keep.add(`${a}-${b}`);
+                }
+            }
 
-				const sim = calculateSemanticSimilarity(embI, embJ);
-				if (sim > 0.725) {
-					allEdges.push({
-						id: `doc-doc-${docI.id}-${docJ.id}`,
-						source: docI.id,
-						target: docJ.id,
-						similarity: sim,
-						visualProps: getConnectionVisualProps(sim),
-						color: getMagicalConnectionColor(sim, 200),
-						edgeType: "doc-doc",
-						edge Type: "doc-doc",
-					});
-				}
-			}
-		}
-		*/
+            // Emit edges (unique pairs only)
+            for (const key of keep) {
+                const [aStr, bStr] = key.split("-");
+                const i = Number(aStr);
+                const j = Number(bStr);
+                const sim = calculateSemanticSimilarity(embs[i], embs[j]);
+                if (sim <= 0) continue;
+                const docI = spaceDocs[i]!;
+                const docJ = spaceDocs[j]!;
+                allEdges.push({
+                    id: `doc-doc-${docI.id}-${docJ.id}`,
+                    source: docI.id,
+                    target: docJ.id,
+                    similarity: sim,
+                    visualProps: getConnectionVisualProps(sim),
+                    color: getMagicalConnectionColor(sim, 200),
+                    edgeType: "doc-doc",
+                });
+            }
+        });
+    }
 
 		return { nodes: allNodes, edges: allEdges };
 	}, [data, selectedSpace, nodePositions, draggingNodeId]);

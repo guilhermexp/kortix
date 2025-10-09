@@ -1,7 +1,8 @@
 import {
-	CreateProjectSchema,
-	DeleteProjectSchema,
-	ProjectSchema,
+    CreateProjectSchema,
+    DeleteProjectSchema,
+    ProjectSchema,
+    UpdateProjectSchema,
 } from "@repo/validation/api"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { z } from "zod"
@@ -169,4 +170,32 @@ export async function deleteProject(
 		.eq("organization_id", organizationId)
 
 	if (error) throw error
+}
+
+export async function updateProject(
+    client: SupabaseClient,
+    {
+        organizationId,
+        projectId,
+        payload,
+    }: {
+        organizationId: string
+        projectId: string
+        payload: z.infer<typeof UpdateProjectSchema>
+    },
+) {
+    const parsed = UpdateProjectSchema.parse(payload)
+
+    const { data, error } = await client
+        .from("spaces")
+        .update({ name: parsed.name })
+        .eq("id", projectId)
+        .eq("organization_id", organizationId)
+        .select(
+            "id, container_tag, name, is_experimental, created_at, updated_at, documents_to_spaces(document_id)",
+        )
+        .single()
+
+    if (error) throw error
+    return mapSpaceToProject(data as SpaceWithRelations)
 }

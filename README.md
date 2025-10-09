@@ -47,6 +47,7 @@ AUTH_SECRET=use_a_32_char_secret
 GOOGLE_API_KEY=your_gemini_key
 SUMMARY_MODEL=models/gemini-2.5-pro
 FIRECRAWL_API_KEY=optional_firecrawl_key
+USE_MARKITDOWN_FOR_WEB=true  # Use MarkItDown first for URLs; fallback to Firecrawl
 APP_URL=http://localhost:3000
 ALLOWED_ORIGINS=http://localhost:3000
 ```
@@ -87,6 +88,7 @@ spec/         → PRD, technical specs, schema status
 | `GOOGLE_API_KEY` | `apps/api/.env.local` | Gemini API key for embeddings/chat |
 | `SUMMARY_MODEL` | `apps/api/.env.local` | (Opcional) modelo usado para resumos automáticos |
 | `FIRECRAWL_API_KEY` | `apps/api/.env.local` | (Opcional) chave do Firecrawl para normalizar páginas web |
+| `USE_MARKITDOWN_FOR_WEB` | `apps/api/.env.local` | `true` para usar MarkItDown primeiro em URLs (fallback para Firecrawl); `false` para priorizar Firecrawl |
 
 ## Deployment
 
