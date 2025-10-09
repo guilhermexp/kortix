@@ -51,9 +51,9 @@ export function ChatRewrite() {
   // No header controls (kept only in composer)
 
   return (
-    <div className="flex flex-col h-full overflow-y-hidden border-l bg-background">
-      <div className="border-b px-4 py-3 flex justify-between items-center">
-        <h3 className="text-lg font-semibold line-clamp-1 text-ellipsis overflow-hidden">
+    <div className="flex flex-col h-full overflow-y-hidden border-l border-white/10 bg-[#0f1419]">
+      <div className="sticky top-0 z-20 border-b border-white/10 bg-[#0f1419]/90 backdrop-blur px-4 py-3 flex justify-between items-center shadow-sm">
+        <h3 className="text-base font-semibold line-clamp-1 text-ellipsis overflow-hidden text-white/90">
           {getCurrentChat()?.title ?? "New Chat"}
         </h3>
         <div className="flex items-center gap-2">
@@ -62,17 +62,18 @@ export function ChatRewrite() {
               <Button
                 onClick={() => analytics.chatHistoryViewed()}
                 size="icon"
-                variant="outline"
+                className="h-8 w-8 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/80"
+                variant="ghost"
               >
-                <HistoryIcon className="size-4 text-muted-foreground" />
+                <HistoryIcon className="size-4" />
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader className="pb-4 border-b rounded-t-lg">
-                <DialogTitle className="">Conversations</DialogTitle>
-                <DialogDescription>
+            <DialogContent className="sm:max-w-lg bg-[#0f1419] backdrop-blur-xl border-white/10 text-white">
+              <DialogHeader className="pb-4 border-b border-white/10 rounded-t-lg">
+                <DialogTitle className="text-white">Conversations</DialogTitle>
+                <DialogDescription className="text-white/50">
                   Project{" "}
-                  <span className="font-mono font-medium">
+                  <span className="font-mono font-medium text-white/70">
                     {selectedProject}
                   </span>
                 </DialogDescription>
@@ -150,15 +151,21 @@ export function ChatRewrite() {
               </Button>
             </DialogContent>
           </Dialog>
-          <Button onClick={handleNewChat} size="icon" variant="outline">
-            <Plus className="size-4 text-muted-foreground" />
+          <Button
+            onClick={handleNewChat}
+            size="icon"
+            className="h-8 w-8 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/80"
+            variant="ghost"
+          >
+            <Plus className="size-4" />
           </Button>
           <Button
             onClick={() => setIsOpen(false)}
             size="icon"
-            variant="outline"
+            className="h-8 w-8 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/80"
+            variant="ghost"
           >
-            <X className="size-4 text-muted-foreground" />
+            <X className="size-4" />
           </Button>
         </div>
       </div>

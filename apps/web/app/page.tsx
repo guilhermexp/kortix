@@ -58,6 +58,52 @@ const MemoryGraphPage = () => {
 
 	const isCurrentProjectExperimental = false
 
+	// Resizable chat panel width (desktop only)
+	const MIN_CHAT_WIDTH = 420
+	const MAX_CHAT_WIDTH = 1100
+	const [chatWidth, setChatWidth] = useState<number>(() => {
+		if (typeof window === "undefined") return 600
+		const v = Number(localStorage.getItem("chatPanelWidth"))
+		return Number.isFinite(v)
+			? Math.min(MAX_CHAT_WIDTH, Math.max(MIN_CHAT_WIDTH, v))
+			: 600
+	})
+
+	useEffect(() => {
+		try {
+			localStorage.setItem("chatPanelWidth", String(chatWidth))
+		} catch {}
+	}, [chatWidth])
+
+	const resizingRef = useRef(false)
+	const startXRef = useRef(0)
+	const startWRef = useRef(0)
+	const beginResize = (e: React.MouseEvent<HTMLDivElement>) => {
+		if (isMobile) return
+		resizingRef.current = true
+		startXRef.current = e.clientX
+		startWRef.current = chatWidth
+		document.body.style.cursor = "ew-resize"
+		const onMove = (ev: MouseEvent) => {
+			if (!resizingRef.current) return
+			const delta = startXRef.current - ev.clientX // drag left increases width
+			const next = Math.min(
+				MAX_CHAT_WIDTH,
+				Math.max(MIN_CHAT_WIDTH, startWRef.current + delta),
+			)
+			setChatWidth(next)
+		}
+		const onUp = () => {
+			resizingRef.current = false
+			document.body.style.cursor = ""
+			window.removeEventListener("mousemove", onMove)
+			window.removeEventListener("mouseup", onUp)
+		}
+		window.addEventListener("mousemove", onMove)
+		window.addEventListener("mouseup", onUp)
+		e.preventDefault()
+	}
+
 	// Tour state
 	const [showTourDialog, setShowTourDialog] = useState(false)
 
@@ -415,7 +461,7 @@ const MemoryGraphPage = () => {
 			{/* Main content area */}
 			<motion.div
 				animate={{
-					marginRight: isOpen && !isMobile ? 600 : 0,
+					marginRight: isOpen && !isMobile ? chatWidth : 0,
 				}}
 				className="h-full relative"
 				transition={{
@@ -425,66 +471,39 @@ const MemoryGraphPage = () => {
 			>
 				<motion.div
 					animate={{ opacity: 1, y: 0 }}
-					className="absolute md:top-4 md:right-4 md:bottom-auto md:left-auto bottom-8 left-6 z-20 rounded-xl overflow-hidden"
+					className="absolute md:top-4 md:right-4 md:bottom-auto md:left-auto bottom-8 left-6 z-20"
 					id={TOUR_STEP_IDS.VIEW_TOGGLE}
 					initial={{ opacity: 0, y: -20 }}
 					transition={{ type: "spring", stiffness: 300, damping: 25 }}
 				>
-					<GlassMenuEffect rounded="rounded-xl" />
-					<div className="relative z-10 p-2 flex gap-1">
-						<motion.button
-							animate={{
-								color: viewMode === "graph" ? "#93c5fd" : "#cbd5e1",
-							}}
-							className="relative h-8 px-3 flex items-center gap-2 text-sm font-medium rounded-md transition-colors"
+					<div className="flex gap-2">
+						<Button
+							className={`${
+								viewMode === "graph"
+									? "bg-blue-500/20 border-blue-400/30 text-blue-300"
+									: "bg-white/5 border-white/20 text-white/70"
+							} hover:bg-white/10 hover:text-white px-2 sm:px-3 rounded-md`}
 							onClick={() => handleViewModeChange("graph")}
-							transition={{ duration: 0.2 }}
-							whileHover={{ scale: 1.02 }}
-							whileTap={{ scale: 0.98 }}
+							size="sm"
+							variant="outline"
 						>
-							{viewMode === "graph" && (
-								<motion.div
-									className="absolute inset-0 bg-blue-500/20 rounded-md"
-									layoutId="activeBackground"
-									transition={{
-										type: "spring",
-										stiffness: 400,
-										damping: 30,
-									}}
-								/>
-							)}
-							<span className="relative z-10 flex items-center gap-2">
-								<LayoutGrid className="w-4 h-4" />
-								<span className="hidden md:inline">Graph</span>
-							</span>
-						</motion.button>
+							<LayoutGrid className="h-4 w-4" />
+							<span className="hidden md:inline ml-2">Graph</span>
+						</Button>
 
-						<motion.button
-							animate={{
-								color: viewMode === "list" ? "#93c5fd" : "#cbd5e1",
-							}}
-							className="relative h-8 px-3 flex items-center gap-2 text-sm font-medium rounded-md transition-colors"
+						<Button
+							className={`${
+								viewMode === "list"
+									? "bg-blue-500/20 border-blue-400/30 text-blue-300"
+									: "bg-white/5 border-white/20 text-white/70"
+							} hover:bg-white/10 hover:text-white px-2 sm:px-3 rounded-md`}
 							onClick={() => handleViewModeChange("list")}
-							transition={{ duration: 0.2 }}
-							whileHover={{ scale: 1.02 }}
-							whileTap={{ scale: 0.98 }}
+							size="sm"
+							variant="outline"
 						>
-							{viewMode === "list" && (
-								<motion.div
-									className="absolute inset-0 bg-blue-500/20 rounded-md"
-									layoutId="activeBackground"
-									transition={{
-										type: "spring",
-										stiffness: 400,
-										damping: 30,
-									}}
-								/>
-							)}
-							<span className="relative z-10 flex items-center gap-2">
-								<List className="w-4 h-4" />
-								<span className="hidden md:inline">List</span>
-							</span>
-						</motion.button>
+							<List className="h-4 w-4" />
+							<span className="hidden md:inline ml-2">List</span>
+						</Button>
 					</div>
 				</motion.div>
 
@@ -516,7 +535,7 @@ const MemoryGraphPage = () => {
 								isLoadingMore={isLoadingMore}
 								legendId={TOUR_STEP_IDS.LEGEND}
 								loadMoreDocuments={loadMoreDocuments}
-								occludedRightPx={isOpen && !isMobile ? 600 : 0}
+								occludedRightPx={isOpen && !isMobile ? chatWidth : 0}
 								showSpacesSelector={false}
 								totalLoaded={totalLoaded}
 								variant="consumer"
@@ -615,37 +634,14 @@ const MemoryGraphPage = () => {
 
 				{/* Top Bar */}
 				<div className="absolute top-2 left-0 right-0 z-10 p-4 flex items-center justify-between">
-					<div className="flex items-center gap-3 justify-between w-full md:w-fit md:justify-start">
-						<Link
-							className="pointer-events-auto"
-							href={APP_URL}
-							rel="noopener noreferrer"
-							target="_blank"
-						>
-							<LogoFull
-								className="h-8 hidden md:block"
-								id={TOUR_STEP_IDS.LOGO}
-							/>
-							<Logo className="h-8 md:hidden" id={TOUR_STEP_IDS.LOGO} />
-						</Link>
+					<div className="flex items-center gap-3">
+						<div className="pointer-events-auto">
+							<Logo className="h-8" id={TOUR_STEP_IDS.LOGO} />
+						</div>
 
 						<div className="hidden sm:block">
 							<ProjectSelector />
 						</div>
-
-						<ConnectAIModal>
-							<Button
-								className="bg-white/5 hover:bg-white/10 border-white/20 text-white hover:text-white px-2 sm:px-3"
-								size="sm"
-								variant="outline"
-							>
-								<Unplug className="h-4 w-4" />
-								<span className="hidden sm:inline ml-2">
-									Connect to your AI
-								</span>
-								<span className="sm:hidden ml-1">Connect AI</span>
-							</Button>
-						</ConnectAIModal>
 					</div>
 
 					<div>
@@ -712,15 +708,15 @@ const MemoryGraphPage = () => {
 				className="fixed top-0 right-0 h-full z-50 md:z-auto"
 				id={TOUR_STEP_IDS.FLOATING_CHAT}
 				style={{
-					width: isOpen ? (isMobile ? "100vw" : "600px") : 0,
+					width: isOpen ? (isMobile ? "100vw" : `${chatWidth}px`) : 0,
 					pointerEvents: isOpen ? "auto" : "none",
 				}}
 			>
 				<motion.div
-					animate={{ x: isOpen ? 0 : isMobile ? "100%" : 600 }}
+					animate={{ x: isOpen ? 0 : isMobile ? "100%" : chatWidth }}
 					className="absolute inset-0"
-					exit={{ x: isMobile ? "100%" : 600 }}
-					initial={{ x: isMobile ? "100%" : 600 }}
+					exit={{ x: isMobile ? "100%" : chatWidth }}
+					initial={{ x: isMobile ? "100%" : chatWidth }}
 					key="chat"
 					transition={{
 						type: "spring",
@@ -728,6 +724,14 @@ const MemoryGraphPage = () => {
 						damping: 40,
 					}}
 				>
+					{/* Resize handle */}
+					{!isMobile && (
+						<div
+							onMouseDown={beginResize}
+							className="absolute left-0 top-0 h-full w-1.5 cursor-ew-resize bg-white/5 hover:bg-white/10 border-l border-white/10"
+							title="Drag to resize"
+						/>
+					)}
 					<ChatRewrite />
 				</motion.div>
 			</motion.div>

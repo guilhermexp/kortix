@@ -201,20 +201,16 @@ export const MemoryDetail = memo(
 			<div className="flex items-start justify-between gap-2">
 				<div className="flex items-start gap-3 flex-1">
 					<div
-						className="p-2 rounded-lg"
-						style={{
-							backgroundColor: colors.background.secondary,
-						}}
+						className="p-2 rounded-lg bg-white/5 border border-white/10"
 					>
-						{getDocumentIcon(document.type, "w-5 h-5")}
+						{getDocumentIcon(document.type, "w-5 h-5 text-white/70")}
 					</div>
 					<div className="flex-1">
-						<TitleComponent style={{ color: colors.text.primary }}>
+						<TitleComponent className="text-white">
 							{document.title || "Untitled Document"}
 						</TitleComponent>
 						<div
-							className="flex items-center gap-2 mt-1 text-xs"
-							style={{ color: colors.text.muted }}
+							className="flex items-center gap-2 mt-1 text-xs text-white/50"
 						>
 							<span>{formatDocumentType(document.type)}</span>
 							<span>•</span>
@@ -223,12 +219,11 @@ export const MemoryDetail = memo(
 								<>
 									<span>•</span>
 									<button
-										className="flex items-center gap-1 transition-all hover:gap-2"
+										className="flex items-center gap-1 transition-all hover:gap-2 text-blue-400 hover:text-blue-300"
 										onClick={() => {
 											const sourceUrl = getSourceUrl(document)
 											window.open(sourceUrl ?? undefined, "_blank")
 										}}
-										style={{ color: colors.accent.primary }}
 										type="button"
 									>
 										View source
@@ -252,14 +247,13 @@ export const MemoryDetail = memo(
 				<div className="mt-4">
 					<Tabs className="w-full" value={activeTab} onValueChange={setActiveTab}>
 						<TabsList
-							className={`grid w-full bg-white/5 border border-white/10 h-11 ${
+							className={`grid w-full bg-white/5 border border-white/10 rounded-md h-11 ${
 								hasContent && hasSummary ? "grid-cols-2" : "grid-cols-1"
 							}`}
 						>
 							{hasSummary && (
 								<TabsTrigger
-									className="text-xs flex items-center gap-1 bg-transparent h-8"
-									style={{ color: colors.text.secondary }}
+									className="text-xs flex items-center gap-2 bg-transparent h-8 text-white/70 data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-300"
 									value="summary"
 								>
 									<List className="w-3 h-3" />
@@ -268,8 +262,7 @@ export const MemoryDetail = memo(
 							)}
 							{hasContent && (
 								<TabsTrigger
-									className="text-xs bg-transparent h-8"
-									style={{ color: colors.text.secondary }}
+									className="text-xs flex items-center gap-2 bg-transparent h-8 text-white/70 data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-300"
 									value="content"
 								>
 									<CircleUserRound className="w-3 h-3" />
@@ -282,11 +275,10 @@ export const MemoryDetail = memo(
 						<TabsContent className="mt-3 flex-1 max-h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar" value="summary">
 							<div className="space-y-4 pb-6">
 								{/* Summary Text */}
-								<div className="p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/15">
+								<div className="p-4 rounded-md bg-white/5 border border-white/10">
 									<MarkdownContent
-										className="text-sm leading-relaxed"
+										className="text-sm leading-relaxed text-white/80"
 										content={document.summary ?? ""}
-										style={{ color: colors.text.muted }}
 									/>
 								</div>
 								{/* Images Gallery */}
@@ -297,11 +289,10 @@ export const MemoryDetail = memo(
 
 						{hasContent && (
 							<TabsContent className="mt-3" value="content">
-								<div className="p-3 rounded-lg max-h-48 overflow-y-auto custom-scrollbar bg-white/[0.03] border border-white/[0.08]">
+								<div className="p-4 rounded-md max-h-48 overflow-y-auto custom-scrollbar bg-white/5 border border-white/10">
 									<MarkdownContent
-										className="text-sm leading-relaxed"
+										className="text-sm leading-relaxed text-white"
 										content={document.content ?? ""}
-										style={{ color: colors.text.primary }}
 									/>
 								</div>
 							</TabsContent>
@@ -312,14 +303,11 @@ export const MemoryDetail = memo(
 		}
 
 		const MemoryContent = () => (
-			<div className="space-y-6 px-6">
+			<div className="space-y-6 px-6 bg-[#0f1419]">
 				{activeMemories.length > 0 && (
 					<div>
 						<div
-							className="text-sm font-medium mb-2 flex items-start gap-2 py-2"
-							style={{
-								color: colors.text.secondary,
-							}}
+							className="text-sm font-medium mb-2 flex items-start gap-2 py-2 text-white/70"
 						>
 							Active Memories ({activeMemories.length})
 						</div>
@@ -336,11 +324,7 @@ export const MemoryDetail = memo(
 				{forgottenMemories.length > 0 && (
 					<div>
 						<div
-							className="text-sm font-medium mb-4 px-3 py-2 rounded-lg opacity-60"
-							style={{
-								color: colors.text.muted,
-								backgroundColor: "rgba(255, 255, 255, 0.02)",
-							}}
+							className="text-sm font-medium mb-4 px-3 py-2 rounded-md opacity-60 bg-white/5 border border-white/10 text-white/50"
 						>
 							Forgotten Memories ({forgottenMemories.length})
 						</div>
@@ -354,16 +338,12 @@ export const MemoryDetail = memo(
 
 				{activeMemories.length === 0 && forgottenMemories.length === 0 && (
 					<div
-						className="text-center py-12 rounded-lg"
-						style={{
-							backgroundColor: "rgba(255, 255, 255, 0.02)",
-						}}
+						className="text-center py-12 rounded-md bg-white/5 border border-white/10"
 					>
 						<Brain
-							className="w-12 h-12 mx-auto mb-4 opacity-30"
-							style={{ color: colors.text.muted }}
+							className="w-12 h-12 mx-auto mb-4 opacity-30 text-white/50"
 						/>
-						<p style={{ color: colors.text.muted }}>
+						<p className="text-white/50">
 							No memories found for this document
 						</p>
 					</div>
@@ -375,20 +355,18 @@ export const MemoryDetail = memo(
 			return (
 				<Drawer onOpenChange={onClose} open={isOpen}>
 					<DrawerContent
-						className="border-0 p-0 overflow-hidden max-h-[90vh]"
+						className="border-0 p-0 overflow-hidden max-h-[90vh] bg-[#0f1419]"
 						style={{
-							backgroundColor: colors.background.secondary,
-							borderTop: `1px solid ${colors.document.border}`,
+							borderTop: `1px solid rgba(255, 255, 255, 0.1)`,
 							backdropFilter: "blur(20px)",
 							WebkitBackdropFilter: "blur(20px)",
 						}}
 					>
-						{/* Header section with glass effect */}
+						{/* Header section */}
 						<div
-							className="p-4 relative border-b"
+							className="p-6 relative border-b bg-[#0f1419]"
 							style={{
-								backgroundColor: "rgba(255, 255, 255, 0.02)",
-								borderBottom: `1px solid ${colors.document.border}`,
+								borderBottom: `1px solid rgba(255, 255, 255, 0.1)`,
 							}}
 						>
 							<DrawerHeader className="pb-0 px-0 text-left">
@@ -399,7 +377,7 @@ export const MemoryDetail = memo(
 						</div>
 
 						{activeTab === "content" && (
-							<div className="flex-1 memory-drawer-scroll overflow-y-auto">
+							<div className="flex-1 memory-drawer-scroll overflow-y-auto bg-[#0f1419]">
 								<MemoryContent />
 							</div>
 						)}
@@ -411,16 +389,10 @@ export const MemoryDetail = memo(
 		return (
 			<Sheet onOpenChange={onClose} open={isOpen}>
 				<SheetContent
-					className="w-full sm:max-w-2xl border-0 p-0 overflow-hidden"
-					style={{
-						backgroundColor: colors.background.secondary,
-					}}
+					className="w-full sm:max-w-2xl border-0 p-0 overflow-hidden bg-[#0f1419] border-l border-white/10"
 				>
 					<div
-						className="p-6 relative"
-						style={{
-							backgroundColor: "rgba(255, 255, 255, 0.02)",
-						}}
+						className="p-6 relative bg-[#0f1419] border-b border-white/10"
 					>
 						<SheetHeader className="pb-0">
 							<HeaderContent TitleComponent={SheetTitle} />
@@ -430,7 +402,7 @@ export const MemoryDetail = memo(
 					</div>
 
 					{activeTab === "content" && (
-						<div className="h-[calc(100vh-200px)] memory-sheet-scroll overflow-y-auto">
+						<div className="h-[calc(100vh-200px)] memory-sheet-scroll overflow-y-auto bg-[#0f1419]">
 							<MemoryContent />
 						</div>
 					)}
