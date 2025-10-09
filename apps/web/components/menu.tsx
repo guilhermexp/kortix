@@ -246,7 +246,7 @@ function Menu({ id }: { id?: string }) {
 								width: menuWidth,
 								scale: 1,
 							}}
-							className="pointer-events-auto group relative flex text-sm font-medium flex-col items-start overflow-hidden rounded-3xl shadow-2xl"
+							className="pointer-events-auto group relative flex text-sm font-medium flex-col items-start overflow-hidden rounded-xl shadow-2xl bg-[#0f1419] border border-white/10"
 							id={id}
 							initial={{ width: 56, scale: 0.95 }}
 							layout
@@ -267,10 +267,6 @@ function Menu({ id }: { id?: string }) {
 								},
 							}}
 						>
-							{/* Glass effect background */}
-							<motion.div className="absolute inset-0" layout>
-								<GlassMenuEffect />
-							</motion.div>
 
 							{/* Menu content */}
 							<motion.div

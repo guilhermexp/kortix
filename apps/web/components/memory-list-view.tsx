@@ -336,13 +336,13 @@ const DocumentCard = memo(
 
 		return (
 			<Card
-				className="h-full mx-4 p-4 transition-all cursor-pointer group relative overflow-hidden border-0 gap-2 md:w-full"
+				className="h-full mx-4 p-4 transition-all cursor-pointer group relative overflow-hidden border border-white/10 gap-2 md:w-full rounded-lg"
 				onClick={() => {
 					analytics.documentCardClicked()
 					onOpenDetails(document)
 				}}
 				style={{
-					backgroundColor: colors.document.primary,
+					backgroundColor: "#0f1419",
 				}}
 			>
 				<CardHeader className="relative z-10 px-0">

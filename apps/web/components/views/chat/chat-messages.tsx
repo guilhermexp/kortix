@@ -224,7 +224,7 @@ function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
             if (isClickable) {
               return (
                 <a
-                  className="block p-2 bg-white/5 rounded-md border border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors cursor-pointer"
+                  className="block p-3 bg-white/5 rounded-md border border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors cursor-pointer"
                   href={result.url}
                   key={result.documentId || index}
                   rel="noopener noreferrer"
@@ -237,7 +237,7 @@ function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
 
             return (
               <div
-                className="p-2 bg-white/5 rounded-md border border-white/10"
+                className="p-3 bg-white/5 rounded-md border border-white/10"
                 key={result.documentId || index}
               >
                 {content}
@@ -591,21 +591,21 @@ export function ChatMessages() {
 
   return (
     <>
-      <div className="relative grow">
+      <div className="relative grow bg-[#0f1419]">
         <div
-          className="flex flex-col gap-2 absolute inset-0 overflow-y-auto px-4 pt-4 pb-7 scroll-pb-7"
+          className="flex flex-col gap-3 absolute inset-0 overflow-y-auto px-4 pt-4 pb-7 scroll-pb-7"
           onScroll={onScroll}
           ref={scrollContainerRef}
         >
           {messages.map((message) => (
             <div
               className={cn(
-                "flex flex-col",
+                "flex flex-col gap-1",
                 message.role === "user" ? "items-end" : "items-start",
               )}
               key={message.id}
             >
-              <div className="flex flex-col gap-2 max-w-4/5 bg-white/10 py-3 px-4 rounded-lg">
+              <div className="flex flex-col gap-2 max-w-4/5 bg-white/5 border border-white/10 py-3 px-4 rounded-lg text-white">
                 {message.parts.map((part, index) => {
                   if (isTextPart(part)) {
                     return (
@@ -698,9 +698,9 @@ export function ChatMessages() {
                 })}
               </div>
               {message.role === "assistant" && (
-                <div className="flex items-center gap-0.5 mt-0.5">
+                <div className="flex items-center gap-1 mt-1">
                   <Button
-                    className="size-7 text-muted-foreground hover:text-foreground"
+                    className="size-7 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
                     onClick={() => {
                       const combinedText = message.parts
                         .filter((part) => isTextPart(part))
@@ -715,7 +715,7 @@ export function ChatMessages() {
                     <Copy className="size-3.5" />
                   </Button>
                   <Button
-                    className="size-6 text-muted-foreground hover:text-foreground"
+                    className="size-7 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
                     onClick={async () => {
                       const id = message.id;
                       if (!id) return;
@@ -749,7 +749,7 @@ export function ChatMessages() {
                     )}
                   </Button>
                   <Button
-                    className="size-6 text-muted-foreground hover:text-foreground"
+                    className="size-7 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
                     onClick={() => regenerate({ messageId: message.id })}
                     size="icon"
                     variant="ghost"
@@ -792,7 +792,7 @@ export function ChatMessages() {
       </div>
 
       <form
-        className="px-4 pb-4 pt-1 relative"
+        className="px-4 pb-4 pt-1 relative bg-[#0f1419]"
         onSubmit={(e) => {
           e.preventDefault();
           if (status === "submitted") return;
@@ -808,8 +808,8 @@ export function ChatMessages() {
           }
         }}
       >
-        <div className="absolute top-0 left-0 -mt-7 w-full h-7 bg-gradient-to-t from-background to-transparent" />
-        <InputGroup>
+        <div className="absolute top-0 left-0 -mt-7 w-full h-7 bg-gradient-to-t from-[#0f1419] to-transparent" />
+        <InputGroup className="rounded-xl border border-white/10 bg-black/25 backdrop-blur-sm focus-within:ring-0 focus-within:ring-offset-0">
           <InputGroupTextarea
             disabled={status === "submitted"}
             onChange={(e) => setInput(e.target.value)}
@@ -826,7 +826,7 @@ export function ChatMessages() {
                 }
               }
             }}
-          />
+          className="text-white placeholder-white/40" />
           {/* Left bottom corner: quick-save button */}
           <InputGroupAddon align="inline-start" className="gap-1 bottom-0">
             <InputGroupButton
@@ -834,7 +834,7 @@ export function ChatMessages() {
               variant="ghost"
               size="sm"
               disabled={savingInput || status === "submitted"}
-              className="h-6 w-6 p-0"
+              className="h-8 w-8 p-0 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md"
               onClick={async () => {
                 if (!input.trim()) {
                   toast.error("Type something to save");
@@ -856,14 +856,14 @@ export function ChatMessages() {
             </InputGroupButton>
           </InputGroupAddon>
 
-          {/* Right bottom corner: selectors together + send */}
+          {/* Right bottom corner: dropdowns for Model and Mode */}
           <InputGroupAddon align="inline-end" className="gap-1 bottom-0">
             <Select
               value={model}
               onValueChange={setModel}
               disabled={status === "submitted"}
             >
-              <SelectTrigger className="h-6 min-w-[72px] text-[11px] px-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md">
+              <SelectTrigger className="h-8 min-w-[100px] text-[12px] px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/90">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
@@ -879,7 +879,7 @@ export function ChatMessages() {
               onValueChange={setMode}
               disabled={status === "submitted"}
             >
-              <SelectTrigger className="h-6 min-w-[80px] text-[11px] px-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md">
+              <SelectTrigger className="h-8 min-w-[100px] text-[12px] px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/90">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
@@ -888,11 +888,10 @@ export function ChatMessages() {
                 <SelectItem value="deep">Deep</SelectItem>
               </SelectContent>
             </Select>
-
             <InputGroupButton
               type="submit"
               size="sm"
-              className="h-7 w-7 p-0"
+              className="h-8 w-9 p-0 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-md"
               disabled={status === "submitted"}
             >
               {status === "ready" ? (
