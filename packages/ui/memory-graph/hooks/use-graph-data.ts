@@ -313,10 +313,10 @@ export function useGraphData(
 
             for (let i = 0; i < n; i++) {
                 for (let j = i + 1; j < n; j++) {
-                    const sim = calculateSemanticSimilarity(embs[i], embs[j]);
+                    const sim = calculateSemanticSimilarity(embs[i] ?? null, embs[j] ?? null);
                     if (sim >= DOC_SIMILARITY_THRESHOLD) {
-                        neighbors[i].push({ j, sim });
-                        neighbors[j].push({ j: i, sim });
+                        neighbors[i]!.push({ j, sim });
+                        neighbors[j]!.push({ j: i, sim });
                     }
                 }
             }
@@ -324,7 +324,7 @@ export function useGraphData(
             // For each doc, keep top-K highest sims
             const keep = new Set<string>();
             for (let i = 0; i < n; i++) {
-                const top = neighbors[i]
+                const top = neighbors[i]!
                     .sort((a, b) => b.sim - a.sim)
                     .slice(0, TOP_K_PER_DOC);
                 for (const { j } of top) {
@@ -339,7 +339,7 @@ export function useGraphData(
                 const [aStr, bStr] = key.split("-");
                 const i = Number(aStr);
                 const j = Number(bStr);
-                const sim = calculateSemanticSimilarity(embs[i], embs[j]);
+                const sim = calculateSemanticSimilarity(embs[i] ?? null, embs[j] ?? null);
                 if (sim <= 0) continue;
                 const docI = spaceDocs[i]!;
                 const docJ = spaceDocs[j]!;

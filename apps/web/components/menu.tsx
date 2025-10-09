@@ -24,7 +24,7 @@ import { AddMemoryExpandedView, AddMemoryView } from "./views/add-memory"
 import { IntegrationsView } from "./views/integrations"
 import { ProfileView } from "./views/profile"
 
-const MCPIcon = ({ className }: { className?: string }) => {
+export const MCPIcon = ({ className }: { className?: string }) => {
 	return (
 		<svg
 			className={className}

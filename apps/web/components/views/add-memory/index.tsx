@@ -290,6 +290,13 @@ export function AddMemoryView({
                     .min(1, "Select a project")
                     .refine((v) => v !== "sm_project_default", "Select a project"),
             }),
+            onSubmit: z.object({
+                content: z.string().min(1, "Content is required"),
+                project: z
+                    .string()
+                    .min(1, "Select a project")
+                    .refine((v) => v !== "sm_project_default", "Select a project"),
+            }),
         },
     })
 
@@ -445,12 +452,7 @@ export function AddMemoryView({
 				return completedMemory
 			})()
 
-			toast.promise(processingPromise, {
-				loading: "Processing...",
-				success: `${contentType === "link" ? "Link" : contentType === "repository" ? "Repository" : "Note"} created successfully!`,
-				error: (err) =>
-					`Failed to add ${contentType}: ${err instanceof Error ? err.message : "Unknown error"}`,
-			})
+            // Remove global toast; the card shows inline processing state
 
 			return processingPromise
 		},

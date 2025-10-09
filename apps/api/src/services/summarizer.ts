@@ -36,10 +36,11 @@ export async function generateSummary(
       },
     });
 
-    const textPart = result.response.text().trim();
+    let textPart = result.response.text().trim();
     if (!textPart) {
       return buildFallbackSummary(trimmed, context);
     }
+    textPart = ensureUseCasesSection(textPart);
     return textPart;
   } catch (error) {
     console.warn("generateSummary fallback", error);
@@ -52,11 +53,11 @@ function buildPrompt(
   context?: { title?: string | null; url?: string | null },
 ) {
   const header: string[] = [
-    "Você é um assistente que resume conteúdos para o aplicativo Supermemory.",
+    "Você é um assistente que resume conteúdos para o aplicativo Supermemory. Responda em português do Brasil.",
     "Responda SEMPRE no formato Markdown com as seguintes seções, mesmo que alguma fique vazia:",
     "## Resumo Executivo — 2 a 3 frases diretas sobre o tema principal.",
-    "## Pontos-Chave — Liste 4 a 6 bullets curtos com fatos relevantes, insights ou argumentos.",
-    "## Próximas Ações — Liste bullets apenas se o conteúdo trouxer recomendações, passos ou instruções; caso contrário escreva `- (sem ações recomendadas)`.",
+    "## Pontos-Chave — Liste de 6 a 10 bullets curtos com fatos relevantes, insights ou argumentos.",
+    "## Casos de Uso — Gere de 3 a 6 bullets com aplicações práticas, cenários ou exemplos de uso observados OU claramente inferidos do conteúdo (sem inventar fatos).",
   ];
 
   if (context?.title) {
@@ -87,25 +88,25 @@ function buildFallbackSummary(
   const executive = sentences.slice(0, 2);
   const remaining = sentences.slice(2);
 
-  const points = remaining.slice(0, 5).map((sentence) => `- ${sentence}`);
+  const points = remaining.slice(0, 10).map((sentence) => `- ${sentence}`);
 
-  const actions: string[] = [];
+  const useCases: string[] = [];
   if (remaining.length === 0) {
-    actions.push("- (sem ações recomendadas)");
+    useCases.push("- (sem casos de uso identificados)");
   } else {
     const actionCandidates = remaining
       .filter((sentence) =>
-        /deve|faça|passo|recomenda|sugere|precisa|evite|comece|conclua/i.test(
+        /deve|faça|passo|recomenda|sugere|precisa|evite|comece|conclua|usar|aplique|utilize|serve para|pode ser usado/i.test(
           sentence,
         ),
       )
       .slice(0, 4);
     if (actionCandidates.length > 0) {
       for (const candidate of actionCandidates) {
-        actions.push(`- ${candidate}`);
+        useCases.push(`- ${candidate}`);
       }
     } else {
-      actions.push("- (sem ações recomendadas)");
+      useCases.push("- (sem casos de uso identificados)");
     }
   }
 
@@ -125,20 +126,21 @@ function buildFallbackSummary(
     parts.push("- (informações limitadas para destacar)");
   }
 
-  parts.push("\n## Próximas Ações");
-  parts.push(...actions);
+  parts.push("\n## Casos de Uso");
+  parts.push(...useCases);
 
   if (context?.url) {
     parts.push("\n## Fonte");
     parts.push(`- ${context.url}`);
   }
 
-  return parts.join("\n");
+  return ensureUseCasesSection(parts.join("\n"));
 }
 
 /**
- * Gera análise profunda do conteúdo usando Gemini 2.0 Flash
- * Mais rápido e barato que o 2.5-pro, ideal para análise assíncrona
+ * Gera análise profunda do conteúdo usando Gemini 2.5 Flash
+ * Se tiver URL, usa urlContext para o Gemini ler diretamente
+ * Caso contrário, analisa o texto extraído
  */
 export async function generateDeepAnalysis(
   text: string,
@@ -156,40 +158,130 @@ export async function generateDeepAnalysis(
     return null;
   }
 
-  const snippet = trimmed.slice(0, ANALYSIS_MAX_CHARS);
-
   try {
     const model = googleClient.getGenerativeModel({
       model: "models/gemini-2.5-flash-preview-09-2025",
     });
 
-    const prompt = buildDeepAnalysisPrompt(snippet, context);
+    // Se tiver URL, deixa o Gemini ler diretamente (mais limpo)
+    if (context?.url) {
+      const prompt = buildUrlAnalysisPrompt(context);
 
-    const result = await model.generateContent({
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }],
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: 1024,
+          temperature: 0.3,
         },
-      ],
-      generationConfig: {
-        maxOutputTokens: 1024,
-        temperature: 0.3,
-      },
-    });
+        tools: [{ urlContext: {} }],
+      });
 
-    const analysis = result.response.text().trim();
+      const analysis = result.response.text().trim();
 
-    if (!analysis || analysis.length < 50) {
-      console.warn("Deep analysis returned empty or very short result");
-      return buildFallbackSummary(trimmed, context);
+      if (!analysis || analysis.length < 50) {
+        console.warn("URL-based analysis returned empty, trying text fallback");
+        // Fallback: usar o texto extraído
+        return generateTextBasedAnalysis(text, context, model);
+      }
+
+      return ensureUseCasesSection(analysis);
     }
 
-    return analysis;
+    // Sem URL: usa o texto extraído
+    return generateTextBasedAnalysis(text, context, model);
   } catch (error) {
-    console.warn("generateDeepAnalysis fallback", error);
+    console.warn("generateDeepAnalysis error", error);
     return buildFallbackSummary(trimmed, context);
   }
+}
+
+/**
+ * Análise usando o texto extraído (fallback ou quando não tem URL)
+ */
+async function generateTextBasedAnalysis(
+  text: string,
+  context?: {
+    title?: string | null;
+    url?: string | null;
+    contentType?: string | null;
+  },
+  model?: any,
+): Promise<string | null> {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  if (!googleClient) return null;
+
+  const snippet = trimmed.slice(0, ANALYSIS_MAX_CHARS);
+  const prompt = buildDeepAnalysisPrompt(snippet, context);
+
+  const geminiModel =
+    model ||
+    googleClient.getGenerativeModel({
+      model: "models/gemini-2.5-flash-preview-09-2025",
+    });
+
+  const result = await geminiModel.generateContent({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: {
+      maxOutputTokens: 1024,
+      temperature: 0.3,
+    },
+  });
+
+  const analysis = result.response.text().trim();
+
+  if (!analysis || analysis.length < 50) {
+    return buildFallbackSummary(trimmed, context);
+  }
+
+  return ensureUseCasesSection(analysis);
+}
+
+/**
+ * Prompt simplificado para análise via URL (Gemini lê diretamente)
+ */
+function buildUrlAnalysisPrompt(context: {
+  title?: string | null;
+  url?: string | null;
+  contentType?: string | null;
+}) {
+  const isGitHub = context.url?.includes("github.com");
+
+  const header: string[] = [
+    "Você é um assistente analítico do Supermemory. Responda em português do Brasil.",
+    `Analise o conteúdo desta URL: ${context.url}`,
+    "",
+    "Responda SEMPRE no formato Markdown com as seguintes seções:",
+    "",
+    "## Resumo Executivo",
+    "2-3 frases diretas sobre o tema principal, contexto e relevância.",
+    "",
+    "## Pontos-Chave",
+    "Liste 6-10 bullets com conceitos, fatos, dados ou insights importantes.",
+    "",
+  ];
+
+  if (isGitHub) {
+    header.push(
+      "## Tecnologias e Ferramentas",
+      "Liste linguagens, frameworks, bibliotecas ou arquiteturas mencionadas.",
+      "",
+    );
+  }
+
+  header.push(
+    "## Casos de Uso",
+    "Liste aplicações práticas, cenários ou exemplos de uso.",
+    "",
+    "**IMPORTANTE:** Seja objetivo e direto. Não inicie com 'Aqui está' ou 'Segue o resumo'.",
+  );
+
+  if (context.title) {
+    header.push("", `**Título:** ${context.title}`);
+  }
+
+  return header.join("\n");
 }
 
 function buildDeepAnalysisPrompt(
@@ -205,14 +297,14 @@ function buildDeepAnalysisPrompt(
   const isWebPage = context?.contentType?.includes("html") || context?.url;
 
   const header: string[] = [
-    "Você é um assistente analítico do Supermemory que cria resumos estruturados e insights profundos.",
+    "Você é um assistente analítico do Supermemory que cria resumos estruturados e insights profundos. Responda em português do Brasil.",
     "Analise o conteúdo abaixo e responda SEMPRE no formato Markdown com as seguintes seções:",
     "",
     "## Resumo Executivo",
     "2-3 frases diretas sobre o tema principal, contexto e relevância do conteúdo.",
     "",
     "## Pontos-Chave",
-    "Liste 5-8 bullets com:",
+    "Liste 6-10 bullets com:",
     "- Conceitos, ideias ou argumentos centrais",
     "- Fatos, dados ou estatísticas importantes",
     "- Insights ou conclusões relevantes",
@@ -232,12 +324,9 @@ function buildDeepAnalysisPrompt(
   }
 
   header.push(
-    "## Próximas Ações",
-    "Liste bullets se o conteúdo trouxer:",
-    "- Passos práticos, tutoriais ou instruções",
-    "- Recomendações ou melhores práticas",
-    "- Chamadas para ação ou tarefas sugeridas",
-    "Caso contrário, escreva: `- (sem ações práticas identificadas)`",
+    "## Casos de Uso",
+    "Liste bullets com aplicações práticas, cenários ou exemplos de uso",
+    "Se não houver casos claros, escreva: `- (sem casos de uso identificados)`",
     "",
   );
 
@@ -286,22 +375,19 @@ export async function summarizeYoutubeVideo(
     const model = googleClient.getGenerativeModel({ model: modelId });
 
     const prompt = [
-      "Analise este vídeo do YouTube e crie um resumo estruturado em português.",
+      "Analise este vídeo do YouTube e crie um resumo estruturado em português do Brasil.",
       "",
       "## Resumo Executivo",
       "Escreva 2-3 frases sobre o tema principal e contexto geral do vídeo.",
       "",
       "## Pontos Principais",
-      "Liste 5-10 bullet points com:",
+      "Liste 6-10 bullet points com:",
       "- Tópicos importantes discutidos",
       "- Insights e conclusões chave",
       "- Dados, estatísticas ou fatos relevantes",
       "",
-      "## Instruções e Ações",
-      "Se aplicável, liste:",
-      "- Passos práticos mencionados",
-      "- Recomendações importantes",
-      "- Chamadas para ação",
+      "## Casos de Uso",
+      "Se aplicável, liste aplicações práticas, cenários ou exemplos de uso mencionados no vídeo.",
       "",
       "## Contexto Visual",
       "Se relevante, descreva:",
@@ -341,7 +427,7 @@ export async function summarizeYoutubeVideo(
       return null;
     }
 
-    return summary;
+    return ensureUseCasesSection(summary);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("summarizeYoutubeVideo error:", message);
@@ -349,4 +435,15 @@ export async function summarizeYoutubeVideo(
     // Se falhar com Gemini 2.0, não tentar fallback pois não funciona bem
     return null;
   }
+}
+
+/**
+ * Garantir que a seção "Casos de Uso" apareça no Markdown de saída.
+ * Se o modelo não incluir, adicionamos um bloco padrão vazio.
+ */
+function ensureUseCasesSection(markdown: string): string {
+  const hasUseCases = /(^|\n)##\s*Casos\s*de\s*Uso(\s|\n)/i.test(markdown);
+  if (hasUseCases) return markdown;
+  const appendix = "\n\n## Casos de Uso\n- (sem casos de uso identificados)\n";
+  return markdown.trimEnd() + appendix;
 }
