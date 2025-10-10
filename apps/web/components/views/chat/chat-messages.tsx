@@ -590,10 +590,10 @@ export function ChatMessages() {
   } = useStickyAutoScroll([messages, status]);
 
   return (
-    <>
-      <div className="relative grow bg-[#0f1419]">
+    <div className="flex flex-col h-full">
+      <div className="relative flex-1 bg-[#0f1419] overflow-hidden">
         <div
-          className="flex flex-col gap-3 absolute inset-0 overflow-y-auto px-4 pt-4 pb-7 scroll-pb-7"
+          className="flex flex-col gap-3 absolute inset-0 overflow-y-auto px-4 pt-4 pb-32"
           onScroll={onScroll}
           ref={scrollContainerRef}
         >
@@ -605,11 +605,24 @@ export function ChatMessages() {
               )}
               key={message.id}
             >
-              <div className="flex flex-col gap-2 max-w-4/5 bg-white/5 border border-white/10 py-3 px-4 rounded-lg text-white">
+              <div
+                className={cn(
+                  "flex flex-col gap-2 w-full text-white",
+                  message.role === "user"
+                    ? "border border-white/10 py-3 px-4 rounded-lg"
+                    : "py-1 px-0"
+                )}
+                style={{
+                  backgroundColor: message.role === "user" ? "#0f1419" : "transparent"
+                }}
+              >
                 {message.parts.map((part, index) => {
                   if (isTextPart(part)) {
                     return (
-                      <div key={`${message.id}-text-${index}`}>
+                      <div
+                        key={`${message.id}-text-${index}`}
+                        className="chat-markdown"
+                      >
                         <Streamdown>{part.text}</Streamdown>
                       </div>
                     );
@@ -826,7 +839,8 @@ export function ChatMessages() {
                 }
               }
             }}
-          className="text-white placeholder-white/40" />
+            className="text-white placeholder-white/40"
+          />
           {/* Left bottom corner: quick-save button */}
           <InputGroupAddon align="inline-start" className="gap-1 bottom-0">
             <InputGroupButton
@@ -863,7 +877,7 @@ export function ChatMessages() {
               onValueChange={setModel}
               disabled={status === "submitted"}
             >
-              <SelectTrigger className="h-8 min-w-[100px] text-[12px] px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/90">
+              <SelectTrigger className="h-8 w-auto text-[12px] px-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/90">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
@@ -876,10 +890,12 @@ export function ChatMessages() {
 
             <Select
               value={mode}
-              onValueChange={(value) => setMode(value as "simple" | "agentic" | "deep")}
+              onValueChange={(value) =>
+                setMode(value as "simple" | "agentic" | "deep")
+              }
               disabled={status === "submitted"}
             >
-              <SelectTrigger className="h-8 min-w-[100px] text-[12px] px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/90">
+              <SelectTrigger className="h-8 w-auto text-[12px] px-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/90">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
@@ -905,6 +921,6 @@ export function ChatMessages() {
           </InputGroupAddon>
         </InputGroup>
       </form>
-    </>
+    </div>
   );
 }

@@ -53,11 +53,9 @@ const formatDocumentType = (type: string) => {
 const MemoryDetailItem = memo(({ memory }: { memory: MemoryEntry }) => {
 	return (
 		<button
-			className="p-4 rounded-lg transition-all relative overflow-hidden cursor-pointer"
+			className="p-4 rounded-lg transition-all relative overflow-hidden cursor-pointer border border-white/10"
 			style={{
-				backgroundColor: memory.isLatest
-					? colors.memory.primary
-					: "rgba(255, 255, 255, 0.02)",
+				backgroundColor: "#0f1419",
 			}}
 			tabIndex={0}
 			type="button"
@@ -201,7 +199,8 @@ export const MemoryDetail = memo(
 			<div className="flex items-start justify-between gap-2">
 				<div className="flex items-start gap-3 flex-1">
 					<div
-						className="p-2 rounded-lg bg-white/5 border border-white/10"
+						className="p-2 rounded-lg border border-white/10"
+						style={{ backgroundColor: "#0f1419" }}
 					>
 						{getDocumentIcon(document.type, "w-5 h-5 text-white/70")}
 					</div>
@@ -275,7 +274,7 @@ export const MemoryDetail = memo(
 						<TabsContent className="mt-3 flex-1 max-h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar" value="summary">
 							<div className="space-y-4 pb-6">
 								{/* Summary Text */}
-								<div className="p-4 rounded-md bg-white/5 border border-white/10">
+								<div className="p-4 rounded-md border border-white/10" style={{ backgroundColor: "#0f1419" }}>
 									<MarkdownContent
 										className="text-sm leading-relaxed text-white/80"
 										content={document.summary ?? ""}
@@ -289,7 +288,7 @@ export const MemoryDetail = memo(
 
 						{hasContent && (
 							<TabsContent className="mt-3" value="content">
-								<div className="p-4 rounded-md max-h-48 overflow-y-auto custom-scrollbar bg-white/5 border border-white/10">
+								<div className="p-4 rounded-md max-h-48 overflow-y-auto custom-scrollbar border border-white/10" style={{ backgroundColor: "#0f1419" }}>
 									<MarkdownContent
 										className="text-sm leading-relaxed text-white"
 										content={document.content ?? ""}
@@ -324,7 +323,8 @@ export const MemoryDetail = memo(
 				{forgottenMemories.length > 0 && (
 					<div>
 						<div
-							className="text-sm font-medium mb-4 px-3 py-2 rounded-md opacity-60 bg-white/5 border border-white/10 text-white/50"
+							className="text-sm font-medium mb-4 px-3 py-2 rounded-md opacity-60 border border-white/10 text-white/50"
+							style={{ backgroundColor: "#0f1419" }}
 						>
 							Forgotten Memories ({forgottenMemories.length})
 						</div>
@@ -338,7 +338,8 @@ export const MemoryDetail = memo(
 
 				{activeMemories.length === 0 && forgottenMemories.length === 0 && (
 					<div
-						className="text-center py-12 rounded-md bg-white/5 border border-white/10"
+						className="text-center py-12 rounded-md border border-white/10"
+						style={{ backgroundColor: "#0f1419" }}
 					>
 						<Brain
 							className="w-12 h-12 mx-auto mb-4 opacity-30 text-white/50"
