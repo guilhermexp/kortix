@@ -2,6 +2,7 @@ import { spawn } from "node:child_process"
 import { writeFile, unlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { FILE_LIMITS } from "../config/constants"
 
 const MARKITDOWN_PYTHON_PATH =
 	process.env.MARKITDOWN_PYTHON_PATH ||
@@ -10,7 +11,6 @@ const MARKITDOWN_VENV_PATH =
 	process.env.MARKITDOWN_VENV_PATH ||
 	"/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv"
 
-const REQUEST_TIMEOUT = 60_000 // 60 seconds
 let markitdownAvailable: boolean | null = null
 
 type MarkItDownResponse = {
@@ -28,7 +28,7 @@ async function runMarkItDownCLI(filePath: string): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const args = ["-m", "markitdown", filePath]
 		const child = spawn(MARKITDOWN_PYTHON_PATH, args, {
-			timeout: REQUEST_TIMEOUT,
+			timeout: FILE_LIMITS.MARKITDOWN_REQUEST_TIMEOUT_MS,
 			env: {
 				...process.env,
 				VIRTUAL_ENV: MARKITDOWN_VENV_PATH,

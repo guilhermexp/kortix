@@ -127,18 +127,18 @@ export async function processDocument(input: ProcessDocumentInput) {
 
 		await updateDocumentStatus(documentId, "extracting")
 
-        const mergedMetadata = mergeMetadata(document.metadata, payloadMetadata, {
-            // Ensure documents carry containerTags for project scoping and fallbacks
-            containerTags,
-            extraction: {
-                contentType: extraction.contentType,
-                wordCount: extraction.wordCount,
-                fetchedAt: new Date().toISOString(),
-            },
-            source:
-                extraction.source ?? document.source ?? jobPayload?.source ?? null,
-            originalUrl: extraction.url ?? document.url ?? payloadUrl ?? null,
-        })
+		const mergedMetadata = mergeMetadata(document.metadata, payloadMetadata, {
+			// Ensure documents carry containerTags for project scoping and fallbacks
+			containerTags,
+			extraction: {
+				contentType: extraction.contentType,
+				wordCount: extraction.wordCount,
+				fetchedAt: new Date().toISOString(),
+			},
+			source:
+				extraction.source ?? document.source ?? jobPayload?.source ?? null,
+			originalUrl: extraction.url ?? document.url ?? payloadUrl ?? null,
+		})
 
 		const processingMetadata = mergeProcessingMetadata(
 			document.processingMetadata,
@@ -158,19 +158,19 @@ export async function processDocument(input: ProcessDocumentInput) {
 				}
 			: (document.raw ?? null)
 
-        const summary = await generateDeepAnalysis(extraction.text, {
-            title: extraction.title ?? document.title ?? null,
-            url: extraction.url ?? document.url ?? payloadUrl ?? null,
-            contentType: extraction.contentType ?? null,
-        })
-        try {
-            console.info("ingestion: summary-generated", {
-                documentId,
-                title: extraction.title ?? document.title ?? null,
-                chars: (summary ?? "").length,
-                words: (summary ?? "").split(/\s+/).filter(Boolean).length,
-            })
-        } catch {}
+		const summary = await generateDeepAnalysis(extraction.text, {
+			title: extraction.title ?? document.title ?? null,
+			url: extraction.url ?? document.url ?? payloadUrl ?? null,
+			contentType: extraction.contentType ?? null,
+		})
+		try {
+			console.info("ingestion: summary-generated", {
+				documentId,
+				title: extraction.title ?? document.title ?? null,
+				chars: (summary ?? "").length,
+				words: (summary ?? "").split(/\s+/).filter(Boolean).length,
+			})
+		} catch {}
 
 		const chunks = chunkText(extraction.text)
 		await updateDocumentStatus(documentId, "chunking")
@@ -205,65 +205,73 @@ export async function processDocument(input: ProcessDocumentInput) {
 
 		await updateDocumentStatus(documentId, "embedding")
 
+		// Generate embeddings before atomic finalization
 		const documentEmbedding = await generateEmbedding(extraction.text)
 
-		const { error: documentUpdateError } = await supabaseAdmin
-			.from("documents")
-			.update({
-				status: "done",
-				title: extraction.title ?? document.title ?? null,
-				content: extraction.text,
-				url: extraction.url ?? document.url ?? null,
-				source: extraction.source ?? document.source ?? null,
-				metadata: mergedMetadata,
-				processing_metadata: processingMetadata,
-				raw: mergedRaw,
-				summary: summary ?? null,
-				word_count: extraction.wordCount,
-				token_count: estimateTokenCount(extraction.wordCount),
-				summary_embedding: documentEmbedding,
-				summary_embedding_model: env.EMBEDDING_MODEL,
-				chunk_count: chunkRows.length,
-				average_chunk_size:
-					chunkRows.length > 0
-						? Math.round(extraction.text.length / chunkRows.length)
-						: extraction.text.length,
+		const memoryContent = (summary && summary.trim().length > 0)
+			? summary.trim()
+			: extraction.text.slice(0, Math.min(2000, extraction.text.length))
+
+		const summaryEmbedding = await generateEmbedding(memoryContent)
+
+		// Atomically finalize document and create memory using database transaction
+		// This ensures both operations succeed or both fail, preventing inconsistent state
+		const documentUpdate = {
+			status: "done",
+			title: extraction.title ?? document.title ?? null,
+			content: extraction.text,
+			url: extraction.url ?? document.url ?? null,
+			source: extraction.source ?? document.source ?? null,
+			metadata: mergedMetadata,
+			processing_metadata: processingMetadata,
+			raw: mergedRaw,
+			summary: summary ?? null,
+			word_count: extraction.wordCount,
+			token_count: estimateTokenCount(extraction.wordCount),
+			summary_embedding: documentEmbedding,
+			summary_embedding_model: env.EMBEDDING_MODEL,
+			chunk_count: chunkRows.length,
+			average_chunk_size:
+				chunkRows.length > 0
+					? Math.round(extraction.text.length / chunkRows.length)
+					: extraction.text.length,
+		}
+
+		const memoryInsert = {
+			space_id: spaceId,
+			org_id: organizationId,
+			user_id: userId,
+			content: memoryContent,
+			metadata: {
+				...(mergedMetadata ?? {}),
+				kind: "summary",
+				generator: "gemini-sync",
+			},
+			memory_embedding: summaryEmbedding,
+			memory_embedding_model: env.EMBEDDING_MODEL,
+		}
+
+		const { data: finalizationResult, error: finalizationError } = await supabaseAdmin
+			.rpc("finalize_document_atomic", {
+				p_document_id: documentId,
+				p_document_update: documentUpdate,
+				p_memory_insert: memoryInsert,
 			})
-			.eq("id", documentId)
 
-		if (documentUpdateError) throw documentUpdateError
+		if (finalizationError) {
+			console.error("Atomic finalization failed:", finalizationError)
+			throw new Error(`Failed to finalize document atomically: ${finalizationError.message}`)
+		}
 
-        // Create a single "summary" memory entry instead of duplicating full page content
-        const memoryContent = (summary && summary.trim().length > 0)
-            ? summary.trim()
-            : extraction.text.slice(0, Math.min(2000, extraction.text.length))
-
-        const summaryEmbedding = await generateEmbedding(memoryContent)
-
-        const { error: memoryError } = await supabaseAdmin
-            .from("memories")
-            .insert({
-                document_id: documentId,
-                space_id: spaceId,
-                org_id: organizationId,
-                user_id: userId,
-                content: memoryContent,
-                metadata: {
-                    ...(mergedMetadata ?? {}),
-                    kind: "summary",
-                    generator: "gemini-sync",
-                },
-                memory_embedding: summaryEmbedding,
-                memory_embedding_model: env.EMBEDDING_MODEL,
-            })
-        try {
-            console.info("ingestion: memory-saved-summary", {
-                documentId,
-                preview: memoryContent.slice(0, 80),
-            })
-        } catch {}
-
-		if (memoryError) throw memoryError
+		try {
+			console.info("ingestion: document-finalized-atomic", {
+				documentId,
+				memoryId: finalizationResult?.memory_id,
+				memoryPreview: memoryContent.slice(0, 80),
+			})
+		} catch {
+			// Ignore logging errors
+		}
 
 		if (jobId) {
 			await updateJobStatus(jobId, "done")

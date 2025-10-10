@@ -2,9 +2,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai"
 import { GoogleAIFileManager } from "@google/generative-ai/server"
 import { env } from "../env"
 import { aiClient } from "./ai-provider"
-
-const POLL_INTERVAL_MS = 1_000
-const MAX_POLL_ATTEMPTS = 30
+import { GEMINI_FILE_CONFIG, AI_GENERATION_CONFIG } from "../config/constants"
+import { buildFilePrompt } from "../i18n"
 
 // FileManager só funciona com Gemini diretamente
 const googleClient = env.GOOGLE_API_KEY
@@ -35,7 +34,7 @@ function ensureGeminiConfigured() {
 
 async function waitForFileReady(fileName: string) {
 	const { fileManager: manager } = ensureGeminiConfigured()
-	for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt += 1) {
+	for (let attempt = 0; attempt < GEMINI_FILE_CONFIG.MAX_POLL_ATTEMPTS; attempt += 1) {
 		const file = await manager.getFile(fileName)
 		if (!file?.state) {
 			throw new Error("Failed to fetch uploaded file metadata.")
@@ -46,54 +45,13 @@ async function waitForFileReady(fileName: string) {
 		if (file.state === "FAILED" || file.state === "STATE_UNSPECIFIED") {
 			throw new Error(`Uploaded file processing failed: ${file.state}`)
 		}
-		await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
+		await new Promise((resolve) => setTimeout(resolve, GEMINI_FILE_CONFIG.POLL_INTERVAL_MS))
 	}
 	throw new Error("Timeout while waiting for Gemini to process uploaded file")
 }
 
 function buildPrompt(mimeType: string, filename?: string) {
-	const lowerMime = mimeType.toLowerCase()
-	if (lowerMime.startsWith("image/")) {
-		return [
-			"Você é um assistente que descreve imagens para o Supermemory.",
-			"Forneça uma descrição detalhada da imagem, destaque objetos, texto presente (realize OCR) e o contexto geral.",
-			"Liste insights importantes em bullet points.",
-			filename ? `Nome do arquivo: ${filename}` : "",
-		]
-			.filter(Boolean)
-			.join("\n\n")
-	}
-
-	if (lowerMime.startsWith("audio/")) {
-		return [
-			"Você é um assistente que analisa arquivos de áudio para o Supermemory.",
-			"Gere um resumo detalhado do conteúdo, incluindo tópicos principais e pontos de ação.",
-			"Transcreva trechos importantes e identifique quem fala quando possível.",
-			filename ? `Nome do arquivo: ${filename}` : "",
-		]
-			.filter(Boolean)
-			.join("\n\n")
-	}
-
-	if (lowerMime.startsWith("video/")) {
-		return [
-			"Você é um assistente que analisa vídeos para o Supermemory.",
-			"Descreva a narrativa do vídeo, identifique personagens, ações relevantes e contexto.",
-			"Forneça também bullet points com eventos importantes e quaisquer instruções/diálogos marcantes.",
-			filename ? `Nome do arquivo: ${filename}` : "",
-		]
-			.filter(Boolean)
-			.join("\n\n")
-	}
-
-	return [
-		"Você é um assistente que processa documentos para o Supermemory.",
-		"Extraia o conteúdo principal em Markdown estruturado com títulos, parágrafos e listas.",
-		"Inclua um resumo inicial (3-5 frases) e, em seguida, destaque pontos-chave em bullet points.",
-		filename ? `Nome do arquivo: ${filename}` : "",
-	]
-		.filter(Boolean)
-		.join("\n\n")
+	return buildFilePrompt(mimeType, filename)
 }
 
 export async function summarizeBinaryWithGemini(
@@ -139,7 +97,7 @@ export async function summarizeBinaryWithGemini(
 				},
 			],
 			generationConfig: {
-				maxOutputTokens: 1024,
+				maxOutputTokens: AI_GENERATION_CONFIG.TOKENS.ANALYSIS,
 			},
 		})
 

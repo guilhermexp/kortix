@@ -10,6 +10,7 @@ import {
 } from "./markitdown"
 import { ingestRepository } from "./repository-ingest"
 import { summarizeYoutubeVideo } from "./summarizer"
+import { safeFetch, URLValidationError } from "../security/url-validator"
 
 const DEFAULT_USER_AGENT = "SupermemorySelfHosted/1.0 (+self-hosted extractor)"
 
@@ -648,13 +649,27 @@ export async function extractDocumentContent(
         }
     }
 
-	const response = await fetch(probableUrl, {
-		headers: {
-			accept:
-				"text/html,application/pdf,q=0.9,application/xhtml+xml,application/xml;q=0.8,text/plain;q=0.7,*/*;q=0.5",
-			"user-agent": DEFAULT_USER_AGENT,
-		},
-	})
+	// Validate URL for security (SSRF protection)
+	try {
+		const response = await safeFetch(probableUrl, {
+			headers: {
+				accept:
+					"text/html,application/pdf,q=0.9,application/xhtml+xml,application/xml;q=0.8,text/plain;q=0.7,*/*;q=0.5",
+				"user-agent": DEFAULT_USER_AGENT,
+			},
+		})
+
+		// Handle manual redirects (safeFetch uses redirect: 'manual')
+		if (response.status >= 300 && response.status < 400) {
+			const location = response.headers.get('location')
+			if (location) {
+				// Recursively validate and fetch redirect target
+				return extractDocumentContent({
+					...input,
+					url: location,
+				})
+			}
+		}
 
   if (!response.ok) {
     // Do not crash the ingestion pipeline; fall back gracefully
@@ -815,10 +830,19 @@ export async function extractDocumentContent(
 		}
 	}
 
-	// Unsupported rich media types for now
-	throw new Error(
-		`Tipo de conteúdo não suportado para ingestão automática (${contentType || "desconhecido"})`,
-	)
+		// Unsupported rich media types for now
+		throw new Error(
+			`Tipo de conteúdo não suportado para ingestão automática (${contentType || "desconhecido"})`,
+		)
+	} catch (error) {
+		// Handle URL validation errors gracefully
+		if (error instanceof URLValidationError) {
+			console.warn('URL validation failed:', { url: probableUrl, reason: error.reason })
+			throw new Error(`URL blocked for security reasons: ${error.reason}`)
+		}
+		// Re-throw other errors
+		throw error
+	}
 }
 
 /**
