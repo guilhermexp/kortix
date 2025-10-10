@@ -3,6 +3,8 @@
  * Fetches and processes Git repositories for memory storage
  */
 
+import { FILE_LIMITS } from "../config/constants"
+
 interface RepositoryFile {
 	path: string
 	content: string
@@ -21,8 +23,6 @@ interface RepositoryIngestResult {
 }
 
 const GITHUB_API = "https://api.github.com"
-const MAX_FILE_SIZE = 1024 * 1024 // 1MB per file
-const MAX_TOTAL_SIZE = 10 * 1024 * 1024 // 10MB total
 
 /**
  * Parse GitHub URL to extract owner and repo
@@ -237,7 +237,7 @@ export async function ingestRepository(
 	// Filter files
 	const filesToFetch = tree
 		.filter((item: any) => item.type === "blob" && shouldIncludeFile(item.path))
-		.filter((item: any) => item.size <= MAX_FILE_SIZE)
+		.filter((item: any) => item.size <= FILE_LIMITS.MAX_FILE_SIZE_BYTES)
 
 	// Limit number of files to prevent excessive API calls
 	const limitedFiles = filesToFetch.slice(0, 100)
@@ -247,7 +247,7 @@ export async function ingestRepository(
 	let totalSize = 0
 
 	for (const item of limitedFiles) {
-		if (totalSize >= MAX_TOTAL_SIZE) {
+		if (totalSize >= FILE_LIMITS.MAX_TOTAL_REPO_SIZE_BYTES) {
 			break
 		}
 

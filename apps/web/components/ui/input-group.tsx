@@ -46,7 +46,7 @@ const InputGroupTextarea = React.forwardRef<
     <Textarea
       ref={ref}
       className={cn(
-        "min-h-[80px] flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-4 py-3",
+        "min-h-[100px] flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-4 py-3",
         className,
       )}
       {...props}

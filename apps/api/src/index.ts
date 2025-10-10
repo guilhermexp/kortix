@@ -20,6 +20,7 @@ import { cors } from "hono/cors";
 import { z } from "zod";
 import { env } from "./env";
 import { requireAuth } from "./middleware/auth";
+import { rateLimiter } from "./middleware/rate-limiter";
 import { CreateApiKeySchema, createApiKeyHandler } from "./routes/api-keys";
 import {
   getSession as getSessionInfo,
@@ -89,6 +90,9 @@ app.use(
     exposeHeaders: ["Set-Cookie"],
   }),
 );
+
+// Apply rate limiting globally (automatically skips /health and similar paths)
+app.use("*", rateLimiter());
 
 app.get("/health", healthHandler);
 
