@@ -8,8 +8,10 @@ import { HeadingH3Medium } from "@repo/ui/text/heading/heading-h3-medium";
 import { Input } from "@ui/components/input";
 import Link from "next/link";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 export function LoginPage() {
+	const searchParams = useSearchParams();
 	const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
@@ -34,7 +36,12 @@ export function LoginPage() {
 			} else {
 				await signIn({ email, password });
 			}
-			window.location.href = "/";
+
+			// Get redirect parameter from URL, default to "/"
+			const redirectTo = searchParams.get("redirect") || "/";
+			// Ensure redirect is a relative path (security check)
+			const safePath = redirectTo.startsWith("/") ? redirectTo : "/";
+			window.location.href = safePath;
 		} catch (err) {
 			if (err instanceof Error) {
 				setError(err.message);

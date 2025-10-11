@@ -22,9 +22,11 @@ export default async function middleware(request: NextRequest) {
 		console.debug(
 			"[MIDDLEWARE] No session cookie and not on public path, redirecting to /login",
 		)
-		const url = new URL("/login", request.url)
-		url.searchParams.set("redirect", request.url)
-		return NextResponse.redirect(url)
+		const loginUrl = new URL("/login", request.url)
+		// Use only pathname + search to avoid localhost or external domain issues
+		const redirectPath = `${url.pathname}${url.search}`
+		loginUrl.searchParams.set("redirect", redirectPath)
+		return NextResponse.redirect(loginUrl)
 	}
 
 	// TEMPORARILY DISABLED: Waitlist check
