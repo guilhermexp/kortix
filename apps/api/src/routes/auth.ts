@@ -130,13 +130,14 @@ export async function signOut(c: Context) {
 		await supabaseAdmin.from("sessions").delete().eq("session_token", token)
 	}
 
+	const isProduction = process.env.NODE_ENV === "production"
 	c.header(
 		"Set-Cookie",
 		serializeCookie(SESSION_COOKIE, "", {
 			maxAge: 0,
 			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
-			sameSite: "lax",
+			secure: isProduction,
+			sameSite: isProduction ? "none" : "lax",
 		}),
 	)
 	return c.json({ ok: true })
@@ -187,11 +188,14 @@ export async function getSession(c: Context) {
 }
 
 function setSessionCookie(c: Context, token: string) {
+	const isProduction = process.env.NODE_ENV === "production"
 	const cookie = serializeCookie(SESSION_COOKIE, token, {
 		maxAge: SESSION_TTL_SECONDS,
 		httpOnly: true,
-		secure: process.env.NODE_ENV === "production",
-		sameSite: "lax",
+		secure: isProduction,
+		// Use "none" in production for cross-domain cookies (API and Web on different domains)
+		// Use "lax" in development for same-origin
+		sameSite: isProduction ? "none" : "lax",
 	})
 	c.header("Set-Cookie", cookie)
 }
