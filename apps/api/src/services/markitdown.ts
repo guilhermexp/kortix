@@ -4,12 +4,13 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { FILE_LIMITS } from "../config/constants"
 
-const MARKITDOWN_PYTHON_PATH =
-	process.env.MARKITDOWN_PYTHON_PATH ||
-	"/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv/bin/python"
-const MARKITDOWN_VENV_PATH =
-	process.env.MARKITDOWN_VENV_PATH ||
-	"/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv"
+// In production, use system Python configured via nixpacks
+// In development, use local venv
+const isProduction = process.env.NODE_ENV === "production"
+const MARKITDOWN_PYTHON_PATH = process.env.MARKITDOWN_PYTHON_PATH ||
+	(isProduction ? "python3" : "/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv/bin/python")
+const MARKITDOWN_VENV_PATH = process.env.MARKITDOWN_VENV_PATH ||
+	(isProduction ? "" : "/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv")
 
 let markitdownAvailable: boolean | null = null
 
@@ -27,12 +28,14 @@ type MarkItDownResponse = {
 async function runMarkItDownCLI(filePath: string): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const args = ["-m", "markitdown", filePath]
+		// Only set VIRTUAL_ENV if we have a venv path (development)
+		const env = MARKITDOWN_VENV_PATH
+			? { ...process.env, VIRTUAL_ENV: MARKITDOWN_VENV_PATH }
+			: process.env
+
 		const child = spawn(MARKITDOWN_PYTHON_PATH, args, {
 			timeout: FILE_LIMITS.MARKITDOWN_REQUEST_TIMEOUT_MS,
-			env: {
-				...process.env,
-				VIRTUAL_ENV: MARKITDOWN_VENV_PATH,
-			},
+			env,
 		})
 
 		let stdout = ""
@@ -116,10 +119,12 @@ export async function convertUrlWithMarkItDown(
 }
 
 export async function checkMarkItDownHealth(): Promise<boolean> {
-	// Removed cache - always check for now to debug
-	// if (markitdownAvailable !== null) {
-	// 	return markitdownAvailable
-	// }
+	// Use cache if already checked
+	if (markitdownAvailable !== null) {
+		return markitdownAvailable
+	}
+
+	console.info("MarkItDown health check: Testing with Python path:", MARKITDOWN_PYTHON_PATH)
 
 	try {
 		// Test with a simple HTML file
