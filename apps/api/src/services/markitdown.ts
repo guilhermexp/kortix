@@ -4,12 +4,12 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { FILE_LIMITS } from "../config/constants"
 
-const MARKITDOWN_PYTHON_PATH =
-	process.env.MARKITDOWN_PYTHON_PATH ||
-	"/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv/bin/python"
-const MARKITDOWN_VENV_PATH =
-	process.env.MARKITDOWN_VENV_PATH ||
-	"/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv"
+// In production, MarkItDown should be disabled unless explicitly configured
+const isProduction = process.env.NODE_ENV === "production"
+const MARKITDOWN_PYTHON_PATH = process.env.MARKITDOWN_PYTHON_PATH ||
+	(!isProduction ? "/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv/bin/python" : "")
+const MARKITDOWN_VENV_PATH = process.env.MARKITDOWN_VENV_PATH ||
+	(!isProduction ? "/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv" : "")
 
 let markitdownAvailable: boolean | null = null
 
@@ -68,6 +68,11 @@ export async function convertWithMarkItDown(
 	buffer: Buffer,
 	filename?: string,
 ): Promise<MarkItDownResponse> {
+	// Check if MarkItDown is available first
+	if (!MARKITDOWN_PYTHON_PATH) {
+		throw new Error("MarkItDown is not configured in this environment")
+	}
+
 	const tempPath = join(tmpdir(), `markitdown-${Date.now()}-${filename || "file"}`)
 
 	try {
@@ -90,6 +95,11 @@ export async function convertWithMarkItDown(
 export async function convertUrlWithMarkItDown(
 	url: string,
 ): Promise<MarkItDownResponse> {
+	// Check if MarkItDown is available first
+	if (!MARKITDOWN_PYTHON_PATH) {
+		throw new Error("MarkItDown is not configured in this environment")
+	}
+
 	// Fetch URL content first (CLI doesn't support URLs directly)
 	const response = await fetch(url)
 	if (!response.ok) {
@@ -116,10 +126,17 @@ export async function convertUrlWithMarkItDown(
 }
 
 export async function checkMarkItDownHealth(): Promise<boolean> {
-	// Removed cache - always check for now to debug
-	// if (markitdownAvailable !== null) {
-	// 	return markitdownAvailable
-	// }
+	// If no Python path configured (e.g., in production), MarkItDown is not available
+	if (!MARKITDOWN_PYTHON_PATH) {
+		markitdownAvailable = false
+		console.info("MarkItDown disabled: No Python path configured")
+		return false
+	}
+
+	// Use cache if already checked
+	if (markitdownAvailable !== null) {
+		return markitdownAvailable
+	}
 
 	try {
 		// Test with a simple HTML file
