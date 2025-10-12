@@ -11,12 +11,13 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy package files
-COPY package.json bun.lockb ./
+COPY package.json ./
+COPY bun.lockb* ./
 COPY apps/api/package.json apps/api/
 COPY packages/*/package.json packages/*/
 
 # Install Node dependencies
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # Install Python dependencies for MarkItDown
 RUN python3 -m pip install --break-system-packages 'markitdown[all]==0.1.3'
