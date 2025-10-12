@@ -30,10 +30,11 @@ if [ "$NODE_ENV" = "production" ] || [ "$RAILWAY_ENVIRONMENT" = "production" ]; 
     # Install MarkItDown
     if command -v python3 &> /dev/null; then
         echo "Installing MarkItDown package..."
-        python3 -m pip install --user 'markitdown[all]==0.1.3' || \
-        python3 -m pip install 'markitdown[all]==0.1.3' || \
-        pip3 install --user 'markitdown[all]==0.1.3' || \
-        pip3 install 'markitdown[all]==0.1.3' || \
+        # Try with break-system-packages flag for Nixpacks environments
+        python3 -m pip install --break-system-packages 'markitdown[all]==0.1.3' || \
+        pip3 install --break-system-packages 'markitdown[all]==0.1.3' || \
+        python3 -m pip install --user --break-system-packages 'markitdown[all]==0.1.3' || \
+        pip3 install --user --break-system-packages 'markitdown[all]==0.1.3' || \
         echo "Warning: Could not install MarkItDown"
 
         # Verify installation
