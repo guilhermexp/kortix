@@ -137,7 +137,7 @@ export async function signOut(c: Context) {
 			maxAge: 0,
 			httpOnly: true,
 			secure: isProduction,
-			sameSite: isProduction ? "none" : "lax",
+			sameSite: "lax",
 		}),
 	)
 	return c.json({ ok: true })
@@ -193,9 +193,8 @@ function setSessionCookie(c: Context, token: string) {
 		maxAge: SESSION_TTL_SECONDS,
 		httpOnly: true,
 		secure: isProduction,
-		// Use "none" in production for cross-domain cookies (API and Web on different domains)
-		// Use "lax" in development for same-origin
-		sameSite: isProduction ? "none" : "lax",
+		// Use "lax" for same-domain cookies (via Next.js proxy)
+		sameSite: "lax",
 	})
 	c.header("Set-Cookie", cookie)
 }
