@@ -10,7 +10,7 @@ A stack self-hosted roda inteira dentro deste monorepo:
 - **Banco**: Supabase Postgres com pgvector habilitado
 - **Backend**: `apps/api` (Bun + Hono)
 - **Frontend**: `apps/web` (Next.js 15)
-- **Autenticação**: better-auth com envio de e-mails via Resend
+- **Autenticação**: Custom session-based auth com envio de e-mails via Resend
 - **MCP**: exposto em `${SUPERMEMORY_API_URL}/mcp`
 
 O objetivo deste guia é colocar tudo online sem depender de `api.supermemory.ai`, Cloudflare Workers ou qualquer infraestrutura do SaaS original.
@@ -74,7 +74,7 @@ bun run --cwd apps/api dev      # backend em http://localhost:4000
 bun run --cwd apps/web dev      # frontend em http://localhost:3000
 ```
 
-Crie sua conta pelo frontend (usa better-auth) e confirme o fluxo completo: login, criação de documentos, busca e chat.
+Crie sua conta pelo frontend (usa autenticação customizada) e confirme o fluxo completo: login, criação de documentos, busca e chat.
 
 ## 4. Deploy de produção
 

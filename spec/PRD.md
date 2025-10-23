@@ -44,7 +44,7 @@ The open-source frontend depends on the proprietary Supermemory SaaS API for all
 - Long-running ingestion jobs must fit within Workers/queue constraints; may need dedicated worker runtime.
 
 ## Milestones
-1. **M1 – Authentication Foundation**: better-auth server, session cookies, organization/project scoping.
+1. **M1 – Authentication Foundation**: Custom session-based auth, session cookies, organization/project scoping.
 2. **M2 – Ingestion Pipeline**: document upload, storage, async processing, status polling.
 3. **M3 – Search & Chat**: vector retrieval, thresholds, rerank, chat streaming.
 4. **M4 – Integrations & Settings**: connector OAuth skeletons (atrás de feature flags até configurar) e ajustes de preferências; analytics/Posthog foram descartados para o self-hosted.
@@ -52,7 +52,7 @@ The open-source frontend depends on the proprietary Supermemory SaaS API for all
 
 ## Dependencies
 - Supabase para Postgres/Storage (ou banco compatível com pgvector).
-- Migrações Drizzle garantindo schema e configuração do better-auth.
+- Migrações Drizzle garantindo schema e configuração da autenticação customizada.
 - Plataforma para jobs de ingestão (Supabase Queue ou worker dedicado em Bun).
 
 ## Non-Functional Requirements
