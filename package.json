@@ -34,7 +34,6 @@
     "alchemy": "^0.55.3",
     "atmn": "^0.0.16",
     "axios": "^1.12.2",
-    "better-auth": "^1.3.28",
     "boxen": "^8.0.1",
     "cohere-ai": "^7.19.0",
     "compromise": "^14.14.4",
