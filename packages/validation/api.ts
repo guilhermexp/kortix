@@ -17,6 +17,32 @@ export const SearchFiltersSchema = z
 	})
 	.or(z.record(z.unknown()))
 
+const FiltersStringSchema = z
+	.string()
+	.transform((raw, ctx) => {
+		const trimmed = raw.trim()
+		if (trimmed.length === 0) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Filters string cannot be empty",
+			})
+			return z.NEVER
+		}
+
+		try {
+			return JSON.parse(trimmed)
+		} catch {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Filters must be valid JSON",
+			})
+			return z.NEVER
+		}
+	})
+	.pipe(SearchFiltersSchema)
+
+const FiltersParamSchema = z.union([SearchFiltersSchema, FiltersStringSchema])
+
 const exampleMetadata: Record<string, string | number | boolean> = {
 	category: "technology",
 	isPublic: true,
@@ -241,29 +267,26 @@ export const ListMemoriesQuerySchema = z
 					"Optional tags this memory should be containerized by. This can be an ID for your user, a project ID, or any other identifier you wish to use to group memories.",
 				example: ["user_123", "project_123"],
 			}),
-		// TODO: Improve filter schema
-		filters: z
-			.string()
-			.optional()
-			.openapi({
-				description: "Optional filters to apply to the search",
-				example: JSON.stringify({
-					AND: [
-						{
-							key: "group",
-							negate: false,
-							value: "jira_users",
-						},
-						{
-							filterType: "numeric",
-							key: "timestamp",
-							negate: false,
-							numericOperator: ">",
-							value: "1742745777",
-						},
-					],
-				}),
-			}),
+		filters: FiltersParamSchema.optional().openapi({
+			description:
+				"Optional filters to apply to the search. Accepts either a JSON object or a JSON string that conforms to the filters schema.",
+			example: {
+				AND: [
+					{
+						key: "group",
+						negate: false,
+						value: "jira_users",
+					},
+					{
+						filterType: "numeric",
+						key: "timestamp",
+						negate: false,
+						numericOperator: ">",
+						value: "1742745777",
+					},
+				],
+			},
+		}),
 		limit: z
 			.string()
 			.regex(/^\d+$/)
@@ -296,7 +319,7 @@ export const ListMemoriesQuerySchema = z
 	.openapi({
 		description: "Query parameters for listing memories",
 		example: {
-			filters: JSON.stringify({
+			filters: {
 				AND: [
 					{
 						key: "group",
@@ -311,7 +334,7 @@ export const ListMemoriesQuerySchema = z
 						value: "1742745777",
 					},
 				],
-			}),
+			},
 			limit: 10,
 			order: "desc",
 			page: 1,
@@ -387,7 +410,7 @@ export const SearchRequestSchema = z.object({
 			maximum: 1,
 			minimum: 0,
 		}),
-	filters: SearchFiltersSchema.optional().openapi({
+	filters: FiltersParamSchema.optional().openapi({
 		description: "Optional filters to apply to the search",
 		example: {
 			AND: [
@@ -482,7 +505,7 @@ export const Searchv4RequestSchema = z.object({
 			maximum: 1,
 			minimum: 0,
 		}),
-	filters: SearchFiltersSchema.optional().openapi({
+	filters: FiltersParamSchema.optional().openapi({
 		description: "Optional filters to apply to the search",
 		example: {
 			AND: [

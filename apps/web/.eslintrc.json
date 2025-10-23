@@ -1,0 +1,21 @@
+{
+	"$schema": "https://json.schemastore.org/eslintrc",
+	"root": false,
+	"parser": "@typescript-eslint/parser",
+	"parserOptions": {
+		"project": "./tsconfig.json"
+	},
+	"plugins": ["@typescript-eslint"],
+	"extends": [
+		"next",
+		"next/core-web-vitals",
+		"eslint:recommended",
+		"plugin:@typescript-eslint/recommended"
+	],
+	"env": {
+		"browser": true,
+		"node": true,
+		"es2021": true
+	},
+	"ignorePatterns": ["node_modules/", ".next/", "dist/"]
+}
