@@ -2,6 +2,17 @@
 
 A complete self-hosted AI-powered memory and knowledge management system. This application runs entirely on your own infrastructure with no external dependencies.
 
+## 🚀 Production Status
+
+**Live & Running**: This application is currently **deployed in production** on Railway.
+
+- ✅ **Status**: Stable and actively maintained
+- 🌐 **Platform**: Railway (Nixpacks)
+- 📦 **Services**: API (Bun) + Web (Next.js 15)
+- 🗄️ **Database**: Supabase Postgres with pgvector
+
+[View deployment guide →](ai_docs/RAILWAY_DEPLOYMENT.md)
+
 ## Stack
 
 - **Frontend**: Next.js 15 with Turbopack (`apps/web`)
@@ -184,11 +195,14 @@ bun run --cwd apps/web start             # Start production server
 bun run --cwd apps/docs dev              # Start Mintlify docs (port 3003)
 ```
 
-## Deployment
+## Production Deployment
 
-### Railway (Recommended)
+> **✅ Live Application**: This project is currently running in production on Railway.  
+> **Deployment Status**: Stable and actively maintained.
 
-See [`ai_docs/RAILWAY_DEPLOYMENT.md`](ai_docs/RAILWAY_DEPLOYMENT.md) for complete Railway deployment guide.
+### Railway (Production Platform)
+
+This application is deployed on Railway. See [`ai_docs/RAILWAY_DEPLOYMENT.md`](ai_docs/RAILWAY_DEPLOYMENT.md) for complete deployment guide.
 
 **Quick Setup**:
 
