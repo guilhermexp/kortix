@@ -66,7 +66,6 @@ supermemory/
 │   ├── lib/                 # Shared utilities
 │   ├── hooks/               # Shared React hooks
 │   ├── validation/          # Zod schemas
-│   ├── auth-server/         # Better Auth config
 │   └── ai-sdk/              # AI SDK integrations
 ├── spec/                    # Technical specs
 ├── ai_docs/                 # AI documentation
@@ -110,7 +109,7 @@ bun run build            # Build all apps
 - **Framework**: Hono
 - **Language**: TypeScript (strict mode)
 - **Database**: Supabase Postgres + pgvector
-- **Auth**: Better Auth
+- **Auth**: Custom session-based (scrypt password hashing)
 - **AI**: Vercel AI SDK + Google Gemini
 
 ### Frontend (`apps/web/`)

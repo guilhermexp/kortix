@@ -3,7 +3,7 @@
 ## 1. Requirements Summary
 ### Functional
 - Provide endpoints alinhados com `packages/lib/api.ts` e `packages/validation` (`/v3/documents*`, `/v3/projects`, `/v3/search`, `/v4/search`, `/chat`, `/chat/title`, `/v3/connections*`, `/v3/settings`).
-- Maintain better-auth session flows (magic link, username/password, organizations) with cookie-based auth.
+- Maintain custom session flows (email/password, organizations) with cookie-based auth.
 - Support document ingestion pipeline (text/link/upload) with status tracking (`queued`, `extracting`, `chunking`, `embedding`, `indexing`, `done`, `failed`).
 - Persist documents, chunks, memories, relationships, and metadata; expose polling endpoints to retrieve status and content.
 - Implement vector search with thresholds, filters, containerTags, rerank toggles, query rewriting flags; optionally provide `/v4/search` for memory-based retrieval.
@@ -41,7 +41,7 @@ graph TD
 - **Connectors**: OAuth clients, token storage, scheduled sync tasks.
 
 ## 3. Data Model (Logical)
-- `users`, `sessions`, `organizations`, `organization_members`: better-auth tables.
+- `users`, `sessions`, `organizations`, `organization_members`: Custom authentication tables.
 - `spaces` (projects), `documents`, `document_chunks`, `document_metadata`, `memories`, `memory_relationships`, `documents_to_spaces`.
 - `api_requests` (usage logging), `organization_settings`, `connections`, `connection_states`, `oauth_tokens`.
 - `ingestion_jobs` / `processing_logs` for pipeline monitoring.
@@ -49,7 +49,7 @@ graph TD
 - Embeddings stored in `pgvector` columns with indexes (IVFFlat/HNSW); metadata JSONB for filters.
 
 ## 4. API Contract Snapshot
-- **Auth**: `/api/auth/*` (better-auth handlers); internal endpoints for org management.
+- **Auth**: `/api/auth/*` (custom auth handlers); internal endpoints for org management.
 - **Documents**:
   - `POST /v3/documents` – add note/link; returns document/memory ID.
   - `POST /v3/documents/file` – multipart upload to R2 → job enqueued.
@@ -77,7 +77,7 @@ graph TD
 ## 6. Implementation Plan
 ### Phase 1 – Foundations
 - Set up monorepo workspace for backend (may reuse `cloudflare-saas-stack` directory or create new module).
-- Configure better-auth server (env secrets, session cookies, organization support).
+- Configure custom auth server (env secrets, session cookies, organization support).
 - Scaffold Hono/Workers router with middleware (auth, error handling, validation using zod).
 - Define database schema with Drizzle (matching logical model) and migrations.
 
@@ -110,7 +110,7 @@ graph TD
 | Task | Owner | Dependencies | Notes |
 | --- | --- | --- | --- |
 | Backend repo initialization | Backend | None | Create env templates, base config |
-| better-auth server integration | Backend | Repo init | Magic link, org support |
+| Custom auth server integration | Backend | Repo init | Email/password, org support |
 | Database schema & migrations | Backend | Auth | Using Drizzle + Supabase connection |
 | Document endpoints & storage | Backend | DB | Implement API + Supabase Storage upload |
 | Ingestion worker | Backend | Document endpoints | Queue integration, pipeline stages |
@@ -144,7 +144,7 @@ graph TD
 - **Resource limits**: Keep heavy ingestion work in the background worker to avoid blocking requests; scale the Bun worker horizontally when needed.
 
 ## Implementation Progress – 2024-11-02
-- Simplificamos a autenticação abandonando o wrapper `better-auth` e adotando um fluxo próprio de email/senha sobre as tabelas `users`/`sessions`. O backend expõe `/api/auth/sign-up|sign-in|sign-out|session`, gerencia senhas com `scrypt`, cria cookies httpOnly e garante associação automática à organização padrão via `ensureMembershipForUser`.
+- Autenticação customizada com fluxo próprio de email/senha sobre as tabelas `users`/`sessions`. O backend expõe `/api/auth/sign-up|sign-in|sign-out|session`, gerencia senhas com `scrypt`, cria cookies httpOnly e garante associação automática à organização padrão via `ensureMembershipForUser`.
 - O middleware de sessão agora lê o cookie `sm_session`, valida expiração no Postgres e injeta `organizationId`/`userId` para as rotas `/v3` mantendo a base para políticas RLS.
 - Policies RLS habilitadas para `spaces`, `documents`, `document_chunks`, `memories`, `documents_to_spaces`, `organization_members` e `ingestion_jobs`, amarrando `org_id` aos headers `X-Supermemory-*` enviados pelo backend.
 - `apps/api` recebeu middleware com sessão, rotas `/v3` validadas por zod e pipeline de ingestão que enfileira jobs, gera chunks/embeddings com Gemini (fallback determinístico) e popula memórias (modo assíncrono via worker em `src/worker/ingestion-worker.ts`).
@@ -153,7 +153,7 @@ graph TD
 - Pipeline de ingestão agora busca conteúdo remoto (HTML/PDF) com leitura via Readability/pdf-parse, gera resumo automático via Gemini e enriquece os metadados/word count antes de criar chunks. Quando `FIRECRAWL_API_KEY` está definido, URLs públicas são convertidas via Firecrawl antes do parser local, garantindo Markdown consistente para páginas complexas. Links do YouTube são analisados via Gemini Vision (com o vídeo passado em `file_uri`) para gerar resumos multimodais, e qualquer arquivo binário não suportado (DOCX, PPTX, imagens, áudio, vídeo) é enviado pela API de Upload do Gemini, que devolve Markdown + bullet points prontos para chunking.
 
 ### Próximos Passos Imediatos
-1. Aplicar políticas RLS no Supabase utilizando o `org_id` e `user_id` agora garantidos pelas sessões do better-auth.
+1. Aplicar políticas RLS no Supabase utilizando o `org_id` e `user_id` agora garantidos pelas sessões customizadas.
 2. Evoluir a fila de ingestão para Supabase Queue (ou worker dedicado) com observabilidade (backoff/monitoramento) e distribuir carga entre múltiplos workers.
 3. Trocar o chat stub por orquestração LLM (ferramentas, memória) e validar o streaming/SSE com testes alinhados ao transporte do pacote `ai` no frontend.
 4. Completar adaptadores OAuth dos conectores e substituir stubs por fluxos reais quando as credenciais estiverem disponíveis.
