@@ -8,7 +8,7 @@ A complete self-hosted AI-powered memory and knowledge management system. This a
 - **Backend API**: Bun + Hono server (`apps/api`)
 - **Database**: Supabase Postgres with pgvector extension
 - **Storage**: Supabase Storage
-- **Authentication**: Better Auth (email/password, magic links, organizations)
+- **Authentication**: Custom session-based auth with scrypt password hashing
 - **AI**: Google Gemini models (embeddings + chat, configurable)
 
 ## Features

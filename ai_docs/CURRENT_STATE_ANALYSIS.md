@@ -44,7 +44,7 @@ Development Branch: memory.dev
 - Framework: Hono 4.4.4
 - Language: TypeScript (strict mode)
 - Database: Supabase Postgres with pgvector
-- Authentication: Better Auth (custom session-based)
+- Authentication: Custom session-based (scrypt password hashing)
 - AI: Google Gemini (embeddings + chat)
 
 **Frontend (`apps/web/`)**
@@ -116,24 +116,48 @@ Development Branch: memory.dev
 ## Authentication System
 
 ### Implementation
-- **Type**: Session-based with Better Auth
+- **Type**: Custom session-based authentication
+- **Password Hashing**: Node.js crypto scrypt with random salt
 - **Session Storage**: Database-backed (7-day expiry)
-- **Cookie**: `sm_session` (HTTP-only, secure)
+- **Cookie**: `sm_session` (HTTP-only, secure, sameSite: lax)
 - **Multi-tenancy**: Organization-scoped data
 - **API Keys**: Separate programmatic access
 
 ### User Flow
 1. User signs up with email/password
-2. Password hashed with bcrypt
-3. Session created and stored in database
-4. Session cookie set (HTTP-only)
-5. Organization membership auto-created
-6. All data scoped to organization
+2. Password hashed with scrypt (salt + derived key)
+3. Session token generated (32 bytes random hex)
+4. Session stored in `sessions` table with expiry
+5. Session cookie set (HTTP-only, 7 days)
+6. Organization membership auto-created
+7. All data scoped to organization
+
+### Password Security
+- **Algorithm**: scrypt (Node.js crypto native)
+- **Salt**: 16 bytes random (hex encoded)
+- **Derived Key**: 64 bytes
+- **Format**: `{salt}:{derivedKey}`
+- **Verification**: Constant-time comparison (timingSafeEqual)
+
+### Session Management
+- **Token**: 32-byte random hex string
+- **Storage**: `sessions` table in Postgres
+- **TTL**: 7 days (configurable)
+- **Cookie Name**: `sm_session`
+- **Cookie Options**: httpOnly, secure (production), sameSite: lax
 
 ### Middleware
 - `requireAuth` - Validates session, sets context
-- Adds headers: `X-Supermemory-Organization`, `X-Supermemory-User`
+- Resolves session from cookie
+- Checks expiration time
+- Loads user and organization data
 - Applied to all `/v3/*` and `/chat` routes
+
+### Endpoints
+- `POST /api/auth/sign-up` - Create account
+- `POST /api/auth/sign-in` - Login
+- `POST /api/auth/sign-out` - Logout (deletes session)
+- `GET /api/auth/session` - Get current session info
 
 ---
 
