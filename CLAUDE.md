@@ -16,7 +16,7 @@ This is a **Turbo monorepo** for Supermemory, a self-hosted AI-powered memory la
 - **`lib/`** - Shared utilities, API clients, environment helpers
 - **`ui/`** - Shared React component library
 - **`validation/`** - Zod schemas for API requests/responses
-- **`auth-server/`** - Better Auth configuration
+- **`auth-server/`** - Authentication utilities (deprecated, auth is now in API)
 - **`ai-sdk/`** - AI SDK integrations
 - **`hooks/`** - Shared React hooks
 - **`tools/`** - Development tooling
@@ -56,7 +56,7 @@ This is a **Turbo monorepo** for Supermemory, a self-hosted AI-powered memory la
 - **Monorepo Tool**: Turbo
 - **Database**: Supabase Postgres with pgvector extension
 - **Storage**: Supabase Storage
-- **Authentication**: Better Auth with organization support
+- **Authentication**: Custom session-based with scrypt password hashing
 - **ORM**: Drizzle ORM
 - **Validation**: Zod schemas
 - **Monitoring**: Sentry
@@ -65,7 +65,7 @@ This is a **Turbo monorepo** for Supermemory, a self-hosted AI-powered memory la
 The API (`apps/api/`) is a Bun-based Hono server serving as the core backend:
 
 **Core Routes** (`apps/api/src/routes/`)
-- `/api/auth/*` - Better Auth authentication endpoints
+- `/api/auth/*` - Custom authentication endpoints (sign-up, sign-in, sign-out, session)
 - `/v3/documents*` - CRUD operations for documents/memories
   - `POST /v3/documents` - Add text note or link
   - `POST /v3/documents/file` - Upload file (multipart)
@@ -117,7 +117,7 @@ All content flows through the ingestion service (`apps/api/src/services/ingestio
 ## Key Libraries & Dependencies
 
 ### Shared Dependencies
-- `better-auth` - Authentication with email/password, magic links, organizations
+- Custom authentication - Session-based with scrypt password hashing
 - `drizzle-orm` - Type-safe SQL ORM
 - `drizzle-zod` - Zod schema generation from Drizzle schemas
 - `zod` - Schema validation and type inference
@@ -183,7 +183,7 @@ Environment variables are validated using Zod schemas in:
 - **Schema Location**: Check `packages/validation/` and API services for schema definitions
 
 **Key Tables**:
-- `users`, `sessions`, `organizations`, `organization_members` - Better Auth
+- `users`, `sessions`, `organizations`, `organization_members` - Custom authentication
 - `spaces` - Projects/workspaces
 - `documents`, `document_chunks`, `document_metadata` - Content storage
 - `memories`, `memory_relationships` - Semantic memory graph
@@ -213,7 +213,9 @@ Environment variables are validated using Zod schemas in:
 ## Security & Best Practices
 
 ### Authentication
-- Better Auth handles user sessions via cookies
+- Custom session-based authentication with HTTP-only cookies
+- Password hashing via Node.js crypto scrypt (64-byte derived key)
+- 7-day session expiry stored in Postgres
 - Organization-based access control
 - API key authentication for external/programmatic access
 - Role-based permissions within organizations
