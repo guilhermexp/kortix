@@ -178,7 +178,7 @@ def index():
 
 if __name__ == '__main__':
     print(f"🚀 MarkItDown server starting on port {PORT}")
-    print(f"📝 Supported formats: PDF, DOCX, PPTX, XLSX, Images, Audio, HTML, and more")
+    print("📝 Supported formats: PDF, DOCX, PPTX, XLSX, Images, Audio, HTML, and more")
     print(f"🔗 CORS enabled for: {allowed_origins}")
     
     # Use gunicorn in production (Railway), Flask dev server for local testing
