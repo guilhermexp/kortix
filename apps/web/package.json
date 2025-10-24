@@ -4,15 +4,14 @@
 	"private": true,
 	"scripts": {
 		"dev": "next dev --turbo -p 3001",
+		"dev:no-turbo": "next dev -p 3001",
 		"build": "next build",
 		"start": "next start",
 		"test": "vitest run",
 		"test:watch": "vitest watch",
 		"test:ui": "vitest --ui",
 		"test:coverage": "vitest run --coverage",
-		"lint": "next lint",
-		"sentry:sourcemaps": "_SENTRY_RELEASE=$(sentry-cli releases propose-version) && sentry-cli releases new $_SENTRY_RELEASE --org=supermemory --project=consumer-app && sentry-cli sourcemaps upload --org=supermemory --project=consumer-app --release=$_SENTRY_RELEASE --strip-prefix 'dist/..' dist",
-		"postdeploy": "bun run sentry:sourcemaps"
+		"lint": "next lint"
 	},
 	"dependencies": {
 		"@ai-sdk/google": "^2.0.0-beta.13",
@@ -45,9 +44,8 @@
 		"@react-router/fs-routes": "^7.6.2",
 		"@react-router/node": "^7.6.2",
 		"@react-router/serve": "^7.6.2",
-		"@sentry/nextjs": "^10",
 		"@tabler/icons-react": "^3.34.0",
-		"@tailwindcss/typography": "^0.5.16",
+		"@tailwindcss/typography": "^0.5.19",
 		"@tanstack/react-form": "^1.12.4",
 		"@tanstack/react-query": "^5.81.2",
 		"@tanstack/react-query-devtools": "^5.84.2",
@@ -92,8 +90,6 @@
 		"zustand": "^5.0.7"
 	},
 	"devDependencies": {
-		"@sentry/cli": "^2.52.0",
-		"@tailwindcss/postcss": "^4.1.11",
 		"@testing-library/jest-dom": "^6.6.3",
 		"@testing-library/react": "^16.1.0",
 		"@testing-library/user-event": "^14.5.2",
@@ -104,11 +100,13 @@
 		"@types/react-dom": "^19.1.6",
 		"@typescript-eslint/eslint-plugin": "^8.46.2",
 		"@typescript-eslint/parser": "^8.46.2",
-		"@vitest/ui": "^2.1.8",
 		"@vitejs/plugin-react": "^4.3.4",
+		"@vitest/ui": "^2.1.8",
+		"autoprefixer": "^10.4.0",
 		"eslint": "^9.38.0",
 		"jsdom": "^25.0.1",
-		"tailwindcss": "^4.1.11",
+		"postcss": "^8.4.0",
+		"tailwindcss": "^3.4.0",
 		"typescript": "^5.8.3",
 		"vitest": "^2.1.8"
 	}

@@ -11,7 +11,7 @@ const generateSecret = customAlphabet(ALPHABET, 42)
 export const CreateApiKeySchema = z.object({
 	name: z.string().trim().min(1).max(120),
 	prefix: z.string().trim().max(64).optional(),
-	metadata: z.record(z.unknown()).optional(),
+	metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 type CreateApiKeyContext = Context<

@@ -32,7 +32,7 @@ const chatRequestSchema = z.object({
 			),
 	),
 	mode: z.enum(["simple", "agentic", "deep"]).default("simple"),
-	metadata: z.record(z.any()).optional(),
+	metadata: z.record(z.string(), z.any()).optional(),
 	// Allow client to specify model (e.g., "google/gemini-2.5-flash" or "xai/grok-4-fast")
 	model: z.string().optional(),
 })

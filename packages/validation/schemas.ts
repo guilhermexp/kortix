@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 export const MetadataSchema = z.record(
+	z.string(),
 	z.union([z.string(), z.number(), z.boolean()]),
 )
 export type Metadata = z.infer<typeof MetadataSchema>
@@ -42,7 +43,7 @@ export const ProcessingStepSchema = z.object({
 	endTime: z.number().optional(),
 	status: z.enum(["completed", "failed", "pending"]),
 	error: z.string().optional(),
-	metadata: z.record(z.unknown()).optional(),
+	metadata: z.record(z.string(), z.unknown()).optional(),
 	finalStatus: z.enum(["done", "failed"]).optional(),
 })
 export type ProcessingStep = z.infer<typeof ProcessingStepSchema>
@@ -166,7 +167,7 @@ export const ConnectionSchema = z.object({
 	expiresAt: z.coerce.date().nullable().optional(),
 
 	// Provider-specific metadata
-	metadata: z.record(z.unknown()),
+	metadata: z.record(z.string(), z.unknown()),
 
 	createdAt: z.coerce.date(),
 })
@@ -194,8 +195,8 @@ export const ApiRequestSchema = z.object({
 	duration: z.number().nullable().optional(), // duration in ms
 
 	// Request/Response data
-	input: z.record(z.unknown()).nullable().optional(),
-	output: z.record(z.unknown()).nullable().optional(),
+	input: z.record(z.string(), z.unknown()).nullable().optional(),
+	output: z.record(z.string(), z.unknown()).nullable().optional(),
 
 	// Token usage tracking
 	originalTokens: z.number().nullable().optional(),
@@ -232,7 +233,7 @@ export const SpaceSchema = z.object({
 	isExperimental: z.boolean().default(false),
 
 	// Content indexing
-	contentTextIndex: z.record(z.unknown()).default({}), // KnowledgeBase type
+	contentTextIndex: z.record(z.string(), z.unknown()).default({}), // KnowledgeBase type
 	indexSize: z.number().nullable().optional(),
 
 	metadata: MetadataSchema.nullable().optional(),
@@ -257,7 +258,7 @@ export const MemoryEntryDBSchema = z.object({
 	// Core content field (matches database column name)
 	content: z.string(),
 
-	metadata: z.record(z.unknown()).nullable().optional(),
+	metadata: z.record(z.string(), z.unknown()).nullable().optional(),
 
 	// Embeddings
 	memoryEmbedding: z
@@ -301,7 +302,7 @@ export const MemoryEntrySchema = z.object({
 	// Public API field name for backward compatibility
 	memory: z.string(), // Transformed from database 'content' field
 
-	metadata: z.record(z.unknown()).nullable().optional(),
+	metadata: z.record(z.string(), z.unknown()).nullable().optional(),
 
 	// Embeddings
 	memoryEmbedding: z
@@ -343,7 +344,7 @@ export const MemoryDocumentSourceSchema = z.object({
 	memoryEntryId: z.string(),
 	documentId: z.string(),
 	relevanceScore: z.number().default(100),
-	metadata: z.record(z.unknown()).nullable().optional(),
+	metadata: z.record(z.string(), z.unknown()).nullable().optional(),
 	addedAt: z.coerce.date(),
 })
 export type MemoryDocumentSource = z.infer<typeof MemoryDocumentSourceSchema>

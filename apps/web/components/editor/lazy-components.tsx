@@ -49,7 +49,7 @@ export const LazyMemoryEntriesSidebar = dynamic(
 export const LazyImageGallery = dynamic(
 	() =>
 		import("../memories/image-gallery").then((mod) => ({
-			default: mod.default,
+			default: mod.ImageGallery,
 		})),
 	{
 		loading: () => (
@@ -67,7 +67,7 @@ export const LazyImageGallery = dynamic(
 export const LazyMarkdownContent = dynamic(
 	() =>
 		import("../markdown-content").then((mod) => ({
-			default: mod.default,
+			default: mod.MarkdownContent,
 		})),
 	{
 		loading: () => (
@@ -82,18 +82,19 @@ export const LazyMarkdownContent = dynamic(
 
 /**
  * Lazy load chart components (for analytics)
+ * Note: This is currently not in use. Import specific chart components from recharts as needed.
  */
-export const LazyChartComponent = dynamic(
-	() => import("recharts").then((mod) => mod),
-	{
-		loading: () => (
-			<div className="flex items-center justify-center h-64">
-				<InlineLoader />
-			</div>
-		),
-		ssr: false,
-	}
-);
+// export const LazyChartComponent = dynamic(
+// 	() => import("recharts").then((mod) => mod),
+// 	{
+// 		loading: () => (
+// 			<div className="flex items-center justify-center h-64">
+// 				<InlineLoader />
+// 			</div>
+// 		),
+// 		ssr: false,
+// 	}
+// );
 
 /**
  * Generic lazy wrapper component
@@ -132,7 +133,7 @@ export function IntersectionLazyLoader({
 	React.useEffect(() => {
 		const observer = new IntersectionObserver(
 			([entry]) => {
-				if (entry.isIntersecting) {
+				if (entry?.isIntersecting) {
 					setIsVisible(true);
 					observer.disconnect();
 				}
@@ -200,27 +201,34 @@ export function preloadComponent(
  */
 export const RouteComponents = {
 	// Memory routes
-	MemoryList: dynamic(() => import("../memory-list-view"), {
-		loading: () => <InlineLoader />,
-	}),
+	MemoryList: dynamic(
+		() => import("../memory-list-view").then((mod) => ({ default: mod.MemoryListView })),
+		{
+			loading: () => <InlineLoader />,
+		}
+	),
 
 	// Settings routes
-	SettingsProfile: dynamic(() => import("../views/profile"), {
-		loading: () => <InlineLoader />,
-	}),
+	SettingsProfile: dynamic(
+		() => import("../views/profile").then((mod) => ({ default: mod.ProfileView })),
+		{
+			loading: () => <InlineLoader />,
+		}
+	),
 
-	SettingsBilling: dynamic(() => import("../views/billing"), {
-		loading: () => <InlineLoader />,
-	}),
+	SettingsBilling: dynamic(
+		() => import("../views/billing").then((mod) => ({ default: mod.BillingView })),
+		{
+			loading: () => <InlineLoader />,
+		}
+	),
 
-	SettingsIntegrations: dynamic(() => import("../views/integrations"), {
-		loading: () => <InlineLoader />,
-	}),
-
-	// Chat route
-	ChatView: dynamic(() => import("../views/chat"), {
-		loading: () => <InlineLoader />,
-	}),
+	SettingsIntegrations: dynamic(
+		() => import("../views/integrations").then((mod) => ({ default: mod.IntegrationsView })),
+		{
+			loading: () => <InlineLoader />,
+		}
+	),
 };
 
 /**
@@ -306,7 +314,7 @@ export function ViewportHydration({
 	React.useEffect(() => {
 		const observer = new IntersectionObserver(
 			([entry]) => {
-				if (entry.isIntersecting) {
+				if (entry?.isIntersecting) {
 					setShouldHydrate(true);
 					observer.disconnect();
 				}

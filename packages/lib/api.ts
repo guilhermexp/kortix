@@ -47,7 +47,7 @@ export const apiSchema = createSchema({
 			containerTags: z.array(z.string()).optional(),
 			documentLimit: z.number().int().min(1).max(10000).optional(),
 			metadata: z
-				.record(z.union([z.string(), z.number(), z.boolean()]))
+				.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
 				.optional()
 				.nullable(),
 			redirectUrl: z.string().optional(),

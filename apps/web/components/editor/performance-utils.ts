@@ -111,7 +111,7 @@ export function useIntersectionObserver(
 
 		const observer = new IntersectionObserver(
 			([entry]) => {
-				setIsIntersecting(entry.isIntersecting);
+				setIsIntersecting(entry?.isIntersecting ?? false);
 			},
 			options
 		);
@@ -208,9 +208,11 @@ export function usePerformanceMark(componentName: string, enabled = false) {
 				const measures = performance.getEntriesByName(measureName);
 				if (measures.length > 0) {
 					const lastMeasure = measures[measures.length - 1];
-					console.log(
-						`[Performance] ${componentName}: ${lastMeasure.duration.toFixed(2)}ms`
-					);
+					if (lastMeasure) {
+						console.log(
+							`[Performance] ${componentName}: ${lastMeasure.duration.toFixed(2)}ms`
+						);
+					}
 				}
 
 				performance.clearMeasures(measureName);
@@ -233,7 +235,7 @@ export function useDeepMemo<T>(
 	deps: any[],
 	isEqual: (a: any[], b: any[]) => boolean = shallowEqual
 ): T {
-	const ref = useRef<{ deps: any[]; value: T }>();
+	const ref = useRef<{ deps: any[]; value: T } | undefined>(undefined);
 
 	if (!ref.current || !isEqual(deps, ref.current.deps)) {
 		ref.current = {

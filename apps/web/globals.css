@@ -1,6 +1,7 @@
-@import "tailwindcss";
-/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind CSS plugin directive */
-@plugin "@tailwindcss/typography";
+/* Tailwind CSS v3 directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @keyframes shimmer {
   0% {
