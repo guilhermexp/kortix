@@ -312,7 +312,7 @@ app.post(
     z.object({
       url: z.string().url(),
       containerTags: z.array(z.string()).optional(),
-      metadata: z.record(z.unknown()).optional(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
       githubToken: z.string().optional(),
     }),
   ),

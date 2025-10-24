@@ -210,7 +210,7 @@ export function useOfflineEditing(
 	const connectionStatus = useConnectionStatus();
 	const [isSyncing, setIsSyncing] = useState(false);
 	const [syncError, setSyncError] = useState<Error | null>(null);
-	const syncTimeoutRef = useRef<NodeJS.Timeout>();
+	const syncTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
 	/**
 	 * Save content for offline editing

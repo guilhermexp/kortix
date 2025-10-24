@@ -236,15 +236,21 @@ export function useGraphData(
 				// Support both new object structure and legacy array/single parent fields
 				let parentRelations: Record<string, MemoryRelation> = {};
 
+				// Type-safe access to optional fields that may exist in runtime but not in type
+				const memWithRelations = mem as MemoryEntry & {
+					memoryRelations?: Record<string, MemoryRelation>;
+					parentMemoryId?: string;
+				};
+
 				if (
-					mem.memoryRelations &&
-					typeof mem.memoryRelations === "object" &&
-					Object.keys(mem.memoryRelations).length > 0
+					memWithRelations.memoryRelations &&
+					typeof memWithRelations.memoryRelations === "object" &&
+					Object.keys(memWithRelations.memoryRelations).length > 0
 				) {
-					parentRelations = mem.memoryRelations;
-				} else if (mem.parentMemoryId) {
+					parentRelations = memWithRelations.memoryRelations;
+				} else if (memWithRelations.parentMemoryId) {
 					parentRelations = {
-						[mem.parentMemoryId]: "updates" as MemoryRelation,
+						[memWithRelations.parentMemoryId]: "updates" as MemoryRelation,
 					};
 				}
 				Object.entries(parentRelations).forEach(([pid, relationType]) => {

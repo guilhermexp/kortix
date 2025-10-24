@@ -127,7 +127,7 @@ const DocumentDetailSchema = z.object({
 	status: z.string().default("unknown"),
 	content: z.string().nullable().optional(),
 	summary: z.string().nullable().optional(),
-	metadata: z.record(z.unknown()).nullable().optional(),
+	metadata: z.record(z.string(), z.unknown()).nullable().optional(),
 	containerTags: z.array(z.string()).default([]),
 	createdAt: z.string(),
 	updatedAt: z.string(),
@@ -136,7 +136,7 @@ const DocumentDetailSchema = z.object({
 			z.object({
 				id: z.string(),
 				content: z.string().nullable().optional(),
-				metadata: z.record(z.unknown()).nullable().optional(),
+				metadata: z.record(z.string(), z.unknown()).nullable().optional(),
 				createdAt: z.string(),
 				updatedAt: z.string(),
 			}),

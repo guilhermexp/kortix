@@ -24,7 +24,7 @@ const chatRequestSchema = z.object({
       }),
     )
     .optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 type LegacyContentPart = { text?: string };

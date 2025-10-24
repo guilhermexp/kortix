@@ -88,6 +88,8 @@ export class PerformanceMonitor {
 			const measures = performance.getEntriesByName(measureName);
 			if (measures.length > 0) {
 				const measure = measures[measures.length - 1];
+				if (!measure) return;
+
 				this.updateMetrics(componentName, {
 					renderTime: measure.duration,
 					lastRenderTime: Date.now(),

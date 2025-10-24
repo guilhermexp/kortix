@@ -290,7 +290,7 @@ const GreetingMessage = memo(() => {
   };
 
   return (
-    <div className="flex items-center gap-3 mb-3 px-4 md:mb-6 md:mt-3">
+    <div className="flex items-center gap-3 mb-3 md:mb-6 md:mt-3">
       <div>
         <h1
           className="text-lg md:text-xl font-semibold"
@@ -349,7 +349,7 @@ const DocumentCard = memo(
 
     return (
       <Card
-        className="h-full mx-4 p-4 transition-all cursor-pointer group relative overflow-hidden border border-white/10 gap-2 md:w-full rounded-lg"
+        className="h-full w-full p-4 transition-all cursor-pointer group relative overflow-hidden border border-white/10 gap-2 md:w-full rounded-lg"
         onClick={() => {
           analytics.documentCardClicked();
           router.push(`/memory/${document.id}/edit`);
@@ -590,11 +590,41 @@ export const MemoryListView = ({
   );
 
   const { width: containerWidth } = useResizeObserver(containerRef);
-  const columnWidth = isMobile ? containerWidth : 320;
-  const columns = Math.max(
-    1,
-    Math.floor((containerWidth + gap) / (columnWidth + gap)),
-  );
+  const horizontalPadding = isMobile ? 16 : 72;
+  const effectiveWidth = Math.max(containerWidth - horizontalPadding * 2, 0);
+  const baseColumnWidth = isMobile ? effectiveWidth || containerWidth : 320;
+
+  const columns = useMemo(() => {
+    if (isMobile) {
+      return 1;
+    }
+
+    if (!effectiveWidth) {
+      return 1;
+    }
+
+    return Math.max(
+      1,
+      Math.floor((effectiveWidth + gap) / ((baseColumnWidth || 1) + gap)),
+    );
+  }, [baseColumnWidth, effectiveWidth, gap, isMobile]);
+
+  const columnWidth = useMemo(() => {
+    if (isMobile) {
+      return effectiveWidth || containerWidth || baseColumnWidth || 320;
+    }
+
+    if (!effectiveWidth || columns <= 1) {
+      return Math.max(280, Math.min(baseColumnWidth || 320, 360));
+    }
+
+    const availableWidth = effectiveWidth - gap * (columns - 1);
+    const widthPerColumn = availableWidth / columns;
+
+    return Math.max(280, Math.min(widthPerColumn, 360));
+  }, [baseColumnWidth, columns, containerWidth, effectiveWidth, gap, isMobile]);
+
+  const safeColumnWidth = Math.max(columnWidth || 0, 1);
 
   // Filter documents based on selected space
   const filteredDocuments = useMemo(() => {
@@ -691,7 +721,9 @@ export const MemoryListView = ({
             className="h-full overflow-auto mt-20 custom-scrollbar"
             ref={parentRef}
           >
-            <GreetingMessage />
+            <div style={{ paddingInline: `${horizontalPadding}px` }}>
+              <GreetingMessage />
+            </div>
 
             <div
               className="w-full relative"
@@ -716,8 +748,9 @@ export const MemoryListView = ({
                     <div
                       className="grid justify-start"
                       style={{
-                        gridTemplateColumns: `repeat(${columns}, ${columnWidth}px)`,
+                        gridTemplateColumns: `repeat(${columns}, ${safeColumnWidth}px)`,
                         gap: `${gap}px`,
+                        paddingInline: `${horizontalPadding}px`,
                       }}
                     >
                       {rowItems.map((document, columnIndex) => (
