@@ -660,12 +660,10 @@ const MemoryGraphPage = () => {
             }}
           >
             <Button
-              className="px-4 bg-white hover:bg-white/80 text-[#001A39] shadow-lg hover:shadow-xl transition-all duration-200 rounded-full flex items-center gap-2 cursor-pointer"
+              className="w-14 h-14 bg-white hover:bg-white/80 text-[#001A39] shadow-lg hover:shadow-xl transition-all duration-200 rounded-full flex items-center justify-center cursor-pointer p-0"
               onClick={() => setIsOpen(true)}
-              size="lg"
             >
-              <MessageSquare className="h-5 w-5" />
-              <span className="font-medium">Open Chat</span>
+              <MessageSquare className="h-6 w-6" />
             </Button>
           </motion.div>
         )}
@@ -706,7 +704,6 @@ const MemoryGraphPage = () => {
 
       {showAddMemoryView && (
         <AddMemoryView
-          initialTab="note"
           onClose={() => setShowAddMemoryView(false)}
         />
       )}

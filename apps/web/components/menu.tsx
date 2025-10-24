@@ -229,8 +229,10 @@ function Menu({ id }: { id?: string }) {
 		setMenuExpanded(isExpanded)
 	}, [isMobile, isMobileMenuOpen, isHovered, expandedView, setMenuExpanded])
 
-	// Calculate width based on state
-	const menuWidth = expandedView || isCollapsing ? 600 : isHovered ? 160 : 56
+	// Calculate width based on state - for horizontal layout
+	// Normal: 5 icons with labels (~600px)
+	// Expanded view: 600px
+	const menuWidth = 600
 
 	// Dynamic z-index for mobile based on active panel
 	const mobileZIndex = isMobile && activePanel === "menu" ? "z-[70]" : "z-[100]"
@@ -240,15 +242,15 @@ function Menu({ id }: { id?: string }) {
 			{/* Desktop Menu */}
 			{!isMobile && (
 				<LayoutGroup>
-					<div className="fixed h-screen w-full p-4 items-center top-0 left-0 pointer-events-none z-[60] flex">
+					<div className="fixed w-full p-4 top-0 left-0 pointer-events-none z-[60] flex justify-center items-start">
 						<motion.nav
 							animate={{
 								width: menuWidth,
 								scale: 1,
 							}}
-							className="pointer-events-auto group relative flex text-sm font-medium flex-col items-start overflow-hidden rounded-xl shadow-2xl bg-[#0f1419] border border-white/10"
+							className="pointer-events-auto group relative flex text-sm font-medium flex-row items-center overflow-hidden rounded-xl shadow-2xl bg-[#0f1419] border border-white/10"
 							id={id}
-							initial={{ width: 56, scale: 0.95 }}
+							initial={{ width: 600, scale: 0.95 }}
 							layout
 							onMouseEnter={() => !expandedView && setIsHovered(true)}
 							onMouseLeave={() => !expandedView && setIsHovered(false)}
@@ -270,7 +272,7 @@ function Menu({ id }: { id?: string }) {
 
 							{/* Menu content */}
 							<motion.div
-								className="relative z-20 flex flex-col gap-6 w-full"
+								className="relative z-20 flex flex-row gap-6 w-full"
 								layout
 							>
 								<AnimatePresence
@@ -283,7 +285,7 @@ function Menu({ id }: { id?: string }) {
 											animate={{
 												opacity: 1,
 											}}
-											className="w-full flex flex-col gap-6 p-4"
+											className="w-full flex flex-row gap-2 p-4 justify-center items-center"
 											exit={{
 												opacity: 0,
 												transition: {
@@ -307,10 +309,11 @@ function Menu({ id }: { id?: string }) {
 												},
 											}}
 										>
-											<div className="flex flex-col gap-6">
+											<div className="flex flex-row gap-2 items-center justify-center">
 												{menuItems.map((item, index) => (
-													<div key={item.key}>
+													<>
 														<motion.button
+															key={item.key}
 															animate={{
 																opacity: 1,
 																y: 0,
@@ -319,7 +322,7 @@ function Menu({ id }: { id?: string }) {
 																	duration: 0.1,
 																},
 															}}
-															className={`flex w-full items-center text-white/80 transition-colors duration-100 hover:text-white cursor-pointer relative ${isHovered || expandedView ? "px-1" : ""}`}
+															className="flex w-full items-center text-white/80 transition-colors duration-100 hover:text-white cursor-pointer relative px-1"
 															id={menuItemTourIds[item.key]}
 															initial={{ opacity: 0, y: 20, scale: 0.95 }}
 															layout
@@ -344,33 +347,19 @@ function Menu({ id }: { id?: string }) {
 															>
 																<item.icon className="duration-200 h-6 w-6 drop-shadow-lg flex-shrink-0" />
 															</motion.div>
-															<motion.p
-																animate={{
-																	opacity: isHovered ? 1 : 0,
-																	x: isHovered ? 0 : -10,
-																}}
-																className="drop-shadow-lg pl-3 whitespace-nowrap"
-																initial={{ opacity: 0, x: -10 }}
-																style={{
-																	transform: "translateZ(0)",
-																}}
-																transition={{
-																	duration: isHovered ? 0.2 : 0.1,
-																	delay: isHovered ? index * 0.03 : 0,
-																	ease: [0.4, 0, 0.2, 1],
-																}}
-															>
+															<span className="drop-shadow-lg pl-3 whitespace-nowrap">
 																{item.text}
-															</motion.p>
+															</span>
 														</motion.button>
 														{index === 0 && (
 															<motion.div
+																key="divider"
 																animate={{
 																	opacity: 1,
-																	scaleX: 1,
+																	scaleY: 1,
 																}}
-																className="w-full h-px bg-white/20 mt-3 origin-left"
-																initial={{ opacity: 0, scaleX: 0 }}
+																className="h-6 w-px bg-white/20 origin-top"
+																initial={{ opacity: 0, scaleY: 0 }}
 																transition={{
 																	duration: 0.3,
 																	delay: 0.1,
@@ -378,7 +367,7 @@ function Menu({ id }: { id?: string }) {
 																}}
 															/>
 														)}
-													</div>
+													</>
 												))}
 											</div>
 										</motion.div>
@@ -691,7 +680,6 @@ function Menu({ id }: { id?: string }) {
 
 			{showAddMemoryView && (
 				<AddMemoryView
-					initialTab="note"
 					onClose={() => setShowAddMemoryView(false)}
 				/>
 			)}
