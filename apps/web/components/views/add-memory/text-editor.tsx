@@ -249,7 +249,6 @@ export function TextEditor({
 	const [editorValue, setEditorValue] = useState<Descendant[]>(() =>
 		deserialize(value),
 	)
-	const [selection, setSelection] = useState(editor.selection)
 
 	const renderElement = useCallback((props: RenderElementProps) => {
 		switch (props.element.type) {
@@ -373,72 +372,12 @@ export function TextEditor({
 		[onChange],
 	)
 
-	// Memoized active states that update when selection changes
-	const activeStates = useMemo(() => {
-		if (!selection) {
-			return {
-				bold: false,
-				italic: false,
-				code: false,
-				heading1: false,
-				heading2: false,
-				heading3: false,
-				listItem: false,
-				blockQuote: false,
-			}
-		}
-		return {
-			bold: isMarkActive(editor, "bold"),
-			italic: isMarkActive(editor, "italic"),
-			code: isMarkActive(editor, "code"),
-			heading1: isBlockActive(editor, "heading", 1),
-			heading2: isBlockActive(editor, "heading", 2),
-			heading3: isBlockActive(editor, "heading", 3),
-			listItem: isBlockActive(editor, "list-item"),
-			blockQuote: isBlockActive(editor, "block-quote"),
-		}
-	}, [editor, selection])
-
-	const ToolbarButton = ({
-		icon: Icon,
-		isActive,
-		onMouseDown,
-		title,
-	}: {
-		icon: React.ComponentType<{ className?: string }>
-		isActive: boolean
-		onMouseDown: (event: React.MouseEvent) => void
-		title: string
-	}) => (
-		<Button
-			className={cn(
-				"h-8 w-8 !p-0 text-white/70 transition-all duration-200 rounded-sm",
-				"hover:bg-white/15 hover:text-white hover:scale-105",
-				"active:scale-95",
-				isActive && "bg-white/20 text-white",
-			)}
-			onMouseDown={onMouseDown}
-			size="sm"
-			title={title}
-			type="button"
-			variant="ghost"
-		>
-			<Icon
-				className={cn(
-					"h-4 w-4 transition-transform duration-200",
-					isActive && "scale-110",
-				)}
-			/>
-		</Button>
-	)
-
 	return (
 		<div className={cn("flex flex-col", className)}>
 			<div className="flex-1 min-h-48 max-h-64 overflow-y-auto">
 				<Slate
 					editor={editor}
 					initialValue={editorValue}
-					onSelectionChange={() => setSelection(editor.selection)}
 					onValueChange={handleSlateChange}
 				>
 					<Editable
@@ -466,91 +405,6 @@ export function TextEditor({
 						}}
 					/>
 				</Slate>
-			</div>
-
-			{/* Toolbar */}
-			<div className="p-1 flex items-center gap-2 bg-white/5 backdrop-blur-sm rounded-b-md">
-				<div className="flex items-center gap-1">
-					{/* Text formatting */}
-					<ToolbarButton
-						icon={Bold}
-						isActive={activeStates.bold}
-						onMouseDown={(event) => {
-							event.preventDefault()
-							toggleMark(editor, "bold")
-						}}
-						title="Bold (Ctrl/Cmd+B)"
-					/>
-					<ToolbarButton
-						icon={Italic}
-						isActive={activeStates.italic}
-						onMouseDown={(event) => {
-							event.preventDefault()
-							toggleMark(editor, "italic")
-						}}
-						title="Italic (Ctrl/Cmd+I)"
-					/>
-					<ToolbarButton
-						icon={Code}
-						isActive={activeStates.code}
-						onMouseDown={(event) => {
-							event.preventDefault()
-							toggleMark(editor, "code")
-						}}
-						title="Code (Ctrl/Cmd+`)"
-					/>
-				</div>
-
-				<div className="w-px h-6 bg-white/30 mx-2" />
-
-				<div className="flex items-center gap-1">
-					{/* Block formatting */}
-					<ToolbarButton
-						icon={Heading1}
-						isActive={activeStates.heading1}
-						onMouseDown={(event) => {
-							event.preventDefault()
-							toggleBlock(editor, "heading", 1)
-						}}
-						title="Heading 1 (Ctrl/Cmd+Shift+1)"
-					/>
-					<ToolbarButton
-						icon={Heading2}
-						isActive={activeStates.heading2}
-						onMouseDown={(event) => {
-							event.preventDefault()
-							toggleBlock(editor, "heading", 2)
-						}}
-						title="Heading 2 (Ctrl/Cmd+Shift+2)"
-					/>
-					<ToolbarButton
-						icon={Heading3}
-						isActive={activeStates.heading3}
-						onMouseDown={(event) => {
-							event.preventDefault()
-							toggleBlock(editor, "heading", 3)
-						}}
-						title="Heading 3"
-					/>
-					<ToolbarButton
-						icon={List}
-						isActive={activeStates.listItem}
-						onMouseDown={(event) => {
-							event.preventDefault()
-							toggleBlock(editor, "list-item")
-						}}
-						title="Bullet List"
-					/>
-					<ToolbarButton
-						icon={Quote}
-						isActive={activeStates.blockQuote}
-						onMouseDown={(event) => {
-							event.preventDefault()
-							toggleBlock(editor, "block-quote")
-						}}
-						title="Quote"
-					/>
-				</div>
 			</div>
 		</div>
 	)

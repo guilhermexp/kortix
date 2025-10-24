@@ -39,7 +39,6 @@ import { analytics } from "@/lib/analytics"
 import { useProject } from "@/stores"
 import { ConnectionsTabContent } from "../connections-tab-content"
 import { ActionButtons } from "./action-buttons"
-import { MemoryUsageRing } from "./memory-usage-ring"
 import { ProjectSelection } from "./project-selection"
 import { TabButton } from "./tab-button"
 
@@ -194,7 +193,7 @@ const mergeOptimisticMemory = (
 
 export function AddMemoryView({
 	onClose,
-	initialTab = "note",
+	initialTab = "link",
 }: {
 	onClose?: () => void
 	initialTab?: "note" | "link" | "file" | "connect" | "repository"
@@ -841,11 +840,6 @@ export function AddMemoryView({
 															)}
 														</addContentForm.Field>
 													</motion.div>
-
-													<MemoryUsageRing
-														memoriesLimit={memoriesLimit}
-														memoriesUsed={memoriesUsed}
-													/>
 												</div>
 
 												<ActionButtons
@@ -967,11 +961,6 @@ export function AddMemoryView({
 															)}
 														</addContentForm.Field>
 													</motion.div>
-
-													<MemoryUsageRing
-														memoriesLimit={memoriesLimit}
-														memoriesUsed={memoriesUsed}
-													/>
 												</div>
 
 												<ActionButtons
@@ -1119,11 +1108,6 @@ export function AddMemoryView({
 															)}
 														</fileUploadForm.Field>
 													</motion.div>
-
-													<MemoryUsageRing
-														memoriesLimit={memoriesLimit}
-														memoriesUsed={memoriesUsed}
-													/>
 												</div>
 
 												<ActionButtons
@@ -1258,11 +1242,6 @@ export function AddMemoryView({
 															)}
 														</addContentForm.Field>
 													</motion.div>
-
-													<MemoryUsageRing
-														memoriesLimit={memoriesLimit}
-														memoriesUsed={memoriesUsed}
-													/>
 												</div>
 
 												<ActionButtons
