@@ -615,13 +615,13 @@ export const MemoryListView = ({
     }
 
     if (!effectiveWidth || columns <= 1) {
-      return Math.max(280, Math.min(baseColumnWidth || 320, 360));
+      return effectiveWidth || baseColumnWidth || 320;
     }
 
     const availableWidth = effectiveWidth - gap * (columns - 1);
     const widthPerColumn = availableWidth / columns;
 
-    return Math.max(280, Math.min(widthPerColumn, 360));
+    return widthPerColumn;
   }, [baseColumnWidth, columns, containerWidth, effectiveWidth, gap, isMobile]);
 
   const safeColumnWidth = Math.max(columnWidth || 0, 1);
