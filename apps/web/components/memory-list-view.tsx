@@ -3,6 +3,7 @@
 import { useIsMobile } from "@hooks/use-mobile";
 import { useDeleteDocument } from "@lib/queries";
 import { cn } from "@lib/utils";
+import { useRouter } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +37,6 @@ import { analytics } from "@/lib/analytics";
 import { getDocumentIcon } from "@/lib/document-icon";
 import { useProject } from "@/stores";
 import { formatDate, getSourceUrl } from "./memories";
-import { MemoryDetail } from "./memories/memory-detail";
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>;
 type DocumentWithMemories = DocumentsResponse["documents"][0];
@@ -309,13 +309,12 @@ const GreetingMessage = memo(() => {
 const DocumentCard = memo(
   ({
     document,
-    onOpenDetails,
     onDelete,
   }: {
     document: DocumentWithMemories;
-    onOpenDetails: (document: DocumentWithMemories) => void;
     onDelete: (document: DocumentWithMemories) => void;
   }) => {
+    const router = useRouter();
     const activeMemories = document.memoryEntries.filter((m) => !m.isForgotten);
     const forgottenMemories = document.memoryEntries.filter(
       (m) => m.isForgotten,
@@ -353,7 +352,7 @@ const DocumentCard = memo(
         className="h-full mx-4 p-4 transition-all cursor-pointer group relative overflow-hidden border border-white/10 gap-2 md:w-full rounded-lg"
         onClick={() => {
           analytics.documentCardClicked();
-          onOpenDetails(document);
+          router.push(`/memory/${document.id}/edit`);
         }}
         style={{
           backgroundColor: "#0f1419",
@@ -464,14 +463,28 @@ const DocumentCard = memo(
               </div>
             </div>
           )}
-          {document.content && !document.content.startsWith("data:") && (
-            <p
-              className="text-xs line-clamp-2 mb-3"
-              style={{ color: colors.text.muted }}
-            >
-              {document.content}
-            </p>
-          )}
+          {(() => {
+            const raw = asRecord(document.raw);
+            const extraction = asRecord(raw?.extraction);
+            const summary =
+              (typeof extraction?.analysis === "string" && extraction.analysis) ||
+              (typeof raw?.analysis === "string" && raw.analysis) ||
+              null;
+
+            const displayText = summary || document.content;
+
+            return (
+              displayText &&
+              !displayText.startsWith("data:") && (
+                <p
+                  className="text-xs line-clamp-2 mb-3"
+                  style={{ color: colors.text.muted }}
+                >
+                  {displayText}
+                </p>
+              )
+            );
+          })()}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 flex-wrap">
               {activeMemories.length > 0 && (
@@ -561,9 +574,6 @@ export const MemoryListView = ({
   loadMoreDocuments,
 }: MemoryListViewProps) => {
   const [selectedSpace, _] = useState<string>("all");
-  const [selectedDocument, setSelectedDocument] =
-    useState<DocumentWithMemories | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -604,17 +614,6 @@ export const MemoryListView = ({
       }))
       .filter((doc) => doc.memoryEntries.length > 0);
   }, [documents, selectedSpace]);
-
-  const handleOpenDetails = useCallback((document: DocumentWithMemories) => {
-    analytics.memoryDetailOpened();
-    setSelectedDocument(document);
-    setIsDetailOpen(true);
-  }, []);
-
-  const handleCloseDetails = useCallback(() => {
-    setIsDetailOpen(false);
-    setTimeout(() => setSelectedDocument(null), 300);
-  }, []);
 
   const virtualItems = useMemo(() => {
     const items = [];
@@ -726,7 +725,6 @@ export const MemoryListView = ({
                           document={document}
                           key={`${document.id}-${virtualRow.index}-${columnIndex}`}
                           onDelete={handleDeleteDocument}
-                          onOpenDetails={handleOpenDetails}
                         />
                       ))}
                     </div>
@@ -748,13 +746,6 @@ export const MemoryListView = ({
           </div>
         )}
       </div>
-
-      <MemoryDetail
-        document={selectedDocument}
-        isMobile={isMobile}
-        isOpen={isDetailOpen}
-        onClose={handleCloseDetails}
-      />
     </>
   );
 };

@@ -1,7 +1,7 @@
 // Removed Readability/JSDOM HTML extraction to simplify pipeline
 import pdfParse from "pdf-parse/lib/pdf-parse.js"
 import { env } from "../env"
-// Removed Firecrawl fallback; use local MarkItDown only
+import { aiClient } from "./ai-provider"
 import { summarizeBinaryWithGemini } from "./gemini-files"
 import {
 	checkMarkItDownHealth,
@@ -88,6 +88,41 @@ function cleanExtractedContent(text: string, url?: string): string {
 
 	// Common UI patterns to remove (case-insensitive, multiline)
 	const uiNoisePatterns = [
+		// GitHub navigation menu and header
+		/Navigation Menu/gi,
+		/Toggle navigation/gi,
+		/\[Sign in\]\([^)]*\)/gi,
+		/\[Sign up\]\([^)]*\)/gi,
+		/Appearance settings/gi,
+		/Product navigation/gi,
+
+		// GitHub main menu sections
+		/\*\s*Platform\s*\+/gi,
+		/\*\s*Solutions\s*\+/gi,
+		/\*\s*Resources\s*\+/gi,
+		/\*\s*Open Source\s*\+/gi,
+		/\*\s*Enterprise\s*\+/gi,
+
+		// GitHub product features
+		/GitHub (Copilot|Spark|Models|Actions|Packages|Security|Codespaces|Issues|Pull requests|Discussions|Projects)/gi,
+		/Write better code with AI/gi,
+		/Security.*Find and fix vulnerabilities/gi,
+		/Actions.*Automate any workflow/gi,
+		/Codespaces.*Instant dev environments/gi,
+		/Packages.*Host and manage packages/gi,
+
+		// Repository navigation tabs
+		/\bCode\s+Issues\s+Pull requests\s+Discussions/gi,
+		/\bCode\s+Issues\s+Pull requests/gi,
+		/\bIssues\s+Pull requests/gi,
+
+		// GitHub footer and about links
+		/\b(Pricing|API|Training|Blog|About)\s+GitHub/gi,
+		/Contact GitHub/gi,
+		/Terms\s+Privacy/gi,
+		/Security\s+Status/gi,
+		/Docs/gi,
+
 		// GitHub-specific UI elements
 		/\[Skip to content\]\([^)]*\)/gi,
 		/You signed (in|out) (with|in) another (tab|window)/gi,
@@ -97,7 +132,7 @@ function cleanExtractedContent(text: string, url?: string): string {
 		/You must be signed in to (change notification settings|make or propose changes)/gi,
 		/Notifications?\s*You must be signed in/gi,
 
-		// Star/Fork badges with backslash escapes (e.g., "Star\ 2.9k")
+		// Star/Fork badges with backslash escapes
 		/\b(Star|Fork|Watch|Unwatch)(ing)?\\?\s+[\d.,]+[kKmMbB]?/g,
 		/[\d.,]+[kKmMbB]?\\?\s+(stars?|forks?|watching)/gi,
 
@@ -169,14 +204,24 @@ function cleanExtractedContent(text: string, url?: string): string {
 		// Remove "You can't perform that action at this time"
 		cleaned = cleaned.replace(/You can't perform that action at this time\.?/gi, "")
 
+		// Remove URL-encoded navigation links
+		cleaned = cleaned.replace(/return_to=https?%3A%2F%2F[^\s)]+/gi, "")
+		cleaned = cleaned.replace(/\(https?:\/\/github\.com\/[^)]*%2F[^)]*\)/g, "")
+
 		// Remove URL patterns in parentheses that are GitHub links
 		cleaned = cleaned.replace(
 			/\(https?:\/\/github\.com\/[^)]+\?[^)]*\)/g,
 			"",
 		)
 
+		// Remove repository owner/name patterns like "com%2Ftt-rss%2Ftt-rss"
+		cleaned = cleaned.replace(/com%2F[\w-]+%2F[\w-]+/gi, "")
+
 		// Remove version badges
 		cleaned = cleaned.replace(/\bv\d+\s*$/gm, "")
+
+		// Remove "Public" or "Private" repo indicators when standalone
+		cleaned = cleaned.replace(/\b(Public|Private)\s*-?\s*/gi, "")
 	}
 
 	// Remove empty markdown links []() or [text]()
@@ -222,6 +267,87 @@ function inferFilenameFromUrl(url: string, defaultName = "document"): string {
 		return name ?? defaultName
 	} catch {
 		return defaultName
+	}
+}
+
+/**
+ * Extract meta tags from HTML for preview images and metadata
+ */
+function extractMetaTags(html: string): {
+	ogImage?: string
+	ogTitle?: string
+	ogDescription?: string
+	twitterImage?: string
+	favicon?: string
+} {
+	const result: Record<string, string> = {}
+
+	// Extract og:image
+	const ogImageMatch = html.match(
+		/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i,
+	)
+	if (ogImageMatch?.[1]) result.ogImage = ogImageMatch[1]
+
+	// Extract twitter:image
+	const twitterImageMatch = html.match(
+		/<meta\s+(?:name|property)=["']twitter:image["']\s+content=["']([^"']+)["']/i,
+	)
+	if (twitterImageMatch?.[1]) result.twitterImage = twitterImageMatch[1]
+
+	// Extract og:title
+	const ogTitleMatch = html.match(
+		/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i,
+	)
+	if (ogTitleMatch?.[1]) result.ogTitle = ogTitleMatch[1]
+
+	// Extract og:description
+	const ogDescriptionMatch = html.match(
+		/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i,
+	)
+	if (ogDescriptionMatch?.[1]) result.ogDescription = ogDescriptionMatch[1]
+
+	// Extract favicon
+	const faviconMatch = html.match(
+		/<link\s+rel=["'](?:icon|shortcut icon)["']\s+(?:type=["'][^"']*["']\s+)?href=["']([^"']+)["']/i,
+	)
+	if (faviconMatch?.[1]) result.favicon = faviconMatch[1]
+
+	return result
+}
+
+async function extractPreviewImageWithGemini(html: string, url: string): Promise<string | null> {
+	if (!aiClient) {
+		console.warn("extractPreviewImageWithGemini: aiClient not configured")
+		return null
+	}
+
+	try {
+		console.info("extractPreviewImageWithGemini: starting", { url, htmlLength: html.length })
+		const model = aiClient.getGenerativeModel({ model: env.CHAT_MODEL })
+
+		const prompt = `Analyze this HTML and extract the best preview image URL.
+Look for: og:image meta tags, large hero images, main content images, or logos.
+Return ONLY the absolute URL of the best image, or "NONE" if no suitable image found.
+
+HTML:
+${html.slice(0, 50000)}
+
+Base URL: ${url}`
+
+		const result = await model.generateContent({
+			contents: [{ role: "user", parts: [{ text: prompt }] }],
+		})
+		const response = result.response.text().trim()
+		console.info("extractPreviewImageWithGemini: response", { url, response: response.slice(0, 200) })
+
+		if (response === "NONE" || !response.startsWith("http")) {
+			return null
+		}
+
+		return response
+	} catch (error) {
+		console.error("extractPreviewImageWithGemini: failed", { url, error: String(error) })
+		return null
 	}
 }
 
@@ -285,9 +411,9 @@ function shouldTryMarkItDownFirst(
 ): boolean {
 	const lower = contentType.toLowerCase()
 	const lowerFilename = filename?.toLowerCase() ?? ""
-	const includeMedia = options.includeMedia ?? false
-	const includeMarkdown = options.includeMarkdown ?? false
-	const includeArchives = options.includeArchives ?? false
+	const includeMedia = options.includeMedia ?? true
+	const includeMarkdown = options.includeMarkdown ?? true
+	const includeArchives = options.includeArchives ?? true
 
 	// Office documents - MarkItDown excels at these
 	if (
@@ -423,19 +549,35 @@ export async function extractDocumentContent(
 		) {
 			const decoded = buffer.toString("utf-8")
 			if (mimeType.includes("html")) {
-				const htmlResult = await extractFromHtml(
-					decoded,
-					input.url ?? undefined,
-				)
-				const text = sanitiseText(htmlResult.text)
+				// Extract meta tags for preview images
+				const metaTags = extractMetaTags(decoded)
+
+				// Extract title from HTML
+				let pageTitle = metaTags.ogTitle || metadataTitle
+				if (!pageTitle) {
+					const titleMatch = decoded.match(/<title[^>]*>([^<]+)<\/title>/i)
+					if (titleMatch?.[1]) {
+						pageTitle = titleMatch[1].trim()
+					}
+				}
+
+				// Strip HTML tags for text content
+				let plain = decoded
+					.replace(/<script[\s\S]*?<\/script>/gi, " ")
+					.replace(/<style[\s\S]*?<\/style>/gi, " ")
+					.replace(/<[^>]+>/g, " ")
+				plain = cleanExtractedContent(plain)
+				const text = sanitiseText(plain)
+
 				return {
 					text,
-					title: htmlResult.title ?? metadataTitle ?? filename,
+					title: pageTitle ?? filename,
 					source: "upload",
 					url: input.url ?? null,
 					contentType: mimeType,
 					raw: {
-						...htmlResult.raw,
+						metaTags,
+						ogImage: metaTags.ogImage || metaTags.twitterImage || null,
 						upload: { filename, mimeType, size: buffer.length },
 					},
 					wordCount: countWords(text),
@@ -455,13 +597,7 @@ export async function extractDocumentContent(
 			}
 		}
 
-		if (
-			shouldTryMarkItDownFirst(mimeType, filename, {
-				includeMedia: true,
-				includeMarkdown: true,
-				includeArchives: true,
-			})
-		) {
+		if (shouldTryMarkItDownFirst(mimeType, filename)) {
 			const markitdownResult = await tryMarkItDownOnBuffer(buffer, filename)
 			if (markitdownResult) {
 				const markdown = cleanExtractedContent(markitdownResult.markdown)
@@ -608,46 +744,83 @@ export async function extractDocumentContent(
 		}
 	}
 
-    // Prefer MarkItDown for generic web pages (local)
-    if (true /* always try MarkItDown for web */) {
-        try {
-            const markitdownResult = await tryMarkItDownOnUrl(probableUrl)
-            if (markitdownResult) {
-                const markdown = cleanExtractedContent(
-                    markitdownResult.markdown,
-                    probableUrl,
-                )
-                const text = sanitiseText(markdown) || originalFallback
-                const markitdownTitle = readRecordString(
-                    markitdownResult.metadata,
-                    "title",
-                )
+	// Prefer MarkItDown for generic web pages (local)
+	if (true /* always try MarkItDown for web */) {
+		try {
+			const markitdownResult = await tryMarkItDownOnUrl(probableUrl)
+			if (markitdownResult) {
+				const markdown = cleanExtractedContent(
+					markitdownResult.markdown,
+					probableUrl,
+				)
+				const text = sanitiseText(markdown) || originalFallback
+				const markitdownTitle = readRecordString(
+					markitdownResult.metadata,
+					"title",
+				)
 
-                // Consider it a successful extraction if we have non-trivial text
-                if (text && text.length >= 120) {
-                    try {
-                        console.info("extractor: markitdown-url", {
-                            url: probableUrl,
-                            title: markitdownTitle ?? metadataTitle ?? null,
-                            chars: text.length,
-                            words: countWords(text),
-                        })
-                    } catch {}
-                    return {
-                        text,
-                        title: markitdownTitle ?? metadataTitle ?? null,
-                        source: "markitdown",
-                        url: probableUrl,
-                        contentType: "text/markdown",
-                        raw: { markitdown: markitdownResult.metadata },
-                        wordCount: countWords(text),
-                    }
-                }
-            }
-        } catch (error) {
-            console.warn("markitdown extraction failed", error)
-        }
-    }
+				// Consider it a successful extraction if we have non-trivial text
+				if (text && text.length >= 120) {
+					let metaTags = {}
+					let ogImage = null
+					try {
+						const htmlResponse = await safeFetch(probableUrl, {
+							method: "GET",
+							headers: {
+								"user-agent": DEFAULT_USER_AGENT,
+								accept: "text/html",
+							},
+						})
+						if (htmlResponse.ok) {
+							const html = await htmlResponse.text()
+							metaTags = extractMetaTags(html)
+							ogImage = metaTags.ogImage || metaTags.twitterImage || null
+
+							if (!ogImage) {
+								console.info("extractor: no-og-image, trying Gemini fallback", { url: probableUrl })
+								ogImage = await extractPreviewImageWithGemini(html, probableUrl)
+								if (ogImage) {
+									console.info("extractor: gemini-extracted-image", { url: probableUrl, image: ogImage })
+								} else {
+									console.warn("extractor: gemini-no-image-found", { url: probableUrl })
+								}
+							}
+						}
+					} catch {
+						// Ignore meta tag extraction errors
+					}
+
+					const finalTitle = markitdownTitle ?? metaTags.ogTitle ?? metadataTitle ?? null
+					try {
+						console.info("extractor: markitdown-url", {
+							url: probableUrl,
+							title: finalTitle,
+							markitdownTitle,
+							ogTitle: metaTags.ogTitle,
+							chars: text.length,
+							words: countWords(text),
+							hasOgImage: !!ogImage,
+						})
+					} catch {}
+					return {
+						text,
+						title: finalTitle,
+						source: "markitdown",
+						url: probableUrl,
+						contentType: "text/markdown",
+						raw: {
+							markitdown: markitdownResult.metadata,
+							metaTags,
+							ogImage,
+						},
+						wordCount: countWords(text),
+					}
+				}
+			}
+		} catch (error) {
+			console.warn("markitdown extraction failed", error)
+		}
+	}
 
 	// Validate URL for security (SSRF protection)
 	try {
@@ -775,30 +948,57 @@ export async function extractDocumentContent(
 		contentType.includes("text/html") ||
 		contentType.includes("application/xhtml")
 	) {
-    const html = await response.text()
-    // Minimal HTML to text stripping (no DOM): remove scripts/styles/tags, then clean noise
-    let plain = html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-    plain = cleanExtractedContent(plain, probableUrl)
-    const ensuredText = sanitiseText(plain) || originalFallback
-    try {
-      console.info("extractor: html-strip-fallback", {
-        url: probableUrl,
-        chars: ensuredText.length,
-        words: countWords(ensuredText),
-      })
-    } catch {}
-    return {
-      text: ensuredText,
-      title: metadataTitle ?? null,
-      source: "web",
-      url: probableUrl,
-      contentType,
-      raw: null,
-      wordCount: countWords(ensuredText),
-    }
+		const html = await response.text()
+
+		const metaTags = extractMetaTags(html)
+
+		let pageTitle = metaTags.ogTitle || metadataTitle
+		if (!pageTitle) {
+			const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
+			if (titleMatch?.[1]) {
+				pageTitle = titleMatch[1].trim()
+			}
+		}
+
+		let ogImage = metaTags.ogImage || metaTags.twitterImage || null
+		if (!ogImage) {
+			console.info("extractor: html-fallback-no-og-image, trying Gemini", { url: probableUrl })
+			ogImage = await extractPreviewImageWithGemini(html, probableUrl)
+			if (ogImage) {
+				console.info("extractor: html-fallback-gemini-extracted", { url: probableUrl, image: ogImage })
+			} else {
+				console.warn("extractor: html-fallback-gemini-no-image", { url: probableUrl })
+			}
+		}
+
+		let plain = html
+			.replace(/<script[\s\S]*?<\/script>/gi, " ")
+			.replace(/<style[\s\S]*?<\/style>/gi, " ")
+			.replace(/<[^>]+>/g, " ")
+		plain = cleanExtractedContent(plain, probableUrl)
+		const ensuredText = sanitiseText(plain) || originalFallback
+
+		try {
+			console.info("extractor: html-strip-fallback", {
+				url: probableUrl,
+				chars: ensuredText.length,
+				words: countWords(ensuredText),
+				hasOgImage: !!ogImage,
+			})
+		} catch {}
+
+		return {
+			text: ensuredText,
+			title: pageTitle ?? null,
+			source: "web",
+			url: probableUrl,
+			contentType,
+			raw: {
+				metaTags,
+				ogImage,
+			},
+			wordCount: countWords(ensuredText),
+		}
 	}
 
 	if (contentType.includes("pdf")) {

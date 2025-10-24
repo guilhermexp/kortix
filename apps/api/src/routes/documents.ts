@@ -203,9 +203,10 @@ export async function getDocument(
 		containerTags,
 		createdAt: document.created_at,
 		updatedAt: document.updated_at,
+		// Transform memory entries: database 'content' → API 'memory'
 		memoryEntries: (memories ?? []).map((row) => ({
 			id: row.id,
-			content: row.content ?? null,
+			memory: row.content ?? "", // API field (backward compatibility)
 			metadata: row.metadata ?? null,
 			createdAt: row.created_at,
 			updatedAt: row.updated_at,
@@ -504,17 +505,16 @@ export async function listDocumentsWithMemories(
 	const documents = docInfos.map(({ doc, containerTags, spaceIds }) => {
 		const memoryRows = memoryByDoc.get(doc.id) ?? []
 
+		// Transform database rows to API format (content → memory)
 		const memoryEntries = memoryRows.map((row) => ({
 			id: row.id,
-			memory: row.content ?? "",
+			documentId: row.document_id, // Added: was missing from response
+			memory: row.content ?? "", // API field: transformed from database 'content'
 			spaceId: row.space_id ?? spaceIds[0] ?? "",
 			orgId: row.org_id,
 			userId: row.user_id ?? null,
 			version: row.version ?? 1,
 			isLatest: row.is_latest ?? true,
-			parentMemoryId: null,
-			rootMemoryId: null,
-			memoryRelations: {},
 			sourceCount: row.source_count ?? 1,
 			isInference: row.is_inference ?? false,
 			isForgotten: row.is_forgotten ?? false,
@@ -671,17 +671,16 @@ export async function listDocumentsWithMemoriesByIds(
 	const documents = docInfos.map(({ doc, containerTags, spaceIds }) => {
 		const memoryRows = memoryByDoc.get(doc.id) ?? []
 
+		// Transform database rows to API format (content → memory)
 		const memoryEntries = memoryRows.map((row) => ({
 			id: row.id,
-			memory: row.content ?? "",
+			documentId: row.document_id, // Added: was missing from response
+			memory: row.content ?? "", // API field: transformed from database 'content'
 			spaceId: row.space_id ?? spaceIds[0] ?? "",
 			orgId: row.org_id,
 			userId: row.user_id ?? null,
 			version: row.version ?? 1,
 			isLatest: row.is_latest ?? true,
-			parentMemoryId: null,
-			rootMemoryId: null,
-			memoryRelations: {},
 			sourceCount: row.source_count ?? 1,
 			isInference: row.is_inference ?? false,
 			isForgotten: row.is_forgotten ?? false,
@@ -765,6 +764,47 @@ export async function listDocumentsWithMemoriesByIds(
 			totalPages: 1,
 		},
 	})
+}
+
+export async function updateDocument(
+	client: SupabaseClient,
+	{
+		organizationId,
+		documentId,
+		content,
+		title,
+	}: {
+		organizationId: string
+		documentId: string
+		content?: string
+		title?: string
+	},
+) {
+	const updates: Record<string, unknown> = {}
+
+	if (content !== undefined) {
+		updates.content = content
+	}
+
+	if (title !== undefined) {
+		updates.title = title
+	}
+
+	if (Object.keys(updates).length === 0) {
+		throw new Error("At least one field (content or title) must be provided for update")
+	}
+
+	const { data, error } = await client
+		.from("documents")
+		.update(updates)
+		.eq("id", documentId)
+		.eq("org_id", organizationId)
+		.select("id, status, content, title, updated_at")
+		.single()
+
+	if (error) throw error
+
+	return data
 }
 
 export async function deleteDocument(

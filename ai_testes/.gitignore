@@ -1,0 +1,10 @@
+# Logs de teste
+*.log
+
+# Resultados de teste
+test-results/
+coverage/
+
+# Ambiente local
+.env
+.env.local

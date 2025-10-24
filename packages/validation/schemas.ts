@@ -113,18 +113,17 @@ export type ChunkType = z.infer<typeof ChunkTypeEnum>
 export const ChunkSchema = z.object({
 	id: z.string(),
 	documentId: z.string(),
+	orgId: z.string(), // Added: exists in database
 	content: z.string(),
 	embeddedContent: z.string().nullable().optional(),
 	type: ChunkTypeEnum.default("text"),
-	position: z.number(),
+	position: z.number().nullable().optional(),
 	metadata: MetadataSchema.nullable().optional(),
 
 	embedding: z.array(z.number()).nullable().optional(),
 	embeddingModel: z.string().nullable().optional(),
 	embeddingNew: z.array(z.number()).nullable().optional(),
 	embeddingNewModel: z.string().nullable().optional(),
-	matryokshaEmbedding: z.array(z.number()).nullable().optional(),
-	matryokshaEmbeddingModel: z.string().nullable().optional(),
 
 	createdAt: z.coerce.date(),
 })
@@ -246,30 +245,19 @@ export type Space = z.infer<typeof SpaceSchema>
 export const MemoryRelationEnum = z.enum(["updates", "extends", "derives"])
 export type MemoryRelation = z.infer<typeof MemoryRelationEnum>
 
-export const MemoryEntrySchema = z.object({
+// Internal schema aligned with database structure
+// Used for database queries and internal operations
+export const MemoryEntryDBSchema = z.object({
 	id: z.string(),
-	memory: z.string(), // The actual memory content
-	spaceId: z.string(),
+	documentId: z.string().nullable().optional(), // Added: exists in database as document_id
+	spaceId: z.string().nullable().optional(),
 	orgId: z.string(),
 	userId: z.string().nullable().optional(),
 
-	// Version control
-	version: z.number().default(1),
-	isLatest: z.boolean().default(true),
-	parentMemoryId: z.string().nullable().optional(),
-	rootMemoryId: z.string().nullable().optional(),
+	// Core content field (matches database column name)
+	content: z.string(),
 
-	// Memory relationships
-	memoryRelations: z.record(MemoryRelationEnum).default({}),
-
-	// Source tracking
-	sourceCount: z.number().default(1),
-
-	// Status flags
-	isInference: z.boolean().default(false),
-	isForgotten: z.boolean().default(false),
-	forgetAfter: z.coerce.date().nullable().optional(),
-	forgetReason: z.string().nullable().optional(),
+	metadata: z.record(z.unknown()).nullable().optional(),
 
 	// Embeddings
 	memoryEmbedding: z
@@ -283,7 +271,62 @@ export const MemoryEntrySchema = z.object({
 		.optional(),
 	memoryEmbeddingNewModel: z.string().nullable().optional(),
 
+	// Version control
+	version: z.number().default(1),
+	isLatest: z.boolean().default(true),
+
+	// Source tracking
+	sourceCount: z.number().default(1),
+
+	// Status flags
+	isInference: z.boolean().default(false),
+	isForgotten: z.boolean().default(false),
+	forgetAfter: z.coerce.date().nullable().optional(),
+	forgetReason: z.string().nullable().optional(),
+
+	createdAt: z.coerce.date(),
+	updatedAt: z.coerce.date(),
+})
+export type MemoryEntryDB = z.infer<typeof MemoryEntryDBSchema>
+
+// Public API schema with backward compatibility
+// Uses 'memory' field for historical reasons (API clients expect this)
+export const MemoryEntrySchema = z.object({
+	id: z.string(),
+	documentId: z.string().nullable().optional(),
+	spaceId: z.string().nullable().optional(),
+	orgId: z.string(),
+	userId: z.string().nullable().optional(),
+
+	// Public API field name for backward compatibility
+	memory: z.string(), // Transformed from database 'content' field
+
 	metadata: z.record(z.unknown()).nullable().optional(),
+
+	// Embeddings
+	memoryEmbedding: z
+		.union([z.array(z.number()), z.string()])
+		.nullable()
+		.optional(),
+	memoryEmbeddingModel: z.string().nullable().optional(),
+	memoryEmbeddingNew: z
+		.union([z.array(z.number()), z.string()])
+		.nullable()
+		.optional(),
+	memoryEmbeddingNewModel: z.string().nullable().optional(),
+
+	// Version control
+	version: z.number().default(1),
+	isLatest: z.boolean().default(true),
+
+	// Source tracking
+	sourceCount: z.number().default(1),
+
+	// Status flags
+	isInference: z.boolean().default(false),
+	isForgotten: z.boolean().default(false),
+	forgetAfter: z.coerce.date().nullable().optional(),
+	forgetReason: z.string().nullable().optional(),
 
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
@@ -347,6 +390,22 @@ export const OrganizationSettingsSchema = z.object({
 })
 export type OrganizationSettings = z.infer<typeof OrganizationSettingsSchema>
 
+// Helper functions to transform between database and API schemas
+export function memoryDBtoAPI(dbMemory: MemoryEntryDB): MemoryEntry {
+	return {
+		...dbMemory,
+		memory: dbMemory.content, // Transform content → memory for API
+	}
+}
+
+export function memoryAPItoInsert(apiMemory: Partial<MemoryEntry>) {
+	const { memory, ...rest } = apiMemory
+	return {
+		...rest,
+		content: memory, // Transform memory → content for database
+	}
+}
+
 export const schemas = {
 	// Base types
 	MetadataSchema,
@@ -373,7 +432,8 @@ export const schemas = {
 	// Spaces and Memory
 	SpaceSchema,
 	MemoryRelationEnum,
-	MemoryEntrySchema,
+	MemoryEntryDBSchema, // Internal database schema
+	MemoryEntrySchema, // Public API schema
 	DocumentsToSpacesSchema,
 	MemoryDocumentSourceSchema,
 	SpaceRoleEnum,

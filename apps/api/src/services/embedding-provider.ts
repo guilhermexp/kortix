@@ -21,9 +21,17 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 	}
 
 	try {
+		// Gemini API has ~36KB limit. Truncate if needed to prevent errors
+		const maxBytes = 30000 // Safety margin below 36KB limit
+		const textBytes = Buffer.byteLength(normalizedText, "utf8")
+		const safeText =
+			textBytes > maxBytes
+				? normalizedText.slice(0, Math.floor((normalizedText.length * maxBytes) / textBytes))
+				: normalizedText
+
 		const result = await embeddingModel.embedContent({
 			content: {
-				parts: [{ text: normalizedText }],
+				parts: [{ text: safeText }],
 			},
 		})
 		const values = result?.embedding?.values
