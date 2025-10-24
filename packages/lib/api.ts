@@ -134,6 +134,16 @@ export const apiSchema = createSchema({
 		output: MigrateMCPResponseSchema,
 	},
 
+	// Update document content
+	"@patch/documents/:id": {
+		input: z.object({
+			content: z.string().optional(),
+			title: z.string().optional(),
+		}),
+		output: z.any(),
+		params: z.object({ id: z.string() }),
+	},
+
 	// Delete a memory
 	"@delete/documents/:id": {
 		output: z.any(), // 204 No-Content

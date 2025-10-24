@@ -10,6 +10,7 @@ import { Suspense } from "react"
 import { Toaster } from "sonner"
 import { TourProvider } from "@/components/tour"
 import { MobilePanelProvider } from "@/lib/mobile-panel-context"
+import { ThemeProvider } from "@/components/providers/theme-provider"
 
 import { ViewModeProvider } from "@/lib/view-mode-context"
 
@@ -35,6 +36,12 @@ export const metadata: Metadata = {
 	metadataBase,
 	description: "Self-hosted Supermemory",
 	title: "supermemory",
+	viewport: {
+		width: "device-width",
+		initialScale: 1,
+		maximumScale: 5,
+		userScalable: true,
+	},
 }
 
 export default function RootLayout({
@@ -43,24 +50,31 @@ export default function RootLayout({
 	children: React.ReactNode
 }>) {
 	return (
-		<html className="dark bg-sm-black" lang="en">
+		<html lang="en" suppressHydrationWarning>
 			<body
 				className={`${sans.variable} ${mono.variable} antialiased bg-[#0f1419]`}
 			>
-				<QueryProvider>
-					<AuthProvider>
-						<ViewModeProvider>
-							<MobilePanelProvider>
-								<ErrorTrackingProvider>
-									<TourProvider>
-										<Suspense>{children}</Suspense>
-										<Toaster richColors theme="dark" />
-									</TourProvider>
-								</ErrorTrackingProvider>
-							</MobilePanelProvider>
-						</ViewModeProvider>
-					</AuthProvider>
-				</QueryProvider>
+				<ThemeProvider
+					attribute="class"
+					defaultTheme="dark"
+					enableSystem={false}
+					disableTransitionOnChange
+				>
+					<QueryProvider>
+						<AuthProvider>
+							<ViewModeProvider>
+								<MobilePanelProvider>
+									<ErrorTrackingProvider>
+										<TourProvider>
+											<Suspense>{children}</Suspense>
+											<Toaster richColors theme="dark" />
+										</TourProvider>
+									</ErrorTrackingProvider>
+								</MobilePanelProvider>
+							</ViewModeProvider>
+						</AuthProvider>
+					</QueryProvider>
+				</ThemeProvider>
 			</body>
 		</html>
 	)

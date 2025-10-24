@@ -154,7 +154,14 @@ export async function processDocument(input: ProcessDocumentInput) {
 		const mergedRaw = extraction.raw
 			? {
 					...(document.raw ?? {}),
-					extraction: extraction.raw,
+					extraction: {
+						title: extraction.title ?? null,
+						source: extraction.source ?? null,
+						contentType: extraction.contentType ?? null,
+						url: extraction.url ?? null,
+						wordCount: extraction.wordCount ?? null,
+						...extraction.raw,
+					},
 				}
 			: (document.raw ?? null)
 

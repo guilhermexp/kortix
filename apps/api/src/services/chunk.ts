@@ -7,8 +7,10 @@ export function chunkText(
 	content: string,
 	options?: { size?: number; overlap?: number },
 ): Chunk[] {
-	const size = options?.size ?? 800
-	const overlap = Math.min(options?.overlap ?? 120, size - 1)
+	// Reduced from 800 to 500 to prevent Gemini API "payload size exceeds limit" errors
+	// Gemini embedding API has a ~20K token limit (~36KB), and 500 chars is safer
+	const size = options?.size ?? 500
+	const overlap = Math.min(options?.overlap ?? 100, size - 1)
 
 	if (content.length <= size) {
 		return [{ content, position: 0 }]

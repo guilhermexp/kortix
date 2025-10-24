@@ -47,6 +47,7 @@ import {
   listDocumentsWithMemories,
   listDocumentsWithMemoriesByIds,
   migrateMcpDocuments,
+  updateDocument,
 } from "./routes/documents";
 import { healthHandler } from "./routes/health";
 import { registerMcpRoutes } from "./routes/mcp";
@@ -463,6 +464,44 @@ app.get("/v3/documents/:id", async (c) => {
     );
   }
 });
+
+app.patch(
+  "/v3/documents/:id",
+  zValidator(
+    "json",
+    z.object({
+      content: z.string().optional(),
+      title: z.string().optional(),
+    }),
+  ),
+  async (c) => {
+    const { organizationId } = c.var.session;
+    const documentId = c.req.param("id");
+    const { content, title } = c.req.valid("json");
+    const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+
+    try {
+      const updatedDocument = await updateDocument(supabase, {
+        organizationId,
+        documentId,
+        content,
+        title,
+      });
+      return c.json(updatedDocument);
+    } catch (error) {
+      console.error("Failed to update document", error);
+      return c.json(
+        {
+          error: {
+            message:
+              error instanceof Error ? error.message : "Failed to update document",
+          },
+        },
+        400,
+      );
+    }
+  },
+);
 
 app.post(
   "/v3/documents/documents/by-ids",

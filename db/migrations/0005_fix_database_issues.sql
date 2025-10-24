@@ -151,34 +151,9 @@ END;
 $$;
 
 -- finalize_document_atomic function
-CREATE OR REPLACE FUNCTION public.finalize_document_atomic(
-  doc_id uuid,
-  org_id uuid
-)
-RETURNS boolean
-LANGUAGE plpgsql
-VOLATILE
-SET search_path = public
-AS $$
-DECLARE
-  chunk_count integer;
-BEGIN
-  -- Count chunks for this document
-  SELECT COUNT(*) INTO chunk_count
-  FROM document_chunks
-  WHERE document_id = doc_id AND org_id = org_id;
-
-  -- Update document with chunk count and finalize
-  UPDATE documents
-  SET
-    chunk_count = chunk_count,
-    finalized_at = now(),
-    status = 'completed'
-  WHERE id = doc_id AND org_id = org_id;
-
-  RETURN FOUND;
-END;
-$$;
+-- REMOVED: This function is defined in apps/api/migrations/0001_add_atomic_document_finalization.sql
+-- The correct version accepts (p_document_id UUID, p_document_update JSONB, p_memory_insert JSONB)
+-- and handles atomic document finalization with memory creation.
 
 -- Ensure RLS is enabled on all public tables
 DO $$
