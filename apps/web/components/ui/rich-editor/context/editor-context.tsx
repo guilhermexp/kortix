@@ -1,12 +1,12 @@
 "use client"
 
 import React, {
-	createContext,
-	useCallback,
-	useContext,
-	useMemo,
-	useReducer,
-	useRef,
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useReducer,
+  useRef,
 } from "react"
 
 import type { EditorAction } from "../reducer/actions"
@@ -22,19 +22,19 @@ const EditorStateContext = createContext<EditorState | undefined>(undefined)
  * Context for the dispatch function (write operations).
  */
 const EditorDispatchContext = createContext<
-	React.Dispatch<EditorAction> | undefined
+  React.Dispatch<EditorAction> | undefined
 >(undefined)
 
 /**
  * Interface for selection manager that doesn't cause re-renders
  */
 interface SelectionManager {
-	/** Get current selection info without triggering re-render */
-	getSelection: () => SelectionInfo | null
-	/** Set selection info without triggering re-render */
-	setSelection: (selection: SelectionInfo | null) => void
-	/** Subscribe to selection changes (for toolbar updates only) */
-	subscribe: (callback: (selection: SelectionInfo | null) => void) => () => void
+  /** Get current selection info without triggering re-render */
+  getSelection: () => SelectionInfo | null
+  /** Set selection info without triggering re-render */
+  setSelection: (selection: SelectionInfo | null) => void
+  /** Subscribe to selection changes (for toolbar updates only) */
+  subscribe: (callback: (selection: SelectionInfo | null) => void) => () => void
 }
 
 /**
@@ -46,20 +46,20 @@ const SelectionContext = createContext<SelectionManager | undefined>(undefined)
  * Props for the EditorProvider component.
  */
 export interface EditorProviderProps {
-	/** Child components that will have access to the editor context */
-	children: React.ReactNode
+  /** Child components that will have access to the editor context */
+  children: React.ReactNode
 
-	/** Initial container to populate the editor with */
-	initialContainer?: ContainerNode
+  /** Initial container to populate the editor with */
+  initialContainer?: ContainerNode
 
-	/** Complete initial state (overrides initialContainer if provided) */
-	initialState?: EditorState
+  /** Complete initial state (overrides initialContainer if provided) */
+  initialState?: EditorState
 
-	/** Callback fired whenever the state changes */
-	onChange?: (state: EditorState) => void
+  /** Callback fired whenever the state changes */
+  onChange?: (state: EditorState) => void
 
-	/** Enable debug logging for state changes */
-	debug?: boolean
+  /** Enable debug logging for state changes */
+  debug?: boolean
 }
 
 /**
@@ -87,88 +87,88 @@ export interface EditorProviderProps {
  * ```
  */
 export function EditorProvider({
-	children,
-	initialContainer,
-	initialState,
-	onChange,
-	debug = false,
+  children,
+  initialContainer,
+  initialState,
+  onChange,
+  debug = false,
 }: EditorProviderProps) {
-	// Use useRef to ensure initialEditorState is only computed once
-	// This prevents createInitialState from being called on every render
-	const initialEditorStateRef = React.useRef<EditorState | null>(null)
+  // Use useRef to ensure initialEditorState is only computed once
+  // This prevents createInitialState from being called on every render
+  const initialEditorStateRef = React.useRef<EditorState | null>(null)
 
-	if (initialEditorStateRef.current === null) {
-		initialEditorStateRef.current =
-			initialState || createInitialState(initialContainer)
-	}
+  if (initialEditorStateRef.current === null) {
+    initialEditorStateRef.current =
+      initialState || createInitialState(initialContainer)
+  }
 
-	const initialEditorState = initialEditorStateRef.current
+  const initialEditorState = initialEditorStateRef.current
 
-	// Set up reducer with useReducer
-	const [state, dispatch] = useReducer(editorReducer, initialEditorState)
+  // Set up reducer with useReducer
+  const [state, dispatch] = useReducer(editorReducer, initialEditorState)
 
-	// Create selection manager (doesn't cause re-renders)
-	const selectionRef = useRef<SelectionInfo | null>(null)
-	const selectionSubscribers = useRef<
-		Set<(selection: SelectionInfo | null) => void>
-	>(new Set())
+  // Create selection manager (doesn't cause re-renders)
+  const selectionRef = useRef<SelectionInfo | null>(null)
+  const selectionSubscribers = useRef<
+    Set<(selection: SelectionInfo | null) => void>
+  >(new Set())
 
-	const selectionManager = useMemo<SelectionManager>(
-		() => ({
-			getSelection: () => selectionRef.current,
-			setSelection: (selection: SelectionInfo | null) => {
-				selectionRef.current = selection
-				// Notify subscribers (e.g., toolbar) but don't trigger full re-render
-				selectionSubscribers.current.forEach((callback) => callback(selection))
-			},
-			subscribe: (callback: (selection: SelectionInfo | null) => void) => {
-				selectionSubscribers.current.add(callback)
-				return () => {
-					selectionSubscribers.current.delete(callback)
-				}
-			},
-		}),
-		[],
-	)
+  const selectionManager = useMemo<SelectionManager>(
+    () => ({
+      getSelection: () => selectionRef.current,
+      setSelection: (selection: SelectionInfo | null) => {
+        selectionRef.current = selection
+        // Notify subscribers (e.g., toolbar) but don't trigger full re-render
+        selectionSubscribers.current.forEach((callback) => callback(selection))
+      },
+      subscribe: (callback: (selection: SelectionInfo | null) => void) => {
+        selectionSubscribers.current.add(callback)
+        return () => {
+          selectionSubscribers.current.delete(callback)
+        }
+      },
+    }),
+    []
+  )
 
-	// Create wrapped dispatch that includes onChange and debug logging
-	const enhancedDispatch = useMemo(() => {
-		return (action: EditorAction) => {
-			if (debug) {
-				console.group(`🎬 [Mina Editor] Action: ${action.type}`)
-				if ("payload" in action) {
-				}
-				const currentContainer = state.history[state.historyIndex]
-			}
+  // Create wrapped dispatch that includes onChange and debug logging
+  const enhancedDispatch = useMemo(() => {
+    return (action: EditorAction) => {
+      if (debug) {
+        console.group(`🎬 [Mina Editor] Action: ${action.type}`)
+        if ("payload" in action) {
+        }
+        const currentContainer = state.history[state.historyIndex]
+      }
 
-			// Dispatch the action
-			dispatch(action)
+      // Dispatch the action
+      dispatch(action)
 
-			// Note: The new state will be available on the next render
-			// If we need the new state immediately, we'd need to use a ref or middleware
+      // Note: The new state will be available on the next render
+      // If we need the new state immediately, we'd need to use a ref or middleware
 
-			if (debug) {
-				console.groupEnd()
-			}
-		}
-	}, [dispatch, debug, state])
+      if (debug) {
+        console.groupEnd()
+      }
+    }
+  }, [dispatch, debug, state])
 
-	// Call onChange when state changes
-	React.useEffect(() => {
-		if (onChange) {
-			onChange(state)
-		}
-	}, [state, onChange])
+  // Call onChange when state changes
+  React.useEffect(() => {
+    if (onChange) {
+      onChange(state)
+    }
+  }, [state, onChange])
 
-	return (
-		<EditorStateContext.Provider value={state}>
-			<EditorDispatchContext.Provider value={enhancedDispatch}>
-				<SelectionContext.Provider value={selectionManager}>
-					{children}
-				</SelectionContext.Provider>
-			</EditorDispatchContext.Provider>
-		</EditorStateContext.Provider>
-	)
+  return (
+    <EditorStateContext.Provider value={state}>
+      <EditorDispatchContext.Provider value={enhancedDispatch}>
+        <SelectionContext.Provider value={selectionManager}>
+          {children}
+        </SelectionContext.Provider>
+      </EditorDispatchContext.Provider>
+    </EditorStateContext.Provider>
+  )
 }
 
 /**
@@ -187,16 +187,16 @@ export function EditorProvider({
  * ```
  */
 export function useEditorState(): EditorState {
-	const context = useContext(EditorStateContext)
+  const context = useContext(EditorStateContext)
 
-	if (context === undefined) {
-		throw new Error(
-			"useEditorState must be used within an EditorProvider. " +
-				"Wrap your component tree with <EditorProvider>.",
-		)
-	}
+  if (context === undefined) {
+    throw new Error(
+      "useEditorState must be used within an EditorProvider. " +
+        "Wrap your component tree with <EditorProvider>."
+    )
+  }
 
-	return context
+  return context
 }
 
 /**
@@ -223,16 +223,16 @@ export function useEditorState(): EditorState {
  * ```
  */
 export function useEditorDispatch(): React.Dispatch<EditorAction> {
-	const context = useContext(EditorDispatchContext)
+  const context = useContext(EditorDispatchContext)
 
-	if (context === undefined) {
-		throw new Error(
-			"useEditorDispatch must be used within an EditorProvider. " +
-				"Wrap your component tree with <EditorProvider>.",
-		)
-	}
+  if (context === undefined) {
+    throw new Error(
+      "useEditorDispatch must be used within an EditorProvider. " +
+        "Wrap your component tree with <EditorProvider>."
+    )
+  }
 
-	return context
+  return context
 }
 
 /**
@@ -264,7 +264,7 @@ export function useEditorDispatch(): React.Dispatch<EditorAction> {
  * ```
  */
 export function useEditor(): [EditorState, React.Dispatch<EditorAction>] {
-	return [useEditorState(), useEditorDispatch()]
+  return [useEditorState(), useEditorDispatch()]
 }
 
 /**
@@ -289,8 +289,8 @@ export function useEditor(): [EditorState, React.Dispatch<EditorAction>] {
  * ```
  */
 export function useEditorSelector<T>(selector: (state: EditorState) => T): T {
-	const state = useEditorState()
-	return useMemo(() => selector(state), [selector, state])
+  const state = useEditorState()
+  return useMemo(() => selector(state), [selector, state])
 }
 
 /**
@@ -314,13 +314,13 @@ export function useEditorSelector<T>(selector: (state: EditorState) => T): T {
  * ```
  */
 export function useNode(nodeId: string) {
-	const state = useEditorState()
+  const state = useEditorState()
 
-	return useMemo(() => {
-		const { findNodeById } = require("../utils/tree-operations")
-		const currentContainer = state.history[state.historyIndex]
-		return findNodeById(currentContainer, nodeId)
-	}, [state.history, state.historyIndex, nodeId])
+  return useMemo(() => {
+    const { findNodeById } = require("../utils/tree-operations")
+    const currentContainer = state.history[state.historyIndex]
+    return findNodeById(currentContainer, nodeId)
+  }, [state.history, state.historyIndex, nodeId])
 }
 
 /**
@@ -344,16 +344,16 @@ export function useNode(nodeId: string) {
  * ```
  */
 export function useSelectionManager(): SelectionManager {
-	const context = useContext(SelectionContext)
+  const context = useContext(SelectionContext)
 
-	if (context === undefined) {
-		throw new Error(
-			"useSelectionManager must be used within an EditorProvider. " +
-				"Wrap your component tree with <EditorProvider>.",
-		)
-	}
+  if (context === undefined) {
+    throw new Error(
+      "useSelectionManager must be used within an EditorProvider. " +
+        "Wrap your component tree with <EditorProvider>."
+    )
+  }
 
-	return context
+  return context
 }
 
 /**
@@ -379,15 +379,15 @@ export function useSelectionManager(): SelectionManager {
  * ```
  */
 export function useSelection(): SelectionInfo | null {
-	const selectionManager = useSelectionManager()
-	const [selection, setSelection] = React.useState<SelectionInfo | null>(
-		selectionManager.getSelection(),
-	)
+  const selectionManager = useSelectionManager()
+  const [selection, setSelection] = React.useState<SelectionInfo | null>(
+    selectionManager.getSelection()
+  )
 
-	React.useEffect(() => {
-		const unsubscribe = selectionManager.subscribe(setSelection)
-		return unsubscribe
-	}, [selectionManager])
+  React.useEffect(() => {
+    const unsubscribe = selectionManager.subscribe(setSelection)
+    return unsubscribe
+  }, [selectionManager])
 
-	return selection
+  return selection
 }

@@ -27,9 +27,7 @@ const GITHUB_API = "https://api.github.com"
 /**
  * Parse GitHub URL to extract owner and repo
  */
-function parseGitHubUrl(
-	url: string,
-): { owner: string; repo: string; branch?: string } | null {
+function parseGitHubUrl(url: string): { owner: string; repo: string; branch?: string } | null {
 	try {
 		const urlObj = new URL(url)
 		if (!urlObj.hostname.includes("github.com")) {
@@ -94,18 +92,18 @@ function sanitizeUnicode(text: string): string {
 	return text.replace(/[\uD800-\uDFFF]/g, (match) => {
 		// If it's a valid surrogate pair, keep it
 		const code = match.charCodeAt(0)
-		if (code >= 0xd800 && code <= 0xdbff) {
+		if (code >= 0xD800 && code <= 0xDBFF) {
 			// High surrogate - check if followed by low surrogate
 			const nextChar = text[text.indexOf(match) + 1]
 			if (nextChar) {
 				const nextCode = nextChar.charCodeAt(0)
-				if (nextCode >= 0xdc00 && nextCode <= 0xdfff) {
+				if (nextCode >= 0xDC00 && nextCode <= 0xDFFF) {
 					return match // Valid pair
 				}
 			}
 		}
 		// Invalid surrogate, replace with safe character
-		return "\uFFFD" // Unicode replacement character
+		return '\uFFFD' // Unicode replacement character
 	})
 }
 
@@ -198,9 +196,7 @@ function generateTree(files: RepositoryFile[]): string {
 	tree.push("Files:")
 	files.forEach((file) => {
 		const depth = file.path.split("/").length - 1
-		tree.push(
-			`${"  ".repeat(depth)}📄 ${file.path.split("/").pop()} (${file.size} bytes)`,
-		)
+		tree.push(`${"  ".repeat(depth)}📄 ${file.path.split("/").pop()} (${file.size} bytes)`)
 	})
 
 	return tree.join("\n")

@@ -1,9 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import {
-	safeFetch,
-	URLValidationError,
-	validateUrlSafety,
-} from "./url-validator"
+import { validateUrlSafety, safeFetch, URLValidationError } from "./url-validator"
 
 /**
  * Unit tests for URL validator (SSRF Protection)
@@ -21,9 +17,7 @@ describe("URL Validator - SSRF Protection", () => {
 		describe("Valid URLs", () => {
 			it("should allow valid public HTTP URLs", () => {
 				expect(() => validateUrlSafety("http://example.com")).not.toThrow()
-				expect(() =>
-					validateUrlSafety("http://google.com/search"),
-				).not.toThrow()
+				expect(() => validateUrlSafety("http://google.com/search")).not.toThrow()
 			})
 
 			it("should allow valid public HTTPS URLs", () => {
@@ -228,18 +222,18 @@ describe("URL Validator - SSRF Protection", () => {
 				)
 			})
 
-			it("should allow valid public URLs", async () => {
-				// Network can be restricted in some environments.
-				// We assert that if it fails, it's NOT due to URL validation.
-				try {
-					const response = await safeFetch("https://example.com")
-					expect(response).toBeDefined()
-					expect(response.status).toBeGreaterThanOrEqual(200)
-				} catch (err) {
-					// Accept network errors but not URLValidationError
-					expect(err).not.toBeInstanceOf(URLValidationError)
-				}
-			})
+            it("should allow valid public URLs", async () => {
+                // Network can be restricted in some environments.
+                // We assert that if it fails, it's NOT due to URL validation.
+                try {
+                    const response = await safeFetch("https://example.com")
+                    expect(response).toBeDefined()
+                    expect(response.status).toBeGreaterThanOrEqual(200)
+                } catch (err) {
+                    // Accept network errors but not URLValidationError
+                    expect(err).not.toBeInstanceOf(URLValidationError)
+                }
+            })
 		})
 
 		describe("Redirect Handling", () => {

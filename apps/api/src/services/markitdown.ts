@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process"
-import { unlink, writeFile } from "node:fs/promises"
+import { writeFile, unlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { FILE_LIMITS } from "../config/constants"
@@ -7,16 +7,10 @@ import { FILE_LIMITS } from "../config/constants"
 // In production, use system Python configured via nixpacks
 // In development, use local venv
 const isProduction = process.env.NODE_ENV === "production"
-const MARKITDOWN_PYTHON_PATH =
-	process.env.MARKITDOWN_PYTHON_PATH ||
-	(isProduction
-		? "python3"
-		: "/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv/bin/python")
-const MARKITDOWN_VENV_PATH =
-	process.env.MARKITDOWN_VENV_PATH ||
-	(isProduction
-		? ""
-		: "/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv")
+const MARKITDOWN_PYTHON_PATH = process.env.MARKITDOWN_PYTHON_PATH ||
+	(isProduction ? "python3" : "/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv/bin/python")
+const MARKITDOWN_VENV_PATH = process.env.MARKITDOWN_VENV_PATH ||
+	(isProduction ? "" : "/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv")
 
 let markitdownAvailable: boolean | null = null
 
@@ -77,10 +71,7 @@ export async function convertWithMarkItDown(
 	buffer: Buffer,
 	filename?: string,
 ): Promise<MarkItDownResponse> {
-	const tempPath = join(
-		tmpdir(),
-		`markitdown-${Date.now()}-${filename || "file"}`,
-	)
+	const tempPath = join(tmpdir(), `markitdown-${Date.now()}-${filename || "file"}`)
 
 	try {
 		await writeFile(tempPath, buffer)
@@ -133,15 +124,11 @@ export async function checkMarkItDownHealth(): Promise<boolean> {
 		return markitdownAvailable
 	}
 
-	console.info(
-		"MarkItDown health check: Testing with Python path:",
-		MARKITDOWN_PYTHON_PATH,
-	)
+	console.info("MarkItDown health check: Testing with Python path:", MARKITDOWN_PYTHON_PATH)
 
 	try {
 		// Test with a simple HTML file
-		const testHtml =
-			"<html><body><h1>Test</h1><p>MarkItDown is working</p></body></html>"
+		const testHtml = "<html><body><h1>Test</h1><p>MarkItDown is working</p></body></html>"
 		const tempPath = join(tmpdir(), `markitdown-health-${Date.now()}.html`)
 
 		await writeFile(tempPath, testHtml)

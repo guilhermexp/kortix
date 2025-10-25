@@ -1,8 +1,8 @@
 import {
+	GoogleGenerativeAI,
 	type GenerateContentRequest,
 	type GenerateContentResult,
 	type GenerateContentStreamResult,
-	GoogleGenerativeAI,
 } from "@google/generative-ai"
 import { env } from "../env"
 
@@ -170,9 +170,7 @@ class AIProviderWithFallback implements AIProvider {
 		// Converter contents
 		for (const content of request.contents ?? []) {
 			const role = content.role === "model" ? "assistant" : "user"
-			const text = content.parts
-				.map((p) => ("text" in p ? p.text : ""))
-				.join(" ")
+			const text = content.parts.map((p) => ("text" in p ? p.text : "")).join(" ")
 			if (text) {
 				messages.push({ role, content: text })
 			}
@@ -212,9 +210,7 @@ class AIProviderWithFallback implements AIProvider {
 
 	private async *streamOpenRouterResponse(
 		response: Response,
-	): AsyncGenerator<{
-		candidates: Array<{ content: { parts: Array<{ text: string }> } }>
-	}> {
+	): AsyncGenerator<{ candidates: Array<{ content: { parts: Array<{ text: string }> } }> }> {
 		const reader = response.body?.getReader()
 		if (!reader) throw new Error("No response body")
 
@@ -383,5 +379,6 @@ export function createAIClient() {
 /**
  * Client de AI padrão com fallback
  */
-export const aiClient =
-	env.GOOGLE_API_KEY || env.OPENROUTER_API_KEY ? createAIClient() : null
+export const aiClient = env.GOOGLE_API_KEY || env.OPENROUTER_API_KEY
+	? createAIClient()
+	: null

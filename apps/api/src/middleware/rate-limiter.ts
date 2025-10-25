@@ -43,10 +43,7 @@ function getClientIdentifier(c: Context): string {
 
 	// Try IP address
 	const forwardedFor = c.req.header("x-forwarded-for")
-	const ip =
-		forwardedFor?.split(",")[0]?.trim() ||
-		c.req.header("x-real-ip") ||
-		"unknown"
+	const ip = forwardedFor?.split(",")[0]?.trim() || c.req.header("x-real-ip") || "unknown"
 
 	return `ip:${ip}`
 }
@@ -56,11 +53,7 @@ function getClientIdentifier(c: Context): string {
  */
 function getRateLimitForPath(path: string): number {
 	// Match path patterns to rate limit categories
-	if (
-		path.startsWith("/api/auth") ||
-		path.includes("/login") ||
-		path.includes("/register")
-	) {
+	if (path.startsWith("/api/auth") || path.includes("/login") || path.includes("/register")) {
 		return RATE_LIMITS.LIMITS.AUTH
 	}
 
@@ -87,9 +80,7 @@ function getRateLimitForPath(path: string): number {
  * Check if path should skip rate limiting
  */
 function shouldSkipPath(path: string): boolean {
-	return RATE_LIMITS.SKIP_PATHS.some(
-		(skipPath) => path === skipPath || path.startsWith(skipPath),
-	)
+	return RATE_LIMITS.SKIP_PATHS.some(skipPath => path === skipPath || path.startsWith(skipPath))
 }
 
 /**
@@ -114,9 +105,7 @@ function cleanupExpiredEntries(): void {
 	}
 
 	if (expiredKeys.length > 0) {
-		console.info(
-			`Rate limiter: Cleaned up ${expiredKeys.length} expired entries`,
-		)
+		console.info(`Rate limiter: Cleaned up ${expiredKeys.length} expired entries`)
 	}
 }
 
@@ -143,9 +132,10 @@ function startCleanupTimer(): void {
  * @param options.limit - Override default rate limit
  * @param options.windowMs - Override default time window
  */
-export function rateLimiter(
-	options: { limit?: number; windowMs?: number } = {},
-) {
+export function rateLimiter(options: {
+	limit?: number
+	windowMs?: number
+} = {}) {
 	// Start cleanup timer on first use
 	startCleanupTimer()
 
@@ -192,10 +182,7 @@ export function rateLimiter(
 		// Add rate limit headers
 		c.header("X-RateLimit-Limit", limit.toString())
 		c.header("X-RateLimit-Remaining", remaining.toString())
-		c.header(
-			"X-RateLimit-Reset",
-			new Date(record.windowStart + windowMs).toISOString(),
-		)
+		c.header("X-RateLimit-Reset", new Date(record.windowStart + windowMs).toISOString())
 
 		// Check if limit exceeded
 		if (record.count > limit) {

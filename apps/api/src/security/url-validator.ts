@@ -4,7 +4,7 @@
  * before making HTTP requests.
  */
 
-const ALLOWED_PROTOCOLS = new Set(["http:", "https:"])
+const ALLOWED_PROTOCOLS = new Set(['http:', 'https:'])
 
 // Private IP ranges and special addresses that should never be accessed
 const BLOCKED_PATTERNS = [
@@ -36,7 +36,7 @@ const BLOCKED_PATTERNS = [
 
 // Optional: Allow specific domains (e.g., for testing)
 const ALLOWED_DOMAINS: string[] = process.env.ALLOWED_FETCH_DOMAINS
-	? process.env.ALLOWED_FETCH_DOMAINS.split(",").map((d) => d.trim())
+	? process.env.ALLOWED_FETCH_DOMAINS.split(',').map(d => d.trim())
 	: []
 
 export class URLValidationError extends Error {
@@ -46,7 +46,7 @@ export class URLValidationError extends Error {
 		public readonly reason: string,
 	) {
 		super(message)
-		this.name = "URLValidationError"
+		this.name = 'URLValidationError'
 	}
 }
 
@@ -62,7 +62,7 @@ export function validateUrlSafety(urlString: string): URL {
 		throw new URLValidationError(
 			`Invalid URL format: ${urlString}`,
 			urlString,
-			"invalid_format",
+			'invalid_format',
 		)
 	}
 
@@ -71,7 +71,7 @@ export function validateUrlSafety(urlString: string): URL {
 		throw new URLValidationError(
 			`Protocol not allowed: ${parsed.protocol}`,
 			urlString,
-			"invalid_protocol",
+			'invalid_protocol',
 		)
 	}
 
@@ -83,14 +83,14 @@ export function validateUrlSafety(urlString: string): URL {
 			throw new URLValidationError(
 				`Hostname blocked for security reasons: ${hostname}`,
 				urlString,
-				"blocked_hostname",
+				'blocked_hostname',
 			)
 		}
 	}
 
 	// If allowlist is configured, enforce it
 	if (ALLOWED_DOMAINS.length > 0) {
-		const isAllowed = ALLOWED_DOMAINS.some((domain) => {
+		const isAllowed = ALLOWED_DOMAINS.some(domain => {
 			return hostname === domain || hostname.endsWith(`.${domain}`)
 		})
 
@@ -98,18 +98,18 @@ export function validateUrlSafety(urlString: string): URL {
 			throw new URLValidationError(
 				`Domain not in allowlist: ${hostname}`,
 				urlString,
-				"domain_not_allowed",
+				'domain_not_allowed',
 			)
 		}
 	}
 
 	// Additional checks for edge cases
 	// Prevent URL redirects to file:// or other protocols
-	if (parsed.pathname.includes("://")) {
+	if (parsed.pathname.includes('://')) {
 		throw new URLValidationError(
-			"Nested protocol detected in URL path",
+			'Nested protocol detected in URL path',
 			urlString,
-			"nested_protocol",
+			'nested_protocol',
 		)
 	}
 
@@ -130,17 +130,17 @@ export async function safeFetch(
 		...options,
 		headers: {
 			...options?.headers,
-			"User-Agent": "SupermemorySelfHosted/1.0 (+self-hosted extractor)",
+			'User-Agent': 'SupermemorySelfHosted/1.0 (+self-hosted extractor)',
 		},
 		// Prevent following redirects to potentially malicious URLs
-		redirect: "manual",
+		redirect: 'manual',
 	}
 
 	const response = await fetch(validatedUrl.toString(), secureOptions)
 
 	// If there's a redirect, validate the redirect URL too
 	if (response.status >= 300 && response.status < 400) {
-		const location = response.headers.get("location")
+		const location = response.headers.get('location')
 		if (location) {
 			validateUrlSafety(location) // Throws if redirect is unsafe
 		}

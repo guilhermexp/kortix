@@ -1,17 +1,18 @@
-import { cn } from "@lib/utils"
 import { Badge } from "@repo/ui/components/badge"
 import { Card, CardContent, CardHeader } from "@repo/ui/components/card"
+
 import { colors } from "@repo/ui/memory-graph/constants"
-import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
 import { Brain, ExternalLink } from "lucide-react"
-import type { z } from "zod"
-import { analytics } from "@/lib/analytics"
+import { cn } from "@lib/utils"
 import {
 	formatDate,
 	getPastelBackgroundColor,
 	getSourceUrl,
 } from "../memories-utils"
 import { MCPIcon } from "../menu"
+import { analytics } from "@/lib/analytics"
+import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
+import type { z } from "zod"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
@@ -117,7 +118,7 @@ export const NoteCard = ({
 							</Badge>
 						)}
 						{document.source === "mcp" && (
-							<Badge className="mt-2" variant="outline">
+							<Badge variant="outline" className="mt-2">
 								<MCPIcon className="w-3 h-3 mr-1" />
 								MCP
 							</Badge>

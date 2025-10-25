@@ -5,7 +5,7 @@
  * comprehensive error states and user-friendly messages.
  */
 
-import { z } from "zod"
+import { z } from "zod";
 
 /**
  * Document content validation schema
@@ -21,7 +21,7 @@ export const documentContentSchema = z.object({
 		.min(1, "Content cannot be empty")
 		.max(1000000, "Content is too large (max 1MB)"),
 	tags: z.array(z.string()).optional(),
-})
+});
 
 /**
  * Document metadata validation schema
@@ -40,12 +40,12 @@ export const documentMetadataSchema = z.object({
 			z
 				.string()
 				.min(1, "Tag cannot be empty")
-				.max(50, "Tag must be less than 50 characters"),
+				.max(50, "Tag must be less than 50 characters")
 		)
 		.max(20, "Maximum 20 tags allowed")
 		.optional(),
 	spaceId: z.string().uuid("Invalid space ID").optional(),
-})
+});
 
 /**
  * Image upload validation schema
@@ -58,19 +58,14 @@ export const imageUploadSchema = z.object({
 		})
 		.refine(
 			(file) => {
-				const validTypes = [
-					"image/jpeg",
-					"image/png",
-					"image/gif",
-					"image/webp",
-				]
-				return validTypes.includes(file.type)
+				const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+				return validTypes.includes(file.type);
 			},
 			{
 				message: "Only JPEG, PNG, GIF, and WebP images are supported",
-			},
+			}
 		),
-})
+});
 
 /**
  * Link validation schema
@@ -82,21 +77,18 @@ export const linkSchema = z.object({
 		.refine(
 			(url) => {
 				try {
-					const parsed = new URL(url)
-					return ["http:", "https:"].includes(parsed.protocol)
+					const parsed = new URL(url);
+					return ["http:", "https:"].includes(parsed.protocol);
 				} catch {
-					return false
+					return false;
 				}
 			},
 			{
 				message: "URL must use HTTP or HTTPS protocol",
-			},
+			}
 		),
-	title: z
-		.string()
-		.max(500, "Title must be less than 500 characters")
-		.optional(),
-})
+	title: z.string().max(500, "Title must be less than 500 characters").optional(),
+});
 
 /**
  * Search query validation schema
@@ -112,67 +104,67 @@ export const searchQuerySchema = z.object({
 		.min(1, "Limit must be at least 1")
 		.max(100, "Limit cannot exceed 100")
 		.optional(),
-})
+});
 
 /**
  * Validation result type
  */
 export type ValidationResult<T> =
 	| { success: true; data: T; errors: null }
-	| { success: false; data: null; errors: Record<string, string[]> }
+	| { success: false; data: null; errors: Record<string, string[]> };
 
 /**
  * Validate data against a Zod schema
  */
 export function validate<T>(
 	schema: z.ZodSchema<T>,
-	data: unknown,
+	data: unknown
 ): ValidationResult<T> {
-	const result = schema.safeParse(data)
+	const result = schema.safeParse(data);
 
 	if (result.success) {
 		return {
 			success: true,
 			data: result.data,
 			errors: null,
-		}
+		};
 	}
 
 	// Format Zod errors into a more user-friendly structure
-	const errors: Record<string, string[]> = {}
+	const errors: Record<string, string[]> = {};
 
 	result.error.issues.forEach((issue) => {
-		const path = issue.path.join(".")
+		const path = issue.path.join(".");
 		if (!errors[path]) {
-			errors[path] = []
+			errors[path] = [];
 		}
-		errors[path].push(issue.message)
-	})
+		errors[path].push(issue.message);
+	});
 
 	return {
 		success: false,
 		data: null,
 		errors,
-	}
+	};
 }
 
 /**
  * Validation error state
  */
 export interface ValidationError {
-	field: string
-	message: string
+	field: string;
+	message: string;
 }
 
 /**
  * Convert validation errors to array format
  */
 export function getValidationErrors(
-	errors: Record<string, string[]>,
+	errors: Record<string, string[]>
 ): ValidationError[] {
 	return Object.entries(errors).flatMap(([field, messages]) =>
-		messages.map((message) => ({ field, message })),
-	)
+		messages.map((message) => ({ field, message }))
+	);
 }
 
 /**
@@ -180,10 +172,10 @@ export function getValidationErrors(
  */
 export function getFieldError(
 	errors: Record<string, string[]> | null,
-	field: string,
+	field: string
 ): string | null {
-	if (!errors || !errors[field]) return null
-	return errors[field][0] || null
+	if (!errors || !errors[field]) return null;
+	return errors[field][0] || null;
 }
 
 /**
@@ -191,9 +183,9 @@ export function getFieldError(
  */
 export function hasFieldError(
 	errors: Record<string, string[]> | null,
-	field: string,
+	field: string
 ): boolean {
-	return !!(errors && errors[field] && errors[field].length > 0)
+	return !!(errors && errors[field] && errors[field].length > 0);
 }
 
 /**
@@ -205,12 +197,12 @@ export function hasFieldError(
  */
 export function validateTitle(title: string): string | null {
 	if (!title.trim()) {
-		return "Title is required"
+		return "Title is required";
 	}
 	if (title.length > 500) {
-		return "Title must be less than 500 characters"
+		return "Title must be less than 500 characters";
 	}
-	return null
+	return null;
 }
 
 /**
@@ -218,12 +210,12 @@ export function validateTitle(title: string): string | null {
  */
 export function validateContent(content: string): string | null {
 	if (!content.trim()) {
-		return "Content cannot be empty"
+		return "Content cannot be empty";
 	}
 	if (content.length > 1000000) {
-		return "Content is too large (max 1MB)"
+		return "Content is too large (max 1MB)";
 	}
-	return null
+	return null;
 }
 
 /**
@@ -231,12 +223,12 @@ export function validateContent(content: string): string | null {
  */
 export function validateTag(tag: string): string | null {
 	if (!tag.trim()) {
-		return "Tag cannot be empty"
+		return "Tag cannot be empty";
 	}
 	if (tag.length > 50) {
-		return "Tag must be less than 50 characters"
+		return "Tag must be less than 50 characters";
 	}
-	return null
+	return null;
 }
 
 /**
@@ -244,13 +236,13 @@ export function validateTag(tag: string): string | null {
  */
 export function validateUrl(url: string): string | null {
 	try {
-		const parsed = new URL(url)
+		const parsed = new URL(url);
 		if (!["http:", "https:"].includes(parsed.protocol)) {
-			return "URL must use HTTP or HTTPS protocol"
+			return "URL must use HTTP or HTTPS protocol";
 		}
-		return null
+		return null;
 	} catch {
-		return "Invalid URL format"
+		return "Invalid URL format";
 	}
 }
 
@@ -258,17 +250,17 @@ export function validateUrl(url: string): string | null {
  * Validate image file
  */
 export function validateImageFile(file: File): string | null {
-	const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+	const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
 	if (!validTypes.includes(file.type)) {
-		return "Only JPEG, PNG, GIF, and WebP images are supported"
+		return "Only JPEG, PNG, GIF, and WebP images are supported";
 	}
 
 	if (file.size > 10 * 1024 * 1024) {
-		return "Image must be less than 10MB"
+		return "Image must be less than 10MB";
 	}
 
-	return null
+	return null;
 }
 
 /**
@@ -276,16 +268,16 @@ export function validateImageFile(file: File): string | null {
  */
 export function debounce<T extends (...args: any[]) => any>(
 	func: T,
-	wait: number,
+	wait: number
 ): (...args: Parameters<T>) => void {
-	let timeout: NodeJS.Timeout | null = null
+	let timeout: NodeJS.Timeout | null = null;
 
 	return (...args: Parameters<T>) => {
 		if (timeout) {
-			clearTimeout(timeout)
+			clearTimeout(timeout);
 		}
 		timeout = setTimeout(() => {
-			func(...args)
-		}, wait)
-	}
+			func(...args);
+		}, wait);
+	};
 }

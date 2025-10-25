@@ -76,7 +76,6 @@ const MemoryGraphPage = () => {
   const resizingRef = useRef(false);
   const startXRef = useRef(0);
   const startWRef = useRef(0);
-  const rafRef = useRef<number>();
   const beginResize = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isMobile) return;
     resizingRef.current = true;
@@ -85,25 +84,16 @@ const MemoryGraphPage = () => {
     document.body.style.cursor = "ew-resize";
     const onMove = (ev: MouseEvent) => {
       if (!resizingRef.current) return;
-      // Use requestAnimationFrame to throttle updates and improve performance
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-      rafRef.current = requestAnimationFrame(() => {
-        const delta = startXRef.current - ev.clientX; // drag left increases width
-        const next = Math.min(
-          MAX_CHAT_WIDTH,
-          Math.max(MIN_CHAT_WIDTH, startWRef.current + delta),
-        );
-        setChatWidth(next);
-      });
+      const delta = startXRef.current - ev.clientX; // drag left increases width
+      const next = Math.min(
+        MAX_CHAT_WIDTH,
+        Math.max(MIN_CHAT_WIDTH, startWRef.current + delta),
+      );
+      setChatWidth(next);
     };
     const onUp = () => {
       resizingRef.current = false;
       document.body.style.cursor = "";
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
@@ -275,7 +265,7 @@ const MemoryGraphPage = () => {
 
   // Progressive loading via useInfiniteQuery
   const IS_DEV = process.env.NODE_ENV === "development";
-  const PAGE_SIZE = 20; // Reduced from 100 for better performance
+  const PAGE_SIZE = IS_DEV ? 100 : 100;
   const MAX_TOTAL = 1000;
 
   const {
@@ -292,7 +282,7 @@ const MemoryGraphPage = () => {
       const response = await $fetch("@post/documents/documents", {
         body: {
           page: pageParam as number,
-          limit: PAGE_SIZE, // Use consistent page size for better performance
+          limit: (pageParam as number) === 1 ? (IS_DEV ? 500 : 500) : PAGE_SIZE,
           sort: "createdAt",
           order: "desc",
           containerTags:
@@ -472,22 +462,17 @@ const MemoryGraphPage = () => {
           marginRight: isOpen && !isMobile ? chatWidth : 0,
         }}
         className="h-full relative"
-        style={{ willChange: isOpen ? "margin-right" : "auto" }}
         transition={{
-          duration: 0.15, // Reduced from 0.2 for snappier feel
-          ease: [0.4, 0, 0.2, 1],
+          duration: 0.2,
+          ease: [0.4, 0, 0.2, 1], // Material Design easing - snappy but smooth
         }}
       >
         <motion.div
-          animate={{
-            opacity: 1,
-            y: 0,
-            right: isMobile ? undefined : 16,
-          }}
-          className="absolute md:top-4 md:bottom-auto md:left-auto bottom-8 left-6 z-20"
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute md:top-4 md:right-4 md:bottom-auto md:left-auto bottom-8 left-6 z-20"
           id={TOUR_STEP_IDS.VIEW_TOGGLE}
-          initial={{ opacity: 0, y: -20, right: 16 }}
-          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          initial={{ opacity: 0, y: -20 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25 }}
         >
           <div className="flex gap-2">
             <Button
@@ -646,18 +631,8 @@ const MemoryGraphPage = () => {
         </AnimatePresence>
 
         {/* Top Bar */}
-        <motion.div
-          animate={{
-            right: isOpen && !isMobile ? chatWidth : 0,
-          }}
-          className="absolute top-2 left-0 z-10 flex items-center justify-between px-3 sm:px-4 py-2"
-          transition={{
-            type: "spring",
-            stiffness: 260,
-            damping: 28,
-          }}
-        >
-          <div className="flex items-center gap-2 sm:gap-3">
+        <div className="absolute top-2 left-0 right-0 z-10 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <div className="pointer-events-auto">
               <Logo className="h-8" id={TOUR_STEP_IDS.LOGO} />
             </div>
@@ -668,9 +643,9 @@ const MemoryGraphPage = () => {
           </div>
 
           <div>
-            <Menu chatOpen={isOpen} chatWidth={chatWidth} />
+            <Menu />
           </div>
-        </motion.div>
+        </div>
 
         {/* Floating Open Chat Button */}
         {!isOpen && !isMobile && (
@@ -718,8 +693,8 @@ const MemoryGraphPage = () => {
           {/* Resize handle */}
           {!isMobile && (
             <div
-              className="absolute left-0 top-0 h-full w-1.5 cursor-ew-resize bg-white/5 hover:bg-white/10 border-l border-white/10"
               onMouseDown={beginResize}
+              className="absolute left-0 top-0 h-full w-1.5 cursor-ew-resize bg-white/5 hover:bg-white/10 border-l border-white/10"
               title="Drag to resize"
             />
           )}
@@ -728,7 +703,9 @@ const MemoryGraphPage = () => {
       </motion.div>
 
       {showAddMemoryView && (
-        <AddMemoryView onClose={() => setShowAddMemoryView(false)} />
+        <AddMemoryView
+          onClose={() => setShowAddMemoryView(false)}
+        />
       )}
 
       {/* Tour Alert Dialog */}

@@ -1,5 +1,5 @@
-import type { InlineText, TextNode } from "../types"
-import { getNodeTextContent, hasInlineChildren } from "../types"
+import { getNodeTextContent, hasInlineChildren } from "../types";
+import type { InlineText, TextNode } from "../types";
 
 /**
  * Split a text node into inline segments based on selection range
@@ -17,15 +17,15 @@ import { getNodeTextContent, hasInlineChildren } from "../types"
  * ```
  */
 export function splitTextAtSelection(
-	content: string,
-	startOffset: number,
-	endOffset: number,
+  content: string,
+  startOffset: number,
+  endOffset: number,
 ): { before: string; selected: string; after: string } {
-	return {
-		before: content.substring(0, startOffset),
-		selected: content.substring(startOffset, endOffset),
-		after: content.substring(endOffset),
-	}
+  return {
+    before: content.substring(0, startOffset),
+    selected: content.substring(startOffset, endOffset),
+    after: content.substring(endOffset),
+  };
 }
 
 /**
@@ -35,21 +35,21 @@ export function splitTextAtSelection(
  * @returns Node with inline children
  */
 export function convertToInlineFormat(node: TextNode): TextNode {
-	if (hasInlineChildren(node)) {
-		return node // Already in inline format
-	}
+  if (hasInlineChildren(node)) {
+    return node; // Already in inline format
+  }
 
-	const content = node.content || ""
+  const content = node.content || "";
 
-	return {
-		...node,
-		content: undefined, // Remove content property
-		children: [
-			{
-				content: content,
-			},
-		],
-	}
+  return {
+    ...node,
+    content: undefined, // Remove content property
+    children: [
+      {
+        content: content,
+      },
+    ],
+  };
 }
 
 /**
@@ -62,53 +62,53 @@ export function convertToInlineFormat(node: TextNode): TextNode {
  * @returns New node with formatting applied
  */
 export function applyFormatting(
-	node: TextNode,
-	startOffset: number,
-	endOffset: number,
-	className: string,
+  node: TextNode,
+  startOffset: number,
+  endOffset: number,
+  className: string,
 ): TextNode {
-	// Convert to inline format if needed
-	const inlineNode = convertToInlineFormat(node)
-	const fullText = getNodeTextContent(inlineNode)
+  // Convert to inline format if needed
+  const inlineNode = convertToInlineFormat(node);
+  const fullText = getNodeTextContent(inlineNode);
 
-	// Split the text
-	const { before, selected, after } = splitTextAtSelection(
-		fullText,
-		startOffset,
-		endOffset,
-	)
+  // Split the text
+  const { before, selected, after } = splitTextAtSelection(
+    fullText,
+    startOffset,
+    endOffset,
+  );
 
-	// Build new children array
-	const newChildren: InlineText[] = []
+  // Build new children array
+  const newChildren: InlineText[] = [];
 
-	// Add "before" text if it exists
-	if (before) {
-		newChildren.push({
-			content: before,
-		})
-	}
+  // Add "before" text if it exists
+  if (before) {
+    newChildren.push({
+      content: before,
+    });
+  }
 
-	// Add formatted selection as a span
-	if (selected) {
-		newChildren.push({
-			content: selected,
-			bold: className.includes("font-bold"),
-			italic: className.includes("italic"),
-			underline: className.includes("underline"),
-		})
-	}
+  // Add formatted selection as a span
+  if (selected) {
+    newChildren.push({
+      content: selected,
+      bold: className.includes("font-bold"),
+      italic: className.includes("italic"),
+      underline: className.includes("underline"),
+    });
+  }
 
-	// Add "after" text if it exists
-	if (after) {
-		newChildren.push({
-			content: after,
-		})
-	}
+  // Add "after" text if it exists
+  if (after) {
+    newChildren.push({
+      content: after,
+    });
+  }
 
-	return {
-		...inlineNode,
-		children: newChildren,
-	}
+  return {
+    ...inlineNode,
+    children: newChildren,
+  };
 }
 
 /**
@@ -118,35 +118,35 @@ export function applyFormatting(
  * @returns Merged array
  */
 export function mergeAdjacentTextNodes(children: TextNode[]): TextNode[] {
-	if (children.length <= 1) return children
+  if (children.length <= 1) return children;
 
-	const merged: TextNode[] = []
-	let current = children[0]
-	if (!current) return children
+  const merged: TextNode[] = [];
+  let current = children[0];
+  if (!current) return children;
 
-	for (let i = 1; i < children.length; i++) {
-		const next = children[i]
-		if (!next) continue
+  for (let i = 1; i < children.length; i++) {
+    const next = children[i];
+    if (!next) continue;
 
-		// Check if both are plain text nodes (not spans) with same attributes
-		if (
-			current.type === "text" &&
-			next.type === "text" &&
-			current.attributes?.className === next.attributes?.className
-		) {
-			// Merge them
-			current = {
-				...current,
-				content: (current.content || "") + (next.content || ""),
-			}
-		} else {
-			merged.push(current)
-			current = next
-		}
-	}
+    // Check if both are plain text nodes (not spans) with same attributes
+    if (
+      current.type === "text" &&
+      next.type === "text" &&
+      current.attributes?.className === next.attributes?.className
+    ) {
+      // Merge them
+      current = {
+        ...current,
+        content: (current.content || "") + (next.content || ""),
+      };
+    } else {
+      merged.push(current);
+      current = next;
+    }
+  }
 
-	merged.push(current)
-	return merged
+  merged.push(current);
+  return merged;
 }
 
 /**
@@ -159,20 +159,20 @@ export function mergeAdjacentTextNodes(children: TextNode[]): TextNode[] {
  * @returns New node with formatting removed
  */
 export function removeFormatting(
-	node: TextNode,
-	startOffset: number,
-	endOffset: number,
-	className: string,
+  node: TextNode,
+  startOffset: number,
+  endOffset: number,
+  className: string,
 ): TextNode {
-	if (!hasInlineChildren(node)) {
-		return node // Nothing to remove
-	}
+  if (!hasInlineChildren(node)) {
+    return node; // Nothing to remove
+  }
 
-	// This is more complex - we need to traverse inline children
-	// and split spans that intersect with the selection
-	// For now, simplified implementation
+  // This is more complex - we need to traverse inline children
+  // and split spans that intersect with the selection
+  // For now, simplified implementation
 
-	return node
+  return node;
 }
 
 /**
@@ -183,25 +183,27 @@ export function removeFormatting(
  * @returns Array of class names at that position
  */
 export function getFormattingAtPosition(
-	node: TextNode,
-	offset: number,
+  node: TextNode,
+  offset: number,
 ): string[] {
-	if (!hasInlineChildren(node)) {
-		return node.attributes?.className ? [String(node.attributes.className)] : []
-	}
+  if (!hasInlineChildren(node)) {
+    return node.attributes?.className
+      ? [String(node.attributes.className)]
+      : [];
+  }
 
-	let currentOffset = 0
-	for (const child of node.children!) {
-		const childLength = (child.content || "").length
-		if (offset >= currentOffset && offset <= currentOffset + childLength) {
-			const classes: string[] = []
-			if (child.bold) classes.push("font-bold")
-			if (child.italic) classes.push("italic")
-			if (child.underline) classes.push("underline")
-			return classes
-		}
-		currentOffset += childLength
-	}
+  let currentOffset = 0;
+  for (const child of node.children!) {
+    const childLength = (child.content || "").length;
+    if (offset >= currentOffset && offset <= currentOffset + childLength) {
+      const classes: string[] = [];
+      if (child.bold) classes.push("font-bold");
+      if (child.italic) classes.push("italic");
+      if (child.underline) classes.push("underline");
+      return classes;
+    }
+    currentOffset += childLength;
+  }
 
-	return []
+  return [];
 }

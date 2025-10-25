@@ -1,10 +1,10 @@
 import { env } from "../env"
-import { aiClient } from "./ai-provider"
 import {
 	ensureVectorSize,
 	generateDeterministicEmbedding,
 	VECTOR_SIZE,
 } from "./embedding"
+import { aiClient } from "./ai-provider"
 
 const embeddingModel = aiClient?.getGenerativeModel({
 	model: env.EMBEDDING_MODEL,
@@ -26,10 +26,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 		const textBytes = Buffer.byteLength(normalizedText, "utf8")
 		const safeText =
 			textBytes > maxBytes
-				? normalizedText.slice(
-						0,
-						Math.floor((normalizedText.length * maxBytes) / textBytes),
-					)
+				? normalizedText.slice(0, Math.floor((normalizedText.length * maxBytes) / textBytes))
 				: normalizedText
 
 		const result = await embeddingModel.embedContent({

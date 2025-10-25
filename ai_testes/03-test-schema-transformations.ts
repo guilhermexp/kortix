@@ -8,13 +8,13 @@
  * - Campo memory → content
  */
 
+import { log, logSuccess, logFailure } from "./config"
 import {
-	type MemoryEntry,
-	type MemoryEntryDB,
-	memoryAPItoInsert,
 	memoryDBtoAPI,
+	memoryAPItoInsert,
+	type MemoryEntryDB,
+	type MemoryEntry,
 } from "../packages/validation/schemas"
-import { log, logFailure, logSuccess } from "./config"
 
 async function testSchemaTransformations(): Promise<boolean> {
 	console.log("\n🧪 Teste 3: Transformações de Schema")
@@ -56,7 +56,9 @@ async function testSchemaTransformations(): Promise<boolean> {
 		}
 
 		if (apiMemory.memory !== dbMemory.content) {
-			logFailure("Campo 'memory' não contém o valor correto de 'content'")
+			logFailure(
+				"Campo 'memory' não contém o valor correto de 'content'",
+			)
 			return false
 		}
 
@@ -95,7 +97,9 @@ async function testSchemaTransformations(): Promise<boolean> {
 		}
 
 		if (dbInsert.content !== apiInput.memory) {
-			logFailure("Campo 'content' não contém o valor correto de 'memory'")
+			logFailure(
+				"Campo 'content' não contém o valor correto de 'memory'",
+			)
 			return false
 		}
 

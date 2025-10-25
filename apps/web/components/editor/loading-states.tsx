@@ -5,9 +5,9 @@
  * for better user experience during data fetching.
  */
 
-import { cn } from "@lib/utils"
-import { Loader2 } from "lucide-react"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@/components/ui/skeleton";
+import { Loader2 } from "lucide-react";
+import { cn } from "@lib/utils";
 
 /**
  * Editor skeleton loader
@@ -41,7 +41,7 @@ export function EditorSkeleton() {
 				<Skeleton className="w-4/5 h-4 bg-white/10" />
 			</div>
 		</div>
-	)
+	);
 }
 
 /**
@@ -53,8 +53,8 @@ export function DocumentListSkeleton({ count = 5 }: { count?: number }) {
 		<div className="space-y-3">
 			{Array.from({ length: count }).map((_, i) => (
 				<div
-					className="p-4 rounded-lg border border-white/10 bg-[#1a1f2e]/50 animate-pulse"
 					key={i}
+					className="p-4 rounded-lg border border-white/10 bg-[#1a1f2e]/50 animate-pulse"
 				>
 					<div className="flex items-start justify-between gap-4">
 						<div className="flex-1 space-y-3">
@@ -71,7 +71,7 @@ export function DocumentListSkeleton({ count = 5 }: { count?: number }) {
 				</div>
 			))}
 		</div>
-	)
+	);
 }
 
 /**
@@ -90,8 +90,8 @@ export function MemoryEntriesSkeleton({ count = 8 }: { count?: number }) {
 			<div className="flex-1 overflow-auto p-4 space-y-3">
 				{Array.from({ length: count }).map((_, i) => (
 					<div
-						className="p-3 rounded-lg border border-white/10 bg-[#1a1f2e]/50 animate-pulse"
 						key={i}
+						className="p-3 rounded-lg border border-white/10 bg-[#1a1f2e]/50 animate-pulse"
 					>
 						<Skeleton className="w-full h-4 bg-white/10 mb-2" />
 						<Skeleton className="w-5/6 h-3 bg-white/10 mb-2" />
@@ -104,7 +104,7 @@ export function MemoryEntriesSkeleton({ count = 8 }: { count?: number }) {
 				))}
 			</div>
 		</div>
-	)
+	);
 }
 
 /**
@@ -113,8 +113,10 @@ export function MemoryEntriesSkeleton({ count = 8 }: { count?: number }) {
  */
 export function InlineLoader({ className }: { className?: string }) {
 	return (
-		<Loader2 className={cn("w-4 h-4 animate-spin text-blue-500", className)} />
-	)
+		<Loader2
+			className={cn("w-4 h-4 animate-spin text-blue-500", className)}
+		/>
+	);
 }
 
 /**
@@ -126,10 +128,12 @@ export function FullPageLoader({ message }: { message?: string }) {
 		<div className="fixed inset-0 flex items-center justify-center bg-[#0f1419]/95 backdrop-blur-sm z-50">
 			<div className="flex flex-col items-center gap-4">
 				<Loader2 className="w-12 h-12 animate-spin text-blue-500" />
-				{message && <p className="text-sm text-gray-400">{message}</p>}
+				{message && (
+					<p className="text-sm text-gray-400">{message}</p>
+				)}
 			</div>
 		</div>
-	)
+	);
 }
 
 /**
@@ -137,7 +141,11 @@ export function FullPageLoader({ message }: { message?: string }) {
  * Shows loading spinner inside button
  */
 export function ButtonLoader({ className }: { className?: string }) {
-	return <Loader2 className={cn("w-4 h-4 animate-spin mr-2", className)} />
+	return (
+		<Loader2
+			className={cn("w-4 h-4 animate-spin mr-2", className)}
+		/>
+	);
 }
 
 /**
@@ -155,7 +163,7 @@ export function CardSkeleton() {
 			<Skeleton className="w-5/6 h-4 bg-white/10" />
 			<Skeleton className="w-4/6 h-4 bg-white/10" />
 		</div>
-	)
+	);
 }
 
 /**
@@ -176,8 +184,8 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
 			{/* Rows */}
 			{Array.from({ length: rows }).map((_, i) => (
 				<div
-					className="grid grid-cols-4 gap-4 p-4 border-b border-white/10 last:border-0 animate-pulse"
 					key={i}
+					className="grid grid-cols-4 gap-4 p-4 border-b border-white/10 last:border-0 animate-pulse"
 				>
 					<Skeleton className="h-4 bg-white/10" />
 					<Skeleton className="h-4 bg-white/10" />
@@ -186,7 +194,7 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
 				</div>
 			))}
 		</div>
-	)
+	);
 }
 
 /**
@@ -198,12 +206,12 @@ export function ImagePlaceholder({ className }: { className?: string }) {
 		<div
 			className={cn(
 				"flex items-center justify-center bg-white/5 animate-pulse",
-				className,
+				className
 			)}
 		>
 			<Loader2 className="w-8 h-8 animate-spin text-gray-500" />
 		</div>
-	)
+	);
 }
 
 /**
@@ -216,10 +224,10 @@ export function EmptyState({
 	icon,
 	action,
 }: {
-	title: string
-	description?: string
-	icon?: React.ReactNode
-	action?: React.ReactNode
+	title: string;
+	description?: string;
+	icon?: React.ReactNode;
+	action?: React.ReactNode;
 }) {
 	return (
 		<div className="flex flex-col items-center justify-center h-full p-8 text-center">
@@ -230,7 +238,7 @@ export function EmptyState({
 			)}
 			{action && <div>{action}</div>}
 		</div>
-	)
+	);
 }
 
 /**
@@ -241,22 +249,17 @@ export function ProgressBar({
 	progress,
 	className,
 }: {
-	progress: number
-	className?: string
+	progress: number;
+	className?: string;
 }) {
 	return (
-		<div
-			className={cn(
-				"w-full h-2 bg-white/10 rounded-full overflow-hidden",
-				className,
-			)}
-		>
+		<div className={cn("w-full h-2 bg-white/10 rounded-full overflow-hidden", className)}>
 			<div
 				className="h-full bg-blue-500 transition-all duration-300 ease-out"
 				style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
 			/>
 		</div>
-	)
+	);
 }
 
 /**
@@ -269,15 +272,15 @@ export function PulsingDot({ className }: { className?: string }) {
 			<span
 				className={cn(
 					"animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75",
-					className,
+					className
 				)}
 			/>
 			<span
 				className={cn(
 					"relative inline-flex rounded-full h-3 w-3 bg-blue-500",
-					className,
+					className
 				)}
 			/>
 		</span>
-	)
+	);
 }

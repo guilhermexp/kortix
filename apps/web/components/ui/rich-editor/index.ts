@@ -1,106 +1,122 @@
-export type { EditorProviderProps } from "./context/editor-context"
-// ============================================================================
-// Context and Hooks
-// ============================================================================
+export type {
+  NodeType,
+  NodeAttributes,
+  BaseNode,
+  TextNode,
+  ContainerNode,
+  StructuralNode,
+  EditorNode,
+  EditorState,
+  SelectionInfo,
+  InlineText,
+  BlockLine,
+} from "./types"
+
 export {
-	EditorProvider,
-	useEditor,
-	useEditorDispatch,
-	useEditorSelector,
-	useEditorState,
-	useNode,
-	useSelection,
-	useSelectionManager,
-} from "./context/editor-context"
-// ============================================================================
-// Demo Content
-// ============================================================================
-export { createDemoContent } from "./demo-content"
+  isContainerNode,
+  isStructuralNode,
+  isTextNode,
+  hasInlineChildren,
+  getNodeTextContent,
+} from "./types"
+
 // ============================================================================
 // Actions
 // ============================================================================
 export type {
-	BatchAction,
-	DeleteNodeAction,
-	DuplicateNodeAction,
-	EditorAction,
-	InsertNodeAction,
-	MoveNodeAction,
-	ReplaceContainerAction,
-	ResetAction,
-	UpdateAttributesAction,
-	UpdateContentAction,
-	UpdateNodeAction,
+  UpdateNodeAction,
+  UpdateAttributesAction,
+  UpdateContentAction,
+  DeleteNodeAction,
+  InsertNodeAction,
+  MoveNodeAction,
+  DuplicateNodeAction,
+  ReplaceContainerAction,
+  ResetAction,
+  BatchAction,
+  EditorAction,
 } from "./reducer/actions"
+
 export { EditorActions } from "./reducer/actions"
+
 // ============================================================================
 // Reducer
 // ============================================================================
-export { createInitialState, editorReducer } from "./reducer/editor-reducer"
-export type { TailwindClassGroup } from "./tailwind-classes"
+export { editorReducer, createInitialState } from "./reducer/editor-reducer"
+
 // ============================================================================
-// Tailwind Classes Utilities
+// Context and Hooks
 // ============================================================================
 export {
-	getAllClasses,
-	popularClasses,
-	searchTailwindClasses,
-	tailwindClasses,
-} from "./tailwind-classes"
-export type {
-	BaseNode,
-	BlockLine,
-	ContainerNode,
-	EditorNode,
-	EditorState,
-	InlineText,
-	NodeAttributes,
-	NodeType,
-	SelectionInfo,
-	StructuralNode,
-	TextNode,
-} from "./types"
-export {
-	getNodeTextContent,
-	hasInlineChildren,
-	isContainerNode,
-	isStructuralNode,
-	isTextNode,
-} from "./types"
-export type { AutoScrollConfig } from "./utils/drag-auto-scroll"
-export {
-	setupDragAutoScroll,
-	useDragAutoScroll,
-} from "./utils/drag-auto-scroll"
-export {
-	applyFormatting,
-	convertToInlineFormat,
-	getFormattingAtPosition,
-	mergeAdjacentTextNodes,
-	removeFormatting,
-	splitTextAtSelection,
-} from "./utils/inline-formatting"
-export {
-	isMarkdownTable,
-	parseMarkdownTable,
-} from "./utils/markdown-table-parser"
-export {
-	serializeToHtml,
-	serializeToHtmlFragment,
-	serializeToHtmlWithClass,
-} from "./utils/serialize-to-html"
-export type { InsertPosition } from "./utils/tree-operations"
+  EditorProvider,
+  useEditorState,
+  useEditorDispatch,
+  useEditor,
+  useEditorSelector,
+  useNode,
+  useSelectionManager,
+  useSelection,
+} from "./context/editor-context"
+
+export type { EditorProviderProps } from "./context/editor-context"
+
 // ============================================================================
 // Utilities
 // ============================================================================
 export {
-	cloneNode,
-	deleteNodeById,
-	findNodeById,
-	findParentById,
-	insertNode,
-	moveNode,
-	traverseTree,
-	updateNodeById,
-	validateTree,
+  findNodeById,
+  findParentById,
+  updateNodeById,
+  deleteNodeById,
+  insertNode,
+  moveNode,
+  cloneNode,
+  traverseTree,
+  validateTree,
 } from "./utils/tree-operations"
+
+export type { InsertPosition } from "./utils/tree-operations"
+
+export {
+  splitTextAtSelection,
+  convertToInlineFormat,
+  applyFormatting,
+  removeFormatting,
+  mergeAdjacentTextNodes,
+  getFormattingAtPosition,
+} from "./utils/inline-formatting"
+
+export {
+  serializeToHtml,
+  serializeToHtmlFragment,
+  serializeToHtmlWithClass,
+} from "./utils/serialize-to-html"
+
+export {
+  parseMarkdownTable,
+  isMarkdownTable,
+} from "./utils/markdown-table-parser"
+
+export {
+  setupDragAutoScroll,
+  useDragAutoScroll,
+} from "./utils/drag-auto-scroll"
+
+export type { AutoScrollConfig } from "./utils/drag-auto-scroll"
+
+// ============================================================================
+// Tailwind Classes Utilities
+// ============================================================================
+export {
+  tailwindClasses,
+  popularClasses,
+  searchTailwindClasses,
+  getAllClasses,
+} from "./tailwind-classes"
+
+export type { TailwindClassGroup } from "./tailwind-classes"
+
+// ============================================================================
+// Demo Content
+// ============================================================================
+export { createDemoContent } from "./demo-content"

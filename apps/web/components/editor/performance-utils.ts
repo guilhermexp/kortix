@@ -5,7 +5,7 @@
  * debouncing, throttling, memoization, and performance monitoring.
  */
 
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useEffect, useRef, useCallback, useMemo } from "react";
 
 /**
  * Debounce function - delays execution until after wait time has passed
@@ -13,18 +13,18 @@ import { useCallback, useEffect, useMemo, useRef } from "react"
  */
 export function debounce<T extends (...args: any[]) => any>(
 	func: T,
-	wait: number,
+	wait: number
 ): (...args: Parameters<T>) => void {
-	let timeout: NodeJS.Timeout | null = null
+	let timeout: NodeJS.Timeout | null = null;
 
 	return (...args: Parameters<T>) => {
 		if (timeout) {
-			clearTimeout(timeout)
+			clearTimeout(timeout);
 		}
 		timeout = setTimeout(() => {
-			func(...args)
-		}, wait)
-	}
+			func(...args);
+		}, wait);
+	};
 }
 
 /**
@@ -33,19 +33,19 @@ export function debounce<T extends (...args: any[]) => any>(
  */
 export function throttle<T extends (...args: any[]) => any>(
 	func: T,
-	limit: number,
+	limit: number
 ): (...args: Parameters<T>) => void {
-	let inThrottle = false
+	let inThrottle: boolean = false;
 
 	return (...args: Parameters<T>) => {
 		if (!inThrottle) {
-			func(...args)
-			inThrottle = true
+			func(...args);
+			inThrottle = true;
 			setTimeout(() => {
-				inThrottle = false
-			}, limit)
+				inThrottle = false;
+			}, limit);
 		}
-	}
+	};
 }
 
 /**
@@ -53,49 +53,46 @@ export function throttle<T extends (...args: any[]) => any>(
  * Updates the value only after the specified delay
  */
 export function useDebounce<T>(value: T, delay: number): T {
-	const [debouncedValue, setDebouncedValue] = React.useState<T>(value)
+	const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
 
 	React.useEffect(() => {
 		const handler = setTimeout(() => {
-			setDebouncedValue(value)
-		}, delay)
+			setDebouncedValue(value);
+		}, delay);
 
 		return () => {
-			clearTimeout(handler)
-		}
-	}, [value, delay])
+			clearTimeout(handler);
+		};
+	}, [value, delay]);
 
-	return debouncedValue
+	return debouncedValue;
 }
 
 // Fix: Import React for useState
-import React from "react"
+import React from "react";
 
 /**
  * React hook for throttled values
  * Updates the value at most once per interval
  */
 export function useThrottle<T>(value: T, interval: number): T {
-	const [throttledValue, setThrottledValue] = React.useState<T>(value)
-	const lastRan = React.useRef(Date.now())
+	const [throttledValue, setThrottledValue] = React.useState<T>(value);
+	const lastRan = React.useRef(Date.now());
 
 	React.useEffect(() => {
-		const handler = setTimeout(
-			() => {
-				if (Date.now() - lastRan.current >= interval) {
-					setThrottledValue(value)
-					lastRan.current = Date.now()
-				}
-			},
-			interval - (Date.now() - lastRan.current),
-		)
+		const handler = setTimeout(() => {
+			if (Date.now() - lastRan.current >= interval) {
+				setThrottledValue(value);
+				lastRan.current = Date.now();
+			}
+		}, interval - (Date.now() - lastRan.current));
 
 		return () => {
-			clearTimeout(handler)
-		}
-	}, [value, interval])
+			clearTimeout(handler);
+		};
+	}, [value, interval]);
 
-	return throttledValue
+	return throttledValue;
 }
 
 /**
@@ -104,26 +101,29 @@ export function useThrottle<T>(value: T, interval: number): T {
  */
 export function useIntersectionObserver(
 	elementRef: React.RefObject<Element>,
-	options?: IntersectionObserverInit,
+	options?: IntersectionObserverInit
 ): boolean {
-	const [isIntersecting, setIsIntersecting] = React.useState(false)
+	const [isIntersecting, setIsIntersecting] = React.useState(false);
 
 	React.useEffect(() => {
-		const element = elementRef.current
-		if (!element) return
+		const element = elementRef.current;
+		if (!element) return;
 
-		const observer = new IntersectionObserver(([entry]) => {
-			setIsIntersecting(entry?.isIntersecting ?? false)
-		}, options)
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				setIsIntersecting(entry?.isIntersecting ?? false);
+			},
+			options
+		);
 
-		observer.observe(element)
+		observer.observe(element);
 
 		return () => {
-			observer.disconnect()
-		}
-	}, [elementRef, options])
+			observer.disconnect();
+		};
+	}, [elementRef, options]);
 
-	return isIntersecting
+	return isIntersecting;
 }
 
 /**
@@ -136,41 +136,39 @@ export function useVirtualScroll<T>({
 	containerHeight,
 	overscan = 3,
 }: {
-	items: T[]
-	itemHeight: number
-	containerHeight: number
-	overscan?: number
+	items: T[];
+	itemHeight: number;
+	containerHeight: number;
+	overscan?: number;
 }) {
-	const [scrollTop, setScrollTop] = React.useState(0)
+	const [scrollTop, setScrollTop] = React.useState(0);
 
 	const visibleRange = useMemo(() => {
-		const start = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan)
+		const start = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
 		const end = Math.min(
 			items.length,
-			Math.ceil((scrollTop + containerHeight) / itemHeight) + overscan,
-		)
+			Math.ceil((scrollTop + containerHeight) / itemHeight) + overscan
+		);
 
-		return { start, end }
-	}, [scrollTop, itemHeight, containerHeight, items.length, overscan])
+		return { start, end };
+	}, [scrollTop, itemHeight, containerHeight, items.length, overscan]);
 
 	const visibleItems = useMemo(() => {
-		return items
-			.slice(visibleRange.start, visibleRange.end)
-			.map((item, index) => ({
-				item,
-				index: visibleRange.start + index,
-				offset: (visibleRange.start + index) * itemHeight,
-			}))
-	}, [items, visibleRange, itemHeight])
+		return items.slice(visibleRange.start, visibleRange.end).map((item, index) => ({
+			item,
+			index: visibleRange.start + index,
+			offset: (visibleRange.start + index) * itemHeight,
+		}));
+	}, [items, visibleRange, itemHeight]);
 
-	const totalHeight = items.length * itemHeight
+	const totalHeight = items.length * itemHeight;
 
 	return {
 		visibleItems,
 		totalHeight,
 		scrollTop,
 		setScrollTop,
-	}
+	};
 }
 
 /**
@@ -178,54 +176,54 @@ export function useVirtualScroll<T>({
  * Measures component render performance
  */
 export function usePerformanceMark(componentName: string, enabled = false) {
-	const renderCount = useRef(0)
+	const renderCount = useRef(0);
 
 	useEffect(() => {
-		if (!enabled) return
+		if (!enabled) return;
 
-		renderCount.current += 1
+		renderCount.current += 1;
 
 		if (typeof window !== "undefined" && window.performance) {
-			const markName = `${componentName}-render-${renderCount.current}`
-			performance.mark(markName)
+			const markName = `${componentName}-render-${renderCount.current}`;
+			performance.mark(markName);
 
 			return () => {
 				try {
-					performance.clearMarks(markName)
+					performance.clearMarks(markName);
 				} catch (e) {
 					// Ignore errors
 				}
-			}
+			};
 		}
-	})
+	});
 
 	const measure = useCallback(
 		(startMark: string, endMark: string) => {
-			if (!enabled || typeof window === "undefined") return
+			if (!enabled || typeof window === "undefined") return;
 
 			try {
-				const measureName = `${componentName}-measure`
-				performance.measure(measureName, startMark, endMark)
+				const measureName = `${componentName}-measure`;
+				performance.measure(measureName, startMark, endMark);
 
-				const measures = performance.getEntriesByName(measureName)
+				const measures = performance.getEntriesByName(measureName);
 				if (measures.length > 0) {
-					const lastMeasure = measures[measures.length - 1]
+					const lastMeasure = measures[measures.length - 1];
 					if (lastMeasure) {
 						console.log(
-							`[Performance] ${componentName}: ${lastMeasure.duration.toFixed(2)}ms`,
-						)
+							`[Performance] ${componentName}: ${lastMeasure.duration.toFixed(2)}ms`
+						);
 					}
 				}
 
-				performance.clearMeasures(measureName)
+				performance.clearMeasures(measureName);
 			} catch (e) {
-				console.error(`[Performance] Error measuring ${componentName}:`, e)
+				console.error(`[Performance] Error measuring ${componentName}:`, e);
 			}
 		},
-		[componentName, enabled],
-	)
+		[componentName, enabled]
+	);
 
-	return { renderCount: renderCount.current, measure }
+	return { renderCount: renderCount.current, measure };
 }
 
 /**
@@ -235,26 +233,26 @@ export function usePerformanceMark(componentName: string, enabled = false) {
 export function useDeepMemo<T>(
 	factory: () => T,
 	deps: any[],
-	isEqual: (a: any[], b: any[]) => boolean = shallowEqual,
+	isEqual: (a: any[], b: any[]) => boolean = shallowEqual
 ): T {
-	const ref = useRef<{ deps: any[]; value: T } | undefined>(undefined)
+	const ref = useRef<{ deps: any[]; value: T } | undefined>(undefined);
 
 	if (!ref.current || !isEqual(deps, ref.current.deps)) {
 		ref.current = {
 			deps,
 			value: factory(),
-		}
+		};
 	}
 
-	return ref.current.value
+	return ref.current.value;
 }
 
 /**
  * Shallow equality check for arrays
  */
 function shallowEqual(a: any[], b: any[]): boolean {
-	if (a.length !== b.length) return false
-	return a.every((val, i) => val === b[i])
+	if (a.length !== b.length) return false;
+	return a.every((val, i) => val === b[i]);
 }
 
 /**
@@ -262,20 +260,20 @@ function shallowEqual(a: any[], b: any[]): boolean {
  * Uses requestAnimationFrame for optimal performance
  */
 export function rafThrottle<T extends (...args: any[]) => any>(
-	func: T,
+	func: T
 ): (...args: Parameters<T>) => void {
-	let rafId: number | null = null
+	let rafId: number | null = null;
 
 	return (...args: Parameters<T>) => {
 		if (rafId !== null) {
-			return
+			return;
 		}
 
 		rafId = requestAnimationFrame(() => {
-			func(...args)
-			rafId = null
-		})
-	}
+			func(...args);
+			rafId = null;
+		});
+	};
 }
 
 /**
@@ -284,18 +282,18 @@ export function rafThrottle<T extends (...args: any[]) => any>(
  */
 export function useIdleCallback(
 	callback: () => void,
-	deps: React.DependencyList = [],
+	deps: React.DependencyList = []
 ) {
 	React.useEffect(() => {
 		if (typeof window === "undefined" || !("requestIdleCallback" in window)) {
 			// Fallback to setTimeout
-			const timeoutId = setTimeout(callback, 1)
-			return () => clearTimeout(timeoutId)
+			const timeoutId = setTimeout(callback, 1);
+			return () => clearTimeout(timeoutId);
 		}
 
-		const idleId = requestIdleCallback(callback)
-		return () => cancelIdleCallback(idleId)
-	}, deps)
+		const idleId = requestIdleCallback(callback);
+		return () => cancelIdleCallback(idleId);
+	}, deps);
 }
 
 /**
@@ -303,24 +301,24 @@ export function useIdleCallback(
  * Reduces re-renders by batching multiple state updates
  */
 export function useBatchedUpdates() {
-	const pendingUpdates = useRef<(() => void)[]>([])
-	const rafId = useRef<number | null>(null)
+	const pendingUpdates = useRef<(() => void)[]>([]);
+	const rafId = useRef<number | null>(null);
 
 	const scheduleUpdate = useCallback((update: () => void) => {
-		pendingUpdates.current.push(update)
+		pendingUpdates.current.push(update);
 
 		if (rafId.current === null) {
 			rafId.current = requestAnimationFrame(() => {
-				const updates = pendingUpdates.current
-				pendingUpdates.current = []
-				rafId.current = null
+				const updates = pendingUpdates.current;
+				pendingUpdates.current = [];
+				rafId.current = null;
 
-				updates.forEach((update) => update())
-			})
+				updates.forEach((update) => update());
+			});
 		}
-	}, [])
+	}, []);
 
-	return scheduleUpdate
+	return scheduleUpdate;
 }
 
 /**
@@ -329,48 +327,48 @@ export function useBatchedUpdates() {
  */
 export function useImageLoader(src: string | undefined) {
 	const [status, setStatus] = React.useState<"loading" | "loaded" | "error">(
-		"loading",
-	)
+		"loading"
+	);
 
 	React.useEffect(() => {
 		if (!src) {
-			setStatus("error")
-			return
+			setStatus("error");
+			return;
 		}
 
-		setStatus("loading")
+		setStatus("loading");
 
-		const img = new Image()
+		const img = new Image();
 
-		const handleLoad = () => setStatus("loaded")
-		const handleError = () => setStatus("error")
+		const handleLoad = () => setStatus("loaded");
+		const handleError = () => setStatus("error");
 
-		img.addEventListener("load", handleLoad)
-		img.addEventListener("error", handleError)
-		img.src = src
+		img.addEventListener("load", handleLoad);
+		img.addEventListener("error", handleError);
+		img.src = src;
 
 		return () => {
-			img.removeEventListener("load", handleLoad)
-			img.removeEventListener("error", handleError)
-		}
-	}, [src])
+			img.removeEventListener("load", handleLoad);
+			img.removeEventListener("error", handleError);
+		};
+	}, [src]);
 
-	return status
+	return status;
 }
 
 /**
  * Prefetch resources
  * Preloads critical resources for better performance
  */
-export function prefetchResource(href: string, as = "fetch") {
-	if (typeof document === "undefined") return
+export function prefetchResource(href: string, as: string = "fetch") {
+	if (typeof document === "undefined") return;
 
-	const link = document.createElement("link")
-	link.rel = "prefetch"
-	link.as = as
-	link.href = href
+	const link = document.createElement("link");
+	link.rel = "prefetch";
+	link.as = as;
+	link.href = href;
 
-	document.head.appendChild(link)
+	document.head.appendChild(link);
 }
 
 /**
@@ -382,18 +380,18 @@ export function preloadImages(urls: string[]): Promise<void[]> {
 		urls.map(
 			(url) =>
 				new Promise<void>((resolve, reject) => {
-					const img = new Image()
-					img.onload = () => resolve()
-					img.onerror = reject
-					img.src = url
-				}),
-		),
-	)
+					const img = new Image();
+					img.onload = () => resolve();
+					img.onerror = reject;
+					img.src = url;
+				})
+		)
+	);
 }
 
 /**
  * Check if code splitting is supported
  */
 export function supportsCodeSplitting(): boolean {
-	return typeof window !== "undefined" && "IntersectionObserver" in window
+	return typeof window !== "undefined" && "IntersectionObserver" in window;
 }

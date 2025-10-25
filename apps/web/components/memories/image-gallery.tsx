@@ -1,10 +1,10 @@
 import { colors } from "@repo/ui/memory-graph/constants"
 import { Badge } from "@ui/components/badge"
+import { ImageIcon, ExternalLink } from "lucide-react"
+import { memo, useState, useMemo, useCallback } from "react"
 import type { DocumentWithMemories } from "@ui/memory-graph/types"
-import { ExternalLink, ImageIcon } from "lucide-react"
-import { memo, useCallback, useMemo, useState } from "react"
 
-// Helper functions from memory-list-view.tsx
+// Helper functions from memory-list-view.tsx 
 const safeHttpUrl = (url: unknown): string | undefined => {
 	if (typeof url !== "string") return undefined
 	try {
@@ -47,9 +47,7 @@ interface ImageGalleryProps {
 	document: DocumentWithMemories
 }
 
-const extractImagesFromDocument = (
-	document: DocumentWithMemories,
-): ImageData[] => {
+const extractImagesFromDocument = (document: DocumentWithMemories): ImageData[] => {
 	const metadata = asRecord(document.metadata)
 	const raw = asRecord(document.raw)
 	const rawExtraction = asRecord(raw?.extraction)
@@ -62,7 +60,7 @@ const extractImagesFromDocument = (
 		"previewImage",
 		"preview_image",
 		"image",
-		"ogImage",
+		"ogImage", 
 		"og_image",
 		"thumbnail",
 		"thumbnailUrl",
@@ -70,7 +68,7 @@ const extractImagesFromDocument = (
 	]
 
 	const images: ImageData[] = []
-
+	
 	// Get the main preview image
 	const metadataImage = pickFirstUrl(metadata, imageKeys)
 	const rawImage =
@@ -78,19 +76,19 @@ const extractImagesFromDocument = (
 		pickFirstUrl(rawFirecrawl, imageKeys) ??
 		pickFirstUrl(rawFirecrawlMetadata, imageKeys) ??
 		pickFirstUrl(rawGemini, imageKeys)
-
+	
 	const firecrawlOgImage =
 		safeHttpUrl(rawFirecrawlMetadata?.ogImage) ??
 		safeHttpUrl(rawFirecrawl?.ogImage)
-
+	
 	const mainImage = rawImage ?? metadataImage ?? firecrawlOgImage
-
+	
 	if (mainImage) {
 		images.push({
 			src: mainImage,
 			alt: document.title || "Preview image",
 			title: "Main Preview",
-			description: "Primary image from the webpage",
+			description: "Primary image from the webpage"
 		})
 	}
 
@@ -107,26 +105,23 @@ const extractImagesFromDocument = (
 			for (const img of source) {
 				if (typeof img === "string") {
 					const imgUrl = safeHttpUrl(img)
-					if (imgUrl && !images.some((existing) => existing.src === imgUrl)) {
+					if (imgUrl && !images.some(existing => existing.src === imgUrl)) {
 						images.push({
 							src: imgUrl,
 							alt: document.title || "Additional image",
-							title: "Additional Image",
+							title: "Additional Image"
 						})
 					}
 				} else if (img && typeof img === "object") {
 					const imgRecord = asRecord(img)
 					if (imgRecord) {
 						const imgUrl = safeHttpUrl(imgRecord.url || imgRecord.src)
-						if (imgUrl && !images.some((existing) => existing.src === imgUrl)) {
+						if (imgUrl && !images.some(existing => existing.src === imgUrl)) {
 							images.push({
 								src: imgUrl,
-								alt:
-									(imgRecord.alt as string) ||
-									document.title ||
-									"Additional image",
+								alt: (imgRecord.alt as string) || document.title || "Additional image",
 								title: (imgRecord.title as string) || "Additional Image",
-								description: imgRecord.description as string,
+								description: imgRecord.description as string
 							})
 						}
 					}
@@ -142,14 +137,14 @@ const extractImagesFromDocument = (
 const ImageGalleryImpl = ({ document }: ImageGalleryProps) => {
 	const [selectedImage, setSelectedImage] = useState<ImageData | null>(null)
 	const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
-
+	
 	const images = useMemo(() => extractImagesFromDocument(document), [document])
-
+	
 	const handleImageError = useCallback((src: string) => {
-		setImageErrors((prev) => new Set([...prev, src]))
+		setImageErrors(prev => new Set([...prev, src]))
 	}, [])
 
-	const validImages = images.filter((img) => !imageErrors.has(img.src))
+	const validImages = images.filter(img => !imageErrors.has(img.src))
 
 	// Early return after all hooks are called
 	if (images.length === 0 || validImages.length === 0) {
@@ -160,52 +155,52 @@ const ImageGalleryImpl = ({ document }: ImageGalleryProps) => {
 		window.open(src, "_blank")
 	}, [])
 
-	return (
-		<div className="mt-4">
-			<div
-				className="text-sm font-medium mb-3 flex items-center gap-2 py-2"
-				style={{ color: colors.text.secondary }}
-			>
-				<ImageIcon className="w-4 h-4" />
-				Images ({validImages.length})
-			</div>
-
+		return (
+			<div className="mt-4">
+				<div
+					className="text-sm font-medium mb-3 flex items-center gap-2 py-2"
+					style={{ color: colors.text.secondary }}
+				>
+					<ImageIcon className="w-4 h-4" />
+					Images ({validImages.length})
+				</div>
+				
 			<div className="grid grid-cols-2 gap-3">
 				{validImages.map((image, index) => (
 					<div
-						className="relative group cursor-pointer rounded-lg overflow-hidden border transition-all hover:scale-[1.02]"
 						key={`${image.src}-${index}`}
-						onClick={() => setSelectedImage(image)}
+						className="relative group cursor-pointer rounded-lg overflow-hidden border transition-all hover:scale-[1.02]"
 						style={{
 							borderColor: "rgba(255, 255, 255, 0.08)",
 							backgroundColor: "rgba(255, 255, 255, 0.03)",
 						}}
+						onClick={() => setSelectedImage(image)}
 					>
 						<div className="relative w-full aspect-[4/3] overflow-hidden">
 							<div className="absolute inset-0 bg-gradient-to-br from-[#0f1624] via-[#101c2d] to-[#161f33]" />
 							<img
+								src={image.src}
 								alt={image.alt}
 								className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
 								loading="lazy"
 								onError={() => handleImageError(image.src)}
-								src={image.src}
 							/>
 							<div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/30" />
-
+							
 							{/* Hover overlay with external link */}
 							<div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
 								<button
+									type="button"
 									className="p-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/30 transition-colors"
 									onClick={(e) => {
 										e.stopPropagation()
 										openImageInNewTab(image.src)
 									}}
-									type="button"
 								>
 									<ExternalLink className="w-4 h-4 text-white" />
 								</button>
 							</div>
-
+							
 							{/* Image badge */}
 							{image.title && (
 								<div
@@ -228,18 +223,15 @@ const ImageGalleryImpl = ({ document }: ImageGalleryProps) => {
 
 			{/* Image modal/overlay */}
 			{selectedImage && (
-				<div
+				<div 
 					className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
 					onClick={() => setSelectedImage(null)}
 				>
-					<div
-						className="relative max-w-4xl max-h-[90vh] w-full"
-						onClick={(e) => e.stopPropagation()}
-					>
+					<div className="relative max-w-4xl max-h-[90vh] w-full" onClick={e => e.stopPropagation()}>
 						<img
+							src={selectedImage.src}
 							alt={selectedImage.alt}
 							className="w-full h-auto max-h-full object-contain rounded-lg shadow-2xl"
-							src={selectedImage.src}
 						/>
 						<div
 							className="absolute top-4 left-4 right-4 rounded-lg p-3 flex items-center justify-between"
@@ -262,19 +254,19 @@ const ImageGalleryImpl = ({ document }: ImageGalleryProps) => {
 							</div>
 							<div className="flex gap-2">
 								<button
+									type="button"
 									className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
 									onClick={(e) => {
 										e.stopPropagation()
 										openImageInNewTab(selectedImage.src)
 									}}
-									type="button"
 								>
 									<ExternalLink className="w-4 h-4 text-white" />
 								</button>
 								<button
+									type="button"
 									className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors text-white"
 									onClick={() => setSelectedImage(null)}
-									type="button"
 								>
 									×
 								</button>

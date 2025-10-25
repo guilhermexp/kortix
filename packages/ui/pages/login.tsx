@@ -7,8 +7,8 @@ import { HeadingH1Medium } from "@repo/ui/text/heading/heading-h1-medium";
 import { HeadingH3Medium } from "@repo/ui/text/heading/heading-h3-medium";
 import { Input } from "@ui/components/input";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 export function LoginPage() {
 	const searchParams = useSearchParams();

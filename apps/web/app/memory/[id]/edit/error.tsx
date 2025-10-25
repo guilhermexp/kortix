@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import { Button } from "@repo/ui/components/button"
-import { useEffect } from "react"
+import { Button } from "@repo/ui/components/button";
+import { useEffect } from "react";
 
 export default function Error({
 	error,
 	reset,
 }: {
-	error: Error & { digest?: string }
-	reset: () => void
+	error: Error & { digest?: string };
+	reset: () => void;
 }) {
 	useEffect(() => {
-		console.error("Memory edit page error:", error)
-	}, [error])
+		console.error("Memory edit page error:", error);
+	}, [error]);
 
 	return (
 		<div className="h-screen w-full flex items-center justify-center bg-[#0f1419]">
@@ -28,14 +28,11 @@ export default function Error({
 					<Button onClick={() => reset()} variant="default">
 						Try Again
 					</Button>
-					<Button
-						onClick={() => (window.location.href = "/home")}
-						variant="outline"
-					>
+					<Button onClick={() => (window.location.href = "/home")} variant="outline">
 						Back to Home
 					</Button>
 				</div>
 			</div>
 		</div>
-	)
+	);
 }
