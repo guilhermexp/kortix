@@ -8,7 +8,7 @@ const envSchema = z.object({
 		.default("4000"),
 	SUPABASE_URL: z.string().url(),
 	SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-	SUPABASE_ANON_KEY: z.string().min(1).optional(),
+	SUPABASE_ANON_KEY: z.string().min(1), // Required for RLS enforcement
 	GOOGLE_API_KEY: z.string().min(1).optional(),
 	XAI_API_KEY: z.string().min(1).optional(),
 	OPENROUTER_API_KEY: z.string().min(1).optional(),
