@@ -311,9 +311,8 @@ function Menu({ id }: { id?: string }) {
 										>
 											<div className="flex flex-row gap-2 items-center justify-center">
 												{menuItems.map((item, index) => (
-													<>
+													<React.Fragment key={item.key}>
 														<motion.button
-															key={item.key}
 															animate={{
 																opacity: 1,
 																y: 0,
@@ -367,7 +366,7 @@ function Menu({ id }: { id?: string }) {
 																}}
 															/>
 														)}
-													</>
+													</React.Fragment>
 												))}
 											</div>
 										</motion.div>
