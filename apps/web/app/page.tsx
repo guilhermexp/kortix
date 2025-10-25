@@ -26,11 +26,11 @@ import { ConnectAIModal } from "@/components/connect-ai-modal";
 import { InstallPrompt } from "@/components/install-prompt";
 import { MemoryListView } from "@/components/memory-list-view";
 import Menu from "@/components/menu";
-import { ProjectSelector } from "@/components/project-selector";
 import { ReferralUpgradeModal } from "@/components/referral-upgrade-modal";
 import type { TourStep } from "@/components/tour";
 import { TourAlertDialog, useTour } from "@/components/tour";
 import { AddMemoryView } from "@/components/views/add-memory";
+import { ProjectSelector } from "@/components/project-selector";
 import { ChatRewrite } from "@/components/views/chat";
 import { TOUR_STEP_IDS, TOUR_STORAGE_KEY } from "@/lib/tour-constants";
 import { useViewMode } from "@/lib/view-mode-context";
@@ -636,20 +636,9 @@ const MemoryGraphPage = () => {
         </AnimatePresence>
 
         {/* Top Bar */}
-        <div className="absolute top-2 left-0 right-0 z-10 p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="pointer-events-auto">
-              <Logo className="h-8" id={TOUR_STEP_IDS.LOGO} />
-            </div>
-
-            <div className="hidden sm:block">
-              <ProjectSelector />
-            </div>
-          </div>
-
-          <div>
-            <Menu chatRightOffset={isOpen && !isMobile ? chatWidth : 0} />
-          </div>
+        <div className="absolute top-0 left-0 right-0 z-10 px-4 py-2 flex items-center justify-between">
+          <ProjectSelector className="pointer-events-auto" />
+          <Menu chatRightOffset={isOpen && !isMobile ? chatWidth : 0} />
         </div>
 
         {/* Floating Open Chat Button */}

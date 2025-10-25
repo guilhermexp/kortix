@@ -37,6 +37,7 @@ import {
 import { AnimatePresence, motion } from "motion/react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { cn } from "@lib/utils"
 import { useProjectMutations } from "@/hooks/use-project-mutations"
 import { useProjectName } from "@/hooks/use-project-name"
 import { useProject } from "@/stores"
@@ -51,7 +52,11 @@ interface Project {
 	isExperimental?: boolean
 }
 
-export function ProjectSelector() {
+interface ProjectSelectorProps {
+	className?: string
+}
+
+export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 	const queryClient = useQueryClient()
 	const [isOpen, setIsOpen] = useState(false)
 	const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -106,9 +111,9 @@ export function ProjectSelector() {
 	}
 
 	return (
-		<div className="relative">
+		<div className={cn("relative", className)}>
 			<motion.button
-				className="flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-white/5 hover:bg-white/10 transition-colors"
+				className="flex items-center gap-2 px-3 py-2 rounded-md border border-white/15 bg-[#0f1419] text-white/80 hover:text-white hover:bg-white/10 transition-colors"
 				onClick={() => setIsOpen(!isOpen)}
 				whileHover={{ scale: 1.01 }}
 				whileTap={{ scale: 0.99 }}

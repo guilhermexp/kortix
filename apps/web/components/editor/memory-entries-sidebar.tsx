@@ -35,6 +35,7 @@ interface MemoryEntriesSidebarProps {
   documentId: string;
   containerTags?: string[];
   document?: DocumentWithMemories;
+  variant?: "sidebar" | "standalone";
 }
 
 interface EditingMemory {
@@ -46,6 +47,7 @@ export function MemoryEntriesSidebar({
   documentId,
   containerTags = [],
   document,
+  variant = "sidebar",
 }: MemoryEntriesSidebarProps) {
   const [memories, setMemories] = useState<MemoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -221,11 +223,37 @@ export function MemoryEntriesSidebar({
     return null;
   };
 
+  const containerClasses = cn(
+    "w-full bg-[#0f1419] flex flex-col",
+    variant === "sidebar"
+      ? "h-full border-l border-white/10"
+      : "border border-white/10 rounded-2xl shadow-xl backdrop-blur-sm"
+  );
+
+  const headerClasses =
+    variant === "sidebar"
+      ? "px-3 md:px-4 py-1.5 border-b border-white/10"
+      : "px-5 py-4 border-b border-white/10";
+
+  const thumbnailMargin =
+    variant === "sidebar" ? "mx-3 md:mx-4 mt-4" : "mx-5 mt-5";
+
+  const contentPadding =
+    variant === "sidebar" ? "px-3 md:px-4 py-3" : "px-5 py-4";
+
+  const footerPadding =
+    variant === "sidebar" ? "px-3 md:px-4 py-3" : "px-5 py-4";
+
   return (
-    <div className="w-full h-full bg-[#0f1419] border-l border-white/10 flex flex-col">
+    <div className={containerClasses}>
       {/* Header */}
-      <div className="px-3 md:px-4 py-1.5 border-b border-white/10">
-        <h2 className="text-sm md:text-base font-semibold text-white mb-0.5">
+      <div className={headerClasses}>
+        <h2
+          className={cn(
+            "font-semibold text-white mb-0.5",
+            variant === "sidebar" ? "text-sm md:text-base" : "text-base"
+          )}
+        >
           Memory Entries
         </h2>
         <p className="text-xs text-gray-400">
@@ -235,7 +263,7 @@ export function MemoryEntriesSidebar({
 
       {/* Thumbnail/Preview */}
       {documentThumbnail && (
-        <div className="mx-3 md:mx-4 mt-4">
+        <div className={thumbnailMargin}>
           <img
             src={documentThumbnail}
             alt={document?.title || "Document preview"}
@@ -247,14 +275,19 @@ export function MemoryEntriesSidebar({
 
       {/* Error message */}
       {error && (
-        <div className="mx-3 md:mx-4 mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-md flex items-start gap-2">
+        <div
+          className={cn(
+            variant === "sidebar" ? "mx-3 md:mx-4 mt-4" : "mx-5 mt-5",
+            "p-3 bg-red-500/10 border border-red-500/20 rounded-md flex items-start gap-2"
+          )}
+        >
           <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
           <p className="text-xs text-red-400">{error}</p>
         </div>
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-3 md:px-4 py-3">
+      <div className={cn("flex-1 overflow-y-auto", contentPadding)}>
         <div className="space-y-3">
           {/* Loading state */}
           {loading && (
@@ -374,7 +407,7 @@ export function MemoryEntriesSidebar({
 
       {/* Footer with Add button */}
       {!editingMemory && !loading && (
-        <div className="px-3 md:px-4 py-3 border-t border-white/10">
+        <div className={cn(footerPadding, "border-t border-white/10")}>
           <Button
             onClick={startCreating}
             className="w-full"
