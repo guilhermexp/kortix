@@ -1,4 +1,5 @@
 import { google } from "@ai-sdk/google"
+import { xai } from "@ai-sdk/xai"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { streamText } from "ai"
 import { z } from "zod"
@@ -121,10 +122,12 @@ export async function handleChat({
 		? `${ENHANCED_SYSTEM_PROMPT}\n\n${systemMessage}`
 		: ENHANCED_SYSTEM_PROMPT
 
-	// Use AI SDK streamText with configured model
+	// Use AI SDK streamText with configured provider and model
+	const selectedModel = env.AI_PROVIDER === "xai" ? xai(env.CHAT_MODEL) : google(env.CHAT_MODEL)
+
 	try {
 		const result = streamText({
-			model: google(env.CHAT_MODEL),
+			model: selectedModel,
 			system: systemPrompt,
 			messages: messages.map((m) => ({ role: m.role, content: m.content })),
 			maxTokens: 8192,
@@ -133,6 +136,7 @@ export async function handleChat({
 				console.info("Chat v1 stream completed", {
 					tokensUsed: usage.totalTokens,
 					finishReason,
+					provider: env.AI_PROVIDER,
 					model: env.CHAT_MODEL,
 				})
 			},
@@ -145,7 +149,7 @@ export async function handleChat({
 				? error.message
 				: "Modelo de chat indisponível no momento"
 		const fallback = streamText({
-			model: google(env.CHAT_MODEL),
+			model: selectedModel,
 			system: ENHANCED_SYSTEM_PROMPT,
 			messages: messages.map((m) => ({ role: m.role, content: m.content })),
 			maxTokens: 1024,

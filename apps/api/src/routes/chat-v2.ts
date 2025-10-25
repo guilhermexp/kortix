@@ -405,9 +405,10 @@ export async function handleChatV2({
 	} catch (error) {
 		console.error("Chat V2 failed", error)
 
-		// Fallback to simple mode with configured model
+		// Fallback to simple mode with configured provider and model
+		const fallbackModel = env.AI_PROVIDER === "xai" ? xai(env.CHAT_MODEL) : google(env.CHAT_MODEL)
 		const fallback = streamText({
-			model: google(env.CHAT_MODEL),
+			model: fallbackModel,
 			messages,
 			system: ENHANCED_SYSTEM_PROMPT,
 			maxTokens: 2048,
