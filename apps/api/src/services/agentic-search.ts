@@ -2,6 +2,7 @@ import { google } from "@ai-sdk/google"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { generateObject } from "ai"
 import { z } from "zod"
+import { env } from "../env"
 import { searchDocuments } from "../routes/search"
 import { searchWebWithExa } from "./exa-search"
 
@@ -243,7 +244,7 @@ User question: ${userQuery}
 `.trim()
 
 	const result = await generateObject({
-		model: google("models/gemini-2.5-flash-preview-09-2025"),
+		model: google(env.CHAT_MODEL),
 		schema: queriesSchema,
 		prompt,
 		temperature: 0.3,
@@ -277,7 +278,7 @@ Sources:\n${context}
 `.trim()
 
 	const result = await generateObject({
-		model: google("models/gemini-2.5-flash-preview-09-2025"),
+		model: google(env.CHAT_MODEL),
 		schema: evaluationSchema,
 		prompt,
 		temperature: 0,
