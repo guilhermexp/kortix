@@ -1,8 +1,8 @@
 import {
-    CreateProjectSchema,
-    DeleteProjectSchema,
-    ProjectSchema,
-    UpdateProjectSchema,
+	CreateProjectSchema,
+	DeleteProjectSchema,
+	ProjectSchema,
+	UpdateProjectSchema,
 } from "@repo/validation/api"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { z } from "zod"
@@ -103,11 +103,25 @@ export async function deleteProject(
 	},
 ) {
 	const parsed = DeleteProjectSchema.parse(mode)
+	let documentsAffected = 0
+	let memoriesAffected = 0
 
 	if (parsed.action === "move") {
 		const targetProjectId = parsed.targetProjectId
 		if (!targetProjectId) {
 			throw new Error("targetProjectId is required when action is move")
+		}
+
+		// Security: Verify target project belongs to the same organization
+		const { data: targetProject, error: targetCheckError } = await client
+			.from("spaces")
+			.select("id, organization_id")
+			.eq("id", targetProjectId)
+			.eq("organization_id", organizationId)
+			.single()
+
+		if (targetCheckError || !targetProject) {
+			throw new Error("Target project not found or does not belong to your organization")
 		}
 
 		const { data: links, error: linksError } = await client
@@ -116,6 +130,8 @@ export async function deleteProject(
 			.eq("space_id", projectId)
 
 		if (linksError) throw linksError
+
+		documentsAffected = links?.length ?? 0
 
 		if (links && links.length > 0) {
 			const inserts = links.map((link) => ({
@@ -145,6 +161,8 @@ export async function deleteProject(
 		if (linksError) throw linksError
 
 		const documentIds = (links ?? []).map((link) => link.document_id)
+		documentsAffected = documentIds.length
+
 		if (documentIds.length > 0) {
 			const { error: deleteDocsError } = await client
 				.from("documents")
@@ -170,32 +188,39 @@ export async function deleteProject(
 		.eq("organization_id", organizationId)
 
 	if (error) throw error
+
+	return {
+		success: true,
+		message: "Project deleted successfully",
+		documentsAffected,
+		memoriesAffected,
+	}
 }
 
 export async function updateProject(
-    client: SupabaseClient,
-    {
-        organizationId,
-        projectId,
-        payload,
-    }: {
-        organizationId: string
-        projectId: string
-        payload: z.infer<typeof UpdateProjectSchema>
-    },
+	client: SupabaseClient,
+	{
+		organizationId,
+		projectId,
+		payload,
+	}: {
+		organizationId: string
+		projectId: string
+		payload: z.infer<typeof UpdateProjectSchema>
+	},
 ) {
-    const parsed = UpdateProjectSchema.parse(payload)
+	const parsed = UpdateProjectSchema.parse(payload)
 
-    const { data, error } = await client
-        .from("spaces")
-        .update({ name: parsed.name })
-        .eq("id", projectId)
-        .eq("organization_id", organizationId)
-        .select(
-            "id, container_tag, name, is_experimental, created_at, updated_at, documents_to_spaces(document_id)",
-        )
-        .single()
+	const { data, error } = await client
+		.from("spaces")
+		.update({ name: parsed.name })
+		.eq("id", projectId)
+		.eq("organization_id", organizationId)
+		.select(
+			"id, container_tag, name, is_experimental, created_at, updated_at, documents_to_spaces(document_id)",
+		)
+		.single()
 
-    if (error) throw error
-    return mapSpaceToProject(data as SpaceWithRelations)
+	if (error) throw error
+	return mapSpaceToProject(data as SpaceWithRelations)
 }

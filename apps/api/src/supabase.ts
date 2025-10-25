@@ -15,7 +15,8 @@ export function createScopedSupabase(
 	organizationId: string,
 	userId?: string,
 ): SupabaseClient {
-	const apiKey = env.SUPABASE_SERVICE_ROLE_KEY ?? env.SUPABASE_ANON_KEY
+	// Use ANON_KEY to respect RLS policies; organization is validated via middleware
+	const apiKey = env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_ROLE_KEY
 	return createClient(env.SUPABASE_URL, apiKey, {
 		auth: { persistSession: false },
 		global: {

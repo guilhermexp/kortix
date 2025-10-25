@@ -32,8 +32,8 @@ export async function condenseUserQuery(
 	const provider = env.AI_PROVIDER
 	const model =
 		provider === "xai"
-			? xai("grok-4")
-			: google("models/gemini-2.5-flash-preview-09-2025")
+			? xai(env.CHAT_MODEL)
+			: google(env.CHAT_MODEL)
 
 	try {
 		const response = await generateText({

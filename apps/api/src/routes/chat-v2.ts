@@ -289,14 +289,14 @@ export async function handleChatV2({
 			provider = "google"
 		}
 	} else {
-		// Use default provider from env
+		// Use default provider and model from env
 		provider = env.AI_PROVIDER
 		if (provider === "xai") {
-			modelName = "grok-4-fast"
-			selectedModel = xai("grok-4-fast")
+			modelName = env.CHAT_MODEL
+			selectedModel = xai(modelName)
 		} else {
-			modelName = "models/gemini-2.5-flash-preview-09-2025"
-			selectedModel = google("models/gemini-2.5-flash-preview-09-2025")
+			modelName = env.CHAT_MODEL
+			selectedModel = google(modelName)
 		}
 	}
 
@@ -405,9 +405,9 @@ export async function handleChatV2({
 	} catch (error) {
 		console.error("Chat V2 failed", error)
 
-		// Fallback to simple mode with flash model
+		// Fallback to simple mode with configured model
 		const fallback = streamText({
-			model: google("models/gemini-2.5-flash-preview-09-2025"),
+			model: google(env.CHAT_MODEL),
 			messages,
 			system: ENHANCED_SYSTEM_PROMPT,
 			maxTokens: 2048,
