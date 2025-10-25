@@ -1,20 +1,20 @@
-"use client";
+"use client"
 
-import { Component, type ReactNode } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { AlertTriangle, Home, RefreshCw } from "lucide-react"
+import { Component, type ReactNode } from "react"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 
 interface ErrorBoundaryProps {
-	children: ReactNode;
-	fallback?: (error: Error, reset: () => void) => ReactNode;
-	onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+	children: ReactNode
+	fallback?: (error: Error, reset: () => void) => ReactNode
+	onError?: (error: Error, errorInfo: React.ErrorInfo) => void
 }
 
 interface ErrorBoundaryState {
-	hasError: boolean;
-	error: Error | null;
-	errorInfo: React.ErrorInfo | null;
+	hasError: boolean
+	error: Error | null
+	errorInfo: React.ErrorInfo | null
 }
 
 /**
@@ -32,33 +32,33 @@ export class ErrorBoundary extends Component<
 	ErrorBoundaryState
 > {
 	constructor(props: ErrorBoundaryProps) {
-		super(props);
+		super(props)
 		this.state = {
 			hasError: false,
 			error: null,
 			errorInfo: null,
-		};
+		}
 	}
 
 	static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
 		return {
 			hasError: true,
 			error,
-		};
+		}
 	}
 
 	override componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
 		// Log error to console in development
-		console.error("ErrorBoundary caught an error:", error, errorInfo);
+		console.error("ErrorBoundary caught an error:", error, errorInfo)
 
 		// Update state with error info
 		this.setState({
 			errorInfo,
-		});
+		})
 
 		// Call custom error handler if provided
 		if (this.props.onError) {
-			this.props.onError(error, errorInfo);
+			this.props.onError(error, errorInfo)
 		}
 
 		// In production, you would send this to an error tracking service
@@ -70,22 +70,22 @@ export class ErrorBoundary extends Component<
 			hasError: false,
 			error: null,
 			errorInfo: null,
-		});
-	};
+		})
+	}
 
 	handleGoHome = (): void => {
-		window.location.href = "/";
-	};
+		window.location.href = "/"
+	}
 
 	handleReload = (): void => {
-		window.location.reload();
-	};
+		window.location.reload()
+	}
 
 	override render(): ReactNode {
 		if (this.state.hasError) {
 			// Use custom fallback if provided
 			if (this.props.fallback && this.state.error) {
-				return this.props.fallback(this.state.error, this.handleReset);
+				return this.props.fallback(this.state.error, this.handleReset)
 			}
 
 			// Default error UI
@@ -101,7 +101,8 @@ export class ErrorBoundary extends Component<
 									Something went wrong
 								</h1>
 								<p className="text-muted-foreground mt-1">
-									We encountered an unexpected error. Don't worry, your data is safe.
+									We encountered an unexpected error. Don't worry, your data is
+									safe.
 								</p>
 							</div>
 						</div>
@@ -138,24 +139,24 @@ export class ErrorBoundary extends Component<
 						{/* Recovery actions */}
 						<div className="flex flex-col sm:flex-row gap-3">
 							<Button
-								onClick={this.handleReset}
 								className="flex-1"
+								onClick={this.handleReset}
 								variant="default"
 							>
 								<RefreshCw className="w-4 h-4 mr-2" />
 								Try Again
 							</Button>
 							<Button
-								onClick={this.handleReload}
 								className="flex-1"
+								onClick={this.handleReload}
 								variant="outline"
 							>
 								<RefreshCw className="w-4 h-4 mr-2" />
 								Reload Page
 							</Button>
 							<Button
-								onClick={this.handleGoHome}
 								className="flex-1"
+								onClick={this.handleGoHome}
 								variant="outline"
 							>
 								<Home className="w-4 h-4 mr-2" />
@@ -165,9 +166,7 @@ export class ErrorBoundary extends Component<
 
 						{/* Help text */}
 						<div className="text-sm text-muted-foreground border-t pt-4">
-							<p>
-								If this problem persists, try:
-							</p>
+							<p>If this problem persists, try:</p>
 							<ul className="list-disc list-inside mt-2 space-y-1">
 								<li>Clearing your browser cache</li>
 								<li>Checking your internet connection</li>
@@ -177,10 +176,10 @@ export class ErrorBoundary extends Component<
 						</div>
 					</Card>
 				</div>
-			);
+			)
 		}
 
-		return this.props.children;
+		return this.props.children
 	}
 }
 
@@ -212,15 +211,15 @@ export function EditorErrorBoundary({ children }: { children: ReactNode }) {
 						)}
 
 						<div className="flex gap-2">
-							<Button onClick={reset} className="flex-1" size="sm">
+							<Button className="flex-1" onClick={reset} size="sm">
 								<RefreshCw className="w-4 h-4 mr-2" />
 								Reset Editor
 							</Button>
 							<Button
-								onClick={() => (window.location.href = "/")}
-								variant="outline"
 								className="flex-1"
+								onClick={() => (window.location.href = "/")}
 								size="sm"
+								variant="outline"
 							>
 								<Home className="w-4 h-4 mr-2" />
 								Back to Home
@@ -228,17 +227,18 @@ export function EditorErrorBoundary({ children }: { children: ReactNode }) {
 						</div>
 
 						<p className="text-xs text-gray-500">
-							Your content is automatically saved. Try resetting the editor or refreshing the page.
+							Your content is automatically saved. Try resetting the editor or
+							refreshing the page.
 						</p>
 					</Card>
 				</div>
 			)}
 			onError={(error, errorInfo) => {
-				console.error("Editor error:", error, errorInfo);
+				console.error("Editor error:", error, errorInfo)
 				// In production: send to error tracking service
 			}}
 		>
 			{children}
 		</ErrorBoundary>
-	);
+	)
 }

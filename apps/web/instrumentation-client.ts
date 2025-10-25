@@ -29,4 +29,4 @@
 // export const onRouterTransitionStart = Sentry.captureRouterTransitionStart
 
 // Sentry disabled - no-op function to maintain compatibility
-export const onRouterTransitionStart = () => {};
+export const onRouterTransitionStart = () => {}

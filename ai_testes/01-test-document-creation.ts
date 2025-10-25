@@ -7,7 +7,7 @@
  * - Status inicial correto
  */
 
-import { config, log, logError, logSuccess, logFailure } from "./config"
+import { config, log, logError, logFailure, logSuccess } from "./config"
 
 interface CreateDocumentResponse {
 	id: string

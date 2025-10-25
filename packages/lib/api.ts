@@ -3,7 +3,6 @@ import { z } from "zod"
 import {
 	ConnectionResponseSchema,
 	CreateProjectSchema,
-    UpdateProjectSchema,
 	DeleteProjectResponseSchema,
 	DeleteProjectSchema,
 	DocumentsWithMemoriesQuerySchema,
@@ -19,6 +18,7 @@ import {
 	SearchResponseSchema,
 	type SearchResult,
 	SettingsRequestSchema,
+	UpdateProjectSchema,
 } from "../validation/api"
 import { BACKEND_URL } from "./env"
 

@@ -83,7 +83,13 @@ export function useProjectMutations() {
 	})
 
 	const renameProjectMutation = useMutation({
-		mutationFn: async ({ projectId, name }: { projectId: string; name: string }) => {
+		mutationFn: async ({
+			projectId,
+			name,
+		}: {
+			projectId: string
+			name: string
+		}) => {
 			const response = await $fetch(`@patch/projects/${projectId}`, {
 				body: { name },
 			})

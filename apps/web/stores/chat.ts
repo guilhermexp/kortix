@@ -102,10 +102,10 @@ export const usePersistentChatStore = create<ConversationsStoreState>()(
 						return state // No change needed
 					}
 
-                                        const shouldTouchLastUpdated = (() => {
-                                                if (!existing) return messages.length > 0
-                                                return true
-                                        })()
+					const shouldTouchLastUpdated = (() => {
+						if (!existing) return messages.length > 0
+						return true
+					})()
 
 					const record: ConversationRecord = {
 						messages,
