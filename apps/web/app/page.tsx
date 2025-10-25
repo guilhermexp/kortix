@@ -454,6 +454,11 @@ const MemoryGraphPage = () => {
     };
   }, []);
 
+  const viewToggleBaseClasses =
+    "bg-[#0f1419] border text-white/80 hover:text-white hover:bg-white/10 px-2 sm:px-3 rounded-md";
+  const viewToggleActiveClasses = "border-white/40 text-white";
+  const viewToggleInactiveClasses = "border-white/15";
+
   return (
     <div className="relative h-screen bg-[#0f1419] overflow-hidden touch-none">
       {/* Main content area */}
@@ -476,11 +481,11 @@ const MemoryGraphPage = () => {
         >
           <div className="flex gap-2">
             <Button
-              className={`${
+              className={`${viewToggleBaseClasses} ${
                 viewMode === "graph"
-                  ? "bg-blue-500/20 border-blue-400/30 text-blue-300"
-                  : "bg-white/5 border-white/20 text-white/70"
-              } hover:bg-white/10 hover:text-white px-2 sm:px-3 rounded-md`}
+                  ? viewToggleActiveClasses
+                  : viewToggleInactiveClasses
+              }`}
               onClick={() => handleViewModeChange("graph")}
               size="sm"
               variant="outline"
@@ -490,11 +495,11 @@ const MemoryGraphPage = () => {
             </Button>
 
             <Button
-              className={`${
+              className={`${viewToggleBaseClasses} ${
                 viewMode === "list"
-                  ? "bg-blue-500/20 border-blue-400/30 text-blue-300"
-                  : "bg-white/5 border-white/20 text-white/70"
-              } hover:bg-white/10 hover:text-white px-2 sm:px-3 rounded-md`}
+                  ? viewToggleActiveClasses
+                  : viewToggleInactiveClasses
+              }`}
               onClick={() => handleViewModeChange("list")}
               size="sm"
               variant="outline"
@@ -643,7 +648,7 @@ const MemoryGraphPage = () => {
           </div>
 
           <div>
-            <Menu />
+            <Menu chatRightOffset={isOpen && !isMobile ? chatWidth : 0} />
           </div>
         </div>
 

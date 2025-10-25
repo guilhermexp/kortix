@@ -40,7 +40,13 @@ export const MCPIcon = ({ className }: { className?: string }) => {
 	)
 }
 
-function Menu({ id }: { id?: string }) {
+function Menu({
+	id,
+	chatRightOffset = 0,
+}: {
+	id?: string
+	chatRightOffset?: number
+}) {
 	const router = useRouter()
 	const searchParams = useSearchParams()
 	const openParam = searchParams.get("open")
@@ -229,11 +235,6 @@ function Menu({ id }: { id?: string }) {
 		setMenuExpanded(isExpanded)
 	}, [isMobile, isMobileMenuOpen, isHovered, expandedView, setMenuExpanded])
 
-	// Calculate width based on state - for horizontal layout
-	// Normal: 5 icons with labels (~600px)
-	// Expanded view: 600px
-	const menuWidth = 600
-
 	// Dynamic z-index for mobile based on active panel
 	const mobileZIndex = isMobile && activePanel === "menu" ? "z-[70]" : "z-[100]"
 
@@ -242,23 +243,21 @@ function Menu({ id }: { id?: string }) {
 			{/* Desktop Menu */}
 			{!isMobile && (
 				<LayoutGroup>
-					<div className="fixed w-full p-4 top-0 left-0 pointer-events-none z-[60] flex justify-center items-start">
+					<div
+						className="fixed px-4 py-2 top-0 left-0 pointer-events-none z-[60] flex justify-center items-start"
+						style={{ right: chatRightOffset }}
+					>
 						<motion.nav
 							animate={{
-								width: menuWidth,
 								scale: 1,
 							}}
-							className="pointer-events-auto group relative flex text-sm font-medium flex-row items-center overflow-hidden rounded-xl shadow-2xl bg-[#0f1419] border border-white/10"
+							className="pointer-events-auto group relative flex text-sm font-medium flex-row items-center overflow-hidden rounded-xl shadow-2xl bg-[#0f1419] border border-white/10 w-full max-w-[600px]"
 							id={id}
-							initial={{ width: 600, scale: 0.95 }}
+							initial={{ scale: 0.95 }}
 							layout
 							onMouseEnter={() => !expandedView && setIsHovered(true)}
 							onMouseLeave={() => !expandedView && setIsHovered(false)}
 							transition={{
-								width: {
-									duration: 0.2,
-									ease: [0.4, 0, 0.2, 1],
-								},
 								scale: {
 									duration: 0.5,
 									ease: [0.4, 0, 0.2, 1],
@@ -285,7 +284,7 @@ function Menu({ id }: { id?: string }) {
 											animate={{
 												opacity: 1,
 											}}
-											className="w-full flex flex-row gap-2 p-4 justify-center items-center"
+											className="w-full flex flex-row gap-2 px-4 py-2 justify-center items-center"
 											exit={{
 												opacity: 0,
 												transition: {
@@ -344,7 +343,7 @@ function Menu({ id }: { id?: string }) {
 																initial={{ scale: 0.8 }}
 																layout="position"
 															>
-																<item.icon className="duration-200 h-6 w-6 drop-shadow-lg flex-shrink-0" />
+																<item.icon className="duration-200 h-5 w-5 drop-shadow-lg flex-shrink-0" />
 															</motion.div>
 															<span className="drop-shadow-lg pl-3 whitespace-nowrap">
 																{item.text}
@@ -375,7 +374,7 @@ function Menu({ id }: { id?: string }) {
 											animate={{
 												opacity: 1,
 											}}
-											className="w-full p-4"
+											className="w-full px-4 py-3"
 											exit={{
 												opacity: 0,
 												transition: {
