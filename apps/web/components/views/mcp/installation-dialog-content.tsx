@@ -73,15 +73,15 @@ export function InstallationDialogContent({
 		const base = MCP_SERVER_URL.replace(/\/$/, "")
 		let command = `npx -y install-mcp@latest ${base} --client ${client} --oauth=yes --header 'Authorization: Bearer ${apiKey}'`
 
-		if (
-			selectedProject &&
-			selectedProject !== "none" &&
-			selectedProject !== "sm_project_default"
-		) {
-			// Remove the "sm_project_" prefix from the containerTag
-			const projectId = selectedProject.replace(/^sm_project_/, "")
-			command += ` --project ${projectId}`
-		}
+    if (
+        selectedProject &&
+        selectedProject !== "none" &&
+        selectedProject !== "sm_project_default"
+    ) {
+        // Remove the "sm_project_" prefix from the containerTag
+        const projectId = selectedProject.replace(/^sm_project_/, "")
+        command += ` --project ${projectId}`
+    }
 
 		return command
 	}
@@ -159,8 +159,8 @@ export function InstallationDialogContent({
 								className="text-white hover:bg-white/10"
 								value="sm_project_default"
 							>
-								All Projects
-							</SelectItem>
+                        All Projects
+                    </SelectItem>
 							{projects
 								.filter((p: Project) => p.containerTag !== "sm_project_default")
 								.map((project: Project) => (

@@ -150,6 +150,7 @@ export function ProjectsView() {
 		},
 	})
 
+
 	// Handle project selection
 	const handleProjectSelect = (containerTag: string) => {
 		setSelectedProject(containerTag)
@@ -237,10 +238,10 @@ export function ProjectsView() {
 									<FolderIcon className="h-5 w-5 text-white/80" />
 								</motion.div>
 								<div>
-									<p className="font-medium text-white">All Projects</p>
-									<p className="text-sm text-white/60">
-										Global view across all projects
-									</p>
+                            <p className="font-medium text-white">All Projects</p>
+                            <p className="text-sm text-white/60">
+                                Global view across all projects
+                            </p>
 								</div>
 							</div>
 							{selectedProject === "sm_project_default" && (
@@ -492,7 +493,7 @@ export function ProjectsView() {
 															className="text-white hover:bg-white/10"
 															value="sm_project_default"
 														>
-															All Projects
+                                                All Projects
 														</SelectItem>
 														{projects
 															.filter(
@@ -616,6 +617,7 @@ export function ProjectsView() {
 					</Dialog>
 				)}
 			</AnimatePresence>
+
 		</div>
 	)
 }

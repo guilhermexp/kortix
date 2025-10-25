@@ -28,17 +28,14 @@ async function debugAddDocument() {
 
 	let cookies = ""
 	try {
-		const loginResponse = await fetch(
-			"http://localhost:4000/api/auth/sign-in",
-			{
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					email: loginEmail,
-					password: loginPassword,
-				}),
-			},
-		)
+		const loginResponse = await fetch("http://localhost:4000/api/auth/sign-in", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				email: loginEmail,
+				password: loginPassword,
+			}),
+		})
 
 		if (!loginResponse.ok) {
 			const errorText = await loginResponse.text()

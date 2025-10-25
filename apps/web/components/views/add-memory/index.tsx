@@ -264,50 +264,46 @@ export function AddMemoryView({
 		},
 	})
 
-	const addContentForm = useForm({
-		defaultValues: {
-			content: "",
-			project:
-				selectedProject && selectedProject !== "sm_project_default"
-					? selectedProject
-					: "",
-		},
-		onSubmit: async ({ value, formApi }) => {
-			addContentMutation.mutate({
-				content: value.content,
-				project: value.project,
-				contentType: activeTab as "note" | "link",
-			})
-			formApi.reset()
-		},
-		validators: {
-			onChange: z.object({
-				content: z.string().min(1, "Content is required"),
-				// Require a real project (not empty, not the All Projects viewer)
-				project: z
-					.string()
-					.min(1, "Select a project")
-					.refine((v) => v !== "sm_project_default", "Select a project"),
-			}),
-			onSubmit: z.object({
-				content: z.string().min(1, "Content is required"),
-				project: z
-					.string()
-					.min(1, "Select a project")
-					.refine((v) => v !== "sm_project_default", "Select a project"),
-			}),
-		},
-	})
+    const addContentForm = useForm({
+        defaultValues: {
+            content: "",
+            project:
+                selectedProject && selectedProject !== "sm_project_default"
+                    ? selectedProject
+                    : "",
+        },
+        onSubmit: async ({ value, formApi }) => {
+            addContentMutation.mutate({
+                content: value.content,
+                project: value.project,
+                contentType: activeTab as "note" | "link",
+            })
+            formApi.reset()
+        },
+        validators: {
+            onChange: z.object({
+                content: z.string().min(1, "Content is required"),
+                // Require a real project (not empty, not the All Projects viewer)
+                project: z
+                    .string()
+                    .min(1, "Select a project")
+                    .refine((v) => v !== "sm_project_default", "Select a project"),
+            }),
+            onSubmit: z.object({
+                content: z.string().min(1, "Content is required"),
+                project: z
+                    .string()
+                    .min(1, "Select a project")
+                    .refine((v) => v !== "sm_project_default", "Select a project"),
+            }),
+        },
+    })
 
 	// Re-validate content field when tab changes between note/link/repository
 	// biome-ignore  lint/correctness/useExhaustiveDependencies: It is what it is
 	useEffect(() => {
 		// Trigger validation of the content field when switching between note/link/repository
-		if (
-			activeTab === "note" ||
-			activeTab === "link" ||
-			activeTab === "repository"
-		) {
+		if (activeTab === "note" || activeTab === "link" || activeTab === "repository") {
 			const currentValue = addContentForm.getFieldValue("content")
 			if (currentValue) {
 				addContentForm.validateField("content", "change")
@@ -316,20 +312,20 @@ export function AddMemoryView({
 	}, [activeTab])
 
 	// Form for file upload metadata
-	const fileUploadForm = useForm({
-		defaultValues: {
-			title: "",
-			description: "",
-			project:
-				selectedProject && selectedProject !== "sm_project_default"
-					? selectedProject
-					: "",
-		},
-		onSubmit: async ({ value, formApi }) => {
-			if (selectedFiles.length === 0) {
-				toast.error("Please select a file to upload")
-				return
-			}
+    const fileUploadForm = useForm({
+        defaultValues: {
+            title: "",
+            description: "",
+            project:
+                selectedProject && selectedProject !== "sm_project_default"
+                    ? selectedProject
+                    : "",
+        },
+        onSubmit: async ({ value, formApi }) => {
+            if (selectedFiles.length === 0) {
+                toast.error("Please select a file to upload")
+                return
+            }
 
 			for (const file of selectedFiles) {
 				fileUploadMutation.mutate({
@@ -361,44 +357,39 @@ export function AddMemoryView({
 			const processingPromise = (async () => {
 				// First, create the memory
 				// Use different endpoint for repository
-				const response =
-					contentType === "repository"
-						? await fetch(
-								`${process.env.NEXT_PUBLIC_BACKEND_URL}/v3/documents/repository`,
-								{
-									method: "POST",
-									headers: {
-										"Content-Type": "application/json",
-									},
-									credentials: "include",
-									body: JSON.stringify({
-										url: content,
-										containerTags: [project],
-										metadata: {
-											sm_source: "consumer",
-										},
-									}),
+				const response = contentType === "repository"
+					? await fetch(
+						`${process.env.NEXT_PUBLIC_BACKEND_URL}/v3/documents/repository`,
+						{
+							method: "POST",
+							headers: {
+								"Content-Type": "application/json",
+							},
+							credentials: "include",
+							body: JSON.stringify({
+								url: content,
+								containerTags: [project],
+								metadata: {
+									sm_source: "consumer",
 								},
-							)
-								.then(async (res) => {
-									if (!res.ok) {
-										const error = await res.json()
-										throw new Error(
-											error.error?.message || "Failed to add repository",
-										)
-									}
-									return res.json()
-								})
-								.then((data) => ({ data, error: null }))
-						: await $fetch("@post/documents", {
-								body: {
-									content: content,
-									containerTags: [project],
-									metadata: {
-										sm_source: "consumer", // Use "consumer" source to bypass limits
-									},
-								},
-							})
+							}),
+						}
+					).then(async (res) => {
+						if (!res.ok) {
+							const error = await res.json()
+							throw new Error(error.error?.message || "Failed to add repository")
+						}
+						return res.json()
+					}).then(data => ({ data, error: null }))
+					: await $fetch("@post/documents", {
+						body: {
+							content: content,
+							containerTags: [project],
+							metadata: {
+								sm_source: "consumer", // Use "consumer" source to bypass limits
+							},
+						},
+					})
 
 				if (response.error) {
 					throw new Error(
@@ -460,7 +451,7 @@ export function AddMemoryView({
 				return completedMemory
 			})()
 
-			// Remove global toast; the card shows inline processing state
+            // Remove global toast; the card shows inline processing state
 
 			return processingPromise
 		},
@@ -480,15 +471,11 @@ export function AddMemoryView({
 			])
 			console.log("📸 Previous memories:", previousMemories)
 
-			// Create optimistic memory
-			const optimisticMemory: DocumentListItem = {
-				id: `temp-${Date.now()}`,
-				content:
-					contentType === "link" || contentType === "repository" ? "" : content,
-				url:
-					contentType === "link" || contentType === "repository"
-						? content
-						: null,
+            // Create optimistic memory
+            const optimisticMemory: DocumentListItem = {
+                id: `temp-${Date.now()}`,
+				content: contentType === "link" || contentType === "repository" ? "" : content,
+				url: contentType === "link" || contentType === "repository" ? content : null,
 				title:
 					contentType === "link"
 						? "Processing..."
@@ -501,12 +488,12 @@ export function AddMemoryView({
 						: contentType === "repository"
 							? "Fetching repository files..."
 							: "Processing content...",
-				containerTags: [project],
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				status: "queued",
-				type: contentType,
-				metadata: {
+                containerTags: [project],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                status: "queued",
+                type: contentType,
+                metadata: {
 					processingStage: "queued",
 					processingMessage: "Added to processing queue",
 				},
@@ -535,11 +522,7 @@ export function AddMemoryView({
 		},
 		onSuccess: (_data, variables) => {
 			analytics.memoryAdded({
-				type:
-					variables.contentType === "link" ||
-					variables.contentType === "repository"
-						? "link"
-						: "note",
+				type: variables.contentType === "link" || variables.contentType === "repository" ? "link" : "note",
 				project_id: variables.project,
 				content_length: variables.content.length,
 			})
@@ -1228,8 +1211,7 @@ export function AddMemoryView({
 														)}
 													</addContentForm.Field>
 													<p className="text-xs text-white/50">
-														The repository will be indexed and made searchable
-														in your memory
+														The repository will be indexed and made searchable in your memory
 													</p>
 												</motion.div>
 											</div>
@@ -1377,9 +1359,7 @@ export function AddMemoryExpandedView() {
 		"note" | "link" | "file" | "connect" | "repository"
 	>("note")
 
-	const handleOpenDialog = (
-		tab: "note" | "link" | "file" | "connect" | "repository",
-	) => {
+	const handleOpenDialog = (tab: "note" | "link" | "file" | "connect" | "repository") => {
 		setSelectedTab(tab)
 		setShowDialog(true)
 	}

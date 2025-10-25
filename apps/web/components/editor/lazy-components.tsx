@@ -5,15 +5,15 @@
  * for improved initial load performance.
  */
 
-"use client"
+"use client";
 
-import dynamic from "next/dynamic"
-import { lazy, Suspense } from "react"
+import dynamic from "next/dynamic";
+import { Suspense, lazy } from "react";
 import {
 	EditorSkeleton,
-	InlineLoader,
 	MemoryEntriesSkeleton,
-} from "./loading-states"
+	InlineLoader,
+} from "./loading-states";
 
 /**
  * Lazy load the rich editor with loading fallback
@@ -26,8 +26,8 @@ export const LazyRichEditor = dynamic(
 	{
 		loading: () => <EditorSkeleton />,
 		ssr: false, // Editor should only render on client
-	},
-)
+	}
+);
 
 /**
  * Lazy load memory entries sidebar
@@ -40,8 +40,8 @@ export const LazyMemoryEntriesSidebar = dynamic(
 	{
 		loading: () => <MemoryEntriesSkeleton />,
 		ssr: false,
-	},
-)
+	}
+);
 
 /**
  * Lazy load image gallery component
@@ -58,8 +58,8 @@ export const LazyImageGallery = dynamic(
 			</div>
 		),
 		ssr: false,
-	},
-)
+	}
+);
 
 /**
  * Lazy load markdown content renderer
@@ -77,8 +77,8 @@ export const LazyMarkdownContent = dynamic(
 				<div className="h-4 bg-white/10 rounded w-5/6" />
 			</div>
 		),
-	},
-)
+	}
+);
 
 /**
  * Lazy load chart components (for analytics)
@@ -104,10 +104,12 @@ export function LazyWrapper({
 	children,
 	fallback,
 }: {
-	children: React.ReactNode
-	fallback?: React.ReactNode
+	children: React.ReactNode;
+	fallback?: React.ReactNode;
 }) {
-	return <Suspense fallback={fallback || <InlineLoader />}>{children}</Suspense>
+	return (
+		<Suspense fallback={fallback || <InlineLoader />}>{children}</Suspense>
+	);
 }
 
 /**
@@ -120,31 +122,31 @@ export function IntersectionLazyLoader({
 	threshold = 0.1,
 	...props
 }: {
-	component: React.ComponentType<any>
-	fallback?: React.ReactNode
-	threshold?: number
-	[key: string]: any
+	component: React.ComponentType<any>;
+	fallback?: React.ReactNode;
+	threshold?: number;
+	[key: string]: any;
 }) {
-	const [isVisible, setIsVisible] = React.useState(false)
-	const ref = React.useRef<HTMLDivElement>(null)
+	const [isVisible, setIsVisible] = React.useState(false);
+	const ref = React.useRef<HTMLDivElement>(null);
 
 	React.useEffect(() => {
 		const observer = new IntersectionObserver(
 			([entry]) => {
 				if (entry?.isIntersecting) {
-					setIsVisible(true)
-					observer.disconnect()
+					setIsVisible(true);
+					observer.disconnect();
 				}
 			},
-			{ threshold },
-		)
+			{ threshold }
+		);
 
 		if (ref.current) {
-			observer.observe(ref.current)
+			observer.observe(ref.current);
 		}
 
-		return () => observer.disconnect()
-	}, [threshold])
+		return () => observer.disconnect();
+	}, [threshold]);
 
 	return (
 		<div ref={ref}>
@@ -158,11 +160,11 @@ export function IntersectionLazyLoader({
 				)
 			)}
 		</div>
-	)
+	);
 }
 
 // Fix: Import React
-import React from "react"
+import React from "react";
 
 /**
  * Code splitting helper
@@ -170,17 +172,17 @@ import React from "react"
  */
 export function createLazyComponent<T extends React.ComponentType<any>>(
 	importFunc: () => Promise<{ default: T }>,
-	fallback?: React.ReactNode,
+	fallback?: React.ReactNode
 ) {
-	const LazyComponent = lazy(importFunc)
+	const LazyComponent = lazy(importFunc);
 
 	return function LazyComponentWrapper(props: React.ComponentProps<T>) {
 		return (
 			<Suspense fallback={fallback || <InlineLoader />}>
 				<LazyComponent {...props} />
 			</Suspense>
-		)
-	}
+		);
+	};
 }
 
 /**
@@ -188,9 +190,9 @@ export function createLazyComponent<T extends React.ComponentType<any>>(
  * Allows manual preloading of components before they're needed
  */
 export function preloadComponent(
-	importFunc: () => Promise<any>,
+	importFunc: () => Promise<any>
 ): Promise<void> {
-	return importFunc().then(() => {})
+	return importFunc().then(() => {});
 }
 
 /**
@@ -200,42 +202,34 @@ export function preloadComponent(
 export const RouteComponents = {
 	// Memory routes
 	MemoryList: dynamic(
-		() =>
-			import("../memory-list-view").then((mod) => ({
-				default: mod.MemoryListView,
-			})),
+		() => import("../memory-list-view").then((mod) => ({ default: mod.MemoryListView })),
 		{
 			loading: () => <InlineLoader />,
-		},
+		}
 	),
 
 	// Settings routes
 	SettingsProfile: dynamic(
-		() =>
-			import("../views/profile").then((mod) => ({ default: mod.ProfileView })),
+		() => import("../views/profile").then((mod) => ({ default: mod.ProfileView })),
 		{
 			loading: () => <InlineLoader />,
-		},
+		}
 	),
 
 	SettingsBilling: dynamic(
-		() =>
-			import("../views/billing").then((mod) => ({ default: mod.BillingView })),
+		() => import("../views/billing").then((mod) => ({ default: mod.BillingView })),
 		{
 			loading: () => <InlineLoader />,
-		},
+		}
 	),
 
 	SettingsIntegrations: dynamic(
-		() =>
-			import("../views/integrations").then((mod) => ({
-				default: mod.IntegrationsView,
-			})),
+		() => import("../views/integrations").then((mod) => ({ default: mod.IntegrationsView })),
 		{
 			loading: () => <InlineLoader />,
-		},
+		}
 	),
-}
+};
 
 /**
  * Bundle analyzer helper
@@ -244,8 +238,8 @@ export const RouteComponents = {
 export function logBundleInfo(componentName: string, size?: number) {
 	if (process.env.NODE_ENV === "development") {
 		console.log(
-			`[Bundle] ${componentName}${size ? ` - ${(size / 1024).toFixed(2)}KB` : ""}`,
-		)
+			`[Bundle] ${componentName}${size ? ` - ${(size / 1024).toFixed(2)}KB` : ""}`
+		);
 	}
 }
 
@@ -257,23 +251,23 @@ export function ProgressiveHydration({
 	children,
 	delay = 0,
 }: {
-	children: React.ReactNode
-	delay?: number
+	children: React.ReactNode;
+	delay?: number;
 }) {
-	const [shouldHydrate, setShouldHydrate] = React.useState(delay === 0)
+	const [shouldHydrate, setShouldHydrate] = React.useState(delay === 0);
 
 	React.useEffect(() => {
 		if (delay > 0) {
-			const timer = setTimeout(() => setShouldHydrate(true), delay)
-			return () => clearTimeout(timer)
+			const timer = setTimeout(() => setShouldHydrate(true), delay);
+			return () => clearTimeout(timer);
 		}
-	}, [delay])
+	}, [delay]);
 
 	if (!shouldHydrate) {
-		return null
+		return null;
 	}
 
-	return <>{children}</>
+	return <>{children}</>;
 }
 
 /**
@@ -281,25 +275,26 @@ export function ProgressiveHydration({
  * Hydrates component when browser is idle
  */
 export function IdleHydration({ children }: { children: React.ReactNode }) {
-	const [shouldHydrate, setShouldHydrate] = React.useState(false)
+	const [shouldHydrate, setShouldHydrate] = React.useState(false);
 
 	React.useEffect(() => {
-		if (typeof window === "undefined") return
+		if (typeof window === "undefined") return;
 
 		if ("requestIdleCallback" in window) {
-			const idleId = requestIdleCallback(() => setShouldHydrate(true))
-			return () => cancelIdleCallback(idleId)
+			const idleId = requestIdleCallback(() => setShouldHydrate(true));
+			return () => cancelIdleCallback(idleId);
+		} else {
+			// Fallback for browsers without requestIdleCallback
+			const timer = setTimeout(() => setShouldHydrate(true), 1);
+			return () => clearTimeout(timer);
 		}
-		// Fallback for browsers without requestIdleCallback
-		const timer = setTimeout(() => setShouldHydrate(true), 1)
-		return () => clearTimeout(timer)
-	}, [])
+	}, []);
 
 	if (!shouldHydrate) {
-		return null
+		return null;
 	}
 
-	return <>{children}</>
+	return <>{children}</>;
 }
 
 /**
@@ -310,29 +305,29 @@ export function ViewportHydration({
 	children,
 	threshold = 0.1,
 }: {
-	children: React.ReactNode
-	threshold?: number
+	children: React.ReactNode;
+	threshold?: number;
 }) {
-	const [shouldHydrate, setShouldHydrate] = React.useState(false)
-	const ref = React.useRef<HTMLDivElement>(null)
+	const [shouldHydrate, setShouldHydrate] = React.useState(false);
+	const ref = React.useRef<HTMLDivElement>(null);
 
 	React.useEffect(() => {
 		const observer = new IntersectionObserver(
 			([entry]) => {
 				if (entry?.isIntersecting) {
-					setShouldHydrate(true)
-					observer.disconnect()
+					setShouldHydrate(true);
+					observer.disconnect();
 				}
 			},
-			{ threshold },
-		)
+			{ threshold }
+		);
 
 		if (ref.current) {
-			observer.observe(ref.current)
+			observer.observe(ref.current);
 		}
 
-		return () => observer.disconnect()
-	}, [threshold])
+		return () => observer.disconnect();
+	}, [threshold]);
 
-	return <div ref={ref}>{shouldHydrate ? children : null}</div>
+	return <div ref={ref}>{shouldHydrate ? children : null}</div>;
 }

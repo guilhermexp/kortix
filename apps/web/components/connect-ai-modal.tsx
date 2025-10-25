@@ -179,15 +179,15 @@ export function ConnectAIModal({
 
 		let command = `npx -y install-mcp@latest ${MCP_SERVER_BASE} --client ${selectedClient} --oauth=yes`
 
-		if (
-			selectedProject &&
-			selectedProject !== "none" &&
-			selectedProject !== "sm_project_default"
-		) {
-			// Remove the "sm_project_" prefix from the containerTag
-			const projectIdForCommand = selectedProject.replace(/^sm_project_/, "")
-			command += ` --project ${projectIdForCommand}`
-		}
+            if (
+                selectedProject &&
+                selectedProject !== "none" &&
+                selectedProject !== "sm_project_default"
+            ) {
+                // Remove the "sm_project_" prefix from the containerTag
+                const projectIdForCommand = selectedProject.replace(/^sm_project_/, "")
+                command += ` --project ${projectIdForCommand}`
+            }
 
 		return command
 	}
@@ -399,8 +399,8 @@ export function ConnectAIModal({
 															className="text-white hover:bg-white/10"
 															value="sm_project_default"
 														>
-															All Projects
-														</SelectItem>
+                                All Projects
+                            </SelectItem>
 														{projects
 															.filter(
 																(p: Project) =>
@@ -466,8 +466,8 @@ export function ConnectAIModal({
 												className="text-white hover:bg-white/10"
 												value="sm_project_default"
 											>
-												All Projects
-											</SelectItem>
+                                All Projects
+                            </SelectItem>
 											{projects
 												.filter(
 													(p: Project) =>

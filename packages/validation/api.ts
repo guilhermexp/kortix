@@ -742,13 +742,9 @@ export const MemorySearchResult = z.object({
 							example:
 								"Earlier version: Dhravya is working on a patent at Cloudflare.",
 						}),
-						metadata: z
-							.record(z.string(), z.unknown())
-							.nullable()
-							.optional()
-							.meta({
-								description: "Contextual memory metadata",
-							}),
+						metadata: z.record(z.string(), z.unknown()).nullable().optional().meta({
+							description: "Contextual memory metadata",
+						}),
 						updatedAt: z.coerce.date().meta({
 							description: "Contextual memory last update date",
 							format: "date-time",
@@ -774,13 +770,9 @@ export const MemorySearchResult = z.object({
 							example:
 								"Later version: Dhravya has filed the patent successfully.",
 						}),
-						metadata: z
-							.record(z.string(), z.unknown())
-							.nullable()
-							.optional()
-							.meta({
-								description: "Contextual memory metadata",
-							}),
+						metadata: z.record(z.string(), z.unknown()).nullable().optional().meta({
+							description: "Contextual memory metadata",
+						}),
 						updatedAt: z.coerce.date().meta({
 							description: "Contextual memory last update date",
 							format: "date-time",
@@ -1270,29 +1262,33 @@ export const ProjectSchema = z
 	})
 
 export const CreateProjectSchema = z
-	.object({
-		name: z.string().min(1).max(100).meta({
-			description: "Name for the project",
-			example: "My Awesome Project",
-			minLength: 1,
-			maxLength: 100,
-		}),
-	})
-	.meta({
-		description: "Request body for creating a new project",
-	})
+    .object({
+        name: z.string().min(1).max(100).meta({
+            description: "Name for the project",
+            example: "My Awesome Project",
+            minLength: 1,
+            maxLength: 100,
+        }),
+    })
+    .meta({
+        description: "Request body for creating a new project",
+    })
 
 // Update project (rename)
 export const UpdateProjectSchema = z
-	.object({
-		name: z.string().min(1).max(100).meta({
-			description: "New project name",
-			example: "Renamed Project",
-			minLength: 1,
-			maxLength: 100,
-		}),
-	})
-	.meta({ description: "Request body for updating a project" })
+    .object({
+        name: z
+            .string()
+            .min(1)
+            .max(100)
+            .meta({
+                description: "New project name",
+                example: "Renamed Project",
+                minLength: 1,
+                maxLength: 100,
+            }),
+    })
+    .meta({ description: "Request body for updating a project" })
 
 export const ListProjectsResponseSchema = z
 	.object({

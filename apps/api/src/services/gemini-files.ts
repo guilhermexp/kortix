@@ -1,9 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { GoogleAIFileManager } from "@google/generative-ai/server"
-import { AI_GENERATION_CONFIG, GEMINI_FILE_CONFIG } from "../config/constants"
 import { env } from "../env"
-import { buildFilePrompt } from "../i18n"
 import { aiClient } from "./ai-provider"
+import { GEMINI_FILE_CONFIG, AI_GENERATION_CONFIG } from "../config/constants"
+import { buildFilePrompt } from "../i18n"
 
 // FileManager só funciona com Gemini diretamente
 const googleClient = env.GOOGLE_API_KEY
@@ -34,11 +34,7 @@ function ensureGeminiConfigured() {
 
 async function waitForFileReady(fileName: string) {
 	const { fileManager: manager } = ensureGeminiConfigured()
-	for (
-		let attempt = 0;
-		attempt < GEMINI_FILE_CONFIG.MAX_POLL_ATTEMPTS;
-		attempt += 1
-	) {
+	for (let attempt = 0; attempt < GEMINI_FILE_CONFIG.MAX_POLL_ATTEMPTS; attempt += 1) {
 		const file = await manager.getFile(fileName)
 		if (!file?.state) {
 			throw new Error("Failed to fetch uploaded file metadata.")
@@ -49,9 +45,7 @@ async function waitForFileReady(fileName: string) {
 		if (file.state === "FAILED" || file.state === "STATE_UNSPECIFIED") {
 			throw new Error(`Uploaded file processing failed: ${file.state}`)
 		}
-		await new Promise((resolve) =>
-			setTimeout(resolve, GEMINI_FILE_CONFIG.POLL_INTERVAL_MS),
-		)
+		await new Promise((resolve) => setTimeout(resolve, GEMINI_FILE_CONFIG.POLL_INTERVAL_MS))
 	}
 	throw new Error("Timeout while waiting for Gemini to process uploaded file")
 }

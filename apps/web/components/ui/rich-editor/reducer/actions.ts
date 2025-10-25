@@ -1,11 +1,11 @@
 import type {
-	ContainerNode,
-	EditorNode,
-	EditorState,
-	NodeAttributes,
-	SelectionInfo,
-} from "../types"
-import type { InsertPosition } from "../utils/tree-operations"
+  ContainerNode,
+  EditorNode,
+  EditorState,
+  NodeAttributes,
+  SelectionInfo,
+} from "../types";
+import type { InsertPosition } from "../utils/tree-operations";
 
 /**
  * Updates a node's properties by ID.
@@ -26,11 +26,11 @@ import type { InsertPosition } from "../utils/tree-operations"
  * ```
  */
 export interface UpdateNodeAction {
-	type: "UPDATE_NODE"
-	payload: {
-		id: string
-		updates: Partial<EditorNode>
-	}
+  type: "UPDATE_NODE";
+  payload: {
+    id: string;
+    updates: Partial<EditorNode>;
+  };
 }
 
 /**
@@ -49,12 +49,12 @@ export interface UpdateNodeAction {
  * ```
  */
 export interface UpdateAttributesAction {
-	type: "UPDATE_ATTRIBUTES"
-	payload: {
-		id: string
-		attributes: NodeAttributes
-		merge?: boolean // If true, merges with existing attributes; if false, replaces them
-	}
+  type: "UPDATE_ATTRIBUTES";
+  payload: {
+    id: string;
+    attributes: NodeAttributes;
+    merge?: boolean; // If true, merges with existing attributes; if false, replaces them
+  };
 }
 
 /**
@@ -72,11 +72,11 @@ export interface UpdateAttributesAction {
  * ```
  */
 export interface UpdateContentAction {
-	type: "UPDATE_CONTENT"
-	payload: {
-		id: string
-		content: string
-	}
+  type: "UPDATE_CONTENT";
+  payload: {
+    id: string;
+    content: string;
+  };
 }
 
 /**
@@ -91,10 +91,10 @@ export interface UpdateContentAction {
  * ```
  */
 export interface DeleteNodeAction {
-	type: "DELETE_NODE"
-	payload: {
-		id: string
-	}
+  type: "DELETE_NODE";
+  payload: {
+    id: string;
+  };
 }
 
 /**
@@ -113,12 +113,12 @@ export interface DeleteNodeAction {
  * ```
  */
 export interface InsertNodeAction {
-	type: "INSERT_NODE"
-	payload: {
-		node: EditorNode
-		targetId: string
-		position: InsertPosition
-	}
+  type: "INSERT_NODE";
+  payload: {
+    node: EditorNode;
+    targetId: string;
+    position: InsertPosition;
+  };
 }
 
 /**
@@ -137,12 +137,12 @@ export interface InsertNodeAction {
  * ```
  */
 export interface MoveNodeAction {
-	type: "MOVE_NODE"
-	payload: {
-		nodeId: string
-		targetId: string
-		position: InsertPosition
-	}
+  type: "MOVE_NODE";
+  payload: {
+    nodeId: string;
+    targetId: string;
+    position: InsertPosition;
+  };
 }
 
 /**
@@ -160,11 +160,11 @@ export interface MoveNodeAction {
  * ```
  */
 export interface SwapNodesAction {
-	type: "SWAP_NODES"
-	payload: {
-		nodeId1: string
-		nodeId2: string
-	}
+  type: "SWAP_NODES";
+  payload: {
+    nodeId1: string;
+    nodeId2: string;
+  };
 }
 
 /**
@@ -182,11 +182,11 @@ export interface SwapNodesAction {
  * ```
  */
 export interface DuplicateNodeAction {
-	type: "DUPLICATE_NODE"
-	payload: {
-		id: string
-		newId?: string
-	}
+  type: "DUPLICATE_NODE";
+  payload: {
+    id: string;
+    newId?: string;
+  };
 }
 
 /**
@@ -202,10 +202,10 @@ export interface DuplicateNodeAction {
  * ```
  */
 export interface ReplaceContainerAction {
-	type: "REPLACE_CONTAINER"
-	payload: {
-		container: ContainerNode
-	}
+  type: "REPLACE_CONTAINER";
+  payload: {
+    container: ContainerNode;
+  };
 }
 
 /**
@@ -217,7 +217,7 @@ export interface ReplaceContainerAction {
  * ```
  */
 export interface ResetAction {
-	type: "RESET"
+  type: "RESET";
 }
 
 /**
@@ -233,10 +233,10 @@ export interface ResetAction {
  * ```
  */
 export interface SetStateAction {
-	type: "SET_STATE"
-	payload: {
-		state: EditorState
-	}
+  type: "SET_STATE";
+  payload: {
+    state: EditorState;
+  };
 }
 
 /**
@@ -257,422 +257,422 @@ export interface SetStateAction {
  * ```
  */
 export interface BatchAction {
-	type: "BATCH"
-	payload: {
-		actions: EditorAction[]
-	}
+  type: "BATCH";
+  payload: {
+    actions: EditorAction[];
+  };
 }
 
 /**
  * SET_ACTIVE_NODE action - sets the currently active/focused node
  */
 export interface SetActiveNodeAction {
-	type: "SET_ACTIVE_NODE"
-	payload: {
-		nodeId: string | null
-	}
+  type: "SET_ACTIVE_NODE";
+  payload: {
+    nodeId: string | null;
+  };
 }
 
 /**
  * SET_SELECTION action - updates selection state
  */
 export interface SetSelectionAction {
-	type: "SET_SELECTION"
-	payload: {
-		hasSelection: boolean
-	}
+  type: "SET_SELECTION";
+  payload: {
+    hasSelection: boolean;
+  };
 }
 
 /**
  * INCREMENT_SELECTION_KEY action - triggers re-render for selection changes
  */
 export interface IncrementSelectionKeyAction {
-	type: "INCREMENT_SELECTION_KEY"
+  type: "INCREMENT_SELECTION_KEY";
 }
 
 /**
  * SET_CURRENT_SELECTION action - updates the current selection info with formatting states
  */
 export interface SetCurrentSelectionAction {
-	type: "SET_CURRENT_SELECTION"
-	payload: {
-		selection: SelectionInfo | null
-	}
+  type: "SET_CURRENT_SELECTION";
+  payload: {
+    selection: SelectionInfo | null;
+  };
 }
 
 /**
  * TOGGLE_FORMAT action - toggles a format style on the current selection
  */
 export interface ToggleFormatAction {
-	type: "TOGGLE_FORMAT"
-	payload: {
-		format: "bold" | "italic" | "underline"
-	}
+  type: "TOGGLE_FORMAT";
+  payload: {
+    format: "bold" | "italic" | "underline";
+  };
 }
 
 /**
  * APPLY_INLINE_ELEMENT_TYPE action - applies element type to selected text inline
  */
 export interface ApplyInlineElementTypeAction {
-	type: "APPLY_INLINE_ELEMENT_TYPE"
-	payload: {
-		elementType:
-			| "p"
-			| "h1"
-			| "h2"
-			| "h3"
-			| "h4"
-			| "h5"
-			| "h6"
-			| "code"
-			| "blockquote"
-	}
+  type: "APPLY_INLINE_ELEMENT_TYPE";
+  payload: {
+    elementType:
+      | "p"
+      | "h1"
+      | "h2"
+      | "h3"
+      | "h4"
+      | "h5"
+      | "h6"
+      | "code"
+      | "blockquote";
+  };
 }
 
 /**
  * APPLY_CUSTOM_CLASS action - applies custom Tailwind class to selected text
  */
 export interface ApplyCustomClassAction {
-	type: "APPLY_CUSTOM_CLASS"
-	payload: {
-		className: string
-	}
+  type: "APPLY_CUSTOM_CLASS";
+  payload: {
+    className: string;
+  };
 }
 
 /**
  * APPLY_INLINE_STYLE action - applies inline CSS style to selected text
  */
 export interface ApplyInlineStyleAction {
-	type: "APPLY_INLINE_STYLE"
-	payload: {
-		property: string // e.g., 'fontSize', 'color'
-		value: string // e.g., '24px', '#ff0000'
-	}
+  type: "APPLY_INLINE_STYLE";
+  payload: {
+    property: string; // e.g., 'fontSize', 'color'
+    value: string; // e.g., '24px', '#ff0000'
+  };
 }
 
 /**
  * APPLY_LINK action - applies link href to selected text
  */
 export interface ApplyLinkAction {
-	type: "APPLY_LINK"
-	payload: {
-		href: string
-	}
+  type: "APPLY_LINK";
+  payload: {
+    href: string;
+  };
 }
 
 /**
  * REMOVE_LINK action - removes link from selected text
  */
 export interface RemoveLinkAction {
-	type: "REMOVE_LINK"
+  type: "REMOVE_LINK";
 }
 
 /**
  * SELECT_ALL_BLOCKS action - marks all blocks as selected
  */
 export interface SelectAllBlocksAction {
-	type: "SELECT_ALL_BLOCKS"
+  type: "SELECT_ALL_BLOCKS";
 }
 
 /**
  * CLEAR_BLOCK_SELECTION action - clears all block selections
  */
 export interface ClearBlockSelectionAction {
-	type: "CLEAR_BLOCK_SELECTION"
+  type: "CLEAR_BLOCK_SELECTION";
 }
 
 /**
  * DELETE_SELECTED_BLOCKS action - deletes all selected blocks
  */
 export interface DeleteSelectedBlocksAction {
-	type: "DELETE_SELECTED_BLOCKS"
+  type: "DELETE_SELECTED_BLOCKS";
 }
 
 /**
  * UNDO action - moves back one step in history
  */
 export interface UndoAction {
-	type: "UNDO"
+  type: "UNDO";
 }
 
 /**
  * REDO action - moves forward one step in history
  */
 export interface RedoAction {
-	type: "REDO"
+  type: "REDO";
 }
 
 /**
  * Union type of all possible editor actions.
  */
 export type EditorAction =
-	| UpdateNodeAction
-	| UpdateAttributesAction
-	| UpdateContentAction
-	| DeleteNodeAction
-	| InsertNodeAction
-	| MoveNodeAction
-	| SwapNodesAction
-	| DuplicateNodeAction
-	| ReplaceContainerAction
-	| ResetAction
-	| SetStateAction
-	| BatchAction
-	| SetActiveNodeAction
-	| SetSelectionAction
-	| IncrementSelectionKeyAction
-	| SetCurrentSelectionAction
-	| ToggleFormatAction
-	| ApplyInlineElementTypeAction
-	| ApplyCustomClassAction
-	| ApplyInlineStyleAction
-	| ApplyLinkAction
-	| RemoveLinkAction
-	| SelectAllBlocksAction
-	| ClearBlockSelectionAction
-	| DeleteSelectedBlocksAction
-	| UndoAction
-	| RedoAction
+  | UpdateNodeAction
+  | UpdateAttributesAction
+  | UpdateContentAction
+  | DeleteNodeAction
+  | InsertNodeAction
+  | MoveNodeAction
+  | SwapNodesAction
+  | DuplicateNodeAction
+  | ReplaceContainerAction
+  | ResetAction
+  | SetStateAction
+  | BatchAction
+  | SetActiveNodeAction
+  | SetSelectionAction
+  | IncrementSelectionKeyAction
+  | SetCurrentSelectionAction
+  | ToggleFormatAction
+  | ApplyInlineElementTypeAction
+  | ApplyCustomClassAction
+  | ApplyInlineStyleAction
+  | ApplyLinkAction
+  | RemoveLinkAction
+  | SelectAllBlocksAction
+  | ClearBlockSelectionAction
+  | DeleteSelectedBlocksAction
+  | UndoAction
+  | RedoAction;
 
 /**
  * Action creator helpers for type-safe action creation.
  */
 export const EditorActions = {
-	/**
-	 * Creates an UPDATE_NODE action.
-	 */
-	updateNode: (id: string, updates: Partial<EditorNode>): UpdateNodeAction => ({
-		type: "UPDATE_NODE",
-		payload: { id, updates },
-	}),
+  /**
+   * Creates an UPDATE_NODE action.
+   */
+  updateNode: (id: string, updates: Partial<EditorNode>): UpdateNodeAction => ({
+    type: "UPDATE_NODE",
+    payload: { id, updates },
+  }),
 
-	/**
-	 * Creates an UPDATE_ATTRIBUTES action.
-	 */
-	updateAttributes: (
-		id: string,
-		attributes: NodeAttributes,
-		merge = true,
-	): UpdateAttributesAction => ({
-		type: "UPDATE_ATTRIBUTES",
-		payload: { id, attributes, merge },
-	}),
+  /**
+   * Creates an UPDATE_ATTRIBUTES action.
+   */
+  updateAttributes: (
+    id: string,
+    attributes: NodeAttributes,
+    merge = true,
+  ): UpdateAttributesAction => ({
+    type: "UPDATE_ATTRIBUTES",
+    payload: { id, attributes, merge },
+  }),
 
-	/**
-	 * Creates an UPDATE_CONTENT action.
-	 */
-	updateContent: (id: string, content: string): UpdateContentAction => ({
-		type: "UPDATE_CONTENT",
-		payload: { id, content },
-	}),
+  /**
+   * Creates an UPDATE_CONTENT action.
+   */
+  updateContent: (id: string, content: string): UpdateContentAction => ({
+    type: "UPDATE_CONTENT",
+    payload: { id, content },
+  }),
 
-	/**
-	 * Creates a DELETE_NODE action.
-	 */
-	deleteNode: (id: string): DeleteNodeAction => ({
-		type: "DELETE_NODE",
-		payload: { id },
-	}),
+  /**
+   * Creates a DELETE_NODE action.
+   */
+  deleteNode: (id: string): DeleteNodeAction => ({
+    type: "DELETE_NODE",
+    payload: { id },
+  }),
 
-	/**
-	 * Creates an INSERT_NODE action.
-	 */
-	insertNode: (
-		node: EditorNode,
-		targetId: string,
-		position: InsertPosition,
-	): InsertNodeAction => ({
-		type: "INSERT_NODE",
-		payload: { node, targetId, position },
-	}),
+  /**
+   * Creates an INSERT_NODE action.
+   */
+  insertNode: (
+    node: EditorNode,
+    targetId: string,
+    position: InsertPosition,
+  ): InsertNodeAction => ({
+    type: "INSERT_NODE",
+    payload: { node, targetId, position },
+  }),
 
-	/**
-	 * Creates a MOVE_NODE action.
-	 */
-	moveNode: (
-		nodeId: string,
-		targetId: string,
-		position: InsertPosition,
-	): MoveNodeAction => ({
-		type: "MOVE_NODE",
-		payload: { nodeId, targetId, position },
-	}),
+  /**
+   * Creates a MOVE_NODE action.
+   */
+  moveNode: (
+    nodeId: string,
+    targetId: string,
+    position: InsertPosition,
+  ): MoveNodeAction => ({
+    type: "MOVE_NODE",
+    payload: { nodeId, targetId, position },
+  }),
 
-	/**
-	 * Creates a SWAP_NODES action.
-	 */
-	swapNodes: (nodeId1: string, nodeId2: string): SwapNodesAction => ({
-		type: "SWAP_NODES",
-		payload: { nodeId1, nodeId2 },
-	}),
+  /**
+   * Creates a SWAP_NODES action.
+   */
+  swapNodes: (nodeId1: string, nodeId2: string): SwapNodesAction => ({
+    type: "SWAP_NODES",
+    payload: { nodeId1, nodeId2 },
+  }),
 
-	/**
-	 * Creates a DUPLICATE_NODE action.
-	 */
-	duplicateNode: (id: string, newId?: string): DuplicateNodeAction => ({
-		type: "DUPLICATE_NODE",
-		payload: { id, newId },
-	}),
+  /**
+   * Creates a DUPLICATE_NODE action.
+   */
+  duplicateNode: (id: string, newId?: string): DuplicateNodeAction => ({
+    type: "DUPLICATE_NODE",
+    payload: { id, newId },
+  }),
 
-	/**
-	 * Creates a REPLACE_CONTAINER action.
-	 */
-	replaceContainer: (container: ContainerNode): ReplaceContainerAction => ({
-		type: "REPLACE_CONTAINER",
-		payload: { container },
-	}),
+  /**
+   * Creates a REPLACE_CONTAINER action.
+   */
+  replaceContainer: (container: ContainerNode): ReplaceContainerAction => ({
+    type: "REPLACE_CONTAINER",
+    payload: { container },
+  }),
 
-	/**
-	 * Creates a RESET action.
-	 */
-	reset: (): ResetAction => ({
-		type: "RESET",
-	}),
+  /**
+   * Creates a RESET action.
+   */
+  reset: (): ResetAction => ({
+    type: "RESET",
+  }),
 
-	/**
-	 * Creates a SET_STATE action.
-	 */
-	setState: (state: EditorState): SetStateAction => ({
-		type: "SET_STATE",
-		payload: { state },
-	}),
+  /**
+   * Creates a SET_STATE action.
+   */
+  setState: (state: EditorState): SetStateAction => ({
+    type: "SET_STATE",
+    payload: { state },
+  }),
 
-	/**
-	 * Creates a BATCH action.
-	 */
-	batch: (actions: EditorAction[]): BatchAction => ({
-		type: "BATCH",
-		payload: { actions },
-	}),
+  /**
+   * Creates a BATCH action.
+   */
+  batch: (actions: EditorAction[]): BatchAction => ({
+    type: "BATCH",
+    payload: { actions },
+  }),
 
-	/**
-	 * Creates a SET_ACTIVE_NODE action.
-	 */
-	setActiveNode: (nodeId: string | null): SetActiveNodeAction => ({
-		type: "SET_ACTIVE_NODE",
-		payload: { nodeId },
-	}),
+  /**
+   * Creates a SET_ACTIVE_NODE action.
+   */
+  setActiveNode: (nodeId: string | null): SetActiveNodeAction => ({
+    type: "SET_ACTIVE_NODE",
+    payload: { nodeId },
+  }),
 
-	/**
-	 * Creates a SET_SELECTION action.
-	 */
-	setSelection: (hasSelection: boolean): SetSelectionAction => ({
-		type: "SET_SELECTION",
-		payload: { hasSelection },
-	}),
+  /**
+   * Creates a SET_SELECTION action.
+   */
+  setSelection: (hasSelection: boolean): SetSelectionAction => ({
+    type: "SET_SELECTION",
+    payload: { hasSelection },
+  }),
 
-	/**
-	 * Creates an INCREMENT_SELECTION_KEY action.
-	 */
-	incrementSelectionKey: (): IncrementSelectionKeyAction => ({
-		type: "INCREMENT_SELECTION_KEY",
-	}),
+  /**
+   * Creates an INCREMENT_SELECTION_KEY action.
+   */
+  incrementSelectionKey: (): IncrementSelectionKeyAction => ({
+    type: "INCREMENT_SELECTION_KEY",
+  }),
 
-	/**
-	 * Creates a SET_CURRENT_SELECTION action.
-	 */
-	setCurrentSelection: (
-		selection: SelectionInfo | null,
-	): SetCurrentSelectionAction => ({
-		type: "SET_CURRENT_SELECTION",
-		payload: { selection },
-	}),
+  /**
+   * Creates a SET_CURRENT_SELECTION action.
+   */
+  setCurrentSelection: (
+    selection: SelectionInfo | null,
+  ): SetCurrentSelectionAction => ({
+    type: "SET_CURRENT_SELECTION",
+    payload: { selection },
+  }),
 
-	/**
-	 * Creates a TOGGLE_FORMAT action.
-	 */
-	toggleFormat: (
-		format: "bold" | "italic" | "underline",
-	): ToggleFormatAction => ({
-		type: "TOGGLE_FORMAT",
-		payload: { format },
-	}),
+  /**
+   * Creates a TOGGLE_FORMAT action.
+   */
+  toggleFormat: (
+    format: "bold" | "italic" | "underline",
+  ): ToggleFormatAction => ({
+    type: "TOGGLE_FORMAT",
+    payload: { format },
+  }),
 
-	/**
-	 * Creates an APPLY_INLINE_ELEMENT_TYPE action.
-	 */
-	applyInlineElementType: (
-		elementType:
-			| "p"
-			| "h1"
-			| "h2"
-			| "h3"
-			| "h4"
-			| "h5"
-			| "h6"
-			| "code"
-			| "blockquote",
-	): ApplyInlineElementTypeAction => ({
-		type: "APPLY_INLINE_ELEMENT_TYPE",
-		payload: { elementType },
-	}),
+  /**
+   * Creates an APPLY_INLINE_ELEMENT_TYPE action.
+   */
+  applyInlineElementType: (
+    elementType:
+      | "p"
+      | "h1"
+      | "h2"
+      | "h3"
+      | "h4"
+      | "h5"
+      | "h6"
+      | "code"
+      | "blockquote",
+  ): ApplyInlineElementTypeAction => ({
+    type: "APPLY_INLINE_ELEMENT_TYPE",
+    payload: { elementType },
+  }),
 
-	/**
-	 * Creates an APPLY_CUSTOM_CLASS action.
-	 */
-	applyCustomClass: (className: string): ApplyCustomClassAction => ({
-		type: "APPLY_CUSTOM_CLASS",
-		payload: { className },
-	}),
+  /**
+   * Creates an APPLY_CUSTOM_CLASS action.
+   */
+  applyCustomClass: (className: string): ApplyCustomClassAction => ({
+    type: "APPLY_CUSTOM_CLASS",
+    payload: { className },
+  }),
 
-	/**
-	 * Creates an APPLY_INLINE_STYLE action.
-	 */
-	applyInlineStyle: (
-		property: string,
-		value: string,
-	): ApplyInlineStyleAction => ({
-		type: "APPLY_INLINE_STYLE",
-		payload: { property, value },
-	}),
+  /**
+   * Creates an APPLY_INLINE_STYLE action.
+   */
+  applyInlineStyle: (
+    property: string,
+    value: string,
+  ): ApplyInlineStyleAction => ({
+    type: "APPLY_INLINE_STYLE",
+    payload: { property, value },
+  }),
 
-	/**
-	 * Creates an APPLY_LINK action.
-	 */
-	applyLink: (href: string): ApplyLinkAction => ({
-		type: "APPLY_LINK",
-		payload: { href },
-	}),
+  /**
+   * Creates an APPLY_LINK action.
+   */
+  applyLink: (href: string): ApplyLinkAction => ({
+    type: "APPLY_LINK",
+    payload: { href },
+  }),
 
-	/**
-	 * Creates a REMOVE_LINK action.
-	 */
-	removeLink: (): RemoveLinkAction => ({
-		type: "REMOVE_LINK",
-	}),
+  /**
+   * Creates a REMOVE_LINK action.
+   */
+  removeLink: (): RemoveLinkAction => ({
+    type: "REMOVE_LINK",
+  }),
 
-	/**
-	 * Creates a SELECT_ALL_BLOCKS action.
-	 */
-	selectAllBlocks: (): SelectAllBlocksAction => ({
-		type: "SELECT_ALL_BLOCKS",
-	}),
+  /**
+   * Creates a SELECT_ALL_BLOCKS action.
+   */
+  selectAllBlocks: (): SelectAllBlocksAction => ({
+    type: "SELECT_ALL_BLOCKS",
+  }),
 
-	/**
-	 * Creates a CLEAR_BLOCK_SELECTION action.
-	 */
-	clearBlockSelection: (): ClearBlockSelectionAction => ({
-		type: "CLEAR_BLOCK_SELECTION",
-	}),
+  /**
+   * Creates a CLEAR_BLOCK_SELECTION action.
+   */
+  clearBlockSelection: (): ClearBlockSelectionAction => ({
+    type: "CLEAR_BLOCK_SELECTION",
+  }),
 
-	/**
-	 * Creates a DELETE_SELECTED_BLOCKS action.
-	 */
-	deleteSelectedBlocks: (): DeleteSelectedBlocksAction => ({
-		type: "DELETE_SELECTED_BLOCKS",
-	}),
+  /**
+   * Creates a DELETE_SELECTED_BLOCKS action.
+   */
+  deleteSelectedBlocks: (): DeleteSelectedBlocksAction => ({
+    type: "DELETE_SELECTED_BLOCKS",
+  }),
 
-	/**
-	 * Creates an UNDO action.
-	 */
-	undo: (): UndoAction => ({
-		type: "UNDO",
-	}),
+  /**
+   * Creates an UNDO action.
+   */
+  undo: (): UndoAction => ({
+    type: "UNDO",
+  }),
 
-	/**
-	 * Creates a REDO action.
-	 */
-	redo: (): RedoAction => ({
-		type: "REDO",
-	}),
-}
+  /**
+   * Creates a REDO action.
+   */
+  redo: (): RedoAction => ({
+    type: "REDO",
+  }),
+};

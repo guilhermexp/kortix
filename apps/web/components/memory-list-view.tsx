@@ -3,6 +3,7 @@
 import { useIsMobile } from "@hooks/use-mobile";
 import { useDeleteDocument } from "@lib/queries";
 import { cn } from "@lib/utils";
+import { useRouter } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +30,6 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { z } from "zod";
 import useResizeObserver from "@/hooks/use-resize-observer";
@@ -315,25 +315,11 @@ const DocumentCard = memo(
     onDelete: (document: DocumentWithMemories) => void;
   }) => {
     const router = useRouter();
-    const activeMemories = useMemo(
-      () => document.memoryEntries.filter((m) => !m.isForgotten),
-      [document.memoryEntries],
+    const activeMemories = document.memoryEntries.filter((m) => !m.isForgotten);
+    const forgottenMemories = document.memoryEntries.filter(
+      (m) => m.isForgotten,
     );
-    const forgottenMemories = useMemo(
-      () => document.memoryEntries.filter((m) => m.isForgotten),
-      [document.memoryEntries],
-    );
-    // Memoize based on document ID and metadata to prevent recalculation
-    const preview = useMemo(
-      () => getDocumentPreview(document),
-      [
-        document.id,
-        document.metadata,
-        document.raw,
-        document.type,
-        document.url,
-      ],
-    );
+    const preview = useMemo(() => getDocumentPreview(document), [document]);
 
     const PreviewBadgeIcon = useMemo(() => {
       switch (preview?.kind) {
@@ -361,15 +347,13 @@ const DocumentCard = memo(
       ? processingStates.has(String(document.status).toLowerCase())
       : false;
 
-    const handleCardClick = useCallback(() => {
-      analytics.documentCardClicked();
-      router.push(`/memory/${document.id}/edit`);
-    }, [document.id, router]);
-
     return (
       <Card
         className="h-full w-full p-4 transition-all cursor-pointer group relative overflow-hidden border border-white/10 gap-2 md:w-full rounded-lg"
-        onClick={handleCardClick}
+        onClick={() => {
+          analytics.documentCardClicked();
+          router.push(`/memory/${document.id}/edit`);
+        }}
         style={{
           backgroundColor: "#0f1419",
         }}
@@ -385,16 +369,16 @@ const DocumentCard = memo(
                 className="opacity-25"
                 cx="12"
                 cy="12"
-                fill="none"
                 r="10"
                 stroke="currentColor"
                 strokeWidth="3"
-              />
+                fill="none"
+              ></circle>
               <path
                 className="opacity-75"
-                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
                 fill="currentColor"
-              />
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+              ></path>
             </svg>
           </div>
         )}
@@ -449,11 +433,9 @@ const DocumentCard = memo(
                 {preview.src && (
                   <img
                     alt={`${preview.label} preview`}
-                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                    decoding="async"
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                     loading="lazy"
                     src={preview.src}
-                    style={{ contentVisibility: "auto" }}
                   />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45" />
@@ -485,8 +467,7 @@ const DocumentCard = memo(
             const raw = asRecord(document.raw);
             const extraction = asRecord(raw?.extraction);
             const summary =
-              (typeof extraction?.analysis === "string" &&
-                extraction.analysis) ||
+              (typeof extraction?.analysis === "string" && extraction.analysis) ||
               (typeof raw?.analysis === "string" && raw.analysis) ||
               null;
 

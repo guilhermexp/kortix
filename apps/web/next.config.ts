@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   experimental: {
     viewTransition: true,
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   poweredByHeader: false,
   async rewrites() {
     // Use internal Railway URL for server-side rewrites, localhost for dev

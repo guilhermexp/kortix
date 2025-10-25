@@ -7,7 +7,7 @@
  * - Formato de resposta correto
  */
 
-import { config, log, logError, logFailure, logSuccess } from "./config"
+import { config, log, logError, logSuccess, logFailure } from "./config"
 
 interface SearchResult {
 	id: string
