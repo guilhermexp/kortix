@@ -791,7 +791,9 @@ export async function updateDocument(
 	}
 
 	if (Object.keys(updates).length === 0) {
-		throw new Error("At least one field (content or title) must be provided for update")
+		throw new Error(
+			"At least one field (content or title) must be provided for update",
+		)
 	}
 
 	const { data, error } = await client

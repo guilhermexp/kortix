@@ -1,4 +1,4 @@
-import { $fetch } from "@lib/api";
+import { $fetch } from "@lib/api"
 
 export async function updateDocumentContent(
 	id: string,
@@ -8,15 +8,15 @@ export async function updateDocumentContent(
 		const response = await $fetch("@patch/documents/:id", {
 			params: { id },
 			body: { content },
-		});
+		})
 
 		if (response.error) {
 			throw new Error(
 				response.error?.message || "Failed to update document content",
-			);
+			)
 		}
 	} catch (error) {
-		console.error("Error updating document:", error);
-		throw error;
+		console.error("Error updating document:", error)
+		throw error
 	}
 }

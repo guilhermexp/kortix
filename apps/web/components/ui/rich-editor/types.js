@@ -1,6 +1,10 @@
-"use strict";
-exports.__esModule = true;
-exports.getNodeTextContent = exports.hasInlineChildren = exports.isTextNode = exports.isStructuralNode = exports.isContainerNode = void 0;
+exports.__esModule = true
+exports.getNodeTextContent =
+	exports.hasInlineChildren =
+	exports.isTextNode =
+	exports.isStructuralNode =
+	exports.isContainerNode =
+		void 0
 /**
  * Type guard to check if a node is a ContainerNode.
  *
@@ -15,9 +19,9 @@ exports.getNodeTextContent = exports.hasInlineChildren = exports.isTextNode = ex
  * ```
  */
 function isContainerNode(node) {
-    return node.type === "container";
+	return node.type === "container"
 }
-exports.isContainerNode = isContainerNode;
+exports.isContainerNode = isContainerNode
 /**
  * Type guard to check if a node is a StructuralNode (table, thead, tbody, tr).
  *
@@ -25,12 +29,14 @@ exports.isContainerNode = isContainerNode;
  * @returns True if node is a StructuralNode
  */
 function isStructuralNode(node) {
-    return (node.type === "table" ||
-        node.type === "thead" ||
-        node.type === "tbody" ||
-        node.type === "tr");
+	return (
+		node.type === "table" ||
+		node.type === "thead" ||
+		node.type === "tbody" ||
+		node.type === "tr"
+	)
 }
-exports.isStructuralNode = isStructuralNode;
+exports.isStructuralNode = isStructuralNode
 /**
  * Type guard to check if a node is a TextNode.
  *
@@ -45,9 +51,9 @@ exports.isStructuralNode = isStructuralNode;
  * ```
  */
 function isTextNode(node) {
-    return node.type !== "container" && !isStructuralNode(node);
+	return node.type !== "container" && !isStructuralNode(node)
 }
-exports.isTextNode = isTextNode;
+exports.isTextNode = isTextNode
 /**
  * Type guard to check if a node has inline children (rich text).
  *
@@ -62,11 +68,11 @@ exports.isTextNode = isTextNode;
  * ```
  */
 function hasInlineChildren(node) {
-    return (isTextNode(node) &&
-        Array.isArray(node.children) &&
-        node.children.length > 0);
+	return (
+		isTextNode(node) && Array.isArray(node.children) && node.children.length > 0
+	)
 }
-exports.hasInlineChildren = hasInlineChildren;
+exports.hasInlineChildren = hasInlineChildren
 /**
  * Get the text content of a node (whether simple or with inline children).
  *
@@ -79,22 +85,22 @@ exports.hasInlineChildren = hasInlineChildren;
  * ```
  */
 function getNodeTextContent(node) {
-    // If node has multiple lines, join them with newlines
-    if (node.lines && node.lines.length > 0) {
-        return node.lines
-            .map(function (line) {
-            if (line.children && line.children.length > 0) {
-                return line.children.map(function (child) { return child.content; }).join("");
-            }
-            return line.content || "";
-        })
-            .join("\n");
-    }
-    // If node has inline children (single line with formatting)
-    if (hasInlineChildren(node)) {
-        return node.children.map(function (child) { return child.content; }).join("");
-    }
-    // Simple content (single line, no formatting)
-    return node.content || "";
+	// If node has multiple lines, join them with newlines
+	if (node.lines && node.lines.length > 0) {
+		return node.lines
+			.map((line) => {
+				if (line.children && line.children.length > 0) {
+					return line.children.map((child) => child.content).join("")
+				}
+				return line.content || ""
+			})
+			.join("\n")
+	}
+	// If node has inline children (single line with formatting)
+	if (hasInlineChildren(node)) {
+		return node.children.map((child) => child.content).join("")
+	}
+	// Simple content (single line, no formatting)
+	return node.content || ""
 }
-exports.getNodeTextContent = getNodeTextContent;
+exports.getNodeTextContent = getNodeTextContent

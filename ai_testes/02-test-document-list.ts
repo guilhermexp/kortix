@@ -8,7 +8,7 @@
  * - Campo 'documentId' presente (correção aplicada)
  */
 
-import { config, log, logError, logSuccess, logFailure } from "./config"
+import { config, log, logError, logFailure, logSuccess } from "./config"
 
 interface MemoryEntry {
 	id: string
@@ -117,9 +117,7 @@ async function testDocumentList(): Promise<boolean> {
 			}
 		}
 
-		log(
-			`Memórias encontradas: ${memoriesFound}`,
-		)
+		log(`Memórias encontradas: ${memoriesFound}`)
 		log(
 			`Memórias com campo 'memory': ${memoriesWithMemoryField}/${memoriesFound}`,
 		)

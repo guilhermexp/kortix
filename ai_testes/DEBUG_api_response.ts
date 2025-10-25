@@ -13,14 +13,17 @@ async function debugApiResponse() {
 
 	let cookies = ""
 	try {
-		const loginResponse = await fetch("http://localhost:4000/api/auth/sign-in", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				email: loginEmail,
-				password: loginPassword,
-			}),
-		})
+		const loginResponse = await fetch(
+			"http://localhost:4000/api/auth/sign-in",
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					email: loginEmail,
+					password: loginPassword,
+				}),
+			},
+		)
 
 		if (!loginResponse.ok) {
 			console.log("❌ Login falhou:", loginResponse.status)
@@ -111,7 +114,7 @@ async function debugApiResponse() {
 		console.log("\n4. Detalhes da preview:")
 		console.log("━".repeat(50))
 		console.log(`URL da imagem: ${ogImage}`)
-		console.log(`Meta tags:`, supermemoryDoc.raw.extraction.metaTags || "N/A")
+		console.log("Meta tags:", supermemoryDoc.raw.extraction.metaTags || "N/A")
 
 		console.log("\n━".repeat(50))
 		console.log("✅ API está retornando ogImage corretamente!")
@@ -119,9 +122,7 @@ async function debugApiResponse() {
 		console.log("1. Frontend não está lendo raw.extraction.ogImage")
 		console.log("2. Erro ao renderizar a imagem")
 		console.log("3. Erro de CORS ao carregar a imagem")
-		console.log(
-			"\nAbra o DevTools do navegador e veja se há erros no console.",
-		)
+		console.log("\nAbra o DevTools do navegador e veja se há erros no console.")
 	} catch (error) {
 		console.log("❌ Erro ao buscar documentos:", error)
 	}

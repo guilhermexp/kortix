@@ -262,11 +262,11 @@ export const Legend = memo(function Legend({
 											Relations
 										</div>
 										<div className="space-y-1.5">
-												{[
-													["updates", colors.relations.updates],
-													["extends", colors.relations.extends],
-													["derives", colors.relations.derives],
-												].map(([label, color]) => (
+											{[
+												["updates", colors.relations.updates],
+												["extends", colors.relations.extends],
+												["derives", colors.relations.derives],
+											].map(([label, color]) => (
 												<div className="flex items-center gap-2" key={label}>
 													<div
 														className="w-4 h-0 border-t-2 flex-shrink-0"
