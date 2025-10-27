@@ -9,7 +9,7 @@ A stack self-hosted roda inteira dentro deste monorepo:
 
 - **Banco**: Supabase Postgres com pgvector habilitado
 - **Backend**: `apps/api` (Bun + Hono)
-- **Frontend**: `apps/web` (Next.js 15)
+- **Frontend**: `apps/web` (Next.js 16)
 - **Autenticação**: Custom session-based auth com envio de e-mails via Resend
 - **MCP**: exposto em `${SUPERMEMORY_API_URL}/mcp`
 
@@ -49,7 +49,7 @@ AUTH_SECRET=chave_com_32_caracteres
 APP_URL=https://app.seudominio.com
 ALLOWED_ORIGINS=https://app.seudominio.com,http://localhost:3000
 GOOGLE_API_KEY=sua_key_do_modelo
-SUMMARY_MODEL=models/gemini-2.5-pro
+SUMMARY_MODEL=models/gemini-1.5-pro-latest
 FIRECRAWL_API_KEY= # opcional, usa Firecrawl para normalizar páginas web
 RESEND_API_KEY=sua_key_resend
 FROM_EMAIL=suporte@seudominio.com

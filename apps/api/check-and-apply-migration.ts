@@ -1,12 +1,12 @@
-import postgres from "postgres";
+import postgres from "postgres"
 
-const databaseUrl = process.env.SUPABASE_DATABASE_URL!;
-const sql = postgres(databaseUrl);
+const databaseUrl = process.env.SUPABASE_DATABASE_URL!
+const sql = postgres(databaseUrl)
 
 async function checkFunction() {
-  console.log("=== Checking function in database ===\n");
-  
-  const result = await sql`
+	console.log("=== Checking function in database ===\n")
+
+	const result = await sql`
     SELECT
         p.proname AS function_name,
         pg_get_function_arguments(p.oid) AS arguments,
@@ -15,15 +15,15 @@ async function checkFunction() {
     JOIN pg_namespace n ON p.pronamespace = n.oid
     WHERE p.proname = 'finalize_document_atomic'
       AND n.nspname = 'public';
-  `;
+  `
 
-  return result;
+	return result
 }
 
 async function checkStuckDocuments() {
-  console.log("\n=== Checking stuck documents ===\n");
-  
-  const result = await sql`
+	console.log("\n=== Checking stuck documents ===\n")
+
+	const result = await sql`
     SELECT
         status,
         COUNT(*) as total,
@@ -32,40 +32,41 @@ async function checkStuckDocuments() {
     WHERE status IN ('fetching', 'extracting', 'chunking', 'embedding', 'indexing')
     GROUP BY status
     ORDER BY total DESC;
-  `;
+  `
 
-  return result;
+	return result
 }
 
 async function main() {
-  try {
-    const functions = await checkFunction();
-    
-    if (functions.length === 0) {
-      console.log("❌ Function NOT found in database");
-      console.log("✅ Migration needs to be applied\n");
-    } else {
-      console.log("✅ Function found:");
-      console.log(JSON.stringify(functions[0], null, 2));
-      console.log("\nArguments:", functions[0].arguments);
-    }
+	try {
+		const functions = await checkFunction()
 
-    const stuckDocs = await checkStuckDocuments();
-    
-    if (stuckDocs.length === 0) {
-      console.log("✅ No stuck documents found");
-    } else {
-      console.log("⚠️  Stuck documents:");
-      stuckDocs.forEach(row => {
-        console.log(`  - ${row.status}: ${row.total} documents (last: ${row.ultima_atualizacao})`);
-      });
-    }
+		if (functions.length === 0) {
+			console.log("❌ Function NOT found in database")
+			console.log("✅ Migration needs to be applied\n")
+		} else {
+			console.log("✅ Function found:")
+			console.log(JSON.stringify(functions[0], null, 2))
+			console.log("\nArguments:", functions[0].arguments)
+		}
 
-  } catch (error) {
-    console.error("Error:", error);
-  } finally {
-    await sql.end();
-  }
+		const stuckDocs = await checkStuckDocuments()
+
+		if (stuckDocs.length === 0) {
+			console.log("✅ No stuck documents found")
+		} else {
+			console.log("⚠️  Stuck documents:")
+			stuckDocs.forEach((row) => {
+				console.log(
+					`  - ${row.status}: ${row.total} documents (last: ${row.ultima_atualizacao})`,
+				)
+			})
+		}
+	} catch (error) {
+		console.error("Error:", error)
+	} finally {
+		await sql.end()
+	}
 }
 
-main();
+main()

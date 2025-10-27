@@ -348,11 +348,134 @@ RelationshipType
 
 ---
 
+## 🔐 Critical Security Notes
+
+### RLS Policies - MUST HAVE `anon` Role
+**⚠️ CRITICAL:** All RLS policies MUST include the `anon` role, not just `authenticated`.
+
+**Why:** The frontend uses `ANON_KEY` (not `SERVICE_ROLE_KEY`), which authenticates as the `anon` role. Without `anon` in policies, data becomes invisible to the frontend even though it exists in the database.
+
+**Correct RLS Pattern:**
+```sql
+CREATE POLICY "policy_name" ON table_name
+FOR SELECT
+TO anon, authenticated  -- ← BOTH roles required
+USING (org_id = current_setting('request.jwt.claims')::json->>'org_id');
+```
+
+**Common Mistake:**
+```sql
+TO authenticated  -- ❌ Frontend won't see data
+```
+
+**Affected Tables:** All tables with RLS enabled (13 tables)
+
+### Multi-Tenant Isolation
+Every query MUST filter by `org_id`:
+```typescript
+.eq("org_id", organizationId)  // ← MANDATORY
+```
+
+This works in combination with RLS policies to ensure data isolation.
+
+---
+
+## 🤖 AI Model Configuration
+
+### Model Selection Architecture
+The system supports multiple AI providers (Google Gemini, xAI Grok) with dynamic model selection.
+
+**Key Files:**
+- `apps/api/src/env.ts` - Default provider configuration
+- `apps/api/.env.local` - Model selection via `AI_PROVIDER` and `CHAT_MODEL`
+- `apps/api/src/config/constants.ts` - Model constants
+- `apps/api/src/routes/chat-v2.ts` - Model parsing and selection
+- `apps/api/src/services/agentic-search.ts` - Query generation with selected model
+
+### Model Flow
+1. User selects model in UI (optional) → `payload.model` parameter
+2. `chat-v2.ts` parses model BEFORE agentic search
+3. Model is passed to `agenticSearch()` via `AgenticSearchOptions.model`
+4. Query generation and evaluation use the selected model
+5. Chat completion uses the same model
+
+**Important:** Agentic search accepts a `model` parameter to ensure consistency:
+```typescript
+export type AgenticSearchOptions = {
+  model?: LanguageModel  // User-selected model
+  // ... other options
+}
+```
+
+### Provider Configuration
+**Google Gemini:**
+```typescript
+// .env.local
+AI_PROVIDER=google
+CHAT_MODEL=gemini-2.5-flash
+GOOGLE_API_KEY=your_key
+```
+
+**xAI Grok:**
+```typescript
+// .env.local
+AI_PROVIDER=xai
+CHAT_MODEL=grok-beta
+XAI_API_KEY=your_key
+```
+
+### Common Pitfalls
+- ❌ Using outdated model names (e.g., `models/gemini-1.5-flash-latest`)
+- ❌ Hardcoding models in services instead of accepting parameters
+- ❌ Using non-existent preview models
+- ✅ Always use stable model IDs from official documentation
+- ✅ Pass model through the entire chain (UI → chat → agentic search → generation)
+
+---
+
 ## 🎓 Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2025-10-25 | Initial release with 18 tables, complete reference |
+| 1.1 | 2025-10-26 | Added RLS policies critical notes, AI model configuration guide |
+
+---
+
+## 🐛 Troubleshooting Common Issues
+
+### Issue: Data Exists But Not Visible in Frontend
+**Symptoms:** Database shows data (SELECT returns rows), but frontend shows empty state
+
+**Root Cause:** RLS policies missing `anon` role
+
+**Solution:**
+1. Check RLS policies: `\d+ table_name` in psql
+2. Verify policies include `TO anon, authenticated`
+3. Apply migration to fix policies:
+```sql
+ALTER POLICY "policy_name" ON table_name TO anon, authenticated;
+```
+
+### Issue: AI Model Not Found (404)
+**Symptoms:** Errors like `[404 Not Found] model_name is not found`
+
+**Root Cause:** Using outdated or preview model names
+
+**Solution:**
+1. Check `.env.local` for `CHAT_MODEL` value
+2. Update to stable model ID (e.g., `gemini-2.5-flash` not `models/google/gemini-2.5-flash-preview-09-2025`)
+3. Verify model exists in provider's documentation
+
+### Issue: Chat Ignoring User Model Selection
+**Symptoms:** User selects Grok, but system uses Gemini
+
+**Root Cause:** Model not passed through agentic search pipeline
+
+**Solution:**
+1. Verify `chat-v2.ts` parses model BEFORE agenticSearch call
+2. Ensure `agenticSearch()` receives `model` parameter
+3. Check `generateQueries()` and `evaluateCompleteness()` use passed model
 
 ---
 
@@ -364,6 +487,6 @@ RelationshipType
 
 ---
 
-**Last Updated:** 2025-10-25
+**Last Updated:** 2025-10-26
 **Authority:** Claude Code
 **Status:** PRODUCTION READY ✅

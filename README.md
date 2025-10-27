@@ -8,14 +8,14 @@ A complete self-hosted AI-powered memory and knowledge management system. This a
 
 - ✅ **Status**: Stable and actively maintained
 - 🌐 **Platform**: Railway (Nixpacks)
-- 📦 **Services**: API (Bun) + Web (Next.js 15)
+- 📦 **Services**: API (Bun) + Web (Next.js 16)
 - 🗄️ **Database**: Supabase Postgres with pgvector
 
 [View deployment guide →](ai_docs/RAILWAY_DEPLOYMENT.md)
 
 ## Stack
 
-- **Frontend**: Next.js 15 with Turbopack (`apps/web`)
+- **Frontend**: Next.js 16 with Turbopack (`apps/web`)
 - **Backend API**: Bun + Hono server (`apps/api`)
 - **Database**: Supabase Postgres with pgvector extension
 - **Storage**: Supabase Storage
@@ -73,9 +73,9 @@ AUTH_SECRET=use_a_32_character_secret_here_123456789012
 
 # AI Provider
 GOOGLE_API_KEY=your_gemini_api_key
-CHAT_MODEL=models/gemini-2.5-flash-preview-09-2025
+CHAT_MODEL=models/gemini-1.5-flash-latest
 EMBEDDING_MODEL=text-embedding-004
-SUMMARY_MODEL=models/gemini-2.5-pro
+SUMMARY_MODEL=models/gemini-1.5-pro-latest
 
 # Application URLs
 APP_URL=http://localhost:3000

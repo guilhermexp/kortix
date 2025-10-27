@@ -123,7 +123,8 @@ export async function handleChat({
 		: ENHANCED_SYSTEM_PROMPT
 
 	// Use AI SDK streamText with configured provider and model
-	const selectedModel = env.AI_PROVIDER === "xai" ? xai(env.CHAT_MODEL) : google(env.CHAT_MODEL)
+	const selectedModel =
+		env.AI_PROVIDER === "xai" ? xai(env.CHAT_MODEL) : google(env.CHAT_MODEL)
 
 	try {
 		const result = streamText({

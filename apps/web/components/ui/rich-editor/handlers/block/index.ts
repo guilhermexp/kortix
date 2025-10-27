@@ -1,7 +1,6 @@
-export * from "./block-utils"
+// Drag handlers
+export * from "./block-drag-handlers"
 
 // Event handlers
 export * from "./block-event-handlers"
-
-// Drag handlers
-export * from "./block-drag-handlers"
+export * from "./block-utils"

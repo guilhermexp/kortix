@@ -104,7 +104,7 @@ export async function deleteProject(
 ) {
 	const parsed = DeleteProjectSchema.parse(mode)
 	let documentsAffected = 0
-	let memoriesAffected = 0
+	const memoriesAffected = 0
 
 	if (parsed.action === "move") {
 		const targetProjectId = parsed.targetProjectId
@@ -121,7 +121,9 @@ export async function deleteProject(
 			.single()
 
 		if (targetCheckError || !targetProject) {
-			throw new Error("Target project not found or does not belong to your organization")
+			throw new Error(
+				"Target project not found or does not belong to your organization",
+			)
 		}
 
 		const { data: links, error: linksError } = await client

@@ -10,21 +10,8 @@
 // ============================================================================
 
 export const AI_MODELS = {
-	/** Primary Gemini Flash model for summarization and analysis */
-	GEMINI_FLASH: "models/gemini-2.5-flash-preview-09-2025",
-
-	/** Lite version for cost-effective operations */
-	GEMINI_FLASH_LITE: "google/gemini-2.5-flash-lite-preview-09-2025",
-
-	/** Model mapping for compatibility and fallbacks */
-	GEMINI_MODEL_MAP: {
-		"gemini-2.5-pro": "google/gemini-2.5-flash-lite-preview-09-2025",
-		"gemini-2.5-flash": "google/gemini-2.5-flash-lite-preview-09-2025",
-		"gemini-2.0-flash": "google/gemini-2.5-flash-lite-preview-09-2025",
-		"gemini-2.0-flash-exp": "google/gemini-2.5-flash-lite-preview-09-2025",
-		"gemini-pro": "google/gemini-2.5-flash-lite-preview-09-2025",
-		"gemini-pro-vision": "google/gemini-2.5-flash-lite-preview-09-2025",
-	} as const,
+	/** Gemini Flash model for summarization and analysis */
+	GEMINI_FLASH: "gemini-2.5-flash",
 } as const
 
 // ============================================================================
@@ -107,7 +94,8 @@ export const CONTENT_PATTERNS = {
 	 * Portuguese action verbs regex for use case detection in fallback summaries
 	 * Matches common imperative and recommendation patterns
 	 */
-	ACTION_VERBS_PT: /deve|faça|passo|recomenda|sugere|precisa|evite|comece|conclua|usar|aplique|utilize|serve para|pode ser usado/i,
+	ACTION_VERBS_PT:
+		/deve|faça|passo|recomenda|sugere|precisa|evite|comece|conclua|usar|aplique|utilize|serve para|pode ser usado/i,
 
 	/**
 	 * Regex to check if "Casos de Uso" section exists in markdown
@@ -207,11 +195,7 @@ export const RATE_LIMITS = {
 	},
 
 	/** Skip rate limiting for specific paths (health checks, etc.) */
-	SKIP_PATHS: [
-		"/health",
-		"/api/health",
-		"/ping",
-	] as const,
+	SKIP_PATHS: ["/health", "/api/health", "/ping"] as const,
 } as const
 
 // ============================================================================
@@ -219,11 +203,10 @@ export const RATE_LIMITS = {
 // ============================================================================
 
 /**
- * Get the appropriate Gemini model ID with fallback
+ * Get the Gemini model ID
  */
-export function getGeminiModel(modelKey?: keyof typeof AI_MODELS.GEMINI_MODEL_MAP): string {
-	if (!modelKey) return AI_MODELS.GEMINI_FLASH
-	return AI_MODELS.GEMINI_MODEL_MAP[modelKey] ?? AI_MODELS.GEMINI_FLASH_LITE
+export function getGeminiModel(): string {
+	return AI_MODELS.GEMINI_FLASH
 }
 
 /**
@@ -245,7 +228,10 @@ export function isPdfContent(contentType?: string | null): boolean {
 /**
  * Check if content type is HTML/webpage
  */
-export function isHtmlContent(contentType?: string | null, url?: string | null): boolean {
+export function isHtmlContent(
+	contentType?: string | null,
+	url?: string | null,
+): boolean {
 	if (contentType && CONTENT_TYPES.HTML_PATTERN.test(contentType)) return true
 	if (url) return true // If there's a URL, assume it's a webpage
 	return false

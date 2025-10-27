@@ -1,0 +1,131 @@
+---
+title: "Deep Agent"
+description: "Agentic ingestion and analysis using EXA + LLMs for richer documents"
+sidebarTitle: "Deep Agent"
+---
+
+Deep Agent is an optional, richer ingestion path that performs agentic analysis using EXA and LLMs before adding content to your project. It complements (does not replace) the standard input.
+
+## What It Does
+
+- Auto-detects link type and chooses the best pipeline:
+  - YouTube: multimodal analysis (audio + frames) via Gemini fileData
+  - GitHub repositories: EXA Context (Exa Code) + repo key files → comprehensive report
+  - Web pages: EXA Get Contents (Markdown) + subpage crawl → enriched report
+- Adds the resulting analysis to your project as a document/memory with metadata `deep_agent: true` and `source_url`.
+- Falls back to standard Markdown extraction + LLM when EXA is not available (to avoid breaking user flow).
+
+## How It Fits Your UI
+
+- Standard Input (top): unchanged; uses Markdown pipeline + short summary.
+- Deep Agent Input (bottom): for complex, precise analysis and context gathering. One button: “Analyze & Add”.
+  - Triggers agentic pipeline (EXA + LLM) and adds the document. The modal closes and the document appears in the list like the standard flow.
+
+## Backend Routes
+
+### POST /v3/deep-agent/analyze
+
+Body:
+
+```json
+{
+  "url": "https://example.com/link",
+  "mode": "auto",
+  "title": "Optional title",
+  "githubToken": "optional",
+  "useExa": true
+}
+```
+
+Response:
+
+```json
+{
+  "summary": "Long, structured analysis in pt-BR...",
+  "mode": "web|repository|youtube",
+  "title": null
+}
+```
+
+Notes:
+
+- `mode` is auto-detected. You rarely need to set it.
+- `useExa` defaults to true when `EXA_API_KEY` is present server-side.
+- `githubToken` is optional (for private repos or rate limits).
+
+## Pipelines
+
+### Web URLs
+
+1) Primary content: EXA Get Contents (Markdown, livecrawl: preferred). Fallback to local Markdown conversion if needed.
+2) Subpages: domain-scoped EXA Search → fetch up to 3 subpages with Get Contents → merge into context.
+3) LLM synthesis: prompt produces a thorough report (not a short summary):
+   - Summary and key topics
+   - Structure/sections and practical usage steps (if applicable)
+   - Strengths, limitations, recommendations
+   - Q&A the content can answer
+
+### GitHub Repositories
+
+1) Repo key files: README + `package.json` / `pyproject.toml` / `setup.py` / `requirements.txt`.
+2) EXA Context (Exa Code): code snippets and examples from the repo ecosystem.
+3) EXA Search: external docs/posts for extra context.
+4) LLM synthesis report:
+   - Project purpose, architecture, folder structure
+   - Install & usage with examples
+   - Main flows (build, test, run), APIs/CLIs
+   - Best practices and Q&A
+
+### YouTube
+
+1) Gemini fileData multimodal analysis (audio + frames) with a dedicated system instruction (pt-BR).
+2) Optionally enrich with EXA (external context) if needed.
+
+## Configuration
+
+- `EXA_API_KEY` (optional, recommended): enables EXA Search, Get Contents, Context.
+- `GOOGLE_API_KEY` (optional): enables Gemini multimodal for YouTube.
+- Deep Agent uses EXA by default when `EXA_API_KEY` is configured; otherwise falls back to Markdown + LLM.
+
+## Frontend Usage (Console)
+
+- Open “Add Memory”.
+- Standard input (top) works as always.
+- Deep Agent input (bottom): paste any link and click “Analyze & Add”. The workflow is identical to the standard one: processing state, then the card appears in the list.
+
+## Example (cURL)
+
+```bash
+curl -X POST "http://localhost:4000/v3/deep-agent/analyze" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $SUPERMEMORY_API_KEY" \
+  -d '{
+    "url": "https://github.com/owner/repo",
+    "mode": "auto",
+    "useExa": true
+  }'
+```
+
+## Behavior Guarantees
+
+- Standard input is never changed by Deep Agent work.
+- Deep Agent always adds a normal document/memory like the standard flow.
+- When EXA is unavailable, Deep Agent still completes via Markdown + LLM.
+
+## Sources and Internals
+
+- Search: `POST https://api.exa.ai/search` (neural/auto)
+- Get Contents: `POST https://api.exa.ai/contents` (Markdown, livecrawl)
+- Context (Exa Code): `POST https://api.exa.ai/context`
+- Answer (optional future): `POST https://api.exa.ai/answer`
+
+Server code locations:
+
+- EXA helpers: `apps/api/src/services/exa-search.ts`
+- Deep Agent service: `apps/api/src/services/analysis-service.ts`
+- Route: `apps/api/src/index.ts` → `/v3/deep-agent/analyze`
+
+---
+
+If you need a stricter mode (no fallback when EXA is unavailable), set a server flag to enforce `useExa=true` and fail otherwise.
+

@@ -35,6 +35,8 @@ import { AnimatePresence, motion } from "motion/react"
 import dynamic from "next/dynamic"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import { WebsiteCard } from "@/components/content-cards/website"
+// Removed dropdown; inline toggle buttons are used instead
 import { z } from "zod"
 import { analytics } from "@/lib/analytics"
 import { useProject } from "@/stores"
@@ -265,14 +267,14 @@ export function AddMemoryView({
 		},
 	})
 
-	const addContentForm = useForm({
-		defaultValues: {
-			content: "",
-			project:
-				selectedProject && selectedProject !== "sm_project_default"
-					? selectedProject
-					: "",
-		},
+    const addContentForm = useForm({
+        defaultValues: {
+            content: "",
+            project:
+                selectedProject && selectedProject !== "sm_project_default"
+                    ? selectedProject
+                    : "sm_project_default",
+        },
 		onSubmit: async ({ value, formApi }) => {
 			addContentMutation.mutate({
 				content: value.content,
@@ -281,23 +283,17 @@ export function AddMemoryView({
 			})
 			formApi.reset()
 		},
-		validators: {
-			onChange: z.object({
-				content: z.string().min(1, "Content is required"),
-				// Require a real project (not empty, not the All Projects viewer)
-				project: z
-					.string()
-					.min(1, "Select a project")
-					.refine((v) => v !== "sm_project_default", "Select a project"),
-			}),
-			onSubmit: z.object({
-				content: z.string().min(1, "Content is required"),
-				project: z
-					.string()
-					.min(1, "Select a project")
-					.refine((v) => v !== "sm_project_default", "Select a project"),
-			}),
-		},
+        validators: {
+            onChange: z.object({
+                content: z.string().min(1, "Content is required"),
+                // Allow default project; backend will scope to sm_project_default
+                project: z.string().min(1, "Select a project"),
+            }),
+            onSubmit: z.object({
+                content: z.string().min(1, "Content is required"),
+                project: z.string().min(1, "Select a project"),
+            }),
+        },
 	})
 
     // Re-validate content field when tab changes between note/link/repository
@@ -319,6 +315,19 @@ export function AddMemoryView({
     // Deep Agent state
     const [deepSummary, setDeepSummary] = useState<string>("")
     const [deepUrl, setDeepUrl] = useState<string>("")
+    // Per-user preference: use Agent on Add (Link tab)
+    const [useAgentForLink, setUseAgentForLink] = useState<boolean>(false)
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem("useAgentForLink")
+            if (raw != null) setUseAgentForLink(raw === "true")
+        } catch {}
+    }, [])
+    useEffect(() => {
+        try {
+            localStorage.setItem("useAgentForLink", String(useAgentForLink))
+        } catch {}
+    }, [useAgentForLink])
     const deepAnalyzeMutation = useMutation({
         mutationFn: async ({ url, title }: { url: string; title?: string }) => {
             const res = await $fetch("@post/deep-agent/analyze", {
@@ -598,15 +607,41 @@ export function AddMemoryView({
 									return res.json()
 								})
 								.then((data) => ({ data, error: null }))
-						: await $fetch("@post/documents", {
+						: await (async () => {
+							// Single-step link flow: enrich with Deep Agent preview (no extra clicks)
+                        let metadata: any = { sm_source: "consumer" }
+                        const isUrl = /^https?:\/\//i.test(content)
+                        if (contentType === "link" && isUrl && useAgentForLink) {
+								try {
+									const deep = await $fetch("@post/deep-agent/analyze", {
+										body: { url: content, mode: "auto" },
+									})
+									if (!deep.error && deep.data) {
+										const pm = deep.data.previewMetadata || {}
+										metadata = {
+											...metadata,
+											deep_agent: true,
+											source_url: content,
+											...(pm.ogImage ? { ogImage: pm.ogImage } : {}),
+											...(pm.twitterImage ? { twitterImage: pm.twitterImage } : {}),
+											...(pm.title ? { title: pm.title } : {}),
+											...(pm.description ? { description: pm.description } : {}),
+											...(pm.favicon ? { favicon: pm.favicon } : {}),
+											...(pm.siteName ? { siteName: pm.siteName } : {}),
+										}
+									}
+								} catch {
+									// If deep analysis fails, proceed without it
+								}
+							}
+							return $fetch("@post/documents", {
 								body: {
-									content: content,
+									content,
 									containerTags: [project],
-									metadata: {
-										sm_source: "consumer", // Use "consumer" source to bypass limits
-									},
+									metadata,
 								},
 							})
+						})()
 
 				if (response.error) {
 					throw new Error(
@@ -1195,73 +1230,44 @@ export function AddMemoryView({
                                             <div className="flex-1" />
                                         </div>
 
-                                        {/* Deep Agent preview and actions placed below link input */}
-                                        <div className="mt-4">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <label className="text-sm font-medium" htmlFor="deep-url">
-                                                    Deep Agent — opcional
-                                                </label>
-                                            </div>
-                                            <div className="flex gap-2 items-center">
-                                                <Input
-                                                    className={`bg-[#0f1419] border-white/20 text-white ${deepAnalyzeMutation.isPending ? "opacity-50" : ""}`}
-                                                    disabled={deepAnalyzeMutation.isPending}
-                                                    id="deep-url"
-                                                    onChange={(e) => setDeepUrl(e.target.value)}
-                                                    placeholder="https://example.com/qualquer-link"
-                                                    value={deepUrl}
-                                                />
-                                                <Button
-                                                    disabled={!deepUrl || deepAnalyzeMutation.isPending || deepSaveMutation.isPending}
-                                                    onClick={async (e) => {
-                                                        e.preventDefault()
-                                                        if (!deepUrl) return
-                                                        try {
-                                                            new URL(deepUrl)
-                                                            const analysis = await deepAnalyzeMutation.mutateAsync({ url: deepUrl })
-                                                            const project = addContentForm.getFieldValue("project")
-                                                            if (!project) {
-                                                                toast.error("Selecione um projeto")
-                                                                return
-                                                            }
-                                                            await deepSaveMutation.mutateAsync({
-                                                                project,
-                                                                content: analysis.summary || "",
-                                                                url: deepUrl,
-                                                                previewMetadata: analysis.previewMetadata
-                                                            })
-                                                        } catch {
-                                                            toast.error("Informe um link válido")
-                                                        }
-                                                    }}
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="bg-white/10 hover:bg-white/20 text-white border-white/20"
-                                                >
-                                                    {deepAnalyzeMutation.isPending || deepSaveMutation.isPending ? (
-                                                        <>
-                                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processando
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Sparkles className="w-4 h-4 mr-2" /> Analisar & Adicionar
-                                                        </>
-                                                    )}
-                                                </Button>
-                                            </div>
+                                        {/* Deep Agent | Standard inline toggle */}
+                                        <div className="mt-3 flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => { setUseAgentForLink(true); try { addContentForm.validate(); } catch {} }}
+                                                className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
+                                                    useAgentForLink
+                                                        ? "bg-white/10 border-white/20 text-white"
+                                                        : "bg-white/5 border-white/10 text-white/80 hover:bg-white/8"
+                                                }`}
+                                            >
+                                                Deep Agent
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setUseAgentForLink(false); try { addContentForm.validate(); } catch {} }}
+                                                className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
+                                                    !useAgentForLink
+                                                        ? "bg-white/10 border-white/20 text-white"
+                                                        : "bg-white/5 border-white/10 text-white/80 hover:bg-white/8"
+                                                }`}
+                                            >
+                                                Standard
+                                            </button>
+                                            {/* Legend removed as requested */}
                                         </div>
 
                                         <ActionButtons
-                                                isSubmitDisabled={!addContentForm.state.canSubmit}
-                                                isSubmitting={addContentMutation.isPending}
-                                                onCancel={() => {
-                                                    setShowAddDialog(false)
-                                                    onClose?.()
-                                                    addContentForm.reset()
-                                                }}
-                                                submitIcon={Plus}
-                                                submitText="Add Link"
-                                            />
+                                            isSubmitDisabled={!addContentForm.state.canSubmit}
+                                            isSubmitting={addContentMutation.isPending}
+                                            onCancel={() => {
+                                                setShowAddDialog(false)
+                                                onClose?.()
+                                                addContentForm.reset()
+                                            }}
+                                            submitIcon={Plus}
+                                            submitText="Add Link"
+                                        />
 										</form>
 									</div>
 								)}

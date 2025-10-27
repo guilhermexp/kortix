@@ -1,6 +1,11 @@
-import { describe, expect, it, beforeEach, afterEach } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { Hono } from "hono"
-import { rateLimiter, clearRateLimitStore, getRateLimiterStats, stopCleanupTimer } from "./rate-limiter"
+import {
+	clearRateLimitStore,
+	getRateLimiterStats,
+	rateLimiter,
+	stopCleanupTimer,
+} from "./rate-limiter"
 
 /**
  * Unit tests for Rate Limiting Middleware

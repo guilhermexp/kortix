@@ -216,7 +216,7 @@ export function MCPView() {
 						onOpenChange={setIsMigrateDialogOpen}
 						open={isMigrateDialogOpen}
 					>
-						<DialogContent className="sm:max-w-2xl bg-black/90 backdrop-blur-xl border-white/10 text-white">
+						<DialogContent className="sm:max-w-2xl border border-white/10 bg-[#0f1419] text-white">
 							<motion.div
 								animate={{ opacity: 1, scale: 1 }}
 								exit={{ opacity: 0, scale: 0.95 }}

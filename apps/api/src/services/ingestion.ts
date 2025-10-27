@@ -7,7 +7,7 @@ import {
 	generateEmbeddingsBatch,
 } from "./embedding-provider"
 import { extractDocumentContent } from "./extractor"
-import { generateDeepAnalysis } from "./summarizer"
+import { generateDeepAnalysis, generateCategoryTags } from "./summarizer"
 
 export type JsonRecord = Record<string, unknown>
 
@@ -88,8 +88,32 @@ function mergeProcessingMetadata(
 }
 
 function estimateTokenCount(wordCount: number): number {
-	if (wordCount <= 0) return 0
-	return Math.round(wordCount * 1.3)
+    if (wordCount <= 0) return 0
+    return Math.round(wordCount * 1.3)
+}
+
+// Replace invalid UTF-16 surrogate code units to avoid Postgres JSON errors (22P02)
+function sanitizeString(value: string): string {
+    // Remove unpaired surrogates or replace with the Unicode replacement char
+    return value.replace(/([\uD800-\uDBFF])(?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])([\uDC00-\uDFFF])/g, "\uFFFD")
+}
+
+function sanitizeJson(value: unknown): unknown {
+    if (value == null) return value
+    const t = typeof value
+    if (t === "string") return sanitizeString(value as string)
+    if (t === "number" || t === "boolean") return value
+    if (Array.isArray(value)) return value.map((v) => sanitizeJson(v))
+    if (t === "object") {
+        const out: Record<string, unknown> = {}
+        for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+            if (v === undefined || typeof v === "function") continue
+            out[k] = sanitizeJson(v)
+        }
+        return out
+    }
+    // Drop unsupported types
+    return null
 }
 
 export async function processDocument(input: ProcessDocumentInput) {
@@ -127,18 +151,31 @@ export async function processDocument(input: ProcessDocumentInput) {
 
 		await updateDocumentStatus(documentId, "extracting")
 
-		const mergedMetadata = mergeMetadata(document.metadata, payloadMetadata, {
-			// Ensure documents carry containerTags for project scoping and fallbacks
-			containerTags,
-			extraction: {
-				contentType: extraction.contentType,
-				wordCount: extraction.wordCount,
-				fetchedAt: new Date().toISOString(),
-			},
-			source:
-				extraction.source ?? document.source ?? jobPayload?.source ?? null,
-			originalUrl: extraction.url ?? document.url ?? payloadUrl ?? null,
-		})
+        // Generate category tags early so they get persisted with the document
+        let aiTags: string[] = []
+        try {
+            aiTags = await generateCategoryTags(extraction.text, {
+                title: extraction.title ?? document.title ?? null,
+                url: extraction.url ?? document.url ?? payloadUrl ?? null,
+            })
+        } catch (e) {
+            console.warn("tag generation failed", e)
+        }
+
+        const mergedMetadata = mergeMetadata(document.metadata, payloadMetadata, {
+            // Ensure documents carry containerTags for project scoping and fallbacks
+            containerTags,
+            aiTags,
+            aiTagsString: Array.isArray(aiTags) && aiTags.length > 0 ? aiTags.join(", ") : undefined,
+            extraction: {
+                contentType: extraction.contentType,
+                wordCount: extraction.wordCount,
+                fetchedAt: new Date().toISOString(),
+            },
+            source:
+                extraction.source ?? document.source ?? jobPayload?.source ?? null,
+            originalUrl: extraction.url ?? document.url ?? payloadUrl ?? null,
+        })
 
 		const processingMetadata = mergeProcessingMetadata(
 			document.processingMetadata,
@@ -187,21 +224,22 @@ export async function processDocument(input: ProcessDocumentInput) {
 				? await generateEmbeddingsBatch(chunks.map((chunk) => chunk.content))
 				: []
 
-		const chunkRows = chunks.map((chunk, index) => ({
-			document_id: documentId,
-			org_id: organizationId,
-			content: chunk.content,
-			type: "text",
-			position: chunk.position,
-			metadata: {
-				position: chunk.position,
-				containerTags,
-				source: extraction.source ?? document.source ?? null,
-			},
-			embedding:
-				chunkEmbeddings[index] ?? generateDeterministicEmbedding(chunk.content),
-			embedding_model: env.EMBEDDING_MODEL,
-		}))
+        const chunkRows = chunks.map((chunk, index) => ({
+            document_id: documentId,
+            org_id: organizationId,
+            content: chunk.content,
+            type: "text",
+            position: chunk.position,
+            metadata: {
+                position: chunk.position,
+                containerTags,
+                source: extraction.source ?? document.source ?? null,
+                aiTags,
+            },
+            embedding:
+                chunkEmbeddings[index] ?? generateDeterministicEmbedding(chunk.content),
+            embedding_model: env.EMBEDDING_MODEL,
+        }))
 
 		if (chunkRows.length > 0) {
 			const { error: chunkError } = await supabaseAdmin
@@ -215,28 +253,29 @@ export async function processDocument(input: ProcessDocumentInput) {
 		// Generate embeddings before atomic finalization
 		const documentEmbedding = await generateEmbedding(extraction.text)
 
-		const memoryContent = (summary && summary.trim().length > 0)
-			? summary.trim()
-			: extraction.text.slice(0, Math.min(2000, extraction.text.length))
+		const memoryContent =
+			summary && summary.trim().length > 0
+				? summary.trim()
+				: extraction.text.slice(0, Math.min(2000, extraction.text.length))
 
 		const summaryEmbedding = await generateEmbedding(memoryContent)
 
 		// Atomically finalize document and create memory using database transaction
 		// This ensures both operations succeed or both fail, preventing inconsistent state
-		const documentUpdate = {
-			status: "done",
-			title: extraction.title ?? document.title ?? null,
-			content: extraction.text,
-			url: extraction.url ?? document.url ?? null,
-			source: extraction.source ?? document.source ?? null,
-			metadata: mergedMetadata,
-			processing_metadata: processingMetadata,
-			raw: mergedRaw,
-			summary: summary ?? null,
-			word_count: extraction.wordCount,
-			token_count: estimateTokenCount(extraction.wordCount),
-			summary_embedding: documentEmbedding,
-			summary_embedding_model: env.EMBEDDING_MODEL,
+        const documentUpdate = {
+            status: "done",
+            title: extraction.title ?? document.title ?? null,
+            content: extraction.text,
+            url: extraction.url ?? document.url ?? null,
+            source: extraction.source ?? document.source ?? null,
+            metadata: sanitizeJson(mergedMetadata) as JsonRecord | null,
+            processing_metadata: sanitizeJson(processingMetadata) as JsonRecord | null,
+            raw: sanitizeJson(mergedRaw) as JsonRecord | null,
+            summary: summary ?? null,
+            word_count: extraction.wordCount,
+            token_count: estimateTokenCount(extraction.wordCount),
+            summary_embedding: documentEmbedding,
+            summary_embedding_model: env.EMBEDDING_MODEL,
 			chunk_count: chunkRows.length,
 			average_chunk_size:
 				chunkRows.length > 0
@@ -244,22 +283,22 @@ export async function processDocument(input: ProcessDocumentInput) {
 					: extraction.text.length,
 		}
 
-		const memoryInsert = {
-			space_id: spaceId,
-			org_id: organizationId,
-			user_id: userId,
-			content: memoryContent,
-			metadata: {
-				...(mergedMetadata ?? {}),
-				kind: "summary",
-				generator: "gemini-sync",
-			},
-			memory_embedding: summaryEmbedding,
-			memory_embedding_model: env.EMBEDDING_MODEL,
-		}
+        const memoryInsert = {
+            space_id: spaceId,
+            org_id: organizationId,
+            user_id: userId,
+            content: sanitizeString(memoryContent),
+            metadata: sanitizeJson({
+                ...(mergedMetadata ?? {}),
+                kind: "summary",
+                generator: "gemini-sync",
+            }) as JsonRecord,
+            memory_embedding: summaryEmbedding,
+            memory_embedding_model: env.EMBEDDING_MODEL,
+        }
 
-		const { data: finalizationResult, error: finalizationError } = await supabaseAdmin
-			.rpc("finalize_document_atomic", {
+		const { data: finalizationResult, error: finalizationError } =
+			await supabaseAdmin.rpc("finalize_document_atomic", {
 				p_document_id: documentId,
 				p_document_update: documentUpdate,
 				p_memory_insert: memoryInsert,
@@ -267,7 +306,9 @@ export async function processDocument(input: ProcessDocumentInput) {
 
 		if (finalizationError) {
 			console.error("Atomic finalization failed:", finalizationError)
-			throw new Error(`Failed to finalize document atomically: ${finalizationError.message}`)
+			throw new Error(
+				`Failed to finalize document atomically: ${finalizationError.message}`,
+			)
 		}
 
 		try {

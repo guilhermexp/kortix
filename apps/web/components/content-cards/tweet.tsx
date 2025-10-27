@@ -1,21 +1,21 @@
+import { Badge } from "@repo/ui/components/badge"
+import { colors } from "@repo/ui/memory-graph/constants"
+import { Brain } from "lucide-react"
 import { Suspense } from "react"
-import type { Tweet } from "react-tweet/api"
 import {
-	type TwitterComponents,
+	enrichTweet,
+	QuotedTweet,
+	TweetBody,
 	TweetContainer,
 	TweetHeader,
-	TweetInReplyTo,
-	TweetBody,
-	TweetMedia,
 	TweetInfo,
-	QuotedTweet,
+	TweetInReplyTo,
+	TweetMedia,
 	TweetNotFound,
 	TweetSkeleton,
-	enrichTweet,
+	type TwitterComponents,
 } from "react-tweet"
-import { Badge } from "@repo/ui/components/badge"
-import { Brain } from "lucide-react"
-import { colors } from "@repo/ui/memory-graph/constants"
+import type { Tweet } from "react-tweet/api"
 import { getPastelBackgroundColor } from "../memories-utils"
 
 type MyTweetProps = {
@@ -28,11 +28,11 @@ const MyTweet = ({ tweet: t, components }: MyTweetProps) => {
 	const tweet = enrichTweet(parsedTweet)
 	return (
 		<TweetContainer className="pb-5">
-			<TweetHeader tweet={tweet} components={components} />
+			<TweetHeader components={components} tweet={tweet} />
 			{tweet.in_reply_to_status_id_str && <TweetInReplyTo tweet={tweet} />}
 			<TweetBody tweet={tweet} />
 			{tweet.mediaDetails?.length ? (
-				<TweetMedia tweet={tweet} components={components} />
+				<TweetMedia components={components} tweet={tweet} />
 			) : null}
 			{tweet.quoted_tweet && <QuotedTweet tweet={tweet.quoted_tweet} />}
 			<TweetInfo tweet={tweet} />
@@ -52,7 +52,7 @@ const TweetContent = ({
 		return <NotFound />
 	}
 
-	return <MyTweet tweet={tweet} components={components} />
+	return <MyTweet components={components} tweet={tweet} />
 }
 
 const CustomTweet = ({

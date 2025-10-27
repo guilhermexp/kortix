@@ -113,7 +113,7 @@ bun run build            # Build all apps
 - **AI**: Vercel AI SDK + Google Gemini
 
 ### Frontend (`apps/web/`)
-- **Framework**: Next.js 15 with Turbopack
+- **Framework**: Next.js 16 with Turbopack
 - **Language**: TypeScript
 - **UI Components**: Radix UI
 - **Styling**: Tailwind CSS
@@ -392,7 +392,7 @@ For feature requests, please provide:
 
 ### Database
 
-- Use Drizzle ORM for queries
+- Use Supabase Postgres with SQL migrations in `db/migrations`
 - Always scope data by `organization_id`
 - Use transactions for multi-step operations
 - Add proper indexes for performance

@@ -445,41 +445,102 @@ export async function listDocuments(
 }
 
 export async function listDocumentsWithMemories(
-	client: SupabaseClient,
-	organizationId: string,
-	input: DocumentsQueryInput,
+    client: SupabaseClient,
+    organizationId: string,
+    input: DocumentsQueryInput,
 ) {
-	const query = DocumentsWithMemoriesQuerySchema.parse(input)
-	const page = query.page ?? 1
-	const limit = query.limit ?? 10
-	const offset = (page - 1) * limit
-	const sortColumn = resolveSortColumn(query.sort)
+    const query = DocumentsWithMemoriesQuerySchema.parse(input)
+    const page = query.page ?? 1
+    const limit = query.limit ?? 10
+    const offset = (page - 1) * limit
+    const sortColumn = resolveSortColumn(query.sort)
 
-	const builder = client
-		.from("documents")
-		.select(
-			"id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
-			{ count: "exact" },
-		)
-		.eq("org_id", organizationId)
-		.order(sortColumn, { ascending: (query.order ?? "desc") === "asc" })
-		.range(offset, offset + limit - 1)
+    // When filtering by containerTags (projects), constrain at SQL level
+    // to avoid empty pages due to post-filtering after pagination.
+    let data: any[] | null = null
+    let count: number | null = null
 
-	const { data, error, count } = await builder
-	if (error) throw error
+    if (query.containerTags && query.containerTags.length > 0) {
+        // Resolve spaces matching the requested container tags
+        const { data: spaces } = await client
+            .from("spaces")
+            .select("id")
+            .eq("organization_id", organizationId)
+            .in("container_tag", query.containerTags)
 
-	const filtered = (data ?? []).filter((doc) => {
-		if (!query.containerTags || query.containerTags.length === 0) return true
-		const tags = extractContainerTags(doc.documents_to_spaces)
-		return query.containerTags?.some((tag) => tags.includes(tag))
-	})
+        const spaceIds = Array.isArray(spaces) ? spaces.map((s: any) => s.id) : []
 
-	const docInfos = filtered.map((doc) => {
-		const containerTags = extractContainerTags(doc.documents_to_spaces)
-		const spaceIds = extractSpaceIds(doc.documents_to_spaces)
+        if (spaceIds.length === 0) {
+            // No spaces for these tags → empty result
+            return DocumentsWithMemoriesResponseSchema.parse({
+                documents: [],
+                pagination: {
+                    currentPage: page,
+                    limit,
+                    totalItems: 0,
+                    totalPages: 1,
+                },
+            })
+        }
 
-		return { doc, containerTags, spaceIds }
-	})
+        // Find document IDs that belong to these spaces
+        const { data: mappings } = await client
+            .from("documents_to_spaces")
+            .select("document_id")
+            .in("space_id", spaceIds)
+
+        const docIds = Array.isArray(mappings)
+            ? [...new Set(mappings.map((m: any) => m.document_id))]
+            : []
+
+        if (docIds.length === 0) {
+            return DocumentsWithMemoriesResponseSchema.parse({
+                documents: [],
+                pagination: {
+                    currentPage: page,
+                    limit,
+                    totalItems: 0,
+                    totalPages: 1,
+                },
+            })
+        }
+
+        const { data: docs, error: docsErr, count: docsCount } = await client
+            .from("documents")
+            .select(
+                "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
+                { count: "exact" },
+            )
+            .eq("org_id", organizationId)
+            .in("id", docIds)
+            .order(sortColumn, { ascending: (query.order ?? "desc") === "asc" })
+            .range(offset, offset + limit - 1)
+
+        if (docsErr) throw docsErr
+        data = docs ?? []
+        count = docsCount ?? data.length
+    } else {
+        const { data: docs, error, count: docsCount } = await client
+            .from("documents")
+            .select(
+                "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
+                { count: "exact" },
+            )
+            .eq("org_id", organizationId)
+            .order(sortColumn, { ascending: (query.order ?? "desc") === "asc" })
+            .range(offset, offset + limit - 1)
+
+        if (error) throw error
+        data = docs ?? []
+        count = docsCount ?? data.length
+    }
+
+    const docInfos = (data ?? []).map((doc) => {
+        const containerTags = extractContainerTags(doc.documents_to_spaces)
+        const spaceIds = extractSpaceIds(doc.documents_to_spaces)
+
+        return { doc, containerTags, spaceIds }
+    })
 
 	const docIds = docInfos.map(({ doc }) => doc.id)
 	const memoryByDoc = new Map<string, MemoryRow[]>()
@@ -589,10 +650,7 @@ export async function listDocumentsWithMemories(
 		}
 	})
 
-	const totalItems =
-		query.containerTags && query.containerTags.length > 0
-			? documents.length
-			: (count ?? documents.length)
+    const totalItems = count ?? documents.length
 
 	const response = {
 		documents,
@@ -624,11 +682,11 @@ export async function listDocumentsWithMemoriesByIds(
 	const query = DocumentsByIdsSchema.parse(input)
 	const column = query.by === "customId" ? "custom_id" : "id"
 
-	const { data, error } = await client
-		.from("documents")
-		.select(
-			"id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
-		)
+    const { data, error } = await client
+        .from("documents")
+        .select(
+            "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, og_image, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
+        )
 		.eq("org_id", organizationId)
 		.in(column, query.ids)
 
@@ -726,28 +784,29 @@ export async function listDocumentsWithMemoriesByIds(
 			doc.processing_metadata,
 		)
 
-		return {
-			id: doc.id,
-			customId: doc.custom_id ?? null,
-			contentHash: doc.content_hash ?? null,
-			orgId: doc.org_id,
-			userId: doc.user_id,
-			connectionId: doc.connection_id ?? null,
-			title: doc.title ?? null,
-			content: doc.content ?? null,
-			summary: doc.summary ?? null,
-			url: doc.url ?? null,
-			source: doc.source ?? null,
-			type: normalizedType,
-			status: doc.status ?? "unknown",
-			metadata: cleanMetadata,
-			processingMetadata: cleanProcessingMetadata,
-			raw: doc.raw ?? null,
-			tokenCount: doc.token_count ?? null,
-			wordCount: doc.word_count ?? null,
-			chunkCount: doc.chunk_count ?? 0,
-			averageChunkSize: doc.average_chunk_size ?? null,
-			summaryEmbedding: doc.summary_embedding ?? null,
+        return {
+            id: doc.id,
+            customId: doc.custom_id ?? null,
+            contentHash: doc.content_hash ?? null,
+            orgId: doc.org_id,
+            userId: doc.user_id,
+            connectionId: doc.connection_id ?? null,
+            title: doc.title ?? null,
+            content: doc.content ?? null,
+            summary: doc.summary ?? null,
+            url: doc.url ?? null,
+            source: doc.source ?? null,
+            type: normalizedType,
+            status: doc.status ?? "unknown",
+            metadata: cleanMetadata,
+            processingMetadata: cleanProcessingMetadata,
+            raw: doc.raw ?? null,
+            ogImage: doc.og_image ?? null,
+            tokenCount: doc.token_count ?? null,
+            wordCount: doc.word_count ?? null,
+            chunkCount: doc.chunk_count ?? 0,
+            averageChunkSize: doc.average_chunk_size ?? null,
+            summaryEmbedding: doc.summary_embedding ?? null,
 			summaryEmbeddingModel: doc.summary_embedding_model ?? null,
 			createdAt: doc.created_at,
 			updatedAt: doc.updated_at,
@@ -791,7 +850,9 @@ export async function updateDocument(
 	}
 
 	if (Object.keys(updates).length === 0) {
-		throw new Error("At least one field (content or title) must be provided for update")
+		throw new Error(
+			"At least one field (content or title) must be provided for update",
+		)
 	}
 
 	const { data, error } = await client

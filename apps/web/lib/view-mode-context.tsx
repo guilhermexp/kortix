@@ -9,7 +9,7 @@ import {
 } from "react"
 import { analytics } from "@/lib/analytics"
 
-type ViewMode = "graph" | "list"
+type ViewMode = "graph" | "graphEmpty" | "list" | "infinity"
 
 interface ViewModeContextType {
 	viewMode: ViewMode
@@ -36,7 +36,10 @@ const readStoredViewMode = (): ViewMode | null => {
 	if (typeof window === "undefined") return null
 	try {
 		const storedValue = window.localStorage.getItem(STORAGE_KEY)
-		return storedValue === "list" || storedValue === "graph"
+		return storedValue === "list" ||
+			storedValue === "graph" ||
+			storedValue === "graphEmpty" ||
+			storedValue === "infinity"
 			? storedValue
 			: null
 	} catch {
@@ -59,7 +62,11 @@ export function ViewModeProvider({ children }: { children: ReactNode }) {
 		if (!isInitialized) {
 			// Check for saved preference first
 			const savedMode = readStoredViewMode()
-			if (savedMode === "list" || savedMode === "graph") {
+			if (
+				savedMode === "list" ||
+				savedMode === "graph" ||
+				savedMode === "graphEmpty"
+			) {
 				setViewModeState(savedMode)
 			} else {
 				// If no saved preference, default to list on mobile, graph on desktop

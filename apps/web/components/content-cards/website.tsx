@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardContent } from "@repo/ui/components/card"
+import { cn } from "@lib/utils"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -12,11 +12,11 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "@repo/ui/components/alert-dialog"
+import { Card, CardContent } from "@repo/ui/components/card"
+import { colors } from "@repo/ui/memory-graph/constants"
 import { ExternalLink, Trash2 } from "lucide-react"
 import { useState } from "react"
-import { cn } from "@lib/utils"
 import { getPastelBackgroundColor } from "../memories-utils"
-import { colors } from "@repo/ui/memory-graph/constants"
 
 interface WebsiteCardProps {
 	title: string
@@ -129,11 +129,11 @@ export const WebsiteCard = ({
 				{image && !imageError && (
 					<div className="relative h-38 bg-gray-100 overflow-hidden">
 						<img
-							src={image}
 							alt={title || "Website preview"}
 							className="w-full h-full object-cover transition-transform group-hover:scale-105"
-							onError={() => setImageError(true)}
 							loading="lazy"
+							onError={() => setImageError(true)}
+							src={image}
 						/>
 					</div>
 				)}
@@ -144,10 +144,10 @@ export const WebsiteCard = ({
 						<div className="flex items-center gap-1">
 							{showExternalLink && (
 								<button
-									onClick={handleExternalLinkClick}
-									className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-100 flex-shrink-0"
-									type="button"
 									aria-label="Open in new tab"
+									className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-100 flex-shrink-0"
+									onClick={handleExternalLinkClick}
+									type="button"
 								>
 									<ExternalLink className="w-3 h-3" />
 								</button>

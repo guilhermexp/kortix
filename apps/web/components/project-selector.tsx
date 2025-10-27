@@ -1,5 +1,6 @@
 "use client"
 
+import { cn } from "@lib/utils"
 import { $fetch } from "@repo/lib/api"
 import { DEFAULT_PROJECT_ID } from "@repo/lib/constants"
 import { Button } from "@repo/ui/components/button"
@@ -37,7 +38,6 @@ import {
 import { AnimatePresence, motion } from "motion/react"
 import { useState } from "react"
 import { toast } from "sonner"
-import { cn } from "@lib/utils"
 import { useProjectMutations } from "@/hooks/use-project-mutations"
 import { useProjectName } from "@/hooks/use-project-name"
 import { useProject } from "@/stores"
@@ -64,18 +64,18 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 	const projectName = useProjectName()
 	const { switchProject, deleteProjectMutation } = useProjectMutations()
 	const { renameProjectMutation } = useProjectMutations()
-    const [deleteDialog, setDeleteDialog] = useState<{
-        open: boolean
-        project: null | { id: string; name: string; containerTag: string }
-        action: "move" | "delete"
-        targetProjectId: string
-    }>({
-        open: false,
-        project: null,
-        action: "move",
-        targetProjectId: "",
-    })
-    // Experimental mode removed
+	const [deleteDialog, setDeleteDialog] = useState<{
+		open: boolean
+		project: null | { id: string; name: string; containerTag: string }
+		action: "move" | "delete"
+		targetProjectId: string
+	}>({
+		open: false,
+		project: null,
+		action: "move",
+		targetProjectId: "",
+	})
+	// Experimental mode removed
 
 	const [renameDialog, setRenameDialog] = useState<{
 		open: boolean
@@ -98,7 +98,7 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 		staleTime: 30 * 1000,
 	})
 
-    // (no enable experimental endpoint)
+	// (no enable experimental endpoint)
 
 	const handleProjectSelect = (containerTag: string) => {
 		switchProject(containerTag)
@@ -149,7 +149,7 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 							transition={{ duration: 0.15 }}
 						>
 							<div className="p-1.5 max-h-64 overflow-y-auto">
-            {/* All Projects (viewer) */}
+								{/* All Projects (viewer) */}
 								<motion.button
 									className={`flex items-center justify-between w-full p-2 rounded-md transition-colors ${
 										selectedProject === DEFAULT_PROJECT_ID
@@ -161,9 +161,9 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 								>
 									<div className="flex items-center gap-2">
 										<FolderIcon className="h-3.5 w-3.5 text-white/70" />
-                        <span className="text-xs font-medium text-white">
-                            All Projects
-                        </span>
+										<span className="text-xs font-medium text-white">
+											All Projects
+										</span>
 									</div>
 								</motion.button>
 
@@ -220,12 +220,12 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 																	currentName: project.name,
 																	newName: project.name,
 																})
-															setIsOpen(false)
-														}}
-													>
-														Rename
-													</DropdownMenuItem>
-                                    {/* Experimental toggle removed */}
+																setIsOpen(false)
+															}}
+														>
+															Rename
+														</DropdownMenuItem>
+														{/* Experimental toggle removed */}
 														<DropdownMenuItem
 															className="text-red-400 hover:text-red-300 cursor-pointer text-xs"
 															onClick={(e) => {
@@ -284,7 +284,11 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 						open={renameDialog.open}
 					>
 						<DialogContent className="sm:max-w-md bg-black/90 backdrop-blur-xl border-white/10 text-white">
-							<motion.div animate={{ opacity: 1, scale: 1 }} initial={{ opacity: 0, scale: 0.95 }} exit={{ opacity: 0, scale: 0.95 }}>
+							<motion.div
+								animate={{ opacity: 1, scale: 1 }}
+								exit={{ opacity: 0, scale: 0.95 }}
+								initial={{ opacity: 0, scale: 0.95 }}
+							>
 								<DialogHeader>
 									<DialogTitle>Rename Project</DialogTitle>
 									<DialogDescription className="text-white/60">
@@ -292,37 +296,76 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 									</DialogDescription>
 								</DialogHeader>
 								<div className="grid gap-4 py-2">
-									<Label htmlFor="renameInput" className="text-sm">New name</Label>
+									<Label className="text-sm" htmlFor="renameInput">
+										New name
+									</Label>
 									<input
-										id="renameInput"
 										className="bg-white/5 border border-white/10 rounded px-3 py-2 text-sm outline-none focus:border-white/20"
-										value={renameDialog.newName}
-										onChange={(e) => setRenameDialog({ ...renameDialog, newName: e.target.value })}
-										onKeyDown={(e) => {
-										if (e.key === 'Enter' && renameDialog.newName.trim()) {
-											renameProjectMutation.mutate(
-												{ projectId: renameDialog.projectId, name: renameDialog.newName.trim() },
-												{ onSuccess: () => setRenameDialog({ open: false, projectId: '', currentName: '', newName: '' }) }
-											)
+										id="renameInput"
+										onChange={(e) =>
+											setRenameDialog({
+												...renameDialog,
+												newName: e.target.value,
+											})
 										}
-									}}
-								/>
+										onKeyDown={(e) => {
+											if (e.key === "Enter" && renameDialog.newName.trim()) {
+												renameProjectMutation.mutate(
+													{
+														projectId: renameDialog.projectId,
+														name: renameDialog.newName.trim(),
+													},
+													{
+														onSuccess: () =>
+															setRenameDialog({
+																open: false,
+																projectId: "",
+																currentName: "",
+																newName: "",
+															}),
+													},
+												)
+											}
+										}}
+										value={renameDialog.newName}
+									/>
 								</div>
 								<DialogFooter>
 									<Button
-										variant="outline"
 										className="bg-white/5 border-white/10 text-white"
-										onClick={() => setRenameDialog({ open: false, projectId: '', currentName: '', newName: '' })}
+										onClick={() =>
+											setRenameDialog({
+												open: false,
+												projectId: "",
+												currentName: "",
+												newName: "",
+											})
+										}
+										variant="outline"
 									>
 										Cancel
 									</Button>
 									<Button
 										className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-										disabled={renameProjectMutation.isPending || !renameDialog.newName.trim()}
+										disabled={
+											renameProjectMutation.isPending ||
+											!renameDialog.newName.trim()
+										}
 										onClick={() =>
 											renameProjectMutation.mutate(
-												{ projectId: renameDialog.projectId, name: renameDialog.newName.trim() },
-												{ onSuccess: () => setRenameDialog({ open: false, projectId: '', currentName: '', newName: '' }) }
+												{
+													projectId: renameDialog.projectId,
+													name: renameDialog.newName.trim(),
+												},
+												{
+													onSuccess: () =>
+														setRenameDialog({
+															open: false,
+															projectId: "",
+															currentName: "",
+															newName: "",
+														}),
+												},
 											)
 										}
 									>
@@ -407,7 +450,7 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 														<SelectValue placeholder="Select target project..." />
 													</SelectTrigger>
 													<SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
-                                            {/* All Projects is a global viewer; not a move target */}
+														{/* All Projects is a global viewer; not a move target */}
 														{projects
 															.filter(
 																(p: Project) =>
@@ -543,7 +586,7 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 				)}
 			</AnimatePresence>
 
-            {/* Experimental Mode Confirmation Dialog removed */}
+			{/* Experimental Mode Confirmation Dialog removed */}
 		</div>
 	)
 }

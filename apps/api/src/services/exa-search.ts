@@ -11,15 +11,15 @@ export type ExaWebResult = {
 }
 
 export type ExaSearchOptions = {
-	limit?: number
-	query?: string
-	boostRecency?: boolean
-	includeDomains?: string[]
+    limit?: number
+    query?: string
+    boostRecency?: boolean
+    includeDomains?: string[]
 }
 
 export async function searchWebWithExa(
-	query: string,
-	options: ExaSearchOptions = {},
+    query: string,
+    options: ExaSearchOptions = {},
 ): Promise<ExaWebResult[]> {
 	if (!env.EXA_API_KEY) {
 		return []
@@ -104,6 +104,51 @@ export async function searchWebWithExa(
 		console.warn("searchWebWithExa error", error)
 		return []
 	}
+}
+
+// Fetch full page contents (markdown text) for URLs via Exa
+export async function getContentsWithExa(urls: string[], opts?: { livecrawl?: "always" | "never" | "preferred" }) {
+    if (!env.EXA_API_KEY) return [] as Array<{ url: string; text?: string | null }>
+    if (!Array.isArray(urls) || urls.length === 0) return []
+    try {
+        const response = await fetch("https://api.exa.ai/contents", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${env.EXA_API_KEY}`,
+            },
+            body: JSON.stringify({
+                urls,
+                text: true, // return markdown text
+                livecrawl: opts?.livecrawl ?? "preferred",
+            }),
+        })
+        if (!response.ok) return []
+        const data = (await response.json()) as { results?: Array<{ url?: string; text?: string }> }
+        return (data.results || []).map((r) => ({ url: r.url || "", text: r.text || null }))
+    } catch {
+        return []
+    }
+}
+
+// Exa Context (Exa Code): get code snippets/examples from OSS repos
+export async function getCodeContextWithExa(query: string, limit = 5) {
+    if (!env.EXA_API_KEY) return [] as Array<{ title?: string | null; url?: string | null; text?: string | null }>
+    try {
+        const response = await fetch("https://api.exa.ai/context", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${env.EXA_API_KEY}`,
+            },
+            body: JSON.stringify({ query, numResults: Math.max(1, Math.min(limit, 20)) }),
+        })
+        if (!response.ok) return []
+        const data = (await response.json()) as { results?: Array<{ title?: string; url?: string; text?: string }> }
+        return data.results || []
+    } catch {
+        return []
+    }
 }
 
 function extractSummary(

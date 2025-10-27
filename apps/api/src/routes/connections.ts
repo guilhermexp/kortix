@@ -1,6 +1,7 @@
 import { ConnectionResponseSchema } from "@repo/validation/api"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { z } from "zod"
+import { supabaseAdmin } from "../supabase"
 
 export const createConnectionInputSchema = z.object({
 	containerTags: z.array(z.string()).optional(),
@@ -29,18 +30,34 @@ export async function createConnection(
 	},
 ) {
 	const parsed = createConnectionInputSchema.parse(payload)
-	const { data, error } = await client
-		.from("connections")
-		.insert({
-			org_id: organizationId,
-			user_id: userId,
-			provider,
-			document_limit: parsed.documentLimit ?? 1000,
-			container_tags: parsed.containerTags ?? [],
-			metadata: parsed.metadata ?? {},
-		})
-		.select("id, created_at")
-		.single()
+	const insertPayload = {
+		org_id: organizationId,
+		user_id: userId,
+		provider,
+		document_limit: parsed.documentLimit ?? 1000,
+		container_tags: parsed.containerTags ?? [],
+		metadata: parsed.metadata ?? {},
+	}
+
+	const attemptInsert = async () => {
+		const { data, error } = await client
+			.from("connections")
+			.insert(insertPayload)
+			.select("id, created_at")
+			.single()
+
+		if (error && (error as { code?: string }).code === "42501") {
+			return supabaseAdmin
+				.from("connections")
+				.insert(insertPayload)
+				.select("id, created_at")
+				.single()
+		}
+
+		return { data, error }
+	}
+
+	const { data, error } = await attemptInsert()
 
 	if (error) throw error
 

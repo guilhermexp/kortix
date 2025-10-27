@@ -8,7 +8,7 @@
  * - Cria memória corretamente
  */
 
-import { config, log, logError, logSuccess, logFailure } from "./config"
+import { config, log, logError, logFailure, logSuccess } from "./config"
 
 async function testAtomicFunction(): Promise<boolean> {
 	console.log("\n🧪 Teste 4: Função Atômica finalize_document_atomic")

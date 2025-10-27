@@ -1,926 +1,1111 @@
-"use client";
+"use client"
 
-import { useChat, useCompletion } from "@ai-sdk/react";
-import { BACKEND_URL } from "@lib/env";
-import { cn } from "@lib/utils";
-import { Button } from "@ui/components/button";
-import { Input } from "@ui/components/input";
+import { useChat, useCompletion } from "@ai-sdk/react"
+import { BACKEND_URL } from "@lib/env"
+import { cn } from "@lib/utils"
+import { DEFAULT_PROJECT_ID } from "@repo/lib/constants"
+import { Button } from "@ui/components/button"
+import { Input } from "@ui/components/input"
 import {
-  InputGroup,
-  InputGroupTextarea,
-  InputGroupAddon,
-  InputGroupButton,
-} from "@/components/ui/input-group";
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@ui/components/select"
+import { DefaultChatTransport } from "ai"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@ui/components/select";
-import { DefaultChatTransport } from "ai";
+	ArrowUp,
+	Check,
+	ChevronDown,
+	ChevronRight,
+	Copy,
+	Info,
+	Plus,
+	RotateCcw,
+	X,
+} from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { toast } from "sonner"
+import { Streamdown } from "streamdown"
+import { TextShimmer } from "@/components/text-shimmer"
 import {
-  ArrowUp,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Copy,
-  RotateCcw,
-  X,
-  Plus,
-} from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
-import { Streamdown } from "streamdown";
-import { TextShimmer } from "@/components/text-shimmer";
-import { DEFAULT_PROJECT_ID } from "@repo/lib/constants";
-import { usePersistentChat, useProject } from "@/stores";
-import { useGraphHighlights } from "@/stores/highlights";
-import { Spinner } from "../../spinner";
-import { Info } from "lucide-react";
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupTextarea,
+} from "@/components/ui/input-group"
+import { usePersistentChat, useProject } from "@/stores"
+import { useCanvasSelection, useCanvasState } from "@/stores/canvas"
+import { useGraphHighlights } from "@/stores/highlights"
+import { Spinner } from "../../spinner"
 
 interface MemoryResult {
-  documentId?: string;
-  title?: string;
-  content?: string;
-  url?: string;
-  score?: number;
+	documentId?: string
+	title?: string
+	content?: string
+	url?: string
+	score?: number
 }
 
 interface ExpandableMemoriesProps {
-  foundCount: number;
-  results: MemoryResult[];
+	foundCount: number
+	results: MemoryResult[]
 }
 
 type ToolState =
-  | "input-available"
-  | "input-streaming"
-  | "output-available"
-  | "output-error";
+	| "input-available"
+	| "input-streaming"
+	| "output-available"
+	| "output-error"
 
 type TextPart = {
-  type: "text";
-  text: string;
-};
+	type: "text"
+	text: string
+}
 
 type SearchMemoriesPart =
-  | {
-      type: "tool-searchMemories";
-      state: Exclude<ToolState, "output-available">;
-    }
-  | {
-      type: "tool-searchMemories";
-      state: "output-available";
-      output: {
-        count?: unknown;
-        results?: unknown;
-      };
-    };
+	| {
+			type: "tool-searchMemories"
+			state: Exclude<ToolState, "output-available">
+	  }
+	| {
+			type: "tool-searchMemories"
+			state: "output-available"
+			output: {
+				count?: unknown
+				results?: unknown
+			}
+	  }
 
 type SearchMemoriesOutputPart = Extract<
-  SearchMemoriesPart,
-  { state: "output-available" }
->;
+	SearchMemoriesPart,
+	{ state: "output-available" }
+>
 
 type AddMemoryPart = {
-  type: "tool-addMemory";
-  state: ToolState;
-};
+	type: "tool-addMemory"
+	state: ToolState
+}
 
 function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+	return typeof value === "object" && value !== null
 }
 
 function isTextPart(part: unknown): part is TextPart {
-  return (
-    isObject(part) && part.type === "text" && typeof part.text === "string"
-  );
+	return isObject(part) && part.type === "text" && typeof part.text === "string"
 }
 
 function isToolState(value: unknown): value is ToolState {
-  return (
-    typeof value === "string" &&
-    [
-      "input-available",
-      "input-streaming",
-      "output-available",
-      "output-error",
-    ].includes(value)
-  );
+	return (
+		typeof value === "string" &&
+		[
+			"input-available",
+			"input-streaming",
+			"output-available",
+			"output-error",
+		].includes(value)
+	)
 }
 
 function isSearchMemoriesPart(part: unknown): part is SearchMemoriesPart {
-  return (
-    isObject(part) &&
-    part.type === "tool-searchMemories" &&
-    isToolState(part.state)
-  );
+	return (
+		isObject(part) &&
+		part.type === "tool-searchMemories" &&
+		isToolState(part.state)
+	)
 }
 
 function isSearchMemoriesOutputPart(
-  part: unknown,
+	part: unknown,
 ): part is SearchMemoriesOutputPart {
-  return (
-    isSearchMemoriesPart(part) &&
-    part.state === "output-available" &&
-    "output" in part &&
-    isObject(part.output ?? null)
-  );
+	return (
+		isSearchMemoriesPart(part) &&
+		part.state === "output-available" &&
+		"output" in part &&
+		isObject(part.output ?? null)
+	)
 }
 
 function isAddMemoryPart(part: unknown): part is AddMemoryPart {
-  return (
-    isObject(part) && part.type === "tool-addMemory" && isToolState(part.state)
-  );
+	return (
+		isObject(part) && part.type === "tool-addMemory" && isToolState(part.state)
+	)
 }
 
 function toMemoryResult(value: unknown): MemoryResult | null {
-  if (!isObject(value)) return null;
-  const { documentId, title, content, url, score } = value;
-  const parsedScore =
-    typeof score === "number"
-      ? score
-      : typeof score === "string"
-        ? Number.parseFloat(score)
-        : undefined;
-  return {
-    documentId: typeof documentId === "string" ? documentId : undefined,
-    title: typeof title === "string" ? title : undefined,
-    content: typeof content === "string" ? content : undefined,
-    url: typeof url === "string" ? url : undefined,
-    score: Number.isFinite(parsedScore) ? parsedScore : undefined,
-  };
+	if (!isObject(value)) return null
+	const { documentId, title, content, url, score } = value
+	const parsedScore =
+		typeof score === "number"
+			? score
+			: typeof score === "string"
+				? Number.parseFloat(score)
+				: undefined
+	return {
+		documentId: typeof documentId === "string" ? documentId : undefined,
+		title: typeof title === "string" ? title : undefined,
+		content: typeof content === "string" ? content : undefined,
+		url: typeof url === "string" ? url : undefined,
+		score: Number.isFinite(parsedScore) ? parsedScore : undefined,
+	}
 }
 
 function toMemoryResults(value: unknown): MemoryResult[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => toMemoryResult(item))
-    .filter((item): item is MemoryResult => item !== null);
+	if (!Array.isArray(value)) return []
+	return value
+		.map((item) => toMemoryResult(item))
+		.filter((item): item is MemoryResult => item !== null)
 }
 
 function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+	const [isExpanded, setIsExpanded] = useState(false)
 
-  if (foundCount === 0) {
-    return (
-      <div className="text-sm flex items-center gap-2 text-muted-foreground">
-        <Check className="size-4" /> No memories found
-      </div>
-    );
-  }
+	if (foundCount === 0) {
+		return (
+			<div className="text-sm flex items-center gap-2 text-muted-foreground">
+				<Check className="size-4" /> No memories found
+			</div>
+		)
+	}
 
-  return (
-    <div className="text-sm">
-      <button
-        className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-        onClick={() => setIsExpanded(!isExpanded)}
-        type="button"
-      >
-        {isExpanded ? (
-          <ChevronDown className="size-4" />
-        ) : (
-          <ChevronRight className="size-4" />
-        )}
-        <Check className="size-4" />
-        Found {foundCount} {foundCount === 1 ? "memory" : "memories"}
-      </button>
+	return (
+		<div className="text-sm">
+			<button
+				className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+				onClick={() => setIsExpanded(!isExpanded)}
+				type="button"
+			>
+				{isExpanded ? (
+					<ChevronDown className="size-4" />
+				) : (
+					<ChevronRight className="size-4" />
+				)}
+				<Check className="size-4" />
+				Found {foundCount} {foundCount === 1 ? "memory" : "memories"}
+			</button>
 
-      {isExpanded && results.length > 0 && (
-        <div className="mt-3 ml-6 space-y-2.5 max-h-64 overflow-y-auto pr-2">
-          {results.map((result, index) => {
-            const isClickable =
-              result.url &&
-              (result.url.startsWith("http://") ||
-                result.url.startsWith("https://"));
+			{isExpanded && results.length > 0 && (
+				<div className="mt-3 ml-6 space-y-2.5 max-h-64 overflow-y-auto pr-2">
+					{results.map((result, index) => {
+						const isClickable =
+							result.url &&
+							(result.url.startsWith("http://") ||
+								result.url.startsWith("https://"))
 
-            const content = (
-              <>
-                {result.title && (
-                  <div className="font-semibold text-sm mb-1.5 text-foreground">
-                    {result.title}
-                  </div>
-                )}
-                {result.content && (
-                  <div className="text-xs text-muted-foreground/90 line-clamp-3 leading-relaxed mb-2">
-                    {result.content}
-                  </div>
-                )}
-                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-white/5">
-                  {result.url && (
-                    <div className="text-xs text-blue-400/80 truncate flex-1">
-                      {result.url}
-                    </div>
-                  )}
-                  {result.score && (
-                    <div className="text-xs text-muted-foreground/70 font-mono shrink-0">
-                      {(result.score * 100).toFixed(0)}%
-                    </div>
-                  )}
-                </div>
-              </>
-            );
+						const content = (
+							<>
+								{result.title && (
+									<div className="font-semibold text-sm mb-1.5 text-foreground">
+										{result.title}
+									</div>
+								)}
+								{result.content && (
+									<div className="text-xs text-muted-foreground/90 line-clamp-3 leading-relaxed mb-2">
+										{result.content}
+									</div>
+								)}
+								<div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-white/5">
+									{result.url && (
+										<div className="text-xs text-blue-400/80 truncate flex-1">
+											{result.url}
+										</div>
+									)}
+									{result.score && (
+										<div className="text-xs text-muted-foreground/70 font-mono shrink-0">
+											{(result.score * 100).toFixed(0)}%
+										</div>
+									)}
+								</div>
+							</>
+						)
 
-            if (isClickable) {
-              return (
-                <a
-                  className="block p-3 bg-white/5 rounded-md border border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors cursor-pointer"
-                  href={result.url}
-                  key={result.documentId || index}
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
-                  {content}
-                </a>
-              );
-            }
+						if (isClickable) {
+							return (
+								<a
+									className="block p-3 bg-white/5 rounded-md border border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors cursor-pointer"
+									href={result.url}
+									key={result.documentId || index}
+									rel="noopener noreferrer"
+									target="_blank"
+								>
+									{content}
+								</a>
+							)
+						}
 
-            return (
-              <div
-                className="p-3 bg-white/5 rounded-md border border-white/10"
-                key={result.documentId || index}
-              >
-                {content}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+						return (
+							<div
+								className="p-3 bg-white/5 rounded-md border border-white/10"
+								key={result.documentId || index}
+							>
+								{content}
+							</div>
+						)
+					})}
+				</div>
+			)}
+		</div>
+	)
 }
 
 function useStickyAutoScroll(triggerKeys: ReadonlyArray<unknown>) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const [isAutoScroll, setIsAutoScroll] = useState(true);
-  const [isFarFromBottom, setIsFarFromBottom] = useState(false);
+	const scrollContainerRef = useRef<HTMLDivElement>(null)
+	const bottomRef = useRef<HTMLDivElement>(null)
+	const [isAutoScroll, setIsAutoScroll] = useState(true)
+	const [isFarFromBottom, setIsFarFromBottom] = useState(false)
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
-    const node = bottomRef.current;
-    if (node) node.scrollIntoView({ behavior, block: "end" });
-  }, []);
+	const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
+		const node = bottomRef.current
+		if (node) node.scrollIntoView({ behavior, block: "end" })
+	}, [])
 
-  useEffect(function observeBottomVisibility() {
-    const container = scrollContainerRef.current;
-    const sentinel = bottomRef.current;
-    if (!container || !sentinel) return;
+	useEffect(function observeBottomVisibility() {
+		const container = scrollContainerRef.current
+		const sentinel = bottomRef.current
+		if (!container || !sentinel) return
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries || entries.length === 0) return;
-        const isIntersecting = entries.some((e) => e.isIntersecting);
-        setIsAutoScroll(isIntersecting);
-      },
-      { root: container, rootMargin: "0px 0px 80px 0px", threshold: 0 },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, []);
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (!entries || entries.length === 0) return
+				const isIntersecting = entries.some((e) => e.isIntersecting)
+				setIsAutoScroll(isIntersecting)
+			},
+			{ root: container, rootMargin: "0px 0px 80px 0px", threshold: 0 },
+		)
+		observer.observe(sentinel)
+		return () => observer.disconnect()
+	}, [])
 
-  useEffect(
-    function observeContentResize() {
-      const container = scrollContainerRef.current;
-      if (!container) return;
-      const resizeObserver = new ResizeObserver(() => {
-        if (isAutoScroll) scrollToBottom("auto");
-        const distanceFromBottom =
-          container.scrollHeight - container.scrollTop - container.clientHeight;
-        setIsFarFromBottom(distanceFromBottom > 100);
-      });
-      resizeObserver.observe(container);
-      return () => resizeObserver.disconnect();
-    },
-    [isAutoScroll, scrollToBottom],
-  );
+	useEffect(
+		function observeContentResize() {
+			const container = scrollContainerRef.current
+			if (!container) return
+			const resizeObserver = new ResizeObserver(() => {
+				if (isAutoScroll) scrollToBottom("auto")
+				const distanceFromBottom =
+					container.scrollHeight - container.scrollTop - container.clientHeight
+				setIsFarFromBottom(distanceFromBottom > 100)
+			})
+			resizeObserver.observe(container)
+			return () => resizeObserver.disconnect()
+		},
+		[isAutoScroll, scrollToBottom],
+	)
 
-  function enableAutoScroll() {
-    setIsAutoScroll(true);
-  }
+	function enableAutoScroll() {
+		setIsAutoScroll(true)
+	}
 
-  useEffect(
-    function autoScrollOnNewContent() {
-      if (isAutoScroll) scrollToBottom("auto");
-    },
-    [isAutoScroll, scrollToBottom, ...triggerKeys],
-  );
+	useEffect(
+		function autoScrollOnNewContent() {
+			if (isAutoScroll) scrollToBottom("auto")
+		},
+		[isAutoScroll, scrollToBottom, ...triggerKeys],
+	)
 
-  const recomputeDistanceFromBottom = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    const distanceFromBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight;
-    setIsFarFromBottom(distanceFromBottom > 100);
-  }, []);
+	const recomputeDistanceFromBottom = useCallback(() => {
+		const container = scrollContainerRef.current
+		if (!container) return
+		const distanceFromBottom =
+			container.scrollHeight - container.scrollTop - container.clientHeight
+		setIsFarFromBottom(distanceFromBottom > 100)
+	}, [])
 
-  useEffect(() => {
-    recomputeDistanceFromBottom();
-  }, [recomputeDistanceFromBottom, ...triggerKeys]);
+	useEffect(() => {
+		recomputeDistanceFromBottom()
+	}, [recomputeDistanceFromBottom, ...triggerKeys])
 
-  const onScroll = useCallback(() => {
-    recomputeDistanceFromBottom();
-  }, [recomputeDistanceFromBottom]);
+	const onScroll = useCallback(() => {
+		recomputeDistanceFromBottom()
+	}, [recomputeDistanceFromBottom])
 
-  return {
-    scrollContainerRef,
-    bottomRef,
-    isAutoScroll,
-    isFarFromBottom,
-    onScroll,
-    enableAutoScroll,
-    scrollToBottom,
-  } as const;
+	return {
+		scrollContainerRef,
+		bottomRef,
+		isAutoScroll,
+		isFarFromBottom,
+		onScroll,
+		enableAutoScroll,
+		scrollToBottom,
+	} as const
 }
 
 export function ChatMessages() {
-  const { selectedProject } = useProject();
-  const {
-    currentChatId,
-    setCurrentChatId,
-    setConversation,
-    getCurrentConversation,
-    setConversationTitle,
-    getCurrentChat,
-  } = usePersistentChat();
+	const { selectedProject } = useProject()
+	const {
+		currentChatId,
+		setCurrentChatId,
+		setConversation,
+		getCurrentConversation,
+		setConversationTitle,
+		getCurrentChat,
+	} = usePersistentChat()
 
-  const activeChatIdRef = useRef<string | null>(null);
-  const shouldGenerateTitleRef = useRef<boolean>(false);
+	const activeChatIdRef = useRef<string | null>(null)
+	const shouldGenerateTitleRef = useRef<boolean>(false)
 
-  const { setDocumentIds, clear } = useGraphHighlights();
+    const { setDocumentIds, clear } = useGraphHighlights()
+    const { scopedDocumentIds, placedDocumentIds } = useCanvasSelection()
+	const { hasScopedDocuments, scopedCount } = useCanvasState()
 
-  // Chat mode: simple | agentic | deep (default: simple)
-  const [mode, setMode] = useState<"simple" | "agentic" | "deep">("simple");
-  // Model selection: google/gemini or xai/grok (default: grok)
-  const [model, setModel] = useState<string>("xai/grok-4-fast");
-  // Project scoping for chat (defaults to global selection or All Projects)
-  const [project, setProject] = useState<string>(
-    selectedProject && selectedProject !== "sm_project_default"
-      ? selectedProject
-      : "__ALL__",
-  );
-  // Expanded context toggle (increases search result limits)
-  const [expandContext, setExpandContext] = useState<boolean>(false);
-  const [projects, setProjects] = useState<
-    Array<{ id: string; name: string; containerTag: string }>
-  >([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
+    // Chat mode: simple | agentic | deep (default: simple)
+    const [mode, setMode] = useState<"simple" | "agentic" | "deep">("simple")
+	// Model selection: google/gemini or xai/grok (default: grok)
+	const [model, setModel] = useState<string>("xai/grok-4-fast")
+	// Project scoping for chat (defaults to global selection or All Projects)
+	const [project, setProject] = useState<string>(
+		selectedProject && selectedProject !== "sm_project_default"
+			? selectedProject
+			: "__ALL__",
+	)
+	// Expanded context toggle (increases search result limits)
+	const [expandContext, setExpandContext] = useState<boolean>(false)
+	const [projects, setProjects] = useState<
+		Array<{ id: string; name: string; containerTag: string }>
+	>([])
+	const [loadingProjects, setLoadingProjects] = useState(false)
 
-  useEffect(() => {
-    let ignore = false;
-    async function load() {
-      try {
-        setLoadingProjects(true);
-        const res = await fetch(`${BACKEND_URL}/v3/projects`, {
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (ignore) return;
-        const list = Array.isArray(data?.projects) ? data.projects : [];
-        setProjects(
-          list.map((p: any) => ({
-            id: String(p.id),
-            name: String(p.name ?? "Untitled Project"),
-            containerTag: String(p.containerTag),
-          })),
-        );
-      } catch {
-        // noop
-      } finally {
-        if (!ignore) setLoadingProjects(false);
-      }
-    }
-    load();
-    return () => {
-      ignore = true;
-    };
-  }, []);
+	useEffect(() => {
+		let ignore = false
+		async function load() {
+			try {
+				setLoadingProjects(true)
+				const res = await fetch(`${BACKEND_URL}/v3/projects`, {
+					credentials: "include",
+					headers: { "Content-Type": "application/json" },
+				})
+				if (!res.ok) return
+				const data = await res.json()
+				if (ignore) return
+				const list = Array.isArray(data?.projects) ? data.projects : []
+				setProjects(
+					list.map((p: any) => ({
+						id: String(p.id),
+						name: String(p.name ?? "Untitled Project"),
+						containerTag: String(p.containerTag),
+					})),
+				)
+			} catch {
+				// noop
+			} finally {
+				if (!ignore) setLoadingProjects(false)
+			}
+		}
+		load()
+		return () => {
+			ignore = true
+		}
+	}, [])
 
-  // Keep chat project in sync when global selection switches from default to a real project
-  useEffect(() => {
-    if (
-      selectedProject &&
-      selectedProject !== "sm_project_default" &&
-      project === "__ALL__"
-    ) {
-      setProject(selectedProject);
-    }
-  }, [selectedProject]);
+	// Keep chat project in sync when global selection switches from default to a real project
+	useEffect(() => {
+		if (
+			selectedProject &&
+			selectedProject !== "sm_project_default" &&
+			project === "__ALL__"
+		) {
+			setProject(selectedProject)
+		}
+	}, [selectedProject])
 
-  // Create transport with useMemo so it updates when mode or model changes
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: `${BACKEND_URL}/chat/v2`,
-        credentials: "include",
-        body: {
-          mode,
-          model,
-          metadata: {
-            ...(project && project !== "__ALL__" ? { projectId: project } : {}),
-            ...(expandContext ? { expandContext: true } : {}),
-          },
-        },
-      }),
-    [mode, model, project, expandContext],
-  );
+    // Inline mentions: pick canvas docs per message (@)
+    const [mentionedDocIds, setMentionedDocIds] = useState<string[]>([])
 
-  const { messages, sendMessage, status, stop, setMessages, id, regenerate } =
-    useChat({
-      id: currentChatId ? `${currentChatId}::${mode}` : undefined,
-      transport,
-      maxSteps: 8,
-      onFinish: (result) => {
-        const activeId = activeChatIdRef.current;
-        if (!activeId) return;
-        if (result.message.role !== "assistant") return;
+    // Create transport with useMemo so it updates when mode, model, or scoped documents change
+    const transport = useMemo(
+        () =>
+            new DefaultChatTransport({
+                api: `${BACKEND_URL}/chat/v2`,
+                credentials: "include",
+                body: {
+                    mode,
+                    model,
+                    ...(mentionedDocIds.length > 0
+                        ? { scopedDocumentIds: mentionedDocIds }
+                        : hasScopedDocuments
+                        ? { scopedDocumentIds }
+                        : {}),
+                    metadata: {
+                        ...(project && project !== "__ALL__" ? { projectId: project } : {}),
+                        ...(expandContext ? { expandContext: true } : {}),
+                        ...(mentionedDocIds.length > 0
+                            ? { forceRawDocs: true }
+                            : {}),
+                    },
+                },
+            }),
+        [
+            mode,
+            model,
+            project,
+            expandContext,
+            hasScopedDocuments,
+            scopedDocumentIds,
+            mentionedDocIds,
+        ],
+    )
 
-        if (shouldGenerateTitleRef.current) {
-          const textPart = result.message.parts.find((part) =>
-            isTextPart(part),
-          );
-          const text = textPart?.text.trim();
-          if (text) {
-            shouldGenerateTitleRef.current = false;
-            complete(text);
-          }
+    const { messages, sendMessage, status, stop, setMessages, id, regenerate } =
+        useChat({
+            id: currentChatId ? `${currentChatId}::${mode}` : undefined,
+            transport,
+            maxSteps: 8,
+            onFinish: (result) => {
+				const activeId = activeChatIdRef.current
+				if (!activeId) return
+				if (result.message.role !== "assistant") return
+
+				if (shouldGenerateTitleRef.current) {
+					const textPart = result.message.parts.find((part) => isTextPart(part))
+					const text = textPart?.text.trim()
+					if (text) {
+						shouldGenerateTitleRef.current = false
+						complete(text)
+					}
+				}
+            },
+        })
+
+    const [input, setInput] = useState("")
+    const [mentionOpen, setMentionOpen] = useState(false)
+    const [mentionQuery, setMentionQuery] = useState("")
+
+    type CanvasDoc = { id: string; title: string | null; type?: string | null; url?: string | null; preview?: string | null }
+    const [canvasDocs, setCanvasDocs] = useState<CanvasDoc[]>([])
+    useEffect(() => {
+        let ignore = false
+        async function load() {
+            try {
+                if (!placedDocumentIds || placedDocumentIds.length === 0) {
+                    setCanvasDocs([])
+                    return
+                }
+                const res = await fetch(`${BACKEND_URL}/v3/documents/documents/by-ids`, {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ids: placedDocumentIds, by: "id" }),
+                })
+                if (!res.ok) return
+                const data = await res.json()
+                if (ignore) return
+                const docs = Array.isArray(data?.documents) ? data.documents : []
+                setCanvasDocs(
+                    docs.map((d: any) => ({
+                        id: d.id,
+                        title: d.title ?? null,
+                        type: d.type ?? null,
+                        url: d.url ?? null,
+                        preview:
+                            (d.metadata && (d.metadata.ogImage || d.metadata.twitterImage || d.metadata.previewImage)) ||
+                            d.ogImage ||
+                            null,
+                    }))
+                )
+            } catch {}
         }
-      },
-    });
+        load()
+        return () => { ignore = true }
+    }, [placedDocumentIds])
 
-  const [input, setInput] = useState("");
-  const [savingInput, setSavingInput] = useState(false);
-  const [savingMessageIds, setSavingMessageIds] = useState<Set<string>>(
-    new Set(),
-  );
+    const filteredMention = useMemo(() => {
+        const q = mentionQuery.trim().toLowerCase()
+        const base = canvasDocs.filter((d) => !mentionedDocIds.includes(d.id))
+        if (!q) return base
+        return base.filter((d) => (d.title || d.id).toLowerCase().includes(q))
+    }, [canvasDocs, mentionQuery, mentionedDocIds])
 
-  // Reset conversation when project changes to avoid cross-project context bleed
-  useEffect(() => {
-    setMessages([]);
-    shouldGenerateTitleRef.current = false;
-  }, [project, setMessages]);
-
-  async function saveMemory(content: string) {
-    const trimmed = content.trim();
-    if (!trimmed) {
-      toast.error("Nothing to save");
-      return;
+    const injectMentionsIntoLastUserMessage = (docIds: string[]) => {
+        setMessages((prev) => {
+            if (!prev || prev.length === 0) return prev
+            const idx = [...prev].map((m) => m.role).lastIndexOf("user")
+            if (idx < 0) return prev
+            const msg: any = prev[idx]
+            const baseParts = Array.isArray(msg.parts) && msg.parts.length > 0
+                ? [...msg.parts]
+                : [{ type: "text", text: msg.content }]
+            baseParts.push({ type: "mentioned-docs", docIds })
+            const next = [...prev]
+            next[idx] = { ...msg, parts: baseParts }
+            return next
+        })
     }
-    if (selectedProject === DEFAULT_PROJECT_ID) {
-      toast.error("Select a project to save");
-      return;
+
+    const sendUserMessage = (text: string) => {
+        const ids = [...mentionedDocIds]
+        sendMessage({ text })
+        // Inject chips into the just-sent user message in the local chat history
+        setTimeout(() => injectMentionsIntoLastUserMessage(ids), 0)
     }
-    try {
-      const res = await fetch(`${BACKEND_URL}/v3/documents`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: trimmed,
-          containerTags:
-            selectedProject && selectedProject !== DEFAULT_PROJECT_ID
-              ? [selectedProject]
-              : undefined,
-          metadata: {
-            source: "chat",
-            type: "text",
-            from_chat: true,
-            projectId: selectedProject,
-          },
-        }),
-      });
-      if (!res.ok) {
-        let msg = "Failed to save memory";
+
+    const getPreviewUrl = (doc: CanvasDoc): string | null => {
+        if (doc.preview && typeof doc.preview === "string") return doc.preview
+        const url = doc.url || ""
         try {
-          const data = await res.json();
-          msg = data?.error?.message || msg;
+            const u = new URL(url)
+            const host = u.hostname
+            if (host.includes("youtube.com") || host.includes("youtu.be")) {
+                let vid = ""
+                if (host.includes("youtu.be")) {
+                    vid = u.pathname.replace(/\//g, "")
+                } else {
+                    vid = u.searchParams.get("v") || ""
+                }
+                if (vid) return `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`
+            }
         } catch {}
-        throw new Error(msg);
-      }
-      toast.success("Memory added");
-    } catch (err) {
-      console.error(err);
-      toast.error(err instanceof Error ? err.message : "Failed to save memory");
+        return null
     }
-  }
+	const [savingInput, setSavingInput] = useState(false)
+	const [savingMessageIds, setSavingMessageIds] = useState<Set<string>>(
+		new Set(),
+	)
 
-  useEffect(() => {
-    const baseId = id ? id.split("::")[0] : null;
-    activeChatIdRef.current = currentChatId ?? baseId ?? null;
-  }, [currentChatId, id]);
+	// Reset conversation when project changes to avoid cross-project context bleed
+	useEffect(() => {
+		setMessages([])
+		shouldGenerateTitleRef.current = false
+	}, [project, setMessages])
 
-  useEffect(() => {
-    const baseId = id?.split("::")[0];
-    if (baseId && baseId !== currentChatId) {
-      setCurrentChatId(baseId);
-    }
-  }, [id, currentChatId, setCurrentChatId]);
+	async function saveMemory(content: string) {
+		const trimmed = content.trim()
+		if (!trimmed) {
+			toast.error("Nothing to save")
+			return
+		}
+		if (selectedProject === DEFAULT_PROJECT_ID) {
+			toast.error("Select a project to save")
+			return
+		}
+		try {
+			const res = await fetch(`${BACKEND_URL}/v3/documents`, {
+				method: "POST",
+				credentials: "include",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					content: trimmed,
+					containerTags:
+						selectedProject && selectedProject !== DEFAULT_PROJECT_ID
+							? [selectedProject]
+							: undefined,
+					metadata: {
+						source: "chat",
+						type: "text",
+						from_chat: true,
+						projectId: selectedProject,
+					},
+				}),
+			})
+			if (!res.ok) {
+				let msg = "Failed to save memory"
+				try {
+					const data = await res.json()
+					msg = data?.error?.message || msg
+				} catch {}
+				throw new Error(msg)
+			}
+			toast.success("Memory added")
+		} catch (err) {
+			console.error(err)
+			toast.error(err instanceof Error ? err.message : "Failed to save memory")
+		}
+	}
 
-  useEffect(() => {
-    const rawActiveId = (currentChatId ?? id)?.split("::")[0];
-    const msgs = getCurrentConversation();
-    setMessages(msgs ?? []);
-    setInput("");
-    if (!rawActiveId) {
-      shouldGenerateTitleRef.current = false;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentChatId]);
+	useEffect(() => {
+		const baseId = id ? id.split("::")[0] : null
+		activeChatIdRef.current = currentChatId ?? baseId ?? null
+	}, [currentChatId, id])
 
-  useEffect(() => {
-    const rawActiveId = (currentChatId ?? id)?.split("::")[0];
-    if (rawActiveId && messages.length > 0) {
-      setConversation(rawActiveId, messages);
-    }
-  }, [messages, currentChatId, id, setConversation]);
+	useEffect(() => {
+		const baseId = id?.split("::")[0]
+		if (baseId && baseId !== currentChatId) {
+			setCurrentChatId(baseId)
+		}
+	}, [id, currentChatId, setCurrentChatId])
 
-  const { complete } = useCompletion({
-    api: `${BACKEND_URL}/chat/title`,
-    credentials: "include",
-    onFinish: (_, completion) => {
-      const activeId = activeChatIdRef.current;
-      if (!completion || !activeId) return;
-      setConversationTitle(activeId, completion.trim());
-    },
-  });
+	useEffect(() => {
+		const rawActiveId = (currentChatId ?? id)?.split("::")[0]
+		const msgs = getCurrentConversation()
+		setMessages(msgs ?? [])
+		setInput("")
+		if (!rawActiveId) {
+			shouldGenerateTitleRef.current = false
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [currentChatId])
 
-  // Update graph highlights from the most recent tool-searchMemories output
-  useEffect(() => {
-    try {
-      const lastAssistant = [...messages]
-        .reverse()
-        .find((m) => m.role === "assistant");
-      if (!lastAssistant) {
-        clear();
-        return;
-      }
-      const lastSearchPart = [...lastAssistant.parts]
-        .reverse()
-        .find((part) => isSearchMemoriesOutputPart(part));
-      if (!lastSearchPart) {
-        clear();
-        return;
-      }
-      const ids = toMemoryResults(lastSearchPart.output?.results)
-        .map((result) => result.documentId)
-        .filter((id): id is string => typeof id === "string");
-      if (ids.length > 0) {
-        setDocumentIds(ids);
-        return;
-      }
-    } catch {}
-    clear();
-  }, [messages, setDocumentIds, clear]);
+	useEffect(() => {
+		const rawActiveId = (currentChatId ?? id)?.split("::")[0]
+		if (rawActiveId && messages.length > 0) {
+			setConversation(rawActiveId, messages)
+		}
+	}, [messages, currentChatId, id, setConversation])
 
-  useEffect(() => {
-    const currentSummary = getCurrentChat();
-    const hasTitle = Boolean(
-      currentSummary?.title && currentSummary.title.trim().length > 0,
-    );
-    shouldGenerateTitleRef.current = !hasTitle;
-  }, [getCurrentChat]);
-  const {
-    scrollContainerRef,
-    bottomRef,
-    isFarFromBottom,
-    onScroll,
-    enableAutoScroll,
-    scrollToBottom,
-  } = useStickyAutoScroll([messages, status]);
+	const { complete } = useCompletion({
+		api: `${BACKEND_URL}/chat/title`,
+		credentials: "include",
+		onFinish: (_, completion) => {
+			const activeId = activeChatIdRef.current
+			if (!completion || !activeId) return
+			setConversationTitle(activeId, completion.trim())
+		},
+	})
 
-  return (
-    <div className="flex flex-col h-full">
-      <div className="relative flex-1 bg-[#0f1419] overflow-hidden">
-        <div
-          className="flex flex-col gap-3 absolute inset-0 overflow-y-auto px-4 pt-4 pb-32"
-          onScroll={onScroll}
-          ref={scrollContainerRef}
-        >
-          {messages.map((message) => (
-            <div
-              className={cn(
-                "flex flex-col gap-1",
-                message.role === "user" ? "items-end" : "items-start",
-              )}
-              key={message.id}
-            >
-              <div
-                className={cn(
-                  "flex flex-col gap-2 w-full text-white",
-                  message.role === "user"
-                    ? "border border-white/10 py-3 px-4 rounded-lg"
-                    : "py-1 px-0"
-                )}
-                style={{
-                  backgroundColor: message.role === "user" ? "#0f1419" : "transparent"
+	// Update graph highlights from the most recent tool-searchMemories output
+	useEffect(() => {
+		try {
+			const lastAssistant = [...messages]
+				.reverse()
+				.find((m) => m.role === "assistant")
+			if (!lastAssistant) {
+				clear()
+				return
+			}
+			const lastSearchPart = [...lastAssistant.parts]
+				.reverse()
+				.find((part) => isSearchMemoriesOutputPart(part))
+			if (!lastSearchPart) {
+				clear()
+				return
+			}
+			const ids = toMemoryResults(lastSearchPart.output?.results)
+				.map((result) => result.documentId)
+				.filter((id): id is string => typeof id === "string")
+			if (ids.length > 0) {
+				setDocumentIds(ids)
+				return
+			}
+		} catch {}
+		clear()
+	}, [messages, setDocumentIds, clear])
+
+	useEffect(() => {
+		const currentSummary = getCurrentChat()
+		const hasTitle = Boolean(
+			currentSummary?.title && currentSummary.title.trim().length > 0,
+		)
+		shouldGenerateTitleRef.current = !hasTitle
+	}, [getCurrentChat])
+	const {
+		scrollContainerRef,
+		bottomRef,
+		isFarFromBottom,
+		onScroll,
+		enableAutoScroll,
+		scrollToBottom,
+	} = useStickyAutoScroll([messages, status])
+
+	return (
+		<div className="flex flex-col h-full">
+			<div className="relative flex-1 bg-[#0f1419] overflow-hidden">
+				<div
+					className="flex flex-col gap-3 absolute inset-0 overflow-y-auto px-4 pt-4 pb-32"
+					onScroll={onScroll}
+					ref={scrollContainerRef}
+				>
+					{messages.map((message) => (
+						<div
+							className={cn(
+								"flex flex-col gap-1",
+								message.role === "user" ? "items-end" : "items-start",
+							)}
+							key={message.id}
+						>
+							<div
+								className={cn(
+									"flex flex-col gap-2 w-full text-white",
+									message.role === "user"
+										? "border border-white/10 py-3 px-4 rounded-lg"
+										: "py-1 px-0",
+								)}
+								style={{
+									backgroundColor:
+										message.role === "user" ? "#0f1419" : "transparent",
+								}}
+							>
+                        {message.parts.map((part: any, index) => {
+									if (isTextPart(part)) {
+										return (
+											<div
+												className="chat-markdown"
+												key={`${message.id}-text-${index}`}
+											>
+												<Streamdown>{part.text}</Streamdown>
+											</div>
+										)
+									}
+
+									if (isSearchMemoriesPart(part)) {
+										switch (part.state) {
+											case "input-available":
+											case "input-streaming":
+												return (
+													<div
+														className="text-sm flex items-center gap-2 text-muted-foreground"
+														key={`${message.id}-search-${index}`}
+													>
+														<Spinner className="size-4" /> Searching memories...
+													</div>
+												)
+											case "output-error":
+												return (
+													<div
+														className="text-sm flex items-center gap-2 text-muted-foreground"
+														key={`${message.id}-search-${index}`}
+													>
+														<X className="size-4" /> Error recalling memories
+													</div>
+												)
+											case "output-available": {
+												const countValue = part.output?.count
+												const foundCount =
+													typeof countValue === "number"
+														? countValue
+														: typeof countValue === "string"
+															? Number(countValue)
+															: 0
+												const results = toMemoryResults(part.output?.results)
+
+												return (
+													<ExpandableMemories
+														foundCount={foundCount}
+														key={`${message.id}-search-${index}`}
+														results={results}
+													/>
+												)
+											}
+											default:
+												return null
+										}
+									}
+
+									if (isAddMemoryPart(part)) {
+										switch (part.state) {
+											case "input-available":
+											case "input-streaming":
+												return (
+													<div
+														className="text-sm flex items-center gap-2 text-muted-foreground"
+														key={`${message.id}-add-${index}`}
+													>
+														<Spinner className="size-4" /> Adding memory...
+													</div>
+												)
+											case "output-error":
+												return (
+													<div
+														className="text-sm flex items-center gap-2 text-muted-foreground"
+														key={`${message.id}-add-${index}`}
+													>
+														<X className="size-4" /> Error adding memory
+													</div>
+												)
+											case "output-available":
+												return (
+													<div
+														className="text-sm flex items-center gap-2 text-muted-foreground"
+														key={`${message.id}-add-${index}`}
+													>
+														<Check className="size-4" /> Memory added
+													</div>
+												)
+											default:
+												return null
+										}
+									}
+
+									return null
+								})}
+							</div>
+							{message.role === "assistant" && (
+								<div className="flex items-center gap-1 mt-1">
+									<Button
+										className="size-7 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
+										onClick={() => {
+											const combinedText = message.parts
+												.filter((part) => isTextPart(part))
+												.map((part) => part.text)
+												.join("\n")
+											navigator.clipboard.writeText(combinedText)
+											toast.success("Copied to clipboard")
+										}}
+										size="icon"
+										variant="ghost"
+									>
+										<Copy className="size-3.5" />
+									</Button>
+									<Button
+										className="size-7 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
+										disabled={
+											message.id ? savingMessageIds.has(message.id) : false
+										}
+										onClick={async () => {
+											const id = message.id
+											if (!id) return
+											if (savingMessageIds.has(id)) return
+											const combinedText = message.parts
+												.filter((part) => isTextPart(part))
+												.map((part) => part.text)
+												.join("\n")
+											setSavingMessageIds((prev) => new Set(prev).add(id))
+											try {
+												await saveMemory(combinedText)
+											} finally {
+												setSavingMessageIds((prev) => {
+													const next = new Set(prev)
+													next.delete(id)
+													return next
+												})
+											}
+										}}
+										size="icon"
+										title="Add this reply to memory"
+										variant="ghost"
+									>
+										{message.id && savingMessageIds.has(message.id) ? (
+											<Spinner className="size-3.5" />
+										) : (
+											<Plus className="size-3.5" />
+										)}
+									</Button>
+									<Button
+										className="size-7 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
+										onClick={() => regenerate({ messageId: message.id })}
+										size="icon"
+										variant="ghost"
+									>
+										<RotateCcw className="size-3.5" />
+									</Button>
+								</div>
+							)}
+						</div>
+					))}
+					{status === "submitted" && (
+						<div className="flex text-muted-foreground justify-start gap-2 px-4 py-3 items-center w-full">
+							<Spinner className="size-4" />
+							<TextShimmer className="text-sm" duration={1.5}>
+								Thinking...
+							</TextShimmer>
+						</div>
+					)}
+					<div ref={bottomRef} />
+				</div>
+
+				<Button
+					className={cn(
+						"rounded-full w-fit mx-auto shadow-md z-10 absolute inset-x-0 bottom-4 flex justify-center",
+						"transition-all duration-200 ease-out",
+						isFarFromBottom
+							? "opacity-100 scale-100 pointer-events-auto"
+							: "opacity-0 scale-95 pointer-events-none",
+					)}
+					onClick={() => {
+						enableAutoScroll()
+						scrollToBottom("smooth")
+					}}
+					size="sm"
+					type="button"
+					variant="default"
+				>
+					Scroll to bottom
+				</Button>
+			</div>
+            <form
+                className="px-4 pb-4 pt-1 relative bg-[#0f1419]"
+                onSubmit={(e) => {
+                    e.preventDefault()
+                    if (status === "submitted") return
+                    if (status === "streaming") {
+                        stop()
+                        return
+                    }
+                    if (input.trim()) {
+                        enableAutoScroll()
+                        scrollToBottom("auto")
+                        sendUserMessage(input)
+                        // Clear one-shot mentioned docs after send
+                        if (mentionedDocIds.length > 0) setMentionedDocIds([])
+                        setInput("")
+                    }
                 }}
-              >
-                {message.parts.map((part, index) => {
-                  if (isTextPart(part)) {
-                    return (
-                      <div
-                        key={`${message.id}-text-${index}`}
-                        className="chat-markdown"
-                      >
-                        <Streamdown>{part.text}</Streamdown>
-                      </div>
-                    );
-                  }
-
-                  if (isSearchMemoriesPart(part)) {
-                    switch (part.state) {
-                      case "input-available":
-                      case "input-streaming":
-                        return (
-                          <div
-                            className="text-sm flex items-center gap-2 text-muted-foreground"
-                            key={`${message.id}-search-${index}`}
-                          >
-                            <Spinner className="size-4" /> Searching memories...
-                          </div>
-                        );
-                      case "output-error":
-                        return (
-                          <div
-                            className="text-sm flex items-center gap-2 text-muted-foreground"
-                            key={`${message.id}-search-${index}`}
-                          >
-                            <X className="size-4" /> Error recalling memories
-                          </div>
-                        );
-                      case "output-available": {
-                        const countValue = part.output?.count;
-                        const foundCount =
-                          typeof countValue === "number"
-                            ? countValue
-                            : typeof countValue === "string"
-                              ? Number(countValue)
-                              : 0;
-                        const results = toMemoryResults(part.output?.results);
-
-                        return (
-                          <ExpandableMemories
-                            foundCount={foundCount}
-                            key={`${message.id}-search-${index}`}
-                            results={results}
-                          />
-                        );
-                      }
-                      default:
-                        return null;
-                    }
-                  }
-
-                  if (isAddMemoryPart(part)) {
-                    switch (part.state) {
-                      case "input-available":
-                      case "input-streaming":
-                        return (
-                          <div
-                            className="text-sm flex items-center gap-2 text-muted-foreground"
-                            key={`${message.id}-add-${index}`}
-                          >
-                            <Spinner className="size-4" /> Adding memory...
-                          </div>
-                        );
-                      case "output-error":
-                        return (
-                          <div
-                            className="text-sm flex items-center gap-2 text-muted-foreground"
-                            key={`${message.id}-add-${index}`}
-                          >
-                            <X className="size-4" /> Error adding memory
-                          </div>
-                        );
-                      case "output-available":
-                        return (
-                          <div
-                            className="text-sm flex items-center gap-2 text-muted-foreground"
-                            key={`${message.id}-add-${index}`}
-                          >
-                            <Check className="size-4" /> Memory added
-                          </div>
-                        );
-                      default:
-                        return null;
-                    }
-                  }
-
-                  return null;
-                })}
-              </div>
-              {message.role === "assistant" && (
-                <div className="flex items-center gap-1 mt-1">
-                  <Button
-                    className="size-7 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
-                    onClick={() => {
-                      const combinedText = message.parts
-                        .filter((part) => isTextPart(part))
-                        .map((part) => part.text)
-                        .join("\n");
-                      navigator.clipboard.writeText(combinedText);
-                      toast.success("Copied to clipboard");
-                    }}
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <Copy className="size-3.5" />
-                  </Button>
-                  <Button
-                    className="size-7 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
-                    onClick={async () => {
-                      const id = message.id;
-                      if (!id) return;
-                      if (savingMessageIds.has(id)) return;
-                      const combinedText = message.parts
-                        .filter((part) => isTextPart(part))
-                        .map((part) => part.text)
-                        .join("\n");
-                      setSavingMessageIds((prev) => new Set(prev).add(id));
-                      try {
-                        await saveMemory(combinedText);
-                      } finally {
-                        setSavingMessageIds((prev) => {
-                          const next = new Set(prev);
-                          next.delete(id);
-                          return next;
-                        });
-                      }
-                    }}
-                    size="icon"
-                    variant="ghost"
-                    disabled={
-                      message.id ? savingMessageIds.has(message.id) : false
-                    }
-                    title="Add this reply to memory"
-                  >
-                    {message.id && savingMessageIds.has(message.id) ? (
-                      <Spinner className="size-3.5" />
-                    ) : (
-                      <Plus className="size-3.5" />
-                    )}
-                  </Button>
-                  <Button
-                    className="size-7 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
-                    onClick={() => regenerate({ messageId: message.id })}
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <RotateCcw className="size-3.5" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          ))}
-          {status === "submitted" && (
-            <div className="flex text-muted-foreground justify-start gap-2 px-4 py-3 items-center w-full">
-              <Spinner className="size-4" />
-              <TextShimmer className="text-sm" duration={1.5}>
-                Thinking...
-              </TextShimmer>
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
-
-        <Button
-          className={cn(
-            "rounded-full w-fit mx-auto shadow-md z-10 absolute inset-x-0 bottom-4 flex justify-center",
-            "transition-all duration-200 ease-out",
-            isFarFromBottom
-              ? "opacity-100 scale-100 pointer-events-auto"
-              : "opacity-0 scale-95 pointer-events-none",
-          )}
-          onClick={() => {
-            enableAutoScroll();
-            scrollToBottom("smooth");
-          }}
-          size="sm"
-          type="button"
-          variant="default"
-        >
-          Scroll to bottom
-        </Button>
-      </div>
-
-      <form
-        className="px-4 pb-4 pt-1 relative bg-[#0f1419]"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (status === "submitted") return;
-          if (status === "streaming") {
-            stop();
-            return;
-          }
-          if (input.trim()) {
-            enableAutoScroll();
-            scrollToBottom("auto");
-            sendMessage({ text: input });
-            setInput("");
-          }
-        }}
-      >
-        <div className="absolute top-0 left-0 -mt-7 w-full h-7 bg-gradient-to-t from-[#0f1419] to-transparent" />
-        <InputGroup className="rounded-xl border border-white/10 bg-black/25 backdrop-blur-sm focus-within:ring-0 focus-within:ring-offset-0">
-          <InputGroupTextarea
-            disabled={status === "submitted"}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask, Search or Chat..."
-            value={input}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                if (input.trim() && status !== "submitted") {
-                  enableAutoScroll();
-                  scrollToBottom("auto");
-                  sendMessage({ text: input });
-                  setInput("");
-                }
-              }
-            }}
-            className="text-white placeholder-white/40"
-          />
-          {/* Left bottom corner: quick-save button */}
-          <InputGroupAddon align="inline-start" className="gap-1 bottom-0">
-            <InputGroupButton
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={savingInput || status === "submitted"}
-              className="h-8 w-8 p-0 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md"
-              onClick={async () => {
-                if (!input.trim()) {
-                  toast.error("Type something to save");
-                  return;
-                }
-                setSavingInput(true);
-                try {
-                  await saveMemory(input);
-                } finally {
-                  setSavingInput(false);
-                }
-              }}
             >
-              {savingInput ? (
-                <Spinner className="size-3.5" />
-              ) : (
-                <Plus className="size-3.5" />
-              )}
-            </InputGroupButton>
-          </InputGroupAddon>
+                <div className="absolute top-0 left-0 -mt-7 w-full h-7 bg-gradient-to-t from-[#0f1419] to-transparent" />
+                {/* Mentioned docs chips */}
+                {mentionedDocIds.length > 0 && (
+                    <div className="px-1 pb-1 flex flex-wrap gap-1">
+                        {mentionedDocIds.map((id) => {
+                            const doc = canvasDocs.find((d) => d.id === id)
+                            const preview = doc ? getPreviewUrl(doc) : null
+                            return (
+                                <button
+                                    key={id}
+                                    type="button"
+                                    className="text-[11px] pl-1.5 pr-2 py-0.5 rounded-md border bg-white/5 border-white/10 text-white/80 hover:bg-white/10 inline-flex items-center gap-1.5"
+                                    onClick={() => setMentionedDocIds((prev) => prev.filter((x) => x !== id))}
+                                    title={doc?.title || id}
+                                >
+                                    {preview ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={preview} alt="" className="w-3.5 h-3.5 object-cover rounded-sm" />
+                                    ) : (
+                                        <span className="w-3.5 h-3.5 rounded-sm bg-white/10 inline-block" />
+                                    )}
+                                    <span>@{doc?.title || id}</span>
+                                </button>
+                            )
+                        })}
+                    </div>
+                )}
+                <InputGroup className="rounded-xl border border-white/10 bg-black/25 backdrop-blur-sm focus-within:ring-0 focus-within:ring-offset-0">
+                    <InputGroupTextarea
+                        className="text-white placeholder-white/40"
+                        disabled={status === "submitted"}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            // Open mentions on '@'
+                            if (e.key === "@") {
+                                setMentionOpen(true)
+                                setMentionQuery("")
+                                return
+                            }
+                            // Close mentions with Escape
+                            if (e.key === "Escape" && mentionOpen) {
+                                setMentionOpen(false)
+                                return
+                            }
+                            // Submit on Enter
+                            if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault()
+                                if (input.trim() && status !== "submitted") {
+                                    enableAutoScroll()
+                                    scrollToBottom("auto")
+                                    sendUserMessage(input)
+                                    if (mentionedDocIds.length > 0) setMentionedDocIds([])
+                                    setMentionOpen(false)
+                                    setInput("")
+                                }
+                            }
+                        }}
+                        placeholder="Ask, Search or Chat..."
+                        value={input}
+                    />
+					{/* Left bottom corner: quick-save button */}
+					<InputGroupAddon align="inline-start" className="gap-1 bottom-0">
+						<InputGroupButton
+							className="h-8 w-8 p-0 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md"
+							disabled={savingInput || status === "submitted"}
+							onClick={async () => {
+								if (!input.trim()) {
+									toast.error("Type something to save")
+									return
+								}
+								setSavingInput(true)
+								try {
+									await saveMemory(input)
+								} finally {
+									setSavingInput(false)
+								}
+							}}
+							size="sm"
+							type="button"
+							variant="ghost"
+						>
+							{savingInput ? (
+								<Spinner className="size-3.5" />
+							) : (
+								<Plus className="size-3.5" />
+							)}
+						</InputGroupButton>
+					</InputGroupAddon>
 
-          {/* Right bottom corner: dropdowns for Model and Mode */}
-          <InputGroupAddon align="inline-end" className="gap-1 bottom-0">
-            <Select
-              value={model}
-              onValueChange={setModel}
-              disabled={status === "submitted"}
-            >
-              <SelectTrigger className="h-8 w-auto text-[12px] px-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/90">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
-                <SelectItem value="xai/grok-4-fast">Grok</SelectItem>
-                <SelectItem value="google/gemini-2.5-flash-preview-09-2025">
-                  Gemini
-                </SelectItem>
-              </SelectContent>
-            </Select>
+					{/* Right bottom corner: dropdowns for Model and Mode */}
+					<InputGroupAddon align="inline-end" className="gap-1 bottom-0">
+						<Select
+							disabled={status === "submitted"}
+							onValueChange={setModel}
+							value={model}
+						>
+							<SelectTrigger className="h-7 min-h-0 w-auto text-[11px] px-2 py-0 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/90">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
+								<SelectItem value="xai/grok-4-fast">Grok</SelectItem>
+								<SelectItem value="google/gemini-1.5-flash">Gemini</SelectItem>
+							</SelectContent>
+						</Select>
 
-            <Select
-              value={mode}
-              onValueChange={(value) =>
-                setMode(value as "simple" | "agentic" | "deep")
-              }
-              disabled={status === "submitted"}
-            >
-              <SelectTrigger className="h-8 w-auto text-[12px] px-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/90">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
-                <SelectItem value="simple">Simple</SelectItem>
-                <SelectItem value="agentic">Agentic</SelectItem>
-                <SelectItem value="deep">Deep</SelectItem>
-              </SelectContent>
-            </Select>
-            <InputGroupButton
-              type="submit"
-              size="sm"
-              className="h-8 w-9 p-0 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-md"
-              disabled={status === "submitted"}
-            >
-              {status === "ready" ? (
-                <ArrowUp className="size-3.5" />
-              ) : status === "submitted" ? (
-                <Spinner className="size-3.5" />
-              ) : (
-                <X className="size-3.5" />
-              )}
-            </InputGroupButton>
-          </InputGroupAddon>
-        </InputGroup>
-      </form>
-    </div>
-  );
+						<Select
+							disabled={status === "submitted"}
+							onValueChange={(value) =>
+								setMode(value as "simple" | "agentic" | "deep")
+							}
+							value={mode}
+						>
+							<SelectTrigger className="h-7 min-h-0 w-auto text-[11px] px-2 py-0 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/90">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
+								<SelectItem value="simple">Simple</SelectItem>
+								<SelectItem value="agentic">Agentic</SelectItem>
+								<SelectItem value="deep">Deep</SelectItem>
+							</SelectContent>
+						</Select>
+						<InputGroupButton
+							className="h-8 w-9 p-0 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-md"
+							disabled={status === "submitted"}
+							size="sm"
+							type="submit"
+						>
+							{status === "ready" ? (
+								<ArrowUp className="size-3.5" />
+							) : status === "submitted" ? (
+								<Spinner className="size-3.5" />
+							) : (
+								<X className="size-3.5" />
+							)}
+						</InputGroupButton>
+					</InputGroupAddon>
+                </InputGroup>
+                {mentionOpen && (
+                    <div className="absolute bottom-20 left-4 w-[420px] max-h-72 overflow-auto rounded-md border border-white/10 bg-black/90 backdrop-blur-xl z-10 p-2">
+                        <div className="mb-2">
+                            <input
+                                className="w-full text-sm bg-white/5 border border-white/10 rounded px-2 py-1 text-white"
+                                placeholder="Filtrar documentos..."
+                                value={mentionQuery}
+                                onChange={(e) => setMentionQuery(e.target.value)}
+                            />
+                        </div>
+                        {filteredMention.length === 0 ? (
+                            <div className="text-xs text-white/60 px-1 py-2">Nenhum documento no canvas</div>
+                        ) : (
+                            filteredMention.map((d) => {
+                                const preview = getPreviewUrl(d)
+                                return (
+                                    <button
+                                        key={d.id}
+                                        type="button"
+                                        className="w-full text-left text-sm text-white/90 hover:bg-white/10 rounded px-2 py-1 flex items-center gap-2"
+                                        onClick={() => {
+                                            setMentionedDocIds((prev) => [...new Set([...prev, d.id])])
+                                            setMentionOpen(false)
+                                        }}
+                                    >
+                                        {preview ? (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img src={preview} alt="" className="w-8 h-5 object-cover rounded" />
+                                        ) : (
+                                            <span className="w-8 h-5 rounded bg-white/10 inline-block" />
+                                        )}
+                                        <span className="truncate">@{d.title || d.id}</span>
+                                    </button>
+                                )
+                            })
+                        )}
+                    </div>
+                )}
+            </form>
+		</div>
+	)
 }

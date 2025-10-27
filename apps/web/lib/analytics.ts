@@ -20,7 +20,7 @@ export const analytics = {
 	chatHistoryViewed: () => {},
 	chatDeleted: () => {},
 
-	viewModeChanged: (_mode: "graph" | "list") => {},
+	viewModeChanged: (_mode: "graph" | "graphEmpty" | "list") => {},
 
 	documentCardClicked: () => {},
 

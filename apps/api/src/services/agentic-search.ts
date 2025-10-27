@@ -1,5 +1,7 @@
 import { google } from "@ai-sdk/google"
+import { xai } from "@ai-sdk/xai"
 import type { SupabaseClient } from "@supabase/supabase-js"
+import type { LanguageModel } from "ai"
 import { generateObject } from "ai"
 import { z } from "zod"
 import { env } from "../env"
@@ -31,6 +33,7 @@ export type AgenticSearchOptions = {
 	enableWebSearch?: boolean
 	webResultsLimit?: number
 	webQueriesLimit?: number
+	model?: LanguageModel // AI model to use for query generation
 }
 
 type SearchResult = Awaited<
@@ -78,7 +81,11 @@ export async function agenticSearch(
 			usedQueries.add(userQuery)
 		}
 		// 1) Generate queries
-		const queries = await generateQueries(userQuery, Array.from(usedQueries))
+		const queries = await generateQueries(
+			userQuery,
+			Array.from(usedQueries),
+			options.model,
+		)
 		totalTokens += queries.usage?.totalTokens ?? 0
 
 		if (queries.data.length === 0) break
@@ -138,6 +145,7 @@ export async function agenticSearch(
 		const evaluation = await evaluateCompleteness(
 			userQuery,
 			Array.from(allResults.values()),
+			options.model,
 		)
 		totalTokens += evaluation.usage?.totalTokens ?? 0
 		lastEvaluation = evaluation.data
@@ -225,6 +233,7 @@ function convertExaToSearchResult(
 async function generateQueries(
 	userQuery: string,
 	alreadyUsed: string[],
+	model?: LanguageModel,
 ): Promise<{
 	data: Array<{ type: "semantic"; query: string }>
 	usage: { totalTokens?: number } | undefined
@@ -238,16 +247,30 @@ Rules:
 		alreadyUsed.length > 0 ? alreadyUsed.join(", ") : "none"
 	}
 - Use natural language (no boolean operators)
-- Return JSON strictly matching the schema
 
 User question: ${userQuery}
+
+Return a JSON object with this structure:
+{
+  "queries": [
+    {"type": "semantic", "query": "first search query"},
+    {"type": "semantic", "query": "second search query"}
+  ]
+}
 `.trim()
 
+	// Use provided model or fallback to env default
+	const aiModel =
+		model ??
+		(env.AI_PROVIDER === "xai" ? xai(env.CHAT_MODEL) : google(env.CHAT_MODEL))
+
 	const result = await generateObject({
-		model: google(env.CHAT_MODEL),
+		model: aiModel,
 		schema: queriesSchema,
 		prompt,
 		temperature: 0.3,
+		schemaName: "SearchQueries",
+		schemaDescription: "A list of search queries to execute",
 	})
 
 	return {
@@ -259,6 +282,7 @@ User question: ${userQuery}
 async function evaluateCompleteness(
 	userQuery: string,
 	results: SearchResult[],
+	model?: LanguageModel,
 ): Promise<{
 	data: { canAnswer: boolean; reasoning?: string }
 	usage: { totalTokens?: number } | undefined
@@ -277,11 +301,18 @@ User question: ${userQuery}
 Sources:\n${context}
 `.trim()
 
+	// Use provided model or fallback to env default
+	const aiModel =
+		model ??
+		(env.AI_PROVIDER === "xai" ? xai(env.CHAT_MODEL) : google(env.CHAT_MODEL))
+
 	const result = await generateObject({
-		model: google(env.CHAT_MODEL),
+		model: aiModel,
 		schema: evaluationSchema,
 		prompt,
 		temperature: 0,
+		schemaName: "AnswerEvaluation",
+		schemaDescription: "Evaluation of whether the question can be answered",
 	})
 
 	return {

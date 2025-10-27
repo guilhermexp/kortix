@@ -1,15 +1,15 @@
 import { describe, expect, it } from "bun:test"
 import {
-	t,
-	getTranslations,
-	isLocaleSupported,
-	buildSummaryPrompt,
-	buildUrlAnalysisPrompt,
-	buildTextAnalysisPrompt,
-	buildYoutubePrompt,
 	buildFilePrompt,
+	buildSummaryPrompt,
+	buildTextAnalysisPrompt,
+	buildUrlAnalysisPrompt,
+	buildYoutubePrompt,
 	getFallbackMessage,
 	getSectionHeader,
+	getTranslations,
+	isLocaleSupported,
+	t,
 } from "./index"
 
 /**
@@ -67,10 +67,9 @@ describe("i18n Translation System", () => {
 		})
 
 		it("should replace multiple variables", () => {
-			const result = t(
-				"prompts.deepAnalysis.text_based.context.title",
-				{ title: "Test Title" },
-			)
+			const result = t("prompts.deepAnalysis.text_based.context.title", {
+				title: "Test Title",
+			})
 			expect(result).toContain("Test Title")
 		})
 
