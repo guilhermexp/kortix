@@ -1,14 +1,12 @@
 import { env } from "../env"
-import { aiClient } from "./ai-provider"
+import { getGoogleModel } from "./google-genai"
 import {
 	ensureVectorSize,
 	generateDeterministicEmbedding,
 	VECTOR_SIZE,
 } from "./embedding"
 
-const embeddingModel = aiClient?.getGenerativeModel({
-	model: env.EMBEDDING_MODEL,
-})
+const embeddingModel = getGoogleModel(env.EMBEDDING_MODEL)
 
 export async function generateEmbedding(text: string): Promise<number[]> {
 	const normalizedText = text.trim()

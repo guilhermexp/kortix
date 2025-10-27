@@ -1,11 +1,21 @@
-import type { UIMessage } from "@ai-sdk/react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
+type PersistedMessage = {
+	id?: string
+	role: string
+	content?: string
+	parts?: Array<unknown>
+	[key: string]: unknown
+}
+
 /**
- * Deep equality check for UIMessage arrays to prevent unnecessary state updates
+ * Deep equality check for chat message arrays to prevent unnecessary state updates
  */
-function areUIMessageArraysEqual(a: UIMessage[], b: UIMessage[]): boolean {
+function areUIMessageArraysEqual(
+	a: PersistedMessage[],
+	b: PersistedMessage[],
+): boolean {
 	if (a === b) return true
 	if (a.length !== b.length) return false
 
@@ -39,7 +49,7 @@ export interface ConversationSummary {
 }
 
 interface ConversationRecord {
-	messages: UIMessage[]
+	messages: PersistedMessage[]
 	title?: string
 	lastUpdated: string
 }
@@ -55,7 +65,7 @@ interface ConversationsStoreState {
 	setConversation: (
 		projectId: string,
 		chatId: string,
-		messages: UIMessage[],
+		messages: PersistedMessage[],
 	) => void
 	deleteConversation: (projectId: string, chatId: string) => void
 	setConversationTitle: (
@@ -209,7 +219,7 @@ export function usePersistentChat() {
 		setCurrentChatIdRaw(projectId, chatId)
 	}
 
-	function setConversation(chatId: string, messages: UIMessage[]): void {
+	function setConversation(chatId: string, messages: PersistedMessage[]): void {
 		setConversationRaw(projectId, chatId, messages)
 	}
 
@@ -224,7 +234,7 @@ export function usePersistentChat() {
 		setConversationTitleRaw(projectId, chatId, title)
 	}
 
-	function getCurrentConversation(): UIMessage[] | undefined {
+	function getCurrentConversation(): PersistedMessage[] | undefined {
 		const convs = projectState?.conversations ?? {}
 		const id = currentChatId
 		if (!id) return undefined

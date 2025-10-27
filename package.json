@@ -18,17 +18,11 @@
     "packages/*"
   ],
   "dependencies": {
-    "@ai-sdk/anthropic": "^2.0.37",
-    "@ai-sdk/cerebras": "^1.0.25",
-    "@ai-sdk/google": "^2.0.23",
-    "@ai-sdk/openai": "^2.0.53",
-    "@ai-sdk/xai": "^2.0.27",
     "@anthropic-ai/sdk": "^0.67.0",
     "@google/genai": "^1.27.0",
     "@google/generative-ai": "^0.24.1",
     "@hono/zod-validator": "^0.7.4",
     "@scalar/hono-api-reference": "^0.9.22",
-    "ai": "5.0.78",
     "alchemy": "^0.76.1",
     "atmn": "^0.0.28",
     "axios": "^1.12.2",

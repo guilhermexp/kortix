@@ -11,8 +11,7 @@
     "postinstall": "bash install-markitdown.sh"
   },
   "dependencies": {
-    "@ai-sdk/google": "^2.0.17",
-    "@ai-sdk/ui-utils": "^1.2.11",
+    "@anthropic-ai/claude-agent-sdk": "^0.1.14",
     "@google/generative-ai": "^0.24.1",
     "@hono/node-server": "^1.9.0",
     "@hono/standard-validator": "0.1.2",
@@ -21,7 +20,6 @@
     "@standard-community/standard-json": "0.1.2",
     "@supabase/supabase-js": "^2.48.0",
     "@types/turndown": "^5.0.5",
-    "ai": "5.0.0-beta.24",
     "hono": "^4.4.4",
     "jsdom": "^27.0.0",
     "muppet": "0.2.1",

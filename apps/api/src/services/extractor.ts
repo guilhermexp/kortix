@@ -2,7 +2,7 @@
 import pdfParse from "pdf-parse/lib/pdf-parse.js"
 import { env } from "../env"
 import { safeFetch, URLValidationError } from "../security/url-validator"
-import { aiClient } from "./ai-provider"
+import { getGoogleModel } from "./google-genai"
 import { summarizeBinaryWithGemini } from "./gemini-files"
 import {
 	checkMarkItDownHealth,
@@ -319,8 +319,9 @@ async function extractPreviewImageWithGemini(
 	html: string,
 	url: string,
 ): Promise<string | null> {
-	if (!aiClient) {
-		console.warn("extractPreviewImageWithGemini: aiClient not configured")
+	const model = getGoogleModel(env.CHAT_MODEL)
+	if (!model) {
+		console.warn("extractPreviewImageWithGemini: Google Generative AI not configured")
 		return null
 	}
 
@@ -329,8 +330,6 @@ async function extractPreviewImageWithGemini(
 			url,
 			htmlLength: html.length,
 		})
-		const model = aiClient.getGenerativeModel({ model: env.CHAT_MODEL })
-
 		const prompt = `Analyze this HTML and extract the best preview image URL.
 Look for: og:image meta tags, large hero images, main content images, or logos.
 Return ONLY the absolute URL of the best image, or "NONE" if no suitable image found.
