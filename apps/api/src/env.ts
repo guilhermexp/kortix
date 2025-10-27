@@ -10,11 +10,9 @@ const envSchema = z.object({
 	SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 	SUPABASE_ANON_KEY: z.string().min(1), // Required for RLS enforcement
 	GOOGLE_API_KEY: z.string().min(1).optional(),
-	XAI_API_KEY: z.string().min(1).optional(),
-	OPENROUTER_API_KEY: z.string().min(1).optional(),
+	ANTHROPIC_API_KEY: z.string().min(1),
 	COHERE_API_KEY: z.string().min(1).optional(),
 	EXA_API_KEY: z.string().min(1).optional(),
-	AI_PROVIDER: z.enum(["google", "xai"]).default("google"),
 	ENABLE_AGENTIC_MODE: z
 		.string()
 		.transform((value) => value === "true")
@@ -29,7 +27,7 @@ const envSchema = z.object({
 		.regex(/^\d+$/)
 		.transform((value) => Number.parseInt(value, 10))
 		.default("1536"),
-	CHAT_MODEL: z.string().default("models/gemini-1.5-flash-latest"),
+	CHAT_MODEL: z.string().default("claude-3-5-sonnet-20241022"),
 	SUMMARY_MODEL: z.string().optional(),
 	FIRECRAWL_API_KEY: z.string().optional(),
 	ENABLE_RECENCY_BOOST: z
@@ -82,7 +80,7 @@ const parsed = envSchema.safeParse({
 	SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
 	SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
 	GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
-	OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+	ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
 	COHERE_API_KEY: process.env.COHERE_API_KEY,
 	EXA_API_KEY: process.env.EXA_API_KEY,
 	ENABLE_AGENTIC_MODE: process.env.ENABLE_AGENTIC_MODE,

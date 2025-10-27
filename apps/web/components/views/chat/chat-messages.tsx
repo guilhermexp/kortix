@@ -1,19 +1,11 @@
 "use client"
 
-import { useChat, useCompletion } from "@ai-sdk/react"
 import { BACKEND_URL } from "@lib/env"
 import { cn } from "@lib/utils"
 import { DEFAULT_PROJECT_ID } from "@repo/lib/constants"
 import { Button } from "@ui/components/button"
 import { Input } from "@ui/components/input"
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@ui/components/select"
-import { DefaultChatTransport } from "ai"
+// Select components removed - no longer needed with Claude Agent SDK
 import {
 	ArrowUp,
 	Check,
@@ -331,6 +323,242 @@ function useStickyAutoScroll(triggerKeys: ReadonlyArray<unknown>) {
 	} as const
 }
 
+type ClaudeChatMessage = {
+	id: string
+	role: "user" | "assistant"
+	content: string
+	parts: Array<TextPart | SearchMemoriesPart | AddMemoryPart | unknown>
+}
+
+type ClaudeChatStatus = "ready" | "submitted" | "streaming"
+
+type ClaudeChatOptions = {
+	conversationId?: string | null
+	endpoint: string
+	buildRequestBody: (
+		history: ClaudeChatMessage[],
+		userMessage: ClaudeChatMessage,
+	) => Record<string, unknown>
+	onComplete?: (payload: {
+		text: string
+		messages: ClaudeChatMessage[]
+	}) => void
+}
+
+type SendMessagePayload = { text: string }
+
+type RegeneratePayload = { messageId?: string }
+
+function generateMessageId() {
+	if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+		return crypto.randomUUID()
+	}
+	return `msg_${Math.random().toString(36).slice(2)}`
+}
+
+function createTextMessage(role: "user" | "assistant", content: string): ClaudeChatMessage {
+	return {
+		id: generateMessageId(),
+		role,
+		content,
+		parts: [{ type: "text", text: content }],
+	}
+}
+
+function useClaudeChat({
+	conversationId,
+	endpoint,
+	buildRequestBody,
+	onComplete,
+}: ClaudeChatOptions) {
+	const [messagesState, setMessagesState] = useState<ClaudeChatMessage[]>([])
+	const [status, setStatus] = useState<ClaudeChatStatus>("ready")
+	const abortRef = useRef<AbortController | null>(null)
+	const messagesRef = useRef<ClaudeChatMessage[]>(messagesState)
+	const conversationRef = useRef<string>(
+		conversationId && conversationId.length > 0
+			? conversationId
+			: `claude-${Date.now()}`,
+	)
+
+	useEffect(() => {
+		if (conversationId && conversationId.length > 0) {
+			conversationRef.current = conversationId
+		}
+	}, [conversationId])
+
+	useEffect(() => {
+		messagesRef.current = messagesState
+	}, [messagesState])
+
+	const setMessages = useCallback(
+		(
+			updater:
+				| ClaudeChatMessage[]
+				| ((previous: ClaudeChatMessage[]) => ClaudeChatMessage[]),
+		) => {
+			setMessagesState((prev) => {
+				const next =
+					typeof updater === "function"
+						? (updater as (value: ClaudeChatMessage[]) => ClaudeChatMessage[])(prev)
+						: updater
+				const normalized = Array.isArray(next) ? next : prev
+				messagesRef.current = normalized
+				return normalized
+			})
+		},
+		[],
+	)
+
+	useEffect(() => {
+		return () => {
+			if (abortRef.current) {
+				abortRef.current.abort()
+			}
+		}
+	}, [])
+
+	const stop = useCallback(() => {
+		if (abortRef.current) {
+			abortRef.current.abort()
+			abortRef.current = null
+			setStatus("ready")
+			setMessages((prev) => {
+				if (prev.length === 0) return prev
+				const last = prev[prev.length - 1]
+				if (last?.role === "assistant") {
+					const textPart = Array.isArray(last.parts)
+						? last.parts.find(
+							(part): part is TextPart =>
+								Boolean(part && (part as any).type === "text"),
+						  )
+						: undefined
+					if (!textPart?.text) {
+						return prev.slice(0, -1)
+					}
+				}
+				return prev
+			})
+		}
+	}, [setMessages])
+
+	const sendMessage = useCallback(
+		async ({ text }: SendMessagePayload) => {
+			const trimmed = text.trim()
+			if (!trimmed || status !== "ready") {
+				return
+			}
+
+			if (abortRef.current) {
+				abortRef.current.abort()
+			}
+
+			const controller = new AbortController()
+			abortRef.current = controller
+
+			const history = messagesRef.current.slice()
+			const userMessage = createTextMessage("user", trimmed)
+			const assistantPlaceholder = createTextMessage("assistant", "")
+			const baseWithPlaceholder = [...history, userMessage, assistantPlaceholder]
+			setMessages(baseWithPlaceholder)
+			setStatus("submitted")
+
+			try {
+				const body = buildRequestBody([...history, userMessage], userMessage)
+				const response = await fetch(endpoint, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					credentials: "include",
+					body: JSON.stringify(body),
+					signal: controller.signal,
+				})
+				if (!response.ok) {
+					throw new Error(`Request failed with status ${response.status}`)
+				}
+				setStatus("streaming")
+				const data = await response.json().catch(() => ({}))
+				const assistantText =
+					typeof data?.message?.content === "string"
+						? (data.message.content as string)
+						: ""
+				const updatedAssistant = {
+					...assistantPlaceholder,
+					content: assistantText,
+					parts: [{ type: "text", text: assistantText }],
+				}
+				const finalMessages = [...history, userMessage, updatedAssistant]
+				setMessages(finalMessages)
+				if (onComplete) {
+					onComplete({ text: assistantText, messages: finalMessages })
+				}
+			} catch (error) {
+				if (controller.signal.aborted) {
+					setStatus("ready")
+					return
+				}
+				const message =
+					error instanceof Error
+						? error.message
+						: "Unable to process your request"
+				const errorAssistant = {
+					...assistantPlaceholder,
+					content: message,
+					parts: [{ type: "text", text: message }],
+				}
+				const finalMessages = [...history, userMessage, errorAssistant]
+				setMessages(finalMessages)
+				toast.error(message)
+			} finally {
+				abortRef.current = null
+				setStatus("ready")
+			}
+		},
+		[buildRequestBody, endpoint, setMessages, status],
+	)
+
+	const regenerate = useCallback(
+		({ messageId }: RegeneratePayload = {}) => {
+			const current = messagesRef.current
+			if (current.length === 0) return
+			let targetIndex = typeof messageId === "string"
+				? current.findIndex((item) => item.id === messageId)
+				: current.length - 1
+			if (targetIndex < 0) targetIndex = current.length - 1
+			let userIndex = -1
+			for (let i = targetIndex; i >= 0; i -= 1) {
+				if (current[i]?.role === "user") {
+					userIndex = i
+					break
+				}
+			}
+			if (userIndex < 0) return
+			const userMessage = current[userIndex]
+			const textPart = Array.isArray(userMessage.parts)
+				? userMessage.parts.find(
+					(part): part is TextPart => Boolean(part && (part as any).type === "text"),
+				  )
+				: undefined
+			const text = textPart?.text ?? userMessage.content
+			if (!text) return
+			const truncatedHistory = current.slice(0, userIndex)
+			setMessages(truncatedHistory)
+			messagesRef.current = truncatedHistory
+			void sendMessage({ text })
+		},
+		[sendMessage, setMessages],
+	)
+
+	return {
+		messages: messagesState,
+		setMessages,
+		sendMessage,
+		status,
+		stop,
+		id: conversationRef.current,
+		regenerate,
+	} as const
+}
+
 export function ChatMessages() {
 	const { selectedProject } = useProject()
 	const {
@@ -349,10 +577,7 @@ export function ChatMessages() {
     const { scopedDocumentIds, placedDocumentIds } = useCanvasSelection()
 	const { hasScopedDocuments, scopedCount } = useCanvasState()
 
-    // Chat mode: simple | agentic | deep (default: simple)
-    const [mode, setMode] = useState<"simple" | "agentic" | "deep">("simple")
-	// Model selection: google/gemini or xai/grok (default: grok)
-	const [model, setModel] = useState<string>("xai/grok-4-fast")
+	// Mode and Model now handled by Claude Agent SDK backend
 	// Project scoping for chat (defaults to global selection or All Projects)
 	const [project, setProject] = useState<string>(
 		selectedProject && selectedProject !== "sm_project_default"
@@ -412,59 +637,93 @@ export function ChatMessages() {
     // Inline mentions: pick canvas docs per message (@)
     const [mentionedDocIds, setMentionedDocIds] = useState<string[]>([])
 
-    // Create transport with useMemo so it updates when mode, model, or scoped documents change
-    const transport = useMemo(
-        () =>
-            new DefaultChatTransport({
-                api: `${BACKEND_URL}/chat/v2`,
-                credentials: "include",
-                body: {
-                    mode,
-                    model,
-                    ...(mentionedDocIds.length > 0
-                        ? { scopedDocumentIds: mentionedDocIds }
-                        : hasScopedDocuments
-                        ? { scopedDocumentIds }
-                        : {}),
-                    metadata: {
-                        ...(project && project !== "__ALL__" ? { projectId: project } : {}),
-                        ...(expandContext ? { expandContext: true } : {}),
-                        ...(mentionedDocIds.length > 0
-                            ? { forceRawDocs: true }
-                            : {}),
-                    },
-                },
-            }),
+    const composeRequestBody = useCallback(
+        (history: ClaudeChatMessage[]) => {
+            const payloadMessages = history.map((message) => {
+                const textFromParts = Array.isArray(message.parts)
+                    ? message.parts
+                            .map((part) =>
+                                part && typeof part === "object" && (part as any).type === "text"
+                                    ? (part as TextPart).text ?? ""
+                                    : "",
+                            )
+                            .join(" ")
+                    : message.content
+                const content = (textFromParts || message.content || "").trim()
+                return {
+                    id: message.id,
+                    role: message.role,
+                    content,
+                }
+            })
+
+            const scopedIds =
+                mentionedDocIds.length > 0
+                    ? mentionedDocIds
+                    : hasScopedDocuments
+                    ? scopedDocumentIds
+                    : undefined
+
+            const metadata: Record<string, unknown> = {}
+            if (project && project !== "__ALL__") {
+                metadata.projectId = project
+            }
+            if (expandContext) {
+                metadata.expandContext = true
+            }
+            if (mentionedDocIds.length > 0) {
+                metadata.forceRawDocs = true
+            }
+
+            return {
+                messages: payloadMessages,
+                ...(scopedIds && scopedIds.length > 0
+                    ? { scopedDocumentIds: scopedIds }
+                    : {}),
+                ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
+            }
+        },
         [
-            mode,
-            model,
-            project,
-            expandContext,
+            mentionedDocIds,
             hasScopedDocuments,
             scopedDocumentIds,
-            mentionedDocIds,
+            project,
+            expandContext,
         ],
     )
 
-    const { messages, sendMessage, status, stop, setMessages, id, regenerate } =
-        useChat({
-            id: currentChatId ? `${currentChatId}::${mode}` : undefined,
-            transport,
-            maxSteps: 8,
-            onFinish: (result) => {
-				const activeId = activeChatIdRef.current
-				if (!activeId) return
-				if (result.message.role !== "assistant") return
+    const handleAssistantComplete = useCallback(
+        async ({ text }: { text: string; messages?: ClaudeChatMessage[] }) => {
+            const activeId = activeChatIdRef.current
+            if (!activeId) return
+            if (!shouldGenerateTitleRef.current) return
+            const trimmed = text.trim()
+            if (!trimmed) return
+            shouldGenerateTitleRef.current = false
+            try {
+                const response = await fetch(`${BACKEND_URL}/chat/title`, {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt: trimmed }),
+                })
+                if (!response.ok) return
+                const completion = (await response.text()).trim()
+                if (!completion) return
+                setConversationTitle(activeId, completion)
+            } catch (error) {
+                console.error("Failed to generate chat title", error)
+            }
+        },
+        [setConversationTitle],
+    )
 
-				if (shouldGenerateTitleRef.current) {
-					const textPart = result.message.parts.find((part) => isTextPart(part))
-					const text = textPart?.text.trim()
-					if (text) {
-						shouldGenerateTitleRef.current = false
-						complete(text)
-					}
-				}
-            },
+    const { messages, sendMessage, status, stop, setMessages, id, regenerate } =
+        useClaudeChat({
+            conversationId: currentChatId || undefined,
+            endpoint: `${BACKEND_URL}/chat/v2`,
+            buildRequestBody: composeRequestBody,
+            onComplete: handleAssistantComplete,
         })
 
     const [input, setInput] = useState("")
@@ -641,16 +900,6 @@ export function ChatMessages() {
 			setConversation(rawActiveId, messages)
 		}
 	}, [messages, currentChatId, id, setConversation])
-
-	const { complete } = useCompletion({
-		api: `${BACKEND_URL}/chat/title`,
-		credentials: "include",
-		onFinish: (_, completion) => {
-			const activeId = activeChatIdRef.current
-			if (!completion || !activeId) return
-			setConversationTitle(activeId, completion.trim())
-		},
-	})
 
 	// Update graph highlights from the most recent tool-searchMemories output
 	useEffect(() => {
@@ -1019,38 +1268,8 @@ export function ChatMessages() {
 						</InputGroupButton>
 					</InputGroupAddon>
 
-					{/* Right bottom corner: dropdowns for Model and Mode */}
+					{/* Submit button */}
 					<InputGroupAddon align="inline-end" className="gap-1 bottom-0">
-						<Select
-							disabled={status === "submitted"}
-							onValueChange={setModel}
-							value={model}
-						>
-							<SelectTrigger className="h-7 min-h-0 w-auto text-[11px] px-2 py-0 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/90">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
-								<SelectItem value="xai/grok-4-fast">Grok</SelectItem>
-								<SelectItem value="google/gemini-1.5-flash">Gemini</SelectItem>
-							</SelectContent>
-						</Select>
-
-						<Select
-							disabled={status === "submitted"}
-							onValueChange={(value) =>
-								setMode(value as "simple" | "agentic" | "deep")
-							}
-							value={mode}
-						>
-							<SelectTrigger className="h-7 min-h-0 w-auto text-[11px] px-2 py-0 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-white/90">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
-								<SelectItem value="simple">Simple</SelectItem>
-								<SelectItem value="agentic">Agentic</SelectItem>
-								<SelectItem value="deep">Deep</SelectItem>
-							</SelectContent>
-						</Select>
 						<InputGroupButton
 							className="h-8 w-9 p-0 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-md"
 							disabled={status === "submitted"}

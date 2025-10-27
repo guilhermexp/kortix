@@ -3,7 +3,6 @@ import { GoogleAIFileManager } from "@google/generative-ai/server"
 import { AI_GENERATION_CONFIG, GEMINI_FILE_CONFIG } from "../config/constants"
 import { env } from "../env"
 import { buildFilePrompt } from "../i18n"
-import { aiClient } from "./ai-provider"
 
 // FileManager só funciona com Gemini diretamente
 const googleClient = env.GOOGLE_API_KEY
@@ -85,10 +84,10 @@ export async function summarizeBinaryWithGemini(
 	const modelId = env.CHAT_MODEL ?? "models/gemini-1.5-flash-latest"
 
 	try {
-		// Usar aiClient para ter fallback, mas ainda precisa de fileUri do Gemini
-		const model = aiClient
-			? aiClient.getGenerativeModel({ model: modelId })
-			: client.getGenerativeModel({ model: modelId })
+		const normalizedModelId = modelId.startsWith("models/")
+			? modelId
+			: `models/${modelId}`
+		const model = client.getGenerativeModel({ model: normalizedModelId })
 		const filePart: { fileData: { fileUri: string; mimeType: string } } = {
 			fileData: {
 				fileUri: file.uri,

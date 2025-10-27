@@ -1,6 +1,6 @@
 import { type GenerateContentRequest } from "@google/generative-ai"
 import { env } from "../env"
-import { createAIClient } from "./ai-provider"
+import { getGoogleModel } from "./google-genai"
 import { searchWebWithExa, getContentsWithExa, getCodeContextWithExa } from "./exa-search"
 import { safeFetch } from "../security/url-validator"
 
@@ -107,7 +107,10 @@ export class AnalysisService {
     const videoId = this.getYouTubeId(url)
     const thumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null
 
-    const provider = createAIClient().getGenerativeModel({ model: this.modelId }) as any
+    const provider = getGoogleModel(this.modelId)
+    if (!provider) {
+      throw new Error("GOOGLE_API_KEY not configured for deep analysis")
+    }
 
     const systemInstruction = {
       parts: [
@@ -231,7 +234,10 @@ export class AnalysisService {
       } catch {}
     }
 
-    const provider = createAIClient().getGenerativeModel({ model: this.modelId }) as any
+    const provider = getGoogleModel(this.modelId)
+    if (!provider) {
+      throw new Error("GOOGLE_API_KEY not configured for deep analysis")
+    }
     const systemInstruction = {
       parts: [
         {
@@ -316,7 +322,10 @@ export class AnalysisService {
       } catch {}
     }
 
-    const provider = createAIClient().getGenerativeModel({ model: this.modelId }) as any
+    const provider = getGoogleModel(this.modelId)
+    if (!provider) {
+      throw new Error("GOOGLE_API_KEY not configured for deep analysis")
+    }
     const systemInstruction = {
       parts: [
         {
