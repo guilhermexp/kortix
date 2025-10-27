@@ -129,7 +129,7 @@ export async function handleChat({
 	}
 
 	try {
-		const { events, text } = await executeClaudeAgent({
+		const { events, text, parts } = await executeClaudeAgent({
 			messages: agentMessages,
 			client,
 			orgId,
@@ -138,7 +138,11 @@ export async function handleChat({
 
 		return new Response(
 			JSON.stringify({
-				message: { role: "assistant", content: text },
+				message: {
+					role: "assistant",
+					content: text,
+					parts,
+				},
 				events,
 			}),
 			{

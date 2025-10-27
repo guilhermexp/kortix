@@ -31,14 +31,14 @@ export function createSupermemoryTools(
 			tool(
 				"searchDatabase",
 				"Search documents and memories ingested into Supermemory",
-				z.object({
+				{
 					query: z.string().min(1).describe("Search query text"),
 					limit: z.number().min(1).max(50).default(10),
 					includeSummary: z.boolean().default(true),
 					includeFullDocs: z.boolean().default(false),
 					containerTags: z.array(z.string()).optional(),
 					scopedDocumentIds: z.array(z.string()).optional(),
-				}),
+				},
 				async ({
 					query,
 					limit,
@@ -47,7 +47,14 @@ export function createSupermemoryTools(
 					containerTags,
 					scopedDocumentIds,
 				}) => {
+					console.log("[searchDatabase] Tool called with query:", query)
 					try {
+						console.log("[searchDatabase] Searching with params:", {
+							orgId,
+							query,
+							limit,
+							containerTags: containerTags || baseContainerTags,
+						})
 						const response = await searchDocuments(client, orgId, {
 							q: query,
 							limit,
@@ -65,6 +72,7 @@ export function createSupermemoryTools(
 									? scopedDocumentIds
 									: baseScopedIds,
 						})
+						console.log("[searchDatabase] Found", response.total, "results")
 
 						return {
 							content: [
@@ -94,6 +102,7 @@ export function createSupermemoryTools(
 					} catch (error) {
 						const message =
 							error instanceof Error ? error.message : "Unknown error"
+						console.error("[searchDatabase] Tool error:", error)
 						return {
 							content: [
 								{

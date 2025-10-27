@@ -75,6 +75,14 @@ type SearchMemoriesOutputPart = Extract<
 	{ state: "output-available" }
 >
 
+type GenericToolPart = {
+	type: "tool-generic"
+	toolName: string
+	state: ToolState
+	outputText?: string
+	error?: string
+}
+
 type AddMemoryPart = {
 	type: "tool-addMemory"
 	state: ToolState
@@ -125,6 +133,15 @@ function isAddMemoryPart(part: unknown): part is AddMemoryPart {
 	)
 }
 
+function isGenericToolPart(part: unknown): part is GenericToolPart {
+	return (
+		isObject(part) &&
+		part.type === "tool-generic" &&
+		isToolState((part as GenericToolPart).state) &&
+		typeof (part as GenericToolPart).toolName === "string"
+	)
+}
+
 function toMemoryResult(value: unknown): MemoryResult | null {
 	if (!isObject(value)) return null
 	const { documentId, title, content, url, score } = value
@@ -148,6 +165,14 @@ function toMemoryResults(value: unknown): MemoryResult[] {
 	return value
 		.map((item) => toMemoryResult(item))
 		.filter((item): item is MemoryResult => item !== null)
+}
+
+function formatToolLabel(raw: string): string {
+	if (!raw) return "Ferramenta"
+	return raw
+		.replace(/^mcp__/, "")
+		.replace(/__/g, " • ")
+		.replace(/_/g, " ")
 }
 
 function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
@@ -327,7 +352,9 @@ type ClaudeChatMessage = {
 	id: string
 	role: "user" | "assistant"
 	content: string
-	parts: Array<TextPart | SearchMemoriesPart | AddMemoryPart | unknown>
+	parts: Array<
+		TextPart | SearchMemoriesPart | AddMemoryPart | GenericToolPart | unknown
+	>
 }
 
 type ClaudeChatStatus = "ready" | "submitted" | "streaming"
@@ -512,16 +539,37 @@ function useClaudeChat({
 					throw new Error(`Request failed with status ${response.status}`)
 				}
 				setStatus("streaming")
-				const data = await response.json().catch(() => ({}))
-				const assistantText =
-					typeof data?.message?.content === "string"
-						? (data.message.content as string)
-						: ""
-				const updatedAssistant = {
-					...assistantPlaceholder,
-					content: assistantText,
-					parts: [{ type: "text", text: assistantText }],
-				}
+			const data = await response.json().catch(() => ({}))
+			const rawMessage =
+				data && typeof data === "object" && data !== null
+					? (data as Record<string, unknown>).message
+					: undefined
+			const payload =
+				rawMessage && typeof rawMessage === "object" && rawMessage !== null
+					? (rawMessage as Record<string, unknown>)
+					: {}
+			let assistantText = ""
+			if (typeof payload.content === "string") {
+				assistantText = payload.content
+			} else if (typeof payload.text === "string") {
+				assistantText = payload.text
+			}
+			const payloadParts = Array.isArray(payload.parts)
+				? (payload.parts as ClaudeChatMessage["parts"])
+				: undefined
+			if (!assistantText && payloadParts) {
+				const textPart = payloadParts.find(
+					(part) => isObject(part) && (part as TextPart).type === "text",
+				) as TextPart | undefined
+				if (textPart?.text) assistantText = textPart.text
+			}
+			const normalizedParts: ClaudeChatMessage["parts"] =
+				payloadParts ?? ([{ type: "text", text: assistantText } as TextPart] as ClaudeChatMessage["parts"])
+			const updatedAssistant = {
+				...assistantPlaceholder,
+				content: assistantText,
+				parts: normalizedParts,
+			}
 				const finalMessages = [...history, userMessage, updatedAssistant]
 				setMessages(finalMessages)
 				if (onComplete) {
@@ -569,6 +617,7 @@ function useClaudeChat({
 			}
 			if (userIndex < 0) return
 			const userMessage = current[userIndex]
+			if (!userMessage) return
 			const textPart = Array.isArray(userMessage.parts)
 				? userMessage.parts.find(
 					(part): part is TextPart => Boolean(part && (part as any).type === "text"),
@@ -914,15 +963,36 @@ export function ChatMessages() {
 	// Removed: No longer need to split :: since mode/model were removed
 	// useEffect that was causing infinite loop
 
-	useEffect(() => {
-		const rawActiveId = currentChatId ?? id
-		const msgs = getCurrentConversation()
-		setMessages(msgs ?? [])
-		setInput("")
-		if (!rawActiveId) {
-			shouldGenerateTitleRef.current = false
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
+useEffect(() => {
+	const rawActiveId = currentChatId ?? id
+	const msgs = getCurrentConversation()
+	if (Array.isArray(msgs) && msgs.length > 0) {
+		const normalized = msgs.map((message) => {
+			const record = message as Record<string, unknown>
+			const content =
+				typeof record.content === "string" ? (record.content as string) : ""
+			const parts = Array.isArray(record.parts)
+				? (record.parts as ClaudeChatMessage["parts"])
+				: ([{ type: "text", text: content } as TextPart] as ClaudeChatMessage["parts"])
+			return {
+				id:
+					typeof record.id === "string"
+						? (record.id as string)
+						: generateMessageId(),
+				role: record.role === "assistant" ? "assistant" : "user",
+				content,
+				parts,
+			} satisfies ClaudeChatMessage
+		})
+		setMessages(normalized)
+	} else {
+		setMessages([])
+	}
+	setInput("")
+	if (!rawActiveId) {
+		shouldGenerateTitleRef.current = false
+	}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [currentChatId])
 
 	useEffect(() => {
@@ -1060,18 +1130,18 @@ export function ChatMessages() {
 										}
 									}
 
-									if (isAddMemoryPart(part)) {
-										switch (part.state) {
-											case "input-available":
-											case "input-streaming":
-												return (
-													<div
-														className="text-sm flex items-center gap-2 text-muted-foreground"
-														key={`${message.id}-add-${index}`}
-													>
-														<Spinner className="size-4" /> Adding memory...
-													</div>
-												)
+						if (isAddMemoryPart(part)) {
+							switch (part.state) {
+								case "input-available":
+								case "input-streaming":
+									return (
+										<div
+											className="text-sm flex items-center gap-2 text-muted-foreground"
+											key={`${message.id}-add-${index}`}
+										>
+											<Spinner className="size-4" /> Adding memory...
+										</div>
+									)
 											case "output-error":
 												return (
 													<div
@@ -1090,13 +1160,35 @@ export function ChatMessages() {
 														<Check className="size-4" /> Memory added
 													</div>
 												)
-											default:
-												return null
-										}
-									}
+							default:
+								return null
+						}
+					}
 
-									return null
-								})}
+					if (isGenericToolPart(part)) {
+						return (
+							<div
+								className="p-3 bg-white/5 rounded-md border border-white/10 space-y-1"
+								key={`${message.id}-tool-${index}`}
+							>
+								<div className="text-xs font-semibold text-white/80">
+									{formatToolLabel(part.toolName)}
+								</div>
+								{part.state === "output-error" ? (
+									<div className="text-xs text-red-400">
+										{part.error ?? "Tool execution failed"}
+									</div>
+								) : (
+									<div className="text-xs text-muted-foreground/90 whitespace-pre-wrap">
+										{part.outputText ?? "Tool executed successfully."}
+									</div>
+								)}
+							</div>
+						)
+					}
+
+					return null
+					})}
 							</div>
 							{message.role === "assistant" && (
 								<div className="flex items-center gap-1 mt-1">
