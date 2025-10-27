@@ -10,7 +10,6 @@ import { registerMcpRoutes } from "./mcp"
  */
 
 describe("MCP Routes", () => {
-
 	describe("GET /mcp", () => {
 		it("should return status ok", async () => {
 			const app = new Hono()

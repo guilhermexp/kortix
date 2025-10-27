@@ -1,6 +1,7 @@
 // Removed Readability/JSDOM HTML extraction to simplify pipeline
 import pdfParse from "pdf-parse/lib/pdf-parse.js"
 import { env } from "../env"
+import { safeFetch, URLValidationError } from "../security/url-validator"
 import { aiClient } from "./ai-provider"
 import { summarizeBinaryWithGemini } from "./gemini-files"
 import {
@@ -10,7 +11,6 @@ import {
 } from "./markitdown"
 import { ingestRepository } from "./repository-ingest"
 import { summarizeYoutubeVideo } from "./summarizer"
-import { safeFetch, URLValidationError } from "../security/url-validator"
 
 const DEFAULT_USER_AGENT = "SupermemorySelfHosted/1.0 (+self-hosted extractor)"
 
@@ -161,7 +161,7 @@ function cleanExtractedContent(text: string, url?: string): string {
 		/\d+\.\d+\s*MB\s*Download raw file/gi,
 		/More edit options/gi,
 		/Edit and raw actions/gi,
-		/\[\!?\[.*?\]\([^)]*\)\]\([^)]*\)/g, // Nested markdown links
+		/\[!?\[.*?\]\([^)]*\)\]\([^)]*\)/g, // Nested markdown links
 	]
 
 	for (const pattern of uiNoisePatterns) {
@@ -202,17 +202,17 @@ function cleanExtractedContent(text: string, url?: string): string {
 		cleaned = cleaned.replace(/Download raw file\s*/gi, "")
 
 		// Remove "You can't perform that action at this time"
-		cleaned = cleaned.replace(/You can't perform that action at this time\.?/gi, "")
+		cleaned = cleaned.replace(
+			/You can't perform that action at this time\.?/gi,
+			"",
+		)
 
 		// Remove URL-encoded navigation links
 		cleaned = cleaned.replace(/return_to=https?%3A%2F%2F[^\s)]+/gi, "")
 		cleaned = cleaned.replace(/\(https?:\/\/github\.com\/[^)]*%2F[^)]*\)/g, "")
 
 		// Remove URL patterns in parentheses that are GitHub links
-		cleaned = cleaned.replace(
-			/\(https?:\/\/github\.com\/[^)]+\?[^)]*\)/g,
-			"",
-		)
+		cleaned = cleaned.replace(/\(https?:\/\/github\.com\/[^)]+\?[^)]*\)/g, "")
 
 		// Remove repository owner/name patterns like "com%2Ftt-rss%2Ftt-rss"
 		cleaned = cleaned.replace(/com%2F[\w-]+%2F[\w-]+/gi, "")
@@ -315,14 +315,20 @@ function extractMetaTags(html: string): {
 	return result
 }
 
-async function extractPreviewImageWithGemini(html: string, url: string): Promise<string | null> {
+async function extractPreviewImageWithGemini(
+	html: string,
+	url: string,
+): Promise<string | null> {
 	if (!aiClient) {
 		console.warn("extractPreviewImageWithGemini: aiClient not configured")
 		return null
 	}
 
 	try {
-		console.info("extractPreviewImageWithGemini: starting", { url, htmlLength: html.length })
+		console.info("extractPreviewImageWithGemini: starting", {
+			url,
+			htmlLength: html.length,
+		})
 		const model = aiClient.getGenerativeModel({ model: env.CHAT_MODEL })
 
 		const prompt = `Analyze this HTML and extract the best preview image URL.
@@ -338,7 +344,10 @@ Base URL: ${url}`
 			contents: [{ role: "user", parts: [{ text: prompt }] }],
 		})
 		const response = result.response.text().trim()
-		console.info("extractPreviewImageWithGemini: response", { url, response: response.slice(0, 200) })
+		console.info("extractPreviewImageWithGemini: response", {
+			url,
+			response: response.slice(0, 200),
+		})
 
 		if (response === "NONE" || !response.startsWith("http")) {
 			return null
@@ -346,7 +355,10 @@ Base URL: ${url}`
 
 		return response
 	} catch (error) {
-		console.error("extractPreviewImageWithGemini: failed", { url, error: String(error) })
+		console.error("extractPreviewImageWithGemini: failed", {
+			url,
+			error: String(error),
+		})
 		return null
 	}
 }
@@ -474,23 +486,23 @@ function shouldTryMarkItDownFirst(
 }
 
 async function tryMarkItDownOnBuffer(buffer: Buffer, filename: string) {
-  const healthy = await checkMarkItDownHealth()
-  if (!healthy) return null
+	const healthy = await checkMarkItDownHealth()
+	if (!healthy) return null
 
-  try {
-    const result = await convertWithMarkItDown(buffer, filename)
-    if (!result?.markdown) return null
-    try {
-      console.info("extractor: markitdown-buffer", {
-        filename,
-        chars: result.markdown.length,
-      })
-    } catch {}
-    return result
-  } catch (error) {
-    console.warn("MarkItDown failed for uploaded buffer", error)
-    return null
-  }
+	try {
+		const result = await convertWithMarkItDown(buffer, filename)
+		if (!result?.markdown) return null
+		try {
+			console.info("extractor: markitdown-buffer", {
+				filename,
+				chars: result.markdown.length,
+			})
+		} catch {}
+		return result
+	} catch (error) {
+		console.warn("MarkItDown failed for uploaded buffer", error)
+		return null
+	}
 }
 
 async function tryMarkItDownOnUrl(url: string) {
@@ -670,11 +682,11 @@ export async function extractDocumentContent(
 		}
 	}
 
-  if (probableUrl && isYouTubeUrl(probableUrl)) {
-    const videoId = extractYouTubeVideoId(probableUrl)
-    const markitdownResult = await tryMarkItDownOnUrl(probableUrl)
+	if (probableUrl && isYouTubeUrl(probableUrl)) {
+		const videoId = extractYouTubeVideoId(probableUrl)
+		const markitdownResult = await tryMarkItDownOnUrl(probableUrl)
 
-    if (markitdownResult) {
+		if (markitdownResult) {
 			const markdown = cleanExtractedContent(
 				markitdownResult.markdown,
 				probableUrl,
@@ -686,20 +698,20 @@ export async function extractDocumentContent(
 			)
 
 			if (text) {
-        try {
-          console.info("extractor: markitdown-youtube", {
-            url: probableUrl,
-            videoId,
-            chars: text.length,
-            words: countWords(text),
-          })
-        } catch {}
-        return {
-          text,
-          title:
-            markitdownTitle ?? metadataTitle ?? `Vídeo do YouTube: ${videoId}`,
-          source: "youtube",
-          url: probableUrl,
+				try {
+					console.info("extractor: markitdown-youtube", {
+						url: probableUrl,
+						videoId,
+						chars: text.length,
+						words: countWords(text),
+					})
+				} catch {}
+				return {
+					text,
+					title:
+						markitdownTitle ?? metadataTitle ?? `Vídeo do YouTube: ${videoId}`,
+					source: "youtube",
+					url: probableUrl,
 					contentType: "video/youtube",
 					raw: {
 						markitdown: markitdownResult.metadata,
@@ -715,22 +727,22 @@ export async function extractDocumentContent(
 			}
 		}
 
-    const summary = await summarizeYoutubeVideo(probableUrl)
-    if (summary) {
-      try {
-        console.info("extractor: youtube-summary", {
-          url: probableUrl,
-          videoId,
-          chars: summary.length,
-          words: countWords(summary),
-        })
-      } catch {}
-      return {
-        text: summary,
-        title: metadataTitle ?? `Vídeo do YouTube: ${videoId}`,
-        source: "youtube",
-        url: probableUrl,
-        contentType: "video/youtube",
+		const summary = await summarizeYoutubeVideo(probableUrl)
+		if (summary) {
+			try {
+				console.info("extractor: youtube-summary", {
+					url: probableUrl,
+					videoId,
+					chars: summary.length,
+					words: countWords(summary),
+				})
+			} catch {}
+			return {
+				text: summary,
+				title: metadataTitle ?? `Vídeo do YouTube: ${videoId}`,
+				source: "youtube",
+				url: probableUrl,
+				contentType: "video/youtube",
 				raw: {
 					youtube: {
 						url: probableUrl,
@@ -777,12 +789,19 @@ export async function extractDocumentContent(
 							ogImage = metaTags.ogImage || metaTags.twitterImage || null
 
 							if (!ogImage) {
-								console.info("extractor: no-og-image, trying Gemini fallback", { url: probableUrl })
+								console.info("extractor: no-og-image, trying Gemini fallback", {
+									url: probableUrl,
+								})
 								ogImage = await extractPreviewImageWithGemini(html, probableUrl)
 								if (ogImage) {
-									console.info("extractor: gemini-extracted-image", { url: probableUrl, image: ogImage })
+									console.info("extractor: gemini-extracted-image", {
+										url: probableUrl,
+										image: ogImage,
+									})
 								} else {
-									console.warn("extractor: gemini-no-image-found", { url: probableUrl })
+									console.warn("extractor: gemini-no-image-found", {
+										url: probableUrl,
+									})
 								}
 							}
 						}
@@ -790,7 +809,8 @@ export async function extractDocumentContent(
 						// Ignore meta tag extraction errors
 					}
 
-					const finalTitle = markitdownTitle ?? metaTags.ogTitle ?? metadataTitle ?? null
+					const finalTitle =
+						markitdownTitle ?? metaTags.ogTitle ?? metadataTitle ?? null
 					try {
 						console.info("extractor: markitdown-url", {
 							url: probableUrl,
@@ -834,7 +854,7 @@ export async function extractDocumentContent(
 
 		// Handle manual redirects (safeFetch uses redirect: 'manual')
 		if (response.status >= 300 && response.status < 400) {
-			const location = response.headers.get('location')
+			const location = response.headers.get("location")
 			if (location) {
 				// Recursively validate and fetch redirect target
 				return extractDocumentContent({
@@ -844,191 +864,199 @@ export async function extractDocumentContent(
 			}
 		}
 
-  if (!response.ok) {
-    // Do not crash the ingestion pipeline; fall back gracefully
-    try {
-      console.warn("extractor: fetch-not-ok", {
-        url: probableUrl,
-        status: response.status,
-      })
-    } catch {}
-    const ensuredText = originalFallback || ""
-    return {
-      text: ensuredText,
-      title: metadataTitle ?? null,
-      source: `http-${response.status}`,
-      url: probableUrl,
-      contentType: contentType || "text/plain",
-      raw: { fetchError: response.status },
-      wordCount: countWords(ensuredText),
-    }
-  }
-
-	const contentType = response.headers.get("content-type")?.toLowerCase() ?? ""
-	const contentLength = Number.parseInt(
-		response.headers.get("content-length") ?? "0",
-		10,
-	)
-	const inferredFilename = inferFilenameFromUrl(probableUrl)
-	const binaryResponse = response.clone()
-	let binaryBufferPromise: Promise<Buffer> | null = null
-
-	const getBinaryBuffer = async () => {
-		if (!binaryBufferPromise) {
-			binaryBufferPromise = binaryResponse
-				.arrayBuffer()
-				.then((data) => Buffer.from(data))
-		}
-		return binaryBufferPromise
-	}
-
-	// INTELLIGENT ROUTING: Try MarkItDown first for Office docs and PDFs
-	// Falls back to Gemini if MarkItDown fails or is unavailable
-	if (shouldTryMarkItDownFirst(contentType, inferredFilename)) {
-		const buffer = await getBinaryBuffer()
-		const markitdownResult = await tryMarkItDownOnBuffer(
-			buffer,
-			inferredFilename,
-		)
-
-		if (markitdownResult) {
-			const cleanedMarkdown = cleanExtractedContent(
-				markitdownResult.markdown,
-				probableUrl,
-			)
-			const text = sanitiseText(cleanedMarkdown) || originalFallback
-			const markitdownTitle = readRecordString(
-				markitdownResult.metadata,
-				"title",
-			)
-
-			if (text && text.length > 0) {
-				return {
-					text,
-					title: markitdownTitle ?? metadataTitle ?? null,
-					source: "markitdown",
+		if (!response.ok) {
+			// Do not crash the ingestion pipeline; fall back gracefully
+			try {
+				console.warn("extractor: fetch-not-ok", {
 					url: probableUrl,
-					contentType: "text/markdown",
-					raw: { markitdown: markitdownResult.metadata },
-					wordCount: countWords(text),
+					status: response.status,
+				})
+			} catch {}
+			const ensuredText = originalFallback || ""
+			return {
+				text: ensuredText,
+				title: metadataTitle ?? null,
+				source: `http-${response.status}`,
+				url: probableUrl,
+				contentType: contentType || "text/plain",
+				raw: { fetchError: response.status },
+				wordCount: countWords(ensuredText),
+			}
+		}
+
+		const contentType =
+			response.headers.get("content-type")?.toLowerCase() ?? ""
+		const contentLength = Number.parseInt(
+			response.headers.get("content-length") ?? "0",
+			10,
+		)
+		const inferredFilename = inferFilenameFromUrl(probableUrl)
+		const binaryResponse = response.clone()
+		let binaryBufferPromise: Promise<Buffer> | null = null
+
+		const getBinaryBuffer = async () => {
+			if (!binaryBufferPromise) {
+				binaryBufferPromise = binaryResponse
+					.arrayBuffer()
+					.then((data) => Buffer.from(data))
+			}
+			return binaryBufferPromise
+		}
+
+		// INTELLIGENT ROUTING: Try MarkItDown first for Office docs and PDFs
+		// Falls back to Gemini if MarkItDown fails or is unavailable
+		if (shouldTryMarkItDownFirst(contentType, inferredFilename)) {
+			const buffer = await getBinaryBuffer()
+			const markitdownResult = await tryMarkItDownOnBuffer(
+				buffer,
+				inferredFilename,
+			)
+
+			if (markitdownResult) {
+				const cleanedMarkdown = cleanExtractedContent(
+					markitdownResult.markdown,
+					probableUrl,
+				)
+				const text = sanitiseText(cleanedMarkdown) || originalFallback
+				const markitdownTitle = readRecordString(
+					markitdownResult.metadata,
+					"title",
+				)
+
+				if (text && text.length > 0) {
+					return {
+						text,
+						title: markitdownTitle ?? metadataTitle ?? null,
+						source: "markitdown",
+						url: probableUrl,
+						contentType: "text/markdown",
+						raw: { markitdown: markitdownResult.metadata },
+						wordCount: countWords(text),
+					}
 				}
 			}
 		}
-	}
 
-	if (shouldUseGemini(contentType)) {
-		if (contentLength > 50 * 1024 * 1024) {
-			throw new Error(
-				"Arquivo muito grande para processamento automático (limite ~50MB)",
+		if (shouldUseGemini(contentType)) {
+			if (contentLength > 50 * 1024 * 1024) {
+				throw new Error(
+					"Arquivo muito grande para processamento automático (limite ~50MB)",
+				)
+			}
+
+			const buffer = await getBinaryBuffer()
+			const filename = inferredFilename || "arquivo"
+
+			const geminiResult = await summarizeBinaryWithGemini(
+				buffer,
+				contentType,
+				filename,
 			)
-		}
+			const text = sanitiseText(geminiResult.text || "") || originalFallback
 
-		const buffer = await getBinaryBuffer()
-		const filename = inferredFilename || "arquivo"
-
-		const geminiResult = await summarizeBinaryWithGemini(
-			buffer,
-			contentType,
-			filename,
-		)
-		const text = sanitiseText(geminiResult.text || "") || originalFallback
-
-		return {
-			text,
-			title: metadataTitle ?? null,
-			source: contentType,
-			url: probableUrl,
-			contentType,
-			raw: geminiResult.metadata,
-			wordCount: countWords(text),
-		}
-	}
-
-	if (
-		contentType.includes("text/html") ||
-		contentType.includes("application/xhtml")
-	) {
-		const html = await response.text()
-
-		const metaTags = extractMetaTags(html)
-
-		let pageTitle = metaTags.ogTitle || metadataTitle
-		if (!pageTitle) {
-			const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
-			if (titleMatch?.[1]) {
-				pageTitle = titleMatch[1].trim()
-			}
-		}
-
-		let ogImage = metaTags.ogImage || metaTags.twitterImage || null
-		if (!ogImage) {
-			console.info("extractor: html-fallback-no-og-image, trying Gemini", { url: probableUrl })
-			ogImage = await extractPreviewImageWithGemini(html, probableUrl)
-			if (ogImage) {
-				console.info("extractor: html-fallback-gemini-extracted", { url: probableUrl, image: ogImage })
-			} else {
-				console.warn("extractor: html-fallback-gemini-no-image", { url: probableUrl })
-			}
-		}
-
-		let plain = html
-			.replace(/<script[\s\S]*?<\/script>/gi, " ")
-			.replace(/<style[\s\S]*?<\/style>/gi, " ")
-			.replace(/<[^>]+>/g, " ")
-		plain = cleanExtractedContent(plain, probableUrl)
-		const ensuredText = sanitiseText(plain) || originalFallback
-
-		try {
-			console.info("extractor: html-strip-fallback", {
+			return {
+				text,
+				title: metadataTitle ?? null,
+				source: contentType,
 				url: probableUrl,
-				chars: ensuredText.length,
-				words: countWords(ensuredText),
-				hasOgImage: !!ogImage,
-			})
-		} catch {}
-
-		return {
-			text: ensuredText,
-			title: pageTitle ?? null,
-			source: "web",
-			url: probableUrl,
-			contentType,
-			raw: {
-				metaTags,
-				ogImage,
-			},
-			wordCount: countWords(ensuredText),
+				contentType,
+				raw: geminiResult.metadata,
+				wordCount: countWords(text),
+			}
 		}
-	}
 
-	if (contentType.includes("pdf")) {
-		const buffer = await getBinaryBuffer()
-		const { text, title, raw } = await extractFromPdf(buffer)
-		const ensuredText = text || originalFallback
-		return {
-			text: ensuredText,
-			title: title ?? metadataTitle ?? null,
-			source: "pdf",
-			url: probableUrl,
-			contentType,
-			raw,
-			wordCount: countWords(ensuredText),
-		}
-	}
+		if (
+			contentType.includes("text/html") ||
+			contentType.includes("application/xhtml")
+		) {
+			const html = await response.text()
 
-	if (contentType.startsWith("text/")) {
-		const text = sanitiseText(await response.text())
-		const ensuredText = text || originalFallback
-		return {
-			text: ensuredText,
-			title: metadataTitle ?? null,
-			source: contentType,
-			url: probableUrl,
-			contentType,
-			raw: null,
-			wordCount: countWords(ensuredText),
+			const metaTags = extractMetaTags(html)
+
+			let pageTitle = metaTags.ogTitle || metadataTitle
+			if (!pageTitle) {
+				const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
+				if (titleMatch?.[1]) {
+					pageTitle = titleMatch[1].trim()
+				}
+			}
+
+			let ogImage = metaTags.ogImage || metaTags.twitterImage || null
+			if (!ogImage) {
+				console.info("extractor: html-fallback-no-og-image, trying Gemini", {
+					url: probableUrl,
+				})
+				ogImage = await extractPreviewImageWithGemini(html, probableUrl)
+				if (ogImage) {
+					console.info("extractor: html-fallback-gemini-extracted", {
+						url: probableUrl,
+						image: ogImage,
+					})
+				} else {
+					console.warn("extractor: html-fallback-gemini-no-image", {
+						url: probableUrl,
+					})
+				}
+			}
+
+			let plain = html
+				.replace(/<script[\s\S]*?<\/script>/gi, " ")
+				.replace(/<style[\s\S]*?<\/style>/gi, " ")
+				.replace(/<[^>]+>/g, " ")
+			plain = cleanExtractedContent(plain, probableUrl)
+			const ensuredText = sanitiseText(plain) || originalFallback
+
+			try {
+				console.info("extractor: html-strip-fallback", {
+					url: probableUrl,
+					chars: ensuredText.length,
+					words: countWords(ensuredText),
+					hasOgImage: !!ogImage,
+				})
+			} catch {}
+
+			return {
+				text: ensuredText,
+				title: pageTitle ?? null,
+				source: "web",
+				url: probableUrl,
+				contentType,
+				raw: {
+					metaTags,
+					ogImage,
+				},
+				wordCount: countWords(ensuredText),
+			}
 		}
-	}
+
+		if (contentType.includes("pdf")) {
+			const buffer = await getBinaryBuffer()
+			const { text, title, raw } = await extractFromPdf(buffer)
+			const ensuredText = text || originalFallback
+			return {
+				text: ensuredText,
+				title: title ?? metadataTitle ?? null,
+				source: "pdf",
+				url: probableUrl,
+				contentType,
+				raw,
+				wordCount: countWords(ensuredText),
+			}
+		}
+
+		if (contentType.startsWith("text/")) {
+			const text = sanitiseText(await response.text())
+			const ensuredText = text || originalFallback
+			return {
+				text: ensuredText,
+				title: metadataTitle ?? null,
+				source: contentType,
+				url: probableUrl,
+				contentType,
+				raw: null,
+				wordCount: countWords(ensuredText),
+			}
+		}
 
 		// Unsupported rich media types for now
 		throw new Error(
@@ -1037,7 +1065,10 @@ export async function extractDocumentContent(
 	} catch (error) {
 		// Handle URL validation errors gracefully
 		if (error instanceof URLValidationError) {
-			console.warn('URL validation failed:', { url: probableUrl, reason: error.reason })
+			console.warn("URL validation failed:", {
+				url: probableUrl,
+				reason: error.reason,
+			})
 			throw new Error(`URL blocked for security reasons: ${error.reason}`)
 		}
 		// Re-throw other errors

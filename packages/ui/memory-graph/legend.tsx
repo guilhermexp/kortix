@@ -7,7 +7,6 @@ import {
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@repo/ui/components/collapsible";
-import { GlassMenuEffect } from "@repo/ui/other/glass-effect";
 import { Brain, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { memo, useEffect, useState } from "react";
 import { colors } from "./constants";
@@ -82,7 +81,7 @@ export const Legend = memo(function Legend({
 			return "bottom-4 right-4";
 		}
 		if (variant === "consumer") {
-			return isMobile ? "bottom-48 left-4" : "top-18 right-4";
+			return isMobile ? "bottom-48 left-4" : "top-32 right-4";
 		}
 		return "";
 	};
@@ -110,8 +109,11 @@ export const Legend = memo(function Legend({
 			id={id}
 		>
 			<Collapsible onOpenChange={handleToggleExpanded} open={isExpanded}>
-				{/* Glass effect background */}
-				<GlassMenuEffect rounded="rounded-xl" />
+				{/* Unified glass background to match other overlays */}
+				<div
+					className="absolute inset-0 rounded-xl border border-white/10 backdrop-blur-sm"
+					style={{ backgroundColor: "rgba(0,0,0,0.2)" }}
+				/>
 
 				<div className="relative z-10">
 					{/* Mobile and Desktop collapsed state */}
@@ -262,11 +264,11 @@ export const Legend = memo(function Legend({
 											Relations
 										</div>
 										<div className="space-y-1.5">
-												{[
-													["updates", colors.relations.updates],
-													["extends", colors.relations.extends],
-													["derives", colors.relations.derives],
-												].map(([label, color]) => (
+											{[
+												["updates", colors.relations.updates],
+												["extends", colors.relations.extends],
+												["derives", colors.relations.derives],
+											].map(([label, color]) => (
 												<div className="flex items-center gap-2" key={label}>
 													<div
 														className="w-4 h-0 border-t-2 flex-shrink-0"

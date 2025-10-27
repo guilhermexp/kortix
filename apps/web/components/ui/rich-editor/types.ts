@@ -1,33 +1,33 @@
 export type NodeType =
-  | "h1"
-  | "h2"
-  | "h3"
-  | "h4"
-  | "h5"
-  | "h6"
-  | "p"
-  | "blockquote"
-  | "ul"
-  | "ol"
-  | "li"
-  | "code"
-  | "pre"
-  | "img"
-  | "video"
-  | "audio"
-  | "a"
-  | "span"
-  | "div"
-  | "hr"
-  | "br"
-  | "table"
-  | "thead"
-  | "tbody"
-  | "tr"
-  | "th"
-  | "td"
-  | "container"
-  | "text"
+	| "h1"
+	| "h2"
+	| "h3"
+	| "h4"
+	| "h5"
+	| "h6"
+	| "p"
+	| "blockquote"
+	| "ul"
+	| "ol"
+	| "li"
+	| "code"
+	| "pre"
+	| "img"
+	| "video"
+	| "audio"
+	| "a"
+	| "span"
+	| "div"
+	| "hr"
+	| "br"
+	| "table"
+	| "thead"
+	| "tbody"
+	| "tr"
+	| "th"
+	| "td"
+	| "container"
+	| "text"
 
 /**
  * Dynamic attributes that can be attached to any node.
@@ -49,10 +49,10 @@ export type NodeType =
  * ```
  */
 export interface NodeAttributes {
-  bold?: boolean
-  italic?: boolean
-  underline?: boolean
-  [key: string]: string | number | boolean | undefined
+	bold?: boolean
+	italic?: boolean
+	underline?: boolean
+	[key: string]: string | number | boolean | undefined
 }
 
 /**
@@ -60,41 +60,41 @@ export interface NodeAttributes {
  * Every node must have an id, type, and attributes.
  */
 export interface BaseNode {
-  /** Unique identifier for the node (used for updates, deletion, etc.) */
-  id: string
+	/** Unique identifier for the node (used for updates, deletion, etc.) */
+	id: string
 
-  /** The type of node (h1, p, img, container, etc.) */
-  type: NodeType
+	/** The type of node (h1, p, img, container, etc.) */
+	type: NodeType
 
-  /** Dynamic attributes (className, style, href, src, etc.) */
-  attributes?: NodeAttributes
+	/** Dynamic attributes (className, style, href, src, etc.) */
+	attributes?: NodeAttributes
 }
 
 /**
  * Inline text segment with its own formatting
  */
 export interface InlineText {
-  content: string
-  bold?: boolean
-  italic?: boolean
-  underline?: boolean
-  // Inline element type (for text that should render as p, h1, h2, etc. within a paragraph)
-  elementType?:
-    | "p"
-    | "h1"
-    | "h2"
-    | "h3"
-    | "h4"
-    | "h5"
-    | "h6"
-    | "code"
-    | "blockquote"
-  // Link URL (makes the text a clickable link)
-  href?: string
-  // Custom Tailwind CSS classes
-  className?: string
-  // Inline CSS styles (e.g., { fontSize: '24px', color: '#ff0000' })
-  styles?: Record<string, string>
+	content: string
+	bold?: boolean
+	italic?: boolean
+	underline?: boolean
+	// Inline element type (for text that should render as p, h1, h2, etc. within a paragraph)
+	elementType?:
+		| "p"
+		| "h1"
+		| "h2"
+		| "h3"
+		| "h4"
+		| "h5"
+		| "h6"
+		| "code"
+		| "blockquote"
+	// Link URL (makes the text a clickable link)
+	href?: string
+	// Custom Tailwind CSS classes
+	className?: string
+	// Inline CSS styles (e.g., { fontSize: '24px', color: '#ff0000' })
+	styles?: Record<string, string>
 }
 
 /**
@@ -102,10 +102,10 @@ export interface InlineText {
  * Can contain either plain text or inline formatted children.
  */
 export interface BlockLine {
-  /** Plain text content (if no formatting) */
-  content?: string
-  /** Inline children with formatting */
-  children?: InlineText[]
+	/** Plain text content (if no formatting) */
+	content?: string
+	/** Inline children with formatting */
+	children?: InlineText[]
 }
 
 /**
@@ -148,16 +148,16 @@ export interface BlockLine {
  * ```
  */
 export interface TextNode extends BaseNode {
-  type: Exclude<NodeType, "container">
+	type: Exclude<NodeType, "container">
 
-  /** The actual text content (used when no inline formatting and single line) */
-  content?: string
+	/** The actual text content (used when no inline formatting and single line) */
+	content?: string
 
-  /** Inline children with individual formatting (used for rich text, single line) */
-  children?: InlineText[]
+	/** Inline children with individual formatting (used for rich text, single line) */
+	children?: InlineText[]
 
-  /** Multiple lines of content (used for multi-line blocks like ordered lists) */
-  lines?: BlockLine[]
+	/** Multiple lines of content (used for multi-line blocks like ordered lists) */
+	lines?: BlockLine[]
 }
 
 /**
@@ -182,10 +182,10 @@ export interface TextNode extends BaseNode {
  * ```
  */
 export interface ContainerNode extends BaseNode {
-  type: "container"
+	type: "container"
 
-  /** Child nodes (can be TextNode or ContainerNode) */
-  children: EditorNode[]
+	/** Child nodes (can be TextNode or ContainerNode) */
+	children: EditorNode[]
 }
 
 /**
@@ -193,10 +193,10 @@ export interface ContainerNode extends BaseNode {
  * Can have children nodes for table elements (thead, tbody, tr)
  */
 export interface StructuralNode extends BaseNode {
-  type: "table" | "thead" | "tbody" | "tr"
+	type: "table" | "thead" | "tbody" | "tr"
 
-  /** Child nodes */
-  children: EditorNode[]
+	/** Child nodes */
+	children: EditorNode[]
 }
 
 /**
@@ -208,46 +208,46 @@ export type EditorNode = TextNode | ContainerNode | StructuralNode
  * Information about the current text selection
  */
 export interface SelectionInfo {
-  /** The selected text */
-  text: string
+	/** The selected text */
+	text: string
 
-  /** Start position in the text content */
-  start: number
+	/** Start position in the text content */
+	start: number
 
-  /** End position in the text content */
-  end: number
+	/** End position in the text content */
+	end: number
 
-  /** ID of the node containing the selection */
-  nodeId: string
+	/** ID of the node containing the selection */
+	nodeId: string
 
-  /** Active formatting styles on the selection */
-  formats: {
-    bold: boolean
-    italic: boolean
-    underline: boolean
-  }
+	/** Active formatting styles on the selection */
+	formats: {
+		bold: boolean
+		italic: boolean
+		underline: boolean
+	}
 
-  /** Active element type on the selection (if all selected text has the same type) */
-  elementType?:
-    | "p"
-    | "h1"
-    | "h2"
-    | "h3"
-    | "h4"
-    | "h5"
-    | "h6"
-    | "code"
-    | "blockquote"
-    | null
+	/** Active element type on the selection (if all selected text has the same type) */
+	elementType?:
+		| "p"
+		| "h1"
+		| "h2"
+		| "h3"
+		| "h4"
+		| "h5"
+		| "h6"
+		| "code"
+		| "blockquote"
+		| null
 
-  /** Active link href on the selection (if all selected text has the same href) */
-  href?: string | null
+	/** Active link href on the selection (if all selected text has the same href) */
+	href?: string | null
 
-  /** Active custom class on the selection (if all selected text has the same class) */
-  className?: string | null
+	/** Active custom class on the selection (if all selected text has the same class) */
+	className?: string | null
 
-  /** Active inline styles on the selection (if all selected text has the same styles) */
-  styles?: Record<string, string> | null
+	/** Active inline styles on the selection (if all selected text has the same styles) */
+	styles?: Record<string, string> | null
 }
 
 /**
@@ -255,36 +255,36 @@ export interface SelectionInfo {
  * Contains metadata, the root container, UI state, and history for undo/redo.
  */
 export interface EditorState {
-  /** Schema version for future migrations */
-  version: string
+	/** Schema version for future migrations */
+	version: string
 
-  /** History stack of container states for undo/redo */
-  history: ContainerNode[]
+	/** History stack of container states for undo/redo */
+	history: ContainerNode[]
 
-  /** Current position in the history stack */
-  historyIndex: number
+	/** Current position in the history stack */
+	historyIndex: number
 
-  /** Currently active/focused node ID */
-  activeNodeId: string | null
+	/** Currently active/focused node ID */
+	activeNodeId: string | null
 
-  /** Whether there is an active text selection */
-  hasSelection: boolean
+	/** Whether there is an active text selection */
+	hasSelection: boolean
 
-  /** Selection key to trigger re-renders when selection changes */
-  selectionKey: number
+	/** Selection key to trigger re-renders when selection changes */
+	selectionKey: number
 
-  /** Current selection information (null if no selection) */
-  currentSelection: SelectionInfo | null
+	/** Current selection information (null if no selection) */
+	currentSelection: SelectionInfo | null
 
-  /** Set of block IDs that are currently selected (for multi-block operations like Ctrl+A) */
-  selectedBlocks: Set<string>
+	/** Set of block IDs that are currently selected (for multi-block operations like Ctrl+A) */
+	selectedBlocks: Set<string>
 
-  /** Optional metadata (created date, last modified, author, etc.) */
-  metadata?: {
-    createdAt?: string
-    updatedAt?: string
-    [key: string]: any
-  }
+	/** Optional metadata (created date, last modified, author, etc.) */
+	metadata?: {
+		createdAt?: string
+		updatedAt?: string
+		[key: string]: any
+	}
 }
 
 /**
@@ -301,7 +301,7 @@ export interface EditorState {
  * ```
  */
 export function isContainerNode(node: EditorNode): node is ContainerNode {
-  return node.type === "container"
+	return node.type === "container"
 }
 
 /**
@@ -311,12 +311,12 @@ export function isContainerNode(node: EditorNode): node is ContainerNode {
  * @returns True if node is a StructuralNode
  */
 export function isStructuralNode(node: EditorNode): node is StructuralNode {
-  return (
-    node.type === "table" ||
-    node.type === "thead" ||
-    node.type === "tbody" ||
-    node.type === "tr"
-  )
+	return (
+		node.type === "table" ||
+		node.type === "thead" ||
+		node.type === "tbody" ||
+		node.type === "tr"
+	)
 }
 
 /**
@@ -333,7 +333,7 @@ export function isStructuralNode(node: EditorNode): node is StructuralNode {
  * ```
  */
 export function isTextNode(node: EditorNode): node is TextNode {
-  return node.type !== "container" && !isStructuralNode(node)
+	return node.type !== "container" && !isStructuralNode(node)
 }
 
 /**
@@ -350,13 +350,13 @@ export function isTextNode(node: EditorNode): node is TextNode {
  * ```
  */
 export function hasInlineChildren(
-  node: EditorNode
+	node: EditorNode,
 ): node is TextNode & { children: InlineText[] } {
-  return (
-    isTextNode(node) &&
-    Array.isArray((node as TextNode).children) &&
-    (node as TextNode).children!.length > 0
-  )
+	return (
+		isTextNode(node) &&
+		Array.isArray((node as TextNode).children) &&
+		(node as TextNode).children!.length > 0
+	)
 }
 
 /**
@@ -371,23 +371,23 @@ export function hasInlineChildren(
  * ```
  */
 export function getNodeTextContent(node: TextNode): string {
-  // If node has multiple lines, join them with newlines
-  if (node.lines && node.lines.length > 0) {
-    return node.lines
-      .map((line) => {
-        if (line.children && line.children.length > 0) {
-          return line.children.map((child) => child.content).join("")
-        }
-        return line.content || ""
-      })
-      .join("\n")
-  }
+	// If node has multiple lines, join them with newlines
+	if (node.lines && node.lines.length > 0) {
+		return node.lines
+			.map((line) => {
+				if (line.children && line.children.length > 0) {
+					return line.children.map((child) => child.content).join("")
+				}
+				return line.content || ""
+			})
+			.join("\n")
+	}
 
-  // If node has inline children (single line with formatting)
-  if (hasInlineChildren(node)) {
-    return node.children!.map((child) => child.content).join("")
-  }
+	// If node has inline children (single line with formatting)
+	if (hasInlineChildren(node)) {
+		return node.children!.map((child) => child.content).join("")
+	}
 
-  // Simple content (single line, no formatting)
-  return node.content || ""
+	// Simple content (single line, no formatting)
+	return node.content || ""
 }

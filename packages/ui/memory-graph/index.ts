@@ -8,6 +8,7 @@ export {
 	POSITIONING,
 } from "./constants";
 export { GraphWebGLCanvas as GraphCanvas } from "./graph-webgl-canvas";
+export { NavigationControls } from "./navigation-controls";
 // Hooks
 export { useGraphData } from "./hooks/use-graph-data";
 export { useGraphInteractions } from "./hooks/use-graph-interactions";

@@ -17,12 +17,13 @@ export function createScopedSupabase(
 ): SupabaseClient {
 	// Always use ANON_KEY to ensure RLS policies are enforced
 	// SUPABASE_ANON_KEY is required (not optional) to prevent RLS bypass
+	// NOTE: Headers must be lowercase as Supabase converts them
 	return createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
 		auth: { persistSession: false },
 		global: {
 			headers: {
-				"X-Supermemory-Organization": organizationId,
-				...(userId ? { "X-Supermemory-User": userId } : {}),
+				"x-supermemory-organization": organizationId,
+				...(userId ? { "x-supermemory-user": userId } : {}),
 			},
 		},
 	})

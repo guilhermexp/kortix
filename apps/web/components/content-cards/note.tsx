@@ -1,18 +1,18 @@
+import { cn } from "@lib/utils"
 import { Badge } from "@repo/ui/components/badge"
 import { Card, CardContent, CardHeader } from "@repo/ui/components/card"
-
 import { colors } from "@repo/ui/memory-graph/constants"
-import { Brain, ExternalLink } from "lucide-react"
-import { cn } from "@lib/utils"
-import {
-	formatDate,
-	getPastelBackgroundColor,
-	getSourceUrl,
-} from "../memories-utils"
-import { MCPIcon } from "../menu"
-import { analytics } from "@/lib/analytics"
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
+import { Brain, ExternalLink } from "lucide-react"
 import type { z } from "zod"
+import { analytics } from "@/lib/analytics"
+import {
+    formatDate,
+    getPastelBackgroundColor,
+    getSourceUrl,
+} from "../memories-utils"
+import { getDocumentSnippet } from "../memories"
+import { MCPIcon } from "../menu"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
@@ -82,14 +82,19 @@ export const NoteCard = ({
 				</div>
 			</CardHeader>
 			<CardContent className="relative z-10 px-0">
-				{document.content && (
-					<p
-						className="text-xs line-clamp-6"
-						style={{ color: colors.text.muted }}
-					>
-						{document.content}
-					</p>
-				)}
+				{(() => {
+                    const snippet = getDocumentSnippet(document)
+                    return (
+                        snippet && (
+                            <p
+                                className="text-xs line-clamp-6"
+                                style={{ color: colors.text.muted }}
+                            >
+                                {snippet}
+                            </p>
+                        )
+                    )
+                })()}
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2 flex-wrap">
 						{activeMemories.length > 0 && (
@@ -118,7 +123,7 @@ export const NoteCard = ({
 							</Badge>
 						)}
 						{document.source === "mcp" && (
-							<Badge variant="outline" className="mt-2">
+							<Badge className="mt-2" variant="outline">
 								<MCPIcon className="w-3 h-3 mr-1" />
 								MCP
 							</Badge>

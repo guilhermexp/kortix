@@ -386,6 +386,14 @@ export const SearchRequestSchema = z.object({
 				"Optional tags this search should be containerized by. This can be an ID for your user, a project ID, or any other identifier you wish to use to filter memories.",
 			example: ["user_123", "project_123"],
 		}),
+	scopedDocumentIds: z
+		.array(z.string())
+		.optional()
+		.meta({
+			description:
+				"Optional array of document IDs to restrict search to specific documents. Useful for canvas-based chat where only selected documents should be searched.",
+			example: ["doc_abc123", "doc_xyz789"],
+		}),
 	docId: z.string().max(255).optional().meta({
 		description:
 			"Optional document ID to search within. You can use this to find chunks in a very large document.",
@@ -742,9 +750,13 @@ export const MemorySearchResult = z.object({
 							example:
 								"Earlier version: Dhravya is working on a patent at Cloudflare.",
 						}),
-						metadata: z.record(z.string(), z.unknown()).nullable().optional().meta({
-							description: "Contextual memory metadata",
-						}),
+						metadata: z
+							.record(z.string(), z.unknown())
+							.nullable()
+							.optional()
+							.meta({
+								description: "Contextual memory metadata",
+							}),
 						updatedAt: z.coerce.date().meta({
 							description: "Contextual memory last update date",
 							format: "date-time",
@@ -770,9 +782,13 @@ export const MemorySearchResult = z.object({
 							example:
 								"Later version: Dhravya has filed the patent successfully.",
 						}),
-						metadata: z.record(z.string(), z.unknown()).nullable().optional().meta({
-							description: "Contextual memory metadata",
-						}),
+						metadata: z
+							.record(z.string(), z.unknown())
+							.nullable()
+							.optional()
+							.meta({
+								description: "Contextual memory metadata",
+							}),
 						updatedAt: z.coerce.date().meta({
 							description: "Contextual memory last update date",
 							format: "date-time",
@@ -1262,33 +1278,29 @@ export const ProjectSchema = z
 	})
 
 export const CreateProjectSchema = z
-    .object({
-        name: z.string().min(1).max(100).meta({
-            description: "Name for the project",
-            example: "My Awesome Project",
-            minLength: 1,
-            maxLength: 100,
-        }),
-    })
-    .meta({
-        description: "Request body for creating a new project",
-    })
+	.object({
+		name: z.string().min(1).max(100).meta({
+			description: "Name for the project",
+			example: "My Awesome Project",
+			minLength: 1,
+			maxLength: 100,
+		}),
+	})
+	.meta({
+		description: "Request body for creating a new project",
+	})
 
 // Update project (rename)
 export const UpdateProjectSchema = z
-    .object({
-        name: z
-            .string()
-            .min(1)
-            .max(100)
-            .meta({
-                description: "New project name",
-                example: "Renamed Project",
-                minLength: 1,
-                maxLength: 100,
-            }),
-    })
-    .meta({ description: "Request body for updating a project" })
+	.object({
+		name: z.string().min(1).max(100).meta({
+			description: "New project name",
+			example: "Renamed Project",
+			minLength: 1,
+			maxLength: 100,
+		}),
+	})
+	.meta({ description: "Request body for updating a project" })
 
 export const ListProjectsResponseSchema = z
 	.object({

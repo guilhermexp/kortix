@@ -61,6 +61,7 @@ import { searchDocuments } from "./routes/search"
 import { getSettings, updateSettings } from "./routes/settings"
 import { getWaitlistStatus } from "./routes/waitlist"
 import { hybridSearch } from "./services/hybrid-search"
+import { AnalysisService } from "./services/analysis-service"
 import type { SessionContext } from "./session"
 import { createScopedSupabase } from "./supabase"
 
@@ -225,10 +226,42 @@ app.post("/v3/documents/file", async (c) => {
 			return c.json({ error: { message: "No file uploaded" } }, 400)
 		}
 
+		// Basic upload hardening: size limit and MIME whitelist
+		const MAX_SIZE_BYTES = 10 * 1024 * 1024 // 10MB
+		const ALLOWED_MIME = new Set([
+			"text/plain",
+			"text/markdown",
+			"application/pdf",
+			"application/json",
+			"text/html",
+			"image/png",
+			"image/jpeg",
+			"image/webp",
+		])
+
+		if (file.size > MAX_SIZE_BYTES) {
+			return c.json(
+				{ error: { message: "File too large (max 10MB)" } },
+				413,
+			)
+		}
+
 		const arrayBuffer = await file.arrayBuffer()
 		const buffer = Buffer.from(arrayBuffer)
 		const filename = file.name || "uploaded-file"
 		const mimeType = file.type || "application/octet-stream"
+
+		if (!ALLOWED_MIME.has(mimeType)) {
+			return c.json(
+				{
+					error: {
+						message: "Unsupported file type",
+						allowed: Array.from(ALLOWED_MIME),
+					},
+				},
+				415,
+			)
+		}
 
 		let containerTags: string[] | undefined
 		const rawContainerTags = body.containerTags
@@ -323,10 +356,27 @@ app.post(
 			const body = c.req.valid("json")
 			const { url, containerTags, metadata, githubToken } = body
 
-			// Validate GitHub URL
-			if (!url.includes("github.com")) {
+			// Validate GitHub URL strictly
+			let parsed: URL
+			try {
+				parsed = new URL(url)
+			} catch {
 				return c.json(
-					{ error: { message: "Only GitHub repositories are supported" } },
+					{ error: { message: "Invalid repository URL" } },
+					400,
+				)
+			}
+			if (parsed.hostname !== "github.com") {
+				return c.json(
+					{ error: { message: "Only github.com repositories are supported" } },
+					400,
+				)
+			}
+			const path = parsed.pathname.replace(/\.git$/, "").replace(/^\/+/, "")
+			const segments = path.split("/").filter(Boolean)
+			if (segments.length < 2) {
+				return c.json(
+					{ error: { message: "Provide URL in the form https://github.com/owner/repo" } },
 					400,
 				)
 			}
@@ -388,6 +438,44 @@ app.post(
 							error instanceof Error
 								? error.message
 								: "Failed to list documents",
+					},
+				},
+				500,
+			)
+		}
+	},
+)
+
+app.post(
+	"/v3/deep-agent/analyze",
+	zValidator(
+		"json",
+    z.object({
+            url: z.string().url(),
+            mode: z.enum(["auto", "youtube"]).optional().default("auto"),
+            title: z.string().optional(),
+            githubToken: z.string().optional(),
+            useExa: z.boolean().optional(),
+        }),
+	),
+	async (c) => {
+		const body = c.req.valid("json")
+        const { url, mode, title, githubToken, useExa } = body
+
+		try {
+
+        const service = new AnalysisService(undefined, useExa)
+        const result = await service.analyzeAuto(url, title, githubToken, { useExa })
+			return c.json(result)
+		} catch (error) {
+			console.error("Deep Agent analysis failed", error)
+			return c.json(
+				{
+					error: {
+						message:
+							error instanceof Error
+								? error.message
+								: "Deep Agent analysis failed",
 					},
 				},
 				500,
@@ -602,6 +690,7 @@ app.post(
 				includeFullDocs: body.includeFullDocs,
 				documentId: body.docId,
 				containerTags: body.containerTags,
+				categoriesFilter: body.categoriesFilter,
 				rerankResults: body.rerankResults,
 			})
 

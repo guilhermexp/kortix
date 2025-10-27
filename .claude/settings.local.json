@@ -1,7 +1,17 @@
 {
-	"permissions": {
-		"allow": ["mcp__railway-mcp__deployment_list", "Bash(git rev-parse:*)"]
-	},
-	"enableAllProjectMcpServers": true,
-	"enabledMcpjsonServers": ["supabase", "railway-mcp"]
+  "permissions": {
+    "allow": [
+      "mcp__railway-mcp__deployment_list",
+      "Bash(git rev-parse:*)",
+      "mcp__supabase__list_extensions",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__apply_migration"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase",
+    "railway-mcp"
+  ]
 }

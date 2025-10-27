@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
 import "../globals.css"
 import "@ui/globals.css"
@@ -8,11 +8,13 @@ import { ErrorTrackingProvider } from "@lib/error-tracking"
 import { QueryProvider } from "@lib/query-client"
 import { Suspense } from "react"
 import { Toaster } from "sonner"
-import { TourProvider } from "@/components/tour"
-import { MobilePanelProvider } from "@/lib/mobile-panel-context"
 import { ThemeProvider } from "@/components/providers/theme-provider"
+import { TourProvider } from "@/components/tour"
+// Chat dock disabled (reverted to page-level chat)
+import { MobilePanelProvider } from "@/lib/mobile-panel-context"
 
 import { ViewModeProvider } from "@/lib/view-mode-context"
+import { ErrorBoundary } from "@/components/error-boundary"
 
 const sans = Inter({
 	subsets: ["latin"],
@@ -32,16 +34,17 @@ const metadataBase = (() => {
 	}
 })()
 
+export const viewport: Viewport = {
+	width: "device-width",
+	initialScale: 1,
+	maximumScale: 5,
+	userScalable: true,
+}
+
 export const metadata: Metadata = {
 	metadataBase,
 	description: "Self-hosted Supermemory",
 	title: "supermemory",
-	viewport: {
-		width: "device-width",
-		initialScale: 1,
-		maximumScale: 5,
-		userScalable: true,
-	},
 }
 
 export default function RootLayout({
@@ -57,8 +60,8 @@ export default function RootLayout({
 				<ThemeProvider
 					attribute="class"
 					defaultTheme="dark"
-					enableSystem={false}
 					disableTransitionOnChange
+					enableSystem={false}
 				>
 					<QueryProvider>
 						<AuthProvider>
@@ -66,7 +69,9 @@ export default function RootLayout({
 								<MobilePanelProvider>
 									<ErrorTrackingProvider>
 										<TourProvider>
-											<Suspense>{children}</Suspense>
+                                            <ErrorBoundary>
+                                                <Suspense>{children}</Suspense>
+                                            </ErrorBoundary>
 											<Toaster richColors theme="dark" />
 										</TourProvider>
 									</ErrorTrackingProvider>

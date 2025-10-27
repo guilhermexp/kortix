@@ -48,7 +48,7 @@ Development Branch: memory.dev
 - AI: Google Gemini (embeddings + chat)
 
 **Frontend (`apps/web/`)**
-- Framework: Next.js 15 with Turbopack
+- Framework: Next.js 16 with Turbopack
 - Language: TypeScript
 - UI: Radix UI components
 - State: Zustand + TanStack Query
@@ -236,7 +236,7 @@ Creation → Queueing → Fetching → Extracting → Chunking → Embedding →
   - Fallback for empty context
 
 ### Configuration
-- **Model**: `models/gemini-2.5-flash-preview-09-2025`
+- **Model**: `models/gemini-1.5-flash-latest`
 - **Provider**: Google Gemini (configurable)
 - **Max Tokens**: 8192
 - **Temperature**: Configurable
@@ -385,7 +385,7 @@ bun run format-lint            # Format and lint
 
 **Current State**: Production-ready self-hosted Supermemory application with:
 - Complete backend API (Bun + Hono)
-- Modern frontend (Next.js 15)
+ - Modern frontend (Next.js 16)
 - Full document processing pipeline
 - Vector search with hybrid capabilities
 - Streaming chat with context

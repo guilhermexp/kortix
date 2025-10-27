@@ -3,7 +3,6 @@ import { z } from "zod"
 import {
 	ConnectionResponseSchema,
 	CreateProjectSchema,
-    UpdateProjectSchema,
 	DeleteProjectResponseSchema,
 	DeleteProjectSchema,
 	DocumentsWithMemoriesQuerySchema,
@@ -19,6 +18,7 @@ import {
 	SearchResponseSchema,
 	type SearchResult,
 	SettingsRequestSchema,
+	UpdateProjectSchema,
 } from "../validation/api"
 import { BACKEND_URL } from "./env"
 
@@ -41,6 +41,20 @@ const WaitlistStatusResponseSchema = z.object({
 })
 
 export const apiSchema = createSchema({
+    "@post/deep-agent/analyze": {
+        input: z.object({
+            url: z.string().url(),
+            mode: z.enum(["auto", "youtube"]).optional(),
+            title: z.string().optional(),
+            githubToken: z.string().optional(),
+            useExa: z.boolean().optional(),
+        }),
+        output: z.object({
+            summary: z.string(),
+            mode: z.string(),
+            title: z.string().nullable().optional(),
+        }),
+    },
 	// Connection operations - Add missing endpoints
 	"@post/connections/:provider": {
 		input: z.object({

@@ -33,8 +33,10 @@ const chatRequestSchema = z.object({
 	),
 	mode: z.enum(["simple", "agentic", "deep"]).default("simple"),
 	metadata: z.record(z.string(), z.any()).optional(),
-	// Allow client to specify model (e.g., "google/gemini-2.5-flash" or "xai/grok-4-fast")
+	// Allow client to specify model (e.g., "google/gemini-1.5-flash" or "xai/grok-4-fast")
 	model: z.string().optional(),
+	// Optional scoped document IDs for canvas-based chat
+    scopedDocumentIds: z.array(z.string()).optional(),
 })
 
 // Tools are defined inline in the streamText configuration below
@@ -69,16 +71,24 @@ export async function handleChatV2({
 		return null
 	}
 
-	const metadataMode = resolveMode(metadata.mode)
-	const mode = metadataMode ?? payload.mode
+    const metadataMode = resolveMode(metadata.mode)
+    const mode = metadataMode ?? payload.mode
 
 	// Optional project scoping (via metadata.projectId coming from UI)
-	const rawProjectId = metadata.projectId
-	const activeProjectTag =
-		typeof rawProjectId === "string" ? rawProjectId : undefined
-	const rawExpandContext = metadata.expandContext
-	const expandContext =
-		typeof rawExpandContext === "boolean" ? rawExpandContext : false
+    const rawProjectId = metadata.projectId
+    const activeProjectTag =
+        typeof rawProjectId === "string" ? rawProjectId : undefined
+    const rawExpandContext = metadata.expandContext
+    const expandContext =
+        typeof rawExpandContext === "boolean" ? rawExpandContext : false
+
+    // One-shot raw document context (bypass search and use full document content)
+    const forceRawDocs = Boolean(metadata.forceRawDocs)
+
+	// Optional document scoping for canvas (takes precedence over project scoping)
+	const scopedDocumentIds = payload.scopedDocumentIds
+	const hasDocumentScope =
+		Array.isArray(scopedDocumentIds) && scopedDocumentIds.length > 0
 
 	// Normalize incoming messages to simple {role, content} format
 	const messages = inputMessages
@@ -102,7 +112,7 @@ export async function handleChatV2({
 
 	let retrievalQuery = lastUserMessage?.content ?? ""
 	let condensed = false
-	if (lastUserMessage) {
+    if (lastUserMessage) {
 		let lastUserIndex = -1
 		for (let i = messages.length - 1; i >= 0; i--) {
 			if (messages[i]?.role === "user") {
@@ -134,11 +144,11 @@ export async function handleChatV2({
 		}
 	}
 
-	let initialContext = ""
-	const contextInfo: { count: number; titles: string[] } = {
-		count: 0,
-		titles: [],
-	}
+    let initialContext = ""
+    const contextInfo: { count: number; titles: string[] } = {
+        count: 0,
+        titles: [],
+    }
 
 	// Log incoming request mode and query (trim to keep logs tidy)
 	try {
@@ -155,30 +165,146 @@ export async function handleChatV2({
 		})
 	} catch {}
 
-	if (lastUserMessage && typeof lastUserMessage.content === "string") {
-		const userQuery = lastUserMessage.content
+	// Parse model from request BEFORE agenticSearch (needed for query generation)
+	const requestedModel = payload.model
+	let selectedModel: LanguageModel
+	let provider: "google" | "xai"
+	let modelName: string
+
+	if (requestedModel) {
+		if (requestedModel.startsWith("xai/")) {
+			modelName = requestedModel.replace("xai/", "")
+			selectedModel = xai(modelName)
+			provider = "xai"
+		} else if (requestedModel.startsWith("google/")) {
+			modelName = requestedModel.replace("google/", "")
+			selectedModel = google(modelName)
+			provider = "google"
+		} else {
+			modelName = requestedModel
+			selectedModel = google(requestedModel)
+			provider = "google"
+		}
+	} else {
+		provider = env.AI_PROVIDER
+		if (provider === "xai") {
+			modelName = env.CHAT_MODEL
+			selectedModel = xai(modelName)
+		} else {
+			modelName = env.CHAT_MODEL
+			selectedModel = google(modelName)
+		}
+	}
+
+    if (lastUserMessage && typeof lastUserMessage.content === "string") {
+        const userQuery = lastUserMessage.content
 		const enumerative =
 			/\b(todos|todas|listar|liste|lista|quais s[ãa]o|quais sao|list\s+all|show\s+all|o que (eu|n[oó]s)?\s*tenho)\b/i.test(
 				userQuery,
 			) || expandContext
 
-		try {
-			const useAgenticPipeline =
-				(mode === "agentic" || mode === "deep") && env.ENABLE_AGENTIC_MODE
+        try {
+            const useAgenticPipeline =
+                (mode === "agentic" || mode === "deep") && env.ENABLE_AGENTIC_MODE
 
-			if (useAgenticPipeline) {
-				const agenticOutcome = await agenticSearch(
-					client,
-					orgId,
-					retrievalQuery || userQuery,
-					{
+            // If explicitly forced to use raw documents, bypass search and build context from full docs
+            if (forceRawDocs && hasDocumentScope) {
+                try {
+                    // Fetch base docs (title + content)
+                    const { data: docsData, error: docsErr } = await client
+                        .from("documents")
+                        .select("id, title, content, url")
+                        .eq("org_id", orgId)
+                        .in("id", scopedDocumentIds!)
+                    if (docsErr) throw docsErr
+                    const docs = (docsData || []) as Array<{
+                        id: string
+                        title: string | null
+                        content: string | null
+                        url: string | null
+                    }>
+
+                    // Fetch chunks for docs missing content (fallback to chunks)
+                    const docsNeedingChunks = docs
+                        .filter((d) => !d.content || d.content.trim().length === 0)
+                        .map((d) => d.id)
+
+                    let chunkByDoc = new Map<string, string>()
+                    if (docsNeedingChunks.length > 0) {
+                        const { data: chunkRows, error: chunkErr } = await client
+                            .from("document_chunks")
+                            .select("document_id, content, position")
+                            .eq("org_id", orgId)
+                            .in("document_id", docsNeedingChunks)
+                            .order("position", { ascending: true })
+                        if (chunkErr) throw chunkErr
+                        const grouped = new Map<string, Array<{ content: string; position: number | null }>>()
+                        for (const row of (chunkRows || []) as Array<{ document_id: string; content: string | null; position: number | null }>) {
+                            if (!row.content) continue
+                            const list = grouped.get(row.document_id) || []
+                            list.push({ content: row.content, position: row.position })
+                            grouped.set(row.document_id, list)
+                        }
+                        for (const [docId, list] of grouped.entries()) {
+                            const sorted = list
+                                .slice()
+                                .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+                                .map((x) => x.content)
+                            chunkByDoc.set(docId, sorted.join("\n"))
+                        }
+                    }
+
+                    // Limits to avoid token overflow
+                    const PER_DOC_LIMIT = 12000 // chars per doc
+                    const GLOBAL_LIMIT = 45000 // global cap
+                    const truncate = (s: string, n: number) => (s.length > n ? s.slice(0, n) : s)
+
+                    const parts: string[] = []
+                    let idx = 1
+                    let used = 0
+                    for (const d of docs) {
+                        let body = (d.content || "").trim()
+                        if (!body) {
+                            body = (chunkByDoc.get(d.id) || "").trim()
+                        }
+                        if (!body) continue
+                        body = truncate(body, PER_DOC_LIMIT)
+                        const title = d.title || d.id
+                        const header = d.url ? `### [${idx}] ${title} — ${d.url}` : `### [${idx}] ${title}`
+                        const section = `${header}\n${body}`
+                        const remaining = GLOBAL_LIMIT - used
+                        if (remaining <= 0) break
+                        const take = truncate(section, remaining)
+                        parts.push(take)
+                        used += take.length
+                        idx++
+                    }
+
+                    initialContext = parts.join("\n\n")
+                    contextInfo.count = parts.length
+                    contextInfo.titles = docs.slice(0, 3).map((d) => d.title || d.id)
+                } catch (e) {
+                    console.warn("Failed to build raw doc context", e)
+                }
+            } else if (useAgenticPipeline) {
+                const agenticOutcome = await agenticSearch(
+                    client,
+                    orgId,
+                    retrievalQuery || userQuery,
+                    {
 						maxEvals: mode === "deep" ? 4 : 3,
 						tokenBudget: mode === "deep" ? 6144 : 4096,
 						limit: enumerative ? 30 : mode === "deep" ? 20 : 15,
-						containerTags: activeProjectTag ? [activeProjectTag] : undefined,
+						containerTags: hasDocumentScope
+							? undefined
+							: activeProjectTag
+								? [activeProjectTag]
+								: undefined,
+						scopedDocumentIds: hasDocumentScope ? scopedDocumentIds : undefined,
 						enableWebSearch: true,
 						webResultsLimit: mode === "deep" ? 12 : 6,
 						webQueriesLimit: mode === "deep" ? 3 : 2,
+						model: selectedModel, // Pass user-selected model to agentic search
 					},
 				)
 
@@ -213,16 +339,21 @@ export async function handleChatV2({
 						webResults: agenticOutcome.webResults.length,
 					})
 				} catch {}
-			} else {
-				const searchResponse = await searchDocuments(client, orgId, {
-					q: retrievalQuery || userQuery,
+            } else {
+                const searchResponse = await searchDocuments(client, orgId, {
+                    q: retrievalQuery || userQuery,
 					limit: enumerative ? 30 : mode === "deep" ? 15 : 10,
 					includeSummary: true,
 					includeFullDocs: mode === "deep",
 					chunkThreshold: 0.1,
 					documentThreshold: 0.1,
 					onlyMatchingChunks: false,
-					containerTags: activeProjectTag ? [activeProjectTag] : undefined,
+					containerTags: hasDocumentScope
+						? undefined
+						: activeProjectTag
+							? [activeProjectTag]
+							: undefined,
+					scopedDocumentIds: hasDocumentScope ? scopedDocumentIds : undefined,
 				})
 
 				const sortedResults = searchResponse.results
@@ -246,11 +377,11 @@ export async function handleChatV2({
 						.slice(0, 3)
 						.map((r) => r.title ?? r.documentId)
 				}
-			}
-		} catch (error) {
-			console.warn("Initial context build failed", error)
-		}
-	}
+            }
+        } catch (error) {
+            console.warn("Initial context build failed", error)
+        }
+    }
 
 	// Prepare system message
 	const systemMessage = initialContext
@@ -266,40 +397,7 @@ export async function handleChatV2({
 		})
 	} catch {}
 
-	// Parse model from request (format: "provider/model-name" or just "model-name")
-	const requestedModel = payload.model
-	let selectedModel: LanguageModel
-	let provider: "google" | "xai"
-	let modelName: string
-
-	if (requestedModel) {
-		// Client specified a model (e.g., "xai/grok-4-fast" or "google/gemini-2.5-flash")
-		if (requestedModel.startsWith("xai/")) {
-			modelName = requestedModel.replace("xai/", "")
-			selectedModel = xai(modelName)
-			provider = "xai"
-		} else if (requestedModel.startsWith("google/")) {
-			modelName = requestedModel.replace("google/", "")
-			selectedModel = google(modelName)
-			provider = "google"
-		} else {
-			// Default to google if no provider prefix
-			modelName = requestedModel
-			selectedModel = google(requestedModel)
-			provider = "google"
-		}
-	} else {
-		// Use default provider and model from env
-		provider = env.AI_PROVIDER
-		if (provider === "xai") {
-			modelName = env.CHAT_MODEL
-			selectedModel = xai(modelName)
-		} else {
-			modelName = env.CHAT_MODEL
-			selectedModel = google(modelName)
-		}
-	}
-
+	// Model already parsed earlier (before agenticSearch)
 	// Log selected model
 	console.info("Chat V2 model", { provider, model: modelName })
 
@@ -316,9 +414,9 @@ export async function handleChatV2({
 	}
 
 	// Define tools for agentic modes
-	const tools =
-		mode === "agentic" || mode === "deep"
-			? {
+    const tools =
+        (mode === "agentic" || mode === "deep") && !forceRawDocs
+            ? {
 					// Align with UI expectation: tool-searchMemories
 					searchMemories: tool({
 						description:
@@ -347,8 +445,13 @@ export async function handleChatV2({
 									includeFullDocs: false,
 									chunkThreshold: 0.1,
 									documentThreshold: 0.1,
-									containerTags: activeProjectTag
-										? [activeProjectTag]
+									containerTags: hasDocumentScope
+										? undefined
+										: activeProjectTag
+											? [activeProjectTag]
+											: undefined,
+									scopedDocumentIds: hasDocumentScope
+										? scopedDocumentIds
 										: undefined,
 								})
 
@@ -378,7 +481,7 @@ export async function handleChatV2({
 						},
 					}),
 				}
-			: {}
+            : {}
 
 	try {
 		// Stream the response
@@ -406,7 +509,8 @@ export async function handleChatV2({
 		console.error("Chat V2 failed", error)
 
 		// Fallback to simple mode with configured provider and model
-		const fallbackModel = env.AI_PROVIDER === "xai" ? xai(env.CHAT_MODEL) : google(env.CHAT_MODEL)
+		const fallbackModel =
+			env.AI_PROVIDER === "xai" ? xai(env.CHAT_MODEL) : google(env.CHAT_MODEL)
 		const fallback = streamText({
 			model: fallbackModel,
 			messages,

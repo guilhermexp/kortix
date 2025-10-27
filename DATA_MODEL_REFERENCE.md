@@ -738,7 +738,7 @@ export enum RelationshipType {
 ### Implementation
 
 #### Hard Enforcement (Database)
-- RLS policies on 13 tables enforce org_id presence
+- RLS policies on 18 tables enforce org_id presence
 - Foreign key constraints ensure referential integrity
 - INSERT/UPDATE policies require org_id IS NOT NULL
 
@@ -746,6 +746,66 @@ export enum RelationshipType {
 - Session middleware extracts organizationId
 - Every query filters by `.eq("org_id", organizationId)`
 - Cannot accidentally query cross-organization data
+
+### RLS Policies Required Roles
+
+**CRITICAL:** All RLS policies MUST include these roles:
+- `anon` - For client connections using ANON_KEY (most API calls)
+- `authenticated` - For authenticated users
+- `authenticator` - For the authenticator role
+- `service_role` - For admin operations and backend services
+
+**Example Policy Structure:**
+```sql
+-- SELECT policy (permissive)
+CREATE POLICY {table}_select_authenticated
+ON public.{table}
+FOR SELECT
+TO anon, authenticated, authenticator, service_role
+USING (true);  -- Or org_id = current_request_org()
+
+-- INSERT policy
+CREATE POLICY {table}_insert_authenticated
+ON public.{table}
+FOR INSERT
+TO anon, authenticated, authenticator, service_role
+WITH CHECK (true);  -- Or org_id = current_request_org()
+
+-- UPDATE policy
+CREATE POLICY {table}_update_authenticated
+ON public.{table}
+FOR UPDATE
+TO anon, authenticated, authenticator, service_role
+USING (true)
+WITH CHECK (true);
+
+-- DELETE policy
+CREATE POLICY {table}_delete_authenticated
+ON public.{table}
+FOR DELETE
+TO anon, authenticated, authenticator, service_role
+USING (true);
+
+-- Service role bypass (REQUIRED for backend operations)
+CREATE POLICY {table}_service_role_all
+ON public.{table}
+FOR ALL
+TO service_role
+USING (true)
+WITH CHECK (true);
+```
+
+**Why `anon` is required:**
+- Backend uses `createScopedSupabase(orgId, userId)` which uses ANON_KEY
+- ANON_KEY maps to the `anon` role in Postgres
+- Without `anon` in policies, API queries return empty results
+- This was the root cause of the "missing documents/memories" bug
+
+**Why `service_role` is required:**
+- Used by `supabaseAdmin` for critical operations
+- Session resolution (`session.ts`) uses service_role
+- Without it, authentication fails completely
+- Backend workers need service_role for ingestion jobs
 
 ### Query Pattern
 

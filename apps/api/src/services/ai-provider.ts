@@ -1,8 +1,8 @@
 import {
-	GoogleGenerativeAI,
 	type GenerateContentRequest,
 	type GenerateContentResult,
 	type GenerateContentStreamResult,
+	GoogleGenerativeAI,
 } from "@google/generative-ai"
 import { env } from "../env"
 
@@ -134,18 +134,18 @@ class AIProviderWithFallback implements AIProvider {
 		const cleanModel = geminiModel.replace(/^models\//, "")
 
 		// Mapear modelos Gemini para OpenRouter
-		// Usando gemini-2.5-flash-lite como fallback principal (mais barato e rápido)
+		// Usando gemini-1.5-flash como fallback principal (estável e disponível)
 		const modelMap: Record<string, string> = {
-			"gemini-2.5-pro": "google/gemini-2.5-flash-lite-preview-09-2025",
-			"gemini-2.5-flash": "google/gemini-2.5-flash-lite-preview-09-2025",
-			"gemini-2.0-flash": "google/gemini-2.5-flash-lite-preview-09-2025",
-			"gemini-2.0-flash-exp": "google/gemini-2.5-flash-lite-preview-09-2025",
-			"gemini-pro": "google/gemini-2.5-flash-lite-preview-09-2025",
-			"gemini-pro-vision": "google/gemini-2.5-flash-lite-preview-09-2025",
+			"gemini-2.5-pro": "google/gemini-1.5-flash",
+			"gemini-2.5-flash": "google/gemini-1.5-flash",
+			"gemini-2.0-flash": "google/gemini-1.5-flash",
+			"gemini-2.0-flash-exp": "google/gemini-1.5-flash",
+			"gemini-pro": "google/gemini-1.5-flash",
+			"gemini-pro-vision": "google/gemini-1.5-flash",
 		}
 
 		return (
-			modelMap[cleanModel] ?? "google/gemini-2.5-flash-lite-preview-09-2025" // fallback padrão
+			modelMap[cleanModel] ?? "google/gemini-1.5-flash" // fallback padrão
 		)
 	}
 
@@ -170,7 +170,9 @@ class AIProviderWithFallback implements AIProvider {
 		// Converter contents
 		for (const content of request.contents ?? []) {
 			const role = content.role === "model" ? "assistant" : "user"
-			const text = content.parts.map((p) => ("text" in p ? p.text : "")).join(" ")
+			const text = content.parts
+				.map((p) => ("text" in p ? p.text : ""))
+				.join(" ")
 			if (text) {
 				messages.push({ role, content: text })
 			}
@@ -208,9 +210,9 @@ class AIProviderWithFallback implements AIProvider {
 		return result as GenerateContentResult
 	}
 
-	private async *streamOpenRouterResponse(
-		response: Response,
-	): AsyncGenerator<{ candidates: Array<{ content: { parts: Array<{ text: string }> } }> }> {
+	private async *streamOpenRouterResponse(response: Response): AsyncGenerator<{
+		candidates: Array<{ content: { parts: Array<{ text: string }> } }>
+	}> {
 		const reader = response.body?.getReader()
 		if (!reader) throw new Error("No response body")
 
@@ -379,6 +381,5 @@ export function createAIClient() {
 /**
  * Client de AI padrão com fallback
  */
-export const aiClient = env.GOOGLE_API_KEY || env.OPENROUTER_API_KEY
-	? createAIClient()
-	: null
+export const aiClient =
+	env.GOOGLE_API_KEY || env.OPENROUTER_API_KEY ? createAIClient() : null

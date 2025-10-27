@@ -73,21 +73,21 @@ export function InstallationDialogContent({
 		const base = MCP_SERVER_URL.replace(/\/$/, "")
 		let command = `npx -y install-mcp@latest ${base} --client ${client} --oauth=yes --header 'Authorization: Bearer ${apiKey}'`
 
-    if (
-        selectedProject &&
-        selectedProject !== "none" &&
-        selectedProject !== "sm_project_default"
-    ) {
-        // Remove the "sm_project_" prefix from the containerTag
-        const projectId = selectedProject.replace(/^sm_project_/, "")
-        command += ` --project ${projectId}`
-    }
+		if (
+			selectedProject &&
+			selectedProject !== "none" &&
+			selectedProject !== "sm_project_default"
+		) {
+			// Remove the "sm_project_" prefix from the containerTag
+			const projectId = selectedProject.replace(/^sm_project_/, "")
+			command += ` --project ${projectId}`
+		}
 
 		return command
 	}
 
 	return (
-		<DialogContent>
+		<DialogContent className="border border-white/10 bg-[#0f1419] text-white">
 			<DialogHeader>
 				<DialogTitle>Install the supermemory MCP Server</DialogTitle>
 				<DialogDescription>
@@ -151,21 +151,21 @@ export function InstallationDialogContent({
 						<SelectTrigger className="w-full" id="project-select">
 							<SelectValue placeholder="Select project" />
 						</SelectTrigger>
-						<SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
-							<SelectItem className="text-white hover:bg-white/10" value="none">
+						<SelectContent className="border border-white/10 bg-[#0f1419]">
+							<SelectItem className="hover:bg-white/10" value="none">
 								Auto-select project
 							</SelectItem>
 							<SelectItem
-								className="text-white hover:bg-white/10"
+								className="hover:bg-white/10"
 								value="sm_project_default"
 							>
-                        All Projects
-                    </SelectItem>
+								All Projects
+							</SelectItem>
 							{projects
 								.filter((p: Project) => p.containerTag !== "sm_project_default")
 								.map((project: Project) => (
 									<SelectItem
-										className="text-white hover:bg-white/10"
+										className="hover:bg-white/10"
 										key={project.id}
 										value={project.containerTag}
 									>

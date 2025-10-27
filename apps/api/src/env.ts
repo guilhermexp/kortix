@@ -29,7 +29,7 @@ const envSchema = z.object({
 		.regex(/^\d+$/)
 		.transform((value) => Number.parseInt(value, 10))
 		.default("1536"),
-	CHAT_MODEL: z.string().default("models/gemini-2.5-pro"),
+	CHAT_MODEL: z.string().default("models/gemini-1.5-flash-latest"),
 	SUMMARY_MODEL: z.string().optional(),
 	FIRECRAWL_API_KEY: z.string().optional(),
 	ENABLE_RECENCY_BOOST: z

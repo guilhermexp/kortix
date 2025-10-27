@@ -264,7 +264,7 @@ apps/web/
 ## Technical Specifications
 
 ### Frontend
-- **Framework**: Next.js 15 with Turbopack
+- **Framework**: Next.js 16 with Turbopack
 - **Editor**: Slate.js
 - **State**: React Query + Zustand
 - **Styling**: Tailwind CSS

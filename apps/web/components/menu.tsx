@@ -73,7 +73,7 @@ function Menu({
 	const { activePanel, setActivePanel } = useMobilePanel()
 	const { setMenuExpanded } = useTour()
 	const autumn = useCustomer()
-	const { setIsOpen } = useChatOpen()
+	const { setIsOpen, isOpen: isChatPanelOpen } = useChatOpen()
 
 	const { data: memoriesCheck } = fetchMemoriesFeature(autumn)
 
@@ -235,6 +235,10 @@ function Menu({
 		setMenuExpanded(isExpanded)
 	}, [isMobile, isMobileMenuOpen, isHovered, expandedView, setMenuExpanded])
 
+	// Collapse menu to icons when chat panel is open (desktop only)
+	const isCollapsedToIcons = !isMobile && !expandedView && isChatPanelOpen
+	const menuWidth = isCollapsedToIcons ? 320 : 600
+
 	// Dynamic z-index for mobile based on active panel
 	const mobileZIndex = isMobile && activePanel === "menu" ? "z-[70]" : "z-[100]"
 
@@ -249,15 +253,21 @@ function Menu({
 					>
 						<motion.nav
 							animate={{
+								width: menuWidth,
 								scale: 1,
 							}}
-							className="pointer-events-auto group relative flex text-sm font-medium flex-row items-center overflow-hidden rounded-xl shadow-2xl bg-[#0f1419] border border-white/10 w-full max-w-[600px]"
+							className="pointer-events-auto group relative flex text-sm font-medium flex-row items-center overflow-hidden rounded-xl shadow-2xl bg-[#0f1419] border border-white/10"
 							id={id}
-							initial={{ scale: 0.95 }}
+							initial={{ width: menuWidth, scale: 0.95 }}
 							layout
 							onMouseEnter={() => !expandedView && setIsHovered(true)}
 							onMouseLeave={() => !expandedView && setIsHovered(false)}
+							style={{ width: menuWidth }}
 							transition={{
+								width: {
+									duration: 0.2,
+									ease: [0.4, 0, 0.2, 1],
+								},
 								scale: {
 									duration: 0.5,
 									ease: [0.4, 0, 0.2, 1],
@@ -268,7 +278,6 @@ function Menu({
 								},
 							}}
 						>
-
 							{/* Menu content */}
 							<motion.div
 								className="relative z-20 flex flex-row gap-6 w-full"
@@ -284,7 +293,7 @@ function Menu({
 											animate={{
 												opacity: 1,
 											}}
-											className="w-full flex flex-row gap-2 px-4 py-2 justify-center items-center"
+											className={`w-full flex flex-row ${isCollapsedToIcons ? "gap-1 px-3 py-2" : "gap-2 px-4 py-2"} justify-center items-center`}
 											exit={{
 												opacity: 0,
 												transition: {
@@ -308,7 +317,9 @@ function Menu({
 												},
 											}}
 										>
-											<div className="flex flex-row gap-2 items-center justify-center">
+											<div
+												className={`flex flex-row items-center justify-center ${isCollapsedToIcons ? "gap-1" : "gap-2"}`}
+											>
 												{menuItems.map((item, index) => (
 													<React.Fragment key={item.key}>
 														<motion.button
@@ -320,7 +331,8 @@ function Menu({
 																	duration: 0.1,
 																},
 															}}
-															className="flex w-full items-center text-white/80 transition-colors duration-100 hover:text-white cursor-pointer relative px-1"
+															aria-label={item.text}
+															className={`flex items-center text-white/80 transition-colors duration-100 hover:text-white cursor-pointer relative ${isCollapsedToIcons ? "w-auto justify-center px-2" : "w-full px-1"}`}
 															id={menuItemTourIds[item.key]}
 															initial={{ opacity: 0, y: 20, scale: 0.95 }}
 															layout
@@ -345,19 +357,21 @@ function Menu({
 															>
 																<item.icon className="duration-200 h-5 w-5 drop-shadow-lg flex-shrink-0" />
 															</motion.div>
-															<span className="drop-shadow-lg pl-3 whitespace-nowrap">
+															<span
+																className={`drop-shadow-lg whitespace-nowrap ${isCollapsedToIcons ? "sr-only" : "pl-3"}`}
+															>
 																{item.text}
 															</span>
 														</motion.button>
 														{index === 0 && (
 															<motion.div
-																key="divider"
 																animate={{
 																	opacity: 1,
 																	scaleY: 1,
 																}}
 																className="h-6 w-px bg-white/20 origin-top"
 																initial={{ opacity: 0, scaleY: 0 }}
+																key="divider"
 																transition={{
 																	duration: 0.3,
 																	delay: 0.1,
@@ -677,9 +691,7 @@ function Menu({
 			)}
 
 			{showAddMemoryView && (
-				<AddMemoryView
-					onClose={() => setShowAddMemoryView(false)}
-				/>
+				<AddMemoryView onClose={() => setShowAddMemoryView(false)} />
 			)}
 
 			<ConnectAIModal

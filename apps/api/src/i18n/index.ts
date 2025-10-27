@@ -6,6 +6,7 @@
  */
 
 import ptBR from "./locales/pt-BR.json" assert { type: "json" }
+
 import enUS from "./locales/en-US.json" assert { type: "json" }
 
 /**

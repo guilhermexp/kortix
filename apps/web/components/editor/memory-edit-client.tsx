@@ -1,86 +1,105 @@
-"use client";
+"use client"
 
-import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, ChevronDown, MessageSquare } from "lucide-react";
-import { Button } from "@repo/ui/components/button";
+import { useIsMobile } from "@hooks/use-mobile"
+import { cn } from "@lib/utils"
+import { Button } from "@repo/ui/components/button"
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
-} from "@repo/ui/components/collapsible";
-import { cn } from "@lib/utils";
-import { useIsMobile } from "@hooks/use-mobile";
-import type { DocumentWithMemories } from "@/lib/types/document";
-import { useChatOpen } from "@/stores";
-import { ChatRewrite } from "@/components/views/chat";
-import { MemoryEntriesSidebar } from "./memory-entries-sidebar";
-import { RichEditorWrapper } from "./rich-editor-wrapper";
-import Link from "next/link";
+} from "@repo/ui/components/collapsible"
+import { ArrowLeft, ChevronDown, MessageSquare } from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
+import dynamic from "next/dynamic"
+import Link from "next/link"
+import { useEffect, useRef, useState } from "react"
+import { ChatRewrite } from "@/components/views/chat"
+import type { DocumentWithMemories } from "@/lib/types/document"
+import { useChatOpen } from "@/stores"
+import { EditorSkeleton, MemoryEntriesSkeleton } from "./loading-states"
+
+const LazyMemoryEntriesSidebar = dynamic(
+	() =>
+		import("./memory-entries-sidebar").then((mod) => mod.MemoryEntriesSidebar),
+	{
+		ssr: false,
+		loading: () => <MemoryEntriesSkeleton />,
+	},
+)
+
+const LazyRichEditorWrapper = dynamic(
+	() => import("./rich-editor-wrapper").then((mod) => mod.RichEditorWrapper),
+	{
+		ssr: false,
+		loading: () => <EditorSkeleton />,
+	},
+)
 
 interface MemoryEditClientProps {
-	document: DocumentWithMemories;
+	document: DocumentWithMemories
 }
 
-export function MemoryEditClient({ document: memoryDocument }: MemoryEditClientProps) {
-	const isMobile = useIsMobile();
-	const { isOpen, setIsOpen } = useChatOpen();
+export function MemoryEditClient({
+	document: memoryDocument,
+}: MemoryEditClientProps) {
+	const isMobile = useIsMobile()
+	const { isOpen, setIsOpen } = useChatOpen()
 
 	// Resizable chat panel width (desktop only)
-	const MIN_CHAT_WIDTH = 420;
-	const MAX_CHAT_WIDTH = 1100;
+	const MIN_CHAT_WIDTH = 420
+	const MAX_CHAT_WIDTH = 1100
 	const [chatWidth, setChatWidth] = useState<number>(() => {
-		if (typeof window === "undefined") return 600;
-		const stored = Number(localStorage.getItem("chatPanelWidth"));
+		if (typeof window === "undefined") return 600
+		const stored = Number(localStorage.getItem("chatPanelWidth"))
 		return Number.isFinite(stored)
 			? Math.min(MAX_CHAT_WIDTH, Math.max(MIN_CHAT_WIDTH, stored))
-			: 600;
-	});
+			: 600
+	})
 
 	useEffect(() => {
 		try {
-			localStorage.setItem("chatPanelWidth", String(chatWidth));
+			localStorage.setItem("chatPanelWidth", String(chatWidth))
 		} catch {
 			// ignore storage errors
 		}
-	}, [chatWidth]);
+	}, [chatWidth])
 
-	const resizingRef = useRef(false);
-	const startXRef = useRef(0);
-	const startWidthRef = useRef(0);
+	const resizingRef = useRef(false)
+	const startXRef = useRef(0)
+	const startWidthRef = useRef(0)
 
 	const onResizeStart = (event: React.MouseEvent<HTMLDivElement>) => {
-		if (isMobile) return;
-		resizingRef.current = true;
-		startXRef.current = event.clientX;
-		startWidthRef.current = chatWidth;
-		document.body.style.cursor = "ew-resize";
+		if (isMobile) return
+		resizingRef.current = true
+		startXRef.current = event.clientX
+		startWidthRef.current = chatWidth
+		document.body.style.cursor = "ew-resize"
 
 		const handleMouseMove = (e: MouseEvent) => {
-			if (!resizingRef.current) return;
-			const delta = startXRef.current - e.clientX;
+			if (!resizingRef.current) return
+			const delta = startXRef.current - e.clientX
 			const next = Math.min(
 				MAX_CHAT_WIDTH,
-				Math.max(MIN_CHAT_WIDTH, startWidthRef.current + delta)
-			);
-			setChatWidth(next);
-		};
+				Math.max(MIN_CHAT_WIDTH, startWidthRef.current + delta),
+			)
+			setChatWidth(next)
+		}
 
 		const handleMouseUp = () => {
-			resizingRef.current = false;
-			document.body.style.cursor = "";
-			window.removeEventListener("mousemove", handleMouseMove);
-			window.removeEventListener("mouseup", handleMouseUp);
-		};
+			resizingRef.current = false
+			document.body.style.cursor = ""
+			window.removeEventListener("mousemove", handleMouseMove)
+			window.removeEventListener("mouseup", handleMouseUp)
+		}
 
-		window.addEventListener("mousemove", handleMouseMove);
-		window.addEventListener("mouseup", handleMouseUp);
-		event.preventDefault();
-	};
+		window.addEventListener("mousemove", handleMouseMove)
+		window.addEventListener("mouseup", handleMouseUp)
+		event.preventDefault()
+	}
 
-	const [isContentOpen, setIsContentOpen] = useState(false);
+	const [isContentOpen, setIsContentOpen] = useState(false)
 
-	const documentTitle = memoryDocument.title || "Untitled document";
+	const documentTitle = memoryDocument.title || "Untitled document"
 
 	return (
 		<div className="relative h-screen bg-[#0f1419] overflow-hidden">
@@ -106,9 +125,9 @@ export function MemoryEditClient({ document: memoryDocument }: MemoryEditClientP
 						</div>
 						<Button
 							asChild
+							className="border-white/20 bg-white/5 text-white/80 hover:bg-white/10"
 							size="sm"
 							variant="outline"
-							className="border-white/20 bg-white/5 text-white/80 hover:bg-white/10"
 						>
 							<Link className="flex items-center gap-2" href="/">
 								<ArrowLeft className="h-4 w-4" />
@@ -123,13 +142,13 @@ export function MemoryEditClient({ document: memoryDocument }: MemoryEditClientP
 
 				<main className="flex-1 overflow-y-auto">
 					<div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-						<MemoryEntriesSidebar
-							documentId={memoryDocument.id}
+						<LazyMemoryEntriesSidebar
 							document={memoryDocument}
+							documentId={memoryDocument.id}
 							variant="standalone"
 						/>
 
-						<Collapsible open={isContentOpen} onOpenChange={setIsContentOpen}>
+						<Collapsible onOpenChange={setIsContentOpen} open={isContentOpen}>
 							<CollapsibleTrigger asChild>
 								<button
 									className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-[#0f1419]/80 px-5 py-4 text-left text-white/80 transition hover:bg-white/10"
@@ -141,7 +160,7 @@ export function MemoryEditClient({ document: memoryDocument }: MemoryEditClientP
 									<ChevronDown
 										className={cn(
 											"h-4 w-4 transition-transform duration-200",
-											isContentOpen ? "rotate-180" : ""
+											isContentOpen ? "rotate-180" : "",
 										)}
 									/>
 								</button>
@@ -150,14 +169,14 @@ export function MemoryEditClient({ document: memoryDocument }: MemoryEditClientP
 								{isContentOpen ? (
 									<CollapsibleContent asChild>
 										<motion.div
-											className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-[#0f1419]"
-											initial={{ opacity: 0, height: 0 }}
 											animate={{ opacity: 1, height: "auto" }}
+											className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-[#0f1419]"
 											exit={{ opacity: 0, height: 0 }}
+											initial={{ opacity: 0, height: 0 }}
 											transition={{ duration: 0.2 }}
 										>
 											<div className="h-[70vh] min-h-[420px]">
-												<RichEditorWrapper
+												<LazyRichEditorWrapper
 													document={memoryDocument}
 													showNavigation={true}
 												/>
@@ -192,7 +211,7 @@ export function MemoryEditClient({ document: memoryDocument }: MemoryEditClientP
 				</motion.div>
 			)}
 
-			{/* Chat panel */}
+			{/* Chat panel (page-level) */}
 			<motion.div
 				className="fixed top-0 right-0 z-50 h-full md:z-auto"
 				style={{
@@ -224,5 +243,5 @@ export function MemoryEditClient({ document: memoryDocument }: MemoryEditClientP
 				</motion.div>
 			</motion.div>
 		</div>
-	);
+	)
 }

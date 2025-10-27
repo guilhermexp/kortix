@@ -80,7 +80,7 @@ sendMessage(
   { text: 'Qual é a capital da França?' },
   {
     body: {
-      model: 'google/gemini-2.5-flash-preview-09-2025'
+      model: 'google/gemini-1.5-flash'
     }
 );
 
@@ -101,10 +101,10 @@ Você pode especificar o modelo de 3 formas:
 
 1. **Com prefixo de provider** (recomendado):
    - `xai/grok-4-fast`
-   - `google/gemini-2.5-flash-preview-09-2025`
+   - `google/gemini-1.5-flash`
 
 2. **Sem prefixo** (assume Google):
-   - `models/gemini-2.5-flash-preview-09-2025`
+   - `models/gemini-1.5-flash-latest`
 
 3. **Não enviar** (usa padrão do `.env`):
    - Sem campo `model` → usa `AI_PROVIDER` do `.env`
@@ -120,7 +120,7 @@ import { useState } from 'react';
 
 export default function Chat() {
   const [input, setInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState('google/gemini-2.5-flash-preview-09-2025');
+  const [selectedModel, setSelectedModel] = useState('google/gemini-1.5-flash');
   
   const { messages, sendMessage } = useChat({
     transport: new DefaultChatTransport({
@@ -150,7 +150,7 @@ export default function Chat() {
         value={selectedModel} 
         onChange={(e) => setSelectedModel(e.target.value)}
       >
-        <option value="google/gemini-2.5-flash-preview-09-2025">
+        <option value="google/gemini-1.5-flash">
           Gemini 2.5 Flash
         </option>
         <option value="xai/grok-4-fast">
@@ -207,8 +207,8 @@ Logs de ConfirmaçãoQuandovocêtrocade,osdoservidormostram:
 
 ### Google
 
-- **models/gemini-2.5-flash-preview-09-2025** - Padrão
-- **models/gemini-2.5-pro** - Mais potente
+- **models/gemini-1.5-flash-latest** - Padrão
+- **models/gemini-1.5-pro-latest** - Mais potente
 
 ## Testes
 
@@ -236,7 +236,7 @@ curl http://localhost:4000/chat \
     "messages": [
       {"role": "user", "content": "Qual é 2+2?"}
     ],
-    "model": "google/gemini-2.5-flash-preview-09-2025"
+    "model": "google/gemini-1.5-flash"
   }'
 
 # Segunda mensagem com Grok (mesma conversa)
