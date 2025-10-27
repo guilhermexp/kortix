@@ -21,14 +21,15 @@ import {
 	DropzoneEmptyState,
 } from "@ui/components/shadcn-io/dropzone"
 import {
-	Brain,
-	FileIcon,
-	GitBranch,
-	Link as LinkIcon,
-	Loader2,
-	PlugIcon,
-	Plus,
-	UploadIcon,
+    Brain,
+    FileIcon,
+    GitBranch,
+    Link as LinkIcon,
+    Loader2,
+    PlugIcon,
+    Plus,
+    UploadIcon,
+    Sparkles,
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import dynamic from "next/dynamic"
@@ -192,19 +193,19 @@ const mergeOptimisticMemory = (
 // }
 
 export function AddMemoryView({
-	onClose,
-	initialTab = "link",
+    onClose,
+    initialTab = "link",
 }: {
-	onClose?: () => void
-	initialTab?: "note" | "link" | "file" | "connect" | "repository"
+    onClose?: () => void
+    initialTab?: "note" | "link" | "file" | "connect" | "repository"
 }) {
 	const queryClient = useQueryClient()
 	const { selectedProject, setSelectedProject } = useProject()
 	const [showAddDialog, setShowAddDialog] = useState(true)
 	const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-	const [activeTab, setActiveTab] = useState<
-		"note" | "link" | "file" | "connect" | "repository"
-	>(initialTab)
+    const [activeTab, setActiveTab] = useState<
+        "note" | "link" | "file" | "connect" | "repository"
+    >(initialTab)
 	const autumn = useCustomer()
 	const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false)
 	const [newProjectName, setNewProjectName] = useState("")
@@ -264,68 +265,279 @@ export function AddMemoryView({
 		},
 	})
 
-    const addContentForm = useForm({
-        defaultValues: {
-            content: "",
-            project:
-                selectedProject && selectedProject !== "sm_project_default"
-                    ? selectedProject
-                    : "",
-        },
-        onSubmit: async ({ value, formApi }) => {
-            addContentMutation.mutate({
-                content: value.content,
-                project: value.project,
-                contentType: activeTab as "note" | "link",
-            })
-            formApi.reset()
-        },
-        validators: {
-            onChange: z.object({
-                content: z.string().min(1, "Content is required"),
-                // Require a real project (not empty, not the All Projects viewer)
-                project: z
-                    .string()
-                    .min(1, "Select a project")
-                    .refine((v) => v !== "sm_project_default", "Select a project"),
-            }),
-            onSubmit: z.object({
-                content: z.string().min(1, "Content is required"),
-                project: z
-                    .string()
-                    .min(1, "Select a project")
-                    .refine((v) => v !== "sm_project_default", "Select a project"),
-            }),
-        },
-    })
+	const addContentForm = useForm({
+		defaultValues: {
+			content: "",
+			project:
+				selectedProject && selectedProject !== "sm_project_default"
+					? selectedProject
+					: "",
+		},
+		onSubmit: async ({ value, formApi }) => {
+			addContentMutation.mutate({
+				content: value.content,
+				project: value.project,
+				contentType: activeTab as "note" | "link",
+			})
+			formApi.reset()
+		},
+		validators: {
+			onChange: z.object({
+				content: z.string().min(1, "Content is required"),
+				// Require a real project (not empty, not the All Projects viewer)
+				project: z
+					.string()
+					.min(1, "Select a project")
+					.refine((v) => v !== "sm_project_default", "Select a project"),
+			}),
+			onSubmit: z.object({
+				content: z.string().min(1, "Content is required"),
+				project: z
+					.string()
+					.min(1, "Select a project")
+					.refine((v) => v !== "sm_project_default", "Select a project"),
+			}),
+		},
+	})
 
-	// Re-validate content field when tab changes between note/link/repository
+    // Re-validate content field when tab changes between note/link/repository
 	// biome-ignore  lint/correctness/useExhaustiveDependencies: It is what it is
 	useEffect(() => {
 		// Trigger validation of the content field when switching between note/link/repository
-		if (activeTab === "note" || activeTab === "link" || activeTab === "repository") {
-			const currentValue = addContentForm.getFieldValue("content")
-			if (currentValue) {
-				addContentForm.validateField("content", "change")
-			}
-		}
-	}, [activeTab])
+        if (
+            activeTab === "note" ||
+            activeTab === "link" ||
+            activeTab === "repository"
+        ) {
+            const currentValue = addContentForm.getFieldValue("content")
+            if (currentValue) {
+                addContentForm.validateField("content", "change")
+            }
+        }
+    }, [activeTab])
+
+    // Deep Agent state
+    const [deepSummary, setDeepSummary] = useState<string>("")
+    const [deepUrl, setDeepUrl] = useState<string>("")
+    const deepAnalyzeMutation = useMutation({
+        mutationFn: async ({ url, title }: { url: string; title?: string }) => {
+            const res = await $fetch("@post/deep-agent/analyze", {
+                body: { url, title, mode: "auto" },
+            })
+            if (res.error) {
+                throw new Error(res.error.message || "Deep analysis failed")
+            }
+            return res.data
+        },
+        onSuccess: (data) => {
+            setDeepSummary(data.summary || "")
+            // Store the complete analysis data including preview metadata
+            setDeepAnalysisData(data)
+            toast.success("Deep analysis complete")
+        },
+        onError: (err) => {
+            toast.error("Deep analysis failed", {
+                description: err instanceof Error ? err.message : "Unknown error",
+            })
+        },
+    })
+
+    // State to store the complete analysis data
+    const [deepAnalysisData, setDeepAnalysisData] = useState<any>(null)
+
+    const deepSaveMutation = useMutation({
+        mutationFn: async ({ project, content, url, previewMetadata }: {
+            project: string;
+            content: string;
+            url?: string;
+            previewMetadata?: any
+        }) => {
+            // Close modal immediately like addContentMutation does
+            onClose?.()
+
+            const processingPromise = (async () => {
+                // Prepare metadata with preview information
+                const metadata: any = {
+                    sm_source: "consumer",
+                    deep_agent: true,
+                    source_url: url,
+                }
+
+                // Add preview metadata if available
+                if (previewMetadata) {
+                    if (previewMetadata.ogImage) {
+                        metadata.ogImage = previewMetadata.ogImage
+                    }
+                    if (previewMetadata.twitterImage) {
+                        metadata.twitterImage = previewMetadata.twitterImage
+                    }
+                    if (previewMetadata.title) {
+                        metadata.title = previewMetadata.title
+                    }
+                    if (previewMetadata.description) {
+                        metadata.description = previewMetadata.description
+                    }
+                    if (previewMetadata.favicon) {
+                        metadata.favicon = previewMetadata.favicon
+                    }
+                    if (previewMetadata.siteName) {
+                        metadata.siteName = previewMetadata.siteName
+                    }
+                }
+
+                const res = await $fetch("@post/documents", {
+                    body: {
+                        content,
+                        containerTags: [project],
+                        metadata,
+                    },
+                })
+                if (res.error) {
+                    throw new Error(res.error.message || "Failed to save memory")
+                }
+
+                const memoryId = res.data.id
+
+                // Polling function to check status
+                const pollForCompletion = async (): Promise<MemoryStatusResponse> => {
+                    let attempts = 0
+                    const maxAttempts = 60 // Maximum 5 minutes
+
+                    while (attempts < maxAttempts) {
+                        try {
+                            const memory = await $fetch<MemoryStatusResponse>(
+                                `@get/documents/${memoryId}`,
+                            )
+
+                            if (memory.error) {
+                                throw new Error(
+                                    memory.error?.message || "Failed to fetch memory status",
+                                )
+                            }
+
+                            // Check if processing is complete
+                            if (
+                                memory.data?.status === "done" ||
+                                memory.data?.status === "failed"
+                            ) {
+                                return memory
+                            }
+
+                            // Wait before next attempt
+                            await new Promise((resolve) => setTimeout(resolve, 5000)) // 5 seconds
+                            attempts++
+                        } catch (error) {
+                            console.error("Error polling memory status:", error)
+                            throw error
+                        }
+                    }
+
+                    throw new Error("Processing timeout - please refresh to check status")
+                }
+
+                // Start polling
+                const finalMemory = await pollForCompletion()
+                return finalMemory.data
+            })()
+
+            return processingPromise
+        },
+        onMutate: async ({ project, url }) => {
+            // Cancel any outgoing refetches
+            await queryClient.cancelQueries({
+                queryKey: ["documents-with-memories", project],
+            })
+
+            // Snapshot the previous value
+            const previousMemories = queryClient.getQueryData<DocumentsQueryData>([
+                "documents-with-memories",
+                project,
+            ])
+
+            // Create optimistic memory
+            const optimisticMemory: DocumentListItem = {
+                id: `temp-${Date.now()}`,
+                content: "",
+                url: url || null,
+                title: "Deep Agent Processing...",
+                description: "Analyzing and extracting content...",
+                containerTags: [project],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                status: "queued",
+                type: "link",
+                metadata: {
+                    processingStage: "queued",
+                    processingMessage: "Deep Agent is analyzing this link",
+                    deep_agent: true,
+                },
+                memoryEntries: [],
+                isOptimistic: true,
+            }
+
+            // Optimistically update to include the new memory
+            queryClient.setQueryData<DocumentsQueryData | undefined>(
+                ["documents-with-memories", project],
+                (oldData) => mergeOptimisticMemory(oldData, optimisticMemory),
+            )
+
+            return { previousMemories, optimisticId: optimisticMemory.id }
+        },
+        onError: (_error, variables, context) => {
+            if (context?.previousMemories) {
+                queryClient.setQueryData(
+                    ["documents-with-memories", variables.project],
+                    context.previousMemories,
+                )
+            }
+            toast.error("Falha ao salvar memória", {
+                description: _error instanceof Error ? _error.message : "Unknown error",
+            })
+        },
+        onSuccess: (_data, variables) => {
+            analytics.memoryAdded({
+                type: "link",
+                project_id: variables.project,
+                content_length: variables.content.length,
+            })
+
+            queryClient.invalidateQueries({
+                queryKey: ["documents-with-memories", variables.project],
+            })
+
+            // Additional invalidations for polling
+            setTimeout(() => {
+                queryClient.invalidateQueries({
+                    queryKey: ["documents-with-memories", variables.project],
+                })
+            }, 30000) // 30 seconds
+
+            setTimeout(() => {
+                queryClient.invalidateQueries({
+                    queryKey: ["documents-with-memories", variables.project],
+                })
+            }, 120000) // 2 minutes
+
+            setShowAddDialog(false)
+            toast.success("Memória salva com Deep Agent")
+        },
+    })
 
 	// Form for file upload metadata
-    const fileUploadForm = useForm({
-        defaultValues: {
-            title: "",
-            description: "",
-            project:
-                selectedProject && selectedProject !== "sm_project_default"
-                    ? selectedProject
-                    : "",
-        },
-        onSubmit: async ({ value, formApi }) => {
-            if (selectedFiles.length === 0) {
-                toast.error("Please select a file to upload")
-                return
-            }
+	const fileUploadForm = useForm({
+		defaultValues: {
+			title: "",
+			description: "",
+			project:
+				selectedProject && selectedProject !== "sm_project_default"
+					? selectedProject
+					: "",
+		},
+		onSubmit: async ({ value, formApi }) => {
+			if (selectedFiles.length === 0) {
+				toast.error("Please select a file to upload")
+				return
+			}
 
 			for (const file of selectedFiles) {
 				fileUploadMutation.mutate({
@@ -357,39 +569,44 @@ export function AddMemoryView({
 			const processingPromise = (async () => {
 				// First, create the memory
 				// Use different endpoint for repository
-				const response = contentType === "repository"
-					? await fetch(
-						`${process.env.NEXT_PUBLIC_BACKEND_URL}/v3/documents/repository`,
-						{
-							method: "POST",
-							headers: {
-								"Content-Type": "application/json",
-							},
-							credentials: "include",
-							body: JSON.stringify({
-								url: content,
-								containerTags: [project],
-								metadata: {
-									sm_source: "consumer",
+				const response =
+					contentType === "repository"
+						? await fetch(
+								`${process.env.NEXT_PUBLIC_BACKEND_URL}/v3/documents/repository`,
+								{
+									method: "POST",
+									headers: {
+										"Content-Type": "application/json",
+									},
+									credentials: "include",
+									body: JSON.stringify({
+										url: content,
+										containerTags: [project],
+										metadata: {
+											sm_source: "consumer",
+										},
+									}),
 								},
-							}),
-						}
-					).then(async (res) => {
-						if (!res.ok) {
-							const error = await res.json()
-							throw new Error(error.error?.message || "Failed to add repository")
-						}
-						return res.json()
-					}).then(data => ({ data, error: null }))
-					: await $fetch("@post/documents", {
-						body: {
-							content: content,
-							containerTags: [project],
-							metadata: {
-								sm_source: "consumer", // Use "consumer" source to bypass limits
-							},
-						},
-					})
+							)
+								.then(async (res) => {
+									if (!res.ok) {
+										const error = await res.json()
+										throw new Error(
+											error.error?.message || "Failed to add repository",
+										)
+									}
+									return res.json()
+								})
+								.then((data) => ({ data, error: null }))
+						: await $fetch("@post/documents", {
+								body: {
+									content: content,
+									containerTags: [project],
+									metadata: {
+										sm_source: "consumer", // Use "consumer" source to bypass limits
+									},
+								},
+							})
 
 				if (response.error) {
 					throw new Error(
@@ -451,7 +668,7 @@ export function AddMemoryView({
 				return completedMemory
 			})()
 
-            // Remove global toast; the card shows inline processing state
+			// Remove global toast; the card shows inline processing state
 
 			return processingPromise
 		},
@@ -471,11 +688,15 @@ export function AddMemoryView({
 			])
 			console.log("📸 Previous memories:", previousMemories)
 
-            // Create optimistic memory
-            const optimisticMemory: DocumentListItem = {
-                id: `temp-${Date.now()}`,
-				content: contentType === "link" || contentType === "repository" ? "" : content,
-				url: contentType === "link" || contentType === "repository" ? content : null,
+			// Create optimistic memory
+			const optimisticMemory: DocumentListItem = {
+				id: `temp-${Date.now()}`,
+				content:
+					contentType === "link" || contentType === "repository" ? "" : content,
+				url:
+					contentType === "link" || contentType === "repository"
+						? content
+						: null,
 				title:
 					contentType === "link"
 						? "Processing..."
@@ -488,12 +709,12 @@ export function AddMemoryView({
 						: contentType === "repository"
 							? "Fetching repository files..."
 							: "Processing content...",
-                containerTags: [project],
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                status: "queued",
-                type: contentType,
-                metadata: {
+				containerTags: [project],
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				status: "queued",
+				type: contentType,
+				metadata: {
 					processingStage: "queued",
 					processingMessage: "Added to processing queue",
 				},
@@ -522,7 +743,11 @@ export function AddMemoryView({
 		},
 		onSuccess: (_data, variables) => {
 			analytics.memoryAdded({
-				type: variables.contentType === "link" || variables.contentType === "repository" ? "link" : "note",
+				type:
+					variables.contentType === "link" ||
+					variables.contentType === "repository"
+						? "link"
+						: "note",
 				project_id: variables.project,
 				content_length: variables.content.length,
 			})
@@ -688,10 +913,11 @@ export function AddMemoryView({
 					}}
 					open={showAddDialog}
 				>
-					<DialogContent
-						className="w-[95vw] max-w-3xl sm:max-w-3xl bg-[#0f1419] backdrop-blur-xl border-white/10 text-white z-[80] max-h-[90vh] overflow-y-auto"
-						showCloseButton={false}
-					>
+						<DialogContent
+							className="w-[95vw] max-w-3xl sm:max-w-3xl text-white z-[80] max-h-[90vh] overflow-y-auto border border-white/10"
+							style={{ backgroundColor: "#0f1419" }}
+							showCloseButton={false}
+						>
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
 							exit={{ opacity: 0, scale: 0.95 }}
@@ -708,7 +934,7 @@ export function AddMemoryView({
 										</DialogDescription>
 									</div>
 									<div className="sm:ml-4 order-first sm:order-last">
-										<div className="bg-white/5 p-1 h-10 sm:h-8 rounded-md flex overflow-x-auto">
+										<div className="bg-black/20 border border-white/10 backdrop-blur-sm p-1 h-10 sm:h-8 rounded-md flex overflow-x-auto">
 											<TabButton
 												icon={Brain}
 												isActive={activeTab === "note"}
@@ -733,12 +959,12 @@ export function AddMemoryView({
 												label="Connect"
 												onClick={() => setActiveTab("connect")}
 											/>
-											<TabButton
-												icon={GitBranch}
-												isActive={activeTab === "repository"}
-												label="Repo"
-												onClick={() => setActiveTab("repository")}
-											/>
+                                <TabButton
+                                    icon={GitBranch}
+                                    isActive={activeTab === "repository"}
+                                    label="Repo"
+                                    onClick={() => setActiveTab("repository")}
+                                />
 										</div>
 									</div>
 								</div>
@@ -858,7 +1084,7 @@ export function AddMemoryView({
 									</div>
 								)}
 
-								{activeTab === "link" && (
+                            {activeTab === "link" && (
 									<div className="space-y-4">
 										<form
 											onSubmit={(e) => {
@@ -900,7 +1126,7 @@ export function AddMemoryView({
 														{({ state, handleChange, handleBlur }) => (
 															<>
 																<Input
-																	className={`bg-white/5 border-white/10 text-white ${
+																	className={`bg-[#0f1419] border-white/20 text-white ${
 																		addContentMutation.isPending
 																			? "opacity-50"
 																			: ""
@@ -928,7 +1154,9 @@ export function AddMemoryView({
 																			)
 																			.join(", ")}
 																	</motion.p>
-																)}
+                            )}
+
+                            
 															</>
 														)}
 													</addContentForm.Field>
@@ -963,18 +1191,77 @@ export function AddMemoryView({
 													</motion.div>
 												</div>
 
-												<ActionButtons
-													isSubmitDisabled={!addContentForm.state.canSubmit}
-													isSubmitting={addContentMutation.isPending}
-													onCancel={() => {
-														setShowAddDialog(false)
-														onClose?.()
-														addContentForm.reset()
-													}}
-													submitIcon={Plus}
-													submitText="Add Link"
-												/>
-											</div>
+                                            {/* Deep Agent (YouTube) — opcional */}
+                                            <div className="flex-1" />
+                                        </div>
+
+                                        {/* Deep Agent preview and actions placed below link input */}
+                                        <div className="mt-4">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <label className="text-sm font-medium" htmlFor="deep-url">
+                                                    Deep Agent — opcional
+                                                </label>
+                                            </div>
+                                            <div className="flex gap-2 items-center">
+                                                <Input
+                                                    className={`bg-[#0f1419] border-white/20 text-white ${deepAnalyzeMutation.isPending ? "opacity-50" : ""}`}
+                                                    disabled={deepAnalyzeMutation.isPending}
+                                                    id="deep-url"
+                                                    onChange={(e) => setDeepUrl(e.target.value)}
+                                                    placeholder="https://example.com/qualquer-link"
+                                                    value={deepUrl}
+                                                />
+                                                <Button
+                                                    disabled={!deepUrl || deepAnalyzeMutation.isPending || deepSaveMutation.isPending}
+                                                    onClick={async (e) => {
+                                                        e.preventDefault()
+                                                        if (!deepUrl) return
+                                                        try {
+                                                            new URL(deepUrl)
+                                                            const analysis = await deepAnalyzeMutation.mutateAsync({ url: deepUrl })
+                                                            const project = addContentForm.getFieldValue("project")
+                                                            if (!project) {
+                                                                toast.error("Selecione um projeto")
+                                                                return
+                                                            }
+                                                            await deepSaveMutation.mutateAsync({
+                                                                project,
+                                                                content: analysis.summary || "",
+                                                                url: deepUrl,
+                                                                previewMetadata: analysis.previewMetadata
+                                                            })
+                                                        } catch {
+                                                            toast.error("Informe um link válido")
+                                                        }
+                                                    }}
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+                                                >
+                                                    {deepAnalyzeMutation.isPending || deepSaveMutation.isPending ? (
+                                                        <>
+                                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processando
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Sparkles className="w-4 h-4 mr-2" /> Analisar & Adicionar
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        <ActionButtons
+                                                isSubmitDisabled={!addContentForm.state.canSubmit}
+                                                isSubmitting={addContentMutation.isPending}
+                                                onCancel={() => {
+                                                    setShowAddDialog(false)
+                                                    onClose?.()
+                                                    addContentForm.reset()
+                                                }}
+                                                submitIcon={Plus}
+                                                submitText="Add Link"
+                                            />
 										</form>
 									</div>
 								)}
@@ -1211,7 +1498,8 @@ export function AddMemoryView({
 														)}
 													</addContentForm.Field>
 													<p className="text-xs text-white/50">
-														The repository will be indexed and made searchable in your memory
+														The repository will be indexed and made searchable
+														in your memory
 													</p>
 												</motion.div>
 											</div>
@@ -1359,7 +1647,9 @@ export function AddMemoryExpandedView() {
 		"note" | "link" | "file" | "connect" | "repository"
 	>("note")
 
-	const handleOpenDialog = (tab: "note" | "link" | "file" | "connect" | "repository") => {
+	const handleOpenDialog = (
+		tab: "note" | "link" | "file" | "connect" | "repository",
+	) => {
 		setSelectedTab(tab)
 		setShowDialog(true)
 	}
