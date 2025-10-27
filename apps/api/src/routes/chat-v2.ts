@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { z } from "zod"
 import { env } from "../env"
 import { ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
-import { executeClaudeDirect, type AgentMessage } from "../services/claude-direct"
+import { executeClaudeAgent, type AgentMessage } from "../services/claude-agent"
 
 const chatRequestSchema = z.object({
 	messages: z.array(
@@ -191,21 +191,21 @@ export async function handleChatV2({
 	const maxTurns = payload.mode === "deep" ? 12 : payload.mode === "agentic" ? 10 : 6
 
 	try {
-		const { text, toolCalls } = await executeClaudeDirect({
-			messages: agentMessages,
-			client,
-			orgId,
-			systemPrompt,
-			model: resolvedModel,
+    const { events, text, parts } = await executeClaudeAgent({
+      messages: agentMessages,
+      client,
+      orgId,
+      systemPrompt,
+      model: resolvedModel,
 			context: toolContext,
 			maxTurns,
 		})
 
-		return new Response(
-			JSON.stringify({
-				message: { role: "assistant", content: text },
-				toolCalls,
-			}),
+    return new Response(
+      JSON.stringify({
+        message: { role: "assistant", content: text, parts },
+        events,
+      }),
 			{
 				headers: {
 					"Content-Type": "application/json",
