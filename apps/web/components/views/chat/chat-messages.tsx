@@ -365,6 +365,36 @@ function createTextMessage(role: "user" | "assistant", content: string): ClaudeC
 	}
 }
 
+function areClaudeMessagesEqual(a: ClaudeChatMessage[], b: ClaudeChatMessage[]) {
+	if (a === b) return true
+	if (a.length !== b.length) return false
+	for (let i = 0; i < a.length; i += 1) {
+		const left = a[i]
+		const right = b[i]
+		if (!left || !right) return false
+		if (
+			left.id !== right.id ||
+			left.role !== right.role ||
+			left.content !== right.content
+		) {
+			return false
+		}
+		const leftParts = Array.isArray(left.parts) ? left.parts : []
+		const rightParts = Array.isArray(right.parts) ? right.parts : []
+		if (leftParts.length !== rightParts.length) {
+			return false
+		}
+		for (let j = 0; j < leftParts.length; j += 1) {
+			const lp = leftParts[j]
+			const rp = rightParts[j]
+			if (JSON.stringify(lp) !== JSON.stringify(rp)) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 function useClaudeChat({
 	conversationId,
 	endpoint,
@@ -398,11 +428,17 @@ function useClaudeChat({
 				| ((previous: ClaudeChatMessage[]) => ClaudeChatMessage[]),
 		) => {
 			setMessagesState((prev) => {
-				const next =
+				const candidate =
 					typeof updater === "function"
 						? (updater as (value: ClaudeChatMessage[]) => ClaudeChatMessage[])(prev)
 						: updater
-				const normalized = Array.isArray(next) ? next : prev
+				const normalized = Array.isArray(candidate) ? candidate : prev
+				if (Array.isArray(normalized) && Array.isArray(prev)) {
+					if (areClaudeMessagesEqual(prev, normalized)) {
+						messagesRef.current = prev
+						return prev
+					}
+				}
 				messagesRef.current = normalized
 				return normalized
 			})
@@ -872,19 +908,14 @@ export function ChatMessages() {
 	}
 
 	useEffect(() => {
-		const baseId = id ? id.split("::")[0] : null
-		activeChatIdRef.current = currentChatId ?? baseId ?? null
+		activeChatIdRef.current = currentChatId ?? id ?? null
 	}, [currentChatId, id])
 
-	useEffect(() => {
-		const baseId = id?.split("::")[0]
-		if (baseId && baseId !== currentChatId) {
-			setCurrentChatId(baseId)
-		}
-	}, [id, currentChatId, setCurrentChatId])
+	// Removed: No longer need to split :: since mode/model were removed
+	// useEffect that was causing infinite loop
 
 	useEffect(() => {
-		const rawActiveId = (currentChatId ?? id)?.split("::")[0]
+		const rawActiveId = currentChatId ?? id
 		const msgs = getCurrentConversation()
 		setMessages(msgs ?? [])
 		setInput("")
@@ -895,7 +926,7 @@ export function ChatMessages() {
 	}, [currentChatId])
 
 	useEffect(() => {
-		const rawActiveId = (currentChatId ?? id)?.split("::")[0]
+		const rawActiveId = currentChatId ?? id
 		if (rawActiveId && messages.length > 0) {
 			setConversation(rawActiveId, messages)
 		}
