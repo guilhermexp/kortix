@@ -1,13 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { query } from "@anthropic-ai/claude-agent-sdk"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import { ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
 import { env } from "../env"
 import { createSupermemoryTools } from "./claude-agent-tools"
+import { EventStorageService, type ClaudeMessage } from "./event-storage"
+
+// Content block types for Claude messages
+export type TextBlock = { type: "text"; text: string }
+export type ToolUseBlock = { type: "tool_use"; id: string; name: string; input: unknown }
+export type ToolResultBlock = { type: "tool_result"; tool_use_id: string; content: unknown; is_error?: boolean }
+
+export type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock
 
 export type AgentMessage = {
 	role: "user" | "assistant"
-	content: string
+	content: string | ContentBlock[]  // Support both simple text and structured content blocks
 }
 
 export type AgentContextOptions = {
@@ -19,11 +27,13 @@ export type ClaudeAgentOptions = {
 	messages: AgentMessage[]
 	client: SupabaseClient
 	orgId: string
+	conversationId?: string
 	systemPrompt?: string
 	model?: string
 	context?: AgentContextOptions
 	allowedTools?: string[]
 	maxTurns?: number
+	useStoredHistory?: boolean
 }
 
 type ToolState = "output-available" | "output-error"
@@ -56,28 +66,50 @@ function sanitizeContent(value: string) {
 	return value.replace(/\s+/g, " ").trim()
 }
 
+/**
+ * Normalize content to array of content blocks
+ * Handles both legacy string format and new structured format
+ */
+function normalizeContent(content: string | ContentBlock[]): ContentBlock[] {
+	if (typeof content === "string") {
+		const sanitized = sanitizeContent(content)
+		return sanitized ? [{ type: "text", text: sanitized }] : []
+	}
+	return content
+}
+
 function createPromptStream(messages: AgentMessage[]) {
 	return (async function* promptGenerator() {
 		for (let i = 0; i < messages.length; i++) {
 			const message = messages[i]
-			const text = sanitizeContent(message.content)
-			if (!text) {
+			
+			// Normalize content to array of blocks (handles both string and array formats)
+			const contentBlocks = normalizeContent(message.content)
+			
+			if (contentBlocks.length === 0) {
 				console.warn(`[createPromptStream] Skipping empty message ${i}`)
 				continue
 			}
+			
 			const payload = {
 				role: message.role === "assistant" ? ("assistant" as const) : ("user" as const),
-				content: [{ type: "text" as const, text }],
+				content: contentBlocks,  // Now supports tool_use and tool_result blocks!
 			}
+			
 			const yieldValue = message.role === "assistant"
 				? { type: "assistant" as const, message: payload }
 				: { type: "user" as const, message: payload }
 
+			const contentPreview = contentBlocks
+				.map(b => b.type === "text" ? b.text.substring(0, 30) : `[${b.type}]`)
+				.join(" ")
+			
 			console.log(`[createPromptStream] Yielding message ${i}:`, {
 				type: yieldValue.type,
 				role: payload.role,
-				contentLength: text.length,
-				contentPreview: text.substring(0, 50)
+				blockCount: contentBlocks.length,
+				blockTypes: contentBlocks.map(b => b.type),
+				contentPreview
 			})
 
 			yield yieldValue
@@ -158,11 +190,13 @@ export async function executeClaudeAgent({
 	messages,
 	client,
 	orgId,
+	conversationId,
 	systemPrompt,
 	model,
 	context,
 	allowedTools,
 	maxTurns,
+	useStoredHistory = false,
 }: ClaudeAgentOptions): Promise<{
 	events: unknown[]
 	text: string
@@ -170,24 +204,75 @@ export async function executeClaudeAgent({
 }> {
 	console.log("[executeClaudeAgent] Starting with", messages.length, "messages")
 
-	try {
-		// WORKAROUND: Claude Agent SDK CLI crashes when receiving assistant messages
-		// in history because they may have had tool_use blocks that were lost when
-		// converted to plain text. Only send user messages to maintain context.
-		const userOnlyMessages = messages.filter(m => m.role === 'user')
+	const eventStorage = new EventStorageService(client)
 
-		if (userOnlyMessages.length !== messages.length) {
-			console.log("[executeClaudeAgent] Filtered to", userOnlyMessages.length, "user messages (assistant messages removed from history)")
+	try {
+		// Use stored history if conversationId is provided and useStoredHistory is enabled
+		let historyMessages: AgentMessage[] = messages
+		
+		if (conversationId && useStoredHistory) {
+			try {
+				const claudeMessages = await eventStorage.buildClaudeMessages(conversationId)
+				console.log("[executeClaudeAgent] Loaded", claudeMessages.length, "messages from stored history")
+				
+				// ✅ Convert ClaudeMessage format to AgentMessage format
+			// IMPORTANT: Preserve tool_use and tool_result blocks!
+			historyMessages = claudeMessages.map(cm => ({
+				role: cm.role,
+				content: cm.content  // ✅ Keep full content blocks array (including tool_use/tool_result)
+			}))
+			
+			console.log("[executeClaudeAgent] History blocks summary:",
+				historyMessages.map(m => {
+					const blocks = Array.isArray(m.content) ? m.content : []
+					return {
+						role: m.role,
+						blockTypes: blocks.map(b => b.type)
+					}
+				})
+			)
+				
+				// Append current messages to history
+				historyMessages = [...historyMessages, ...messages]
+			} catch (error) {
+				console.error("[executeClaudeAgent] Failed to load stored history:", error)
+				// Fall back to provided messages
+			}
 		}
 
-		const prompt = createPromptStream(userOnlyMessages)
+		const prompt = createPromptStream(historyMessages)
 		const toolsServer = createSupermemoryTools(client, orgId, context)
 		const toolNames = Array.isArray(allowedTools) && allowedTools.length > 0 ? allowedTools : undefined
 
-		// Explicitly set the path to CLI to avoid spawning issues
+		// Resolve CLI path dynamically to work in any environment
 		// See: https://github.com/anthropics/claude-code/issues/4619
-		// Use absolute path from monorepo root
-		const pathToClaudeCodeExecutable = "/Users/guilhermevarela/Public/supermemory/node_modules/@anthropic-ai/claude-agent-sdk/cli.js"
+		// Try multiple possible locations for the CLI in a monorepo setup
+		const possiblePaths = [
+			resolve(process.cwd(), "node_modules/@anthropic-ai/claude-agent-sdk/cli.js"), // From project root
+			resolve(__dirname, "../../../node_modules/@anthropic-ai/claude-agent-sdk/cli.js"), // From API package
+			resolve(process.cwd(), "../node_modules/@anthropic-ai/claude-agent-sdk/cli.js"), // From apps directory
+		]
+		
+		let pathToClaudeCodeExecutable = ""
+		for (const tryPath of possiblePaths) {
+			try {
+				const fs = await import("node:fs/promises")
+				const stats = await fs.stat(tryPath)
+				if (stats.isFile()) {
+					pathToClaudeCodeExecutable = tryPath
+					break
+				}
+			} catch {
+				// Continue to next path
+			}
+		}
+		
+		if (!pathToClaudeCodeExecutable) {
+			console.error("[executeClaudeAgent] Claude CLI not found in any location:")
+			possiblePaths.forEach(p => console.error("  -", p))
+			throw new Error("Claude Agent SDK CLI not properly installed or accessible")
+		}
+		
 		console.log("[executeClaudeAgent] Using CLI at:", pathToClaudeCodeExecutable)
 
 		const queryOptions: Record<string, unknown> = {
