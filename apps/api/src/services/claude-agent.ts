@@ -244,35 +244,10 @@ export async function executeClaudeAgent({
 		const toolsServer = createSupermemoryTools(client, orgId, context)
 		const toolNames = Array.isArray(allowedTools) && allowedTools.length > 0 ? allowedTools : undefined
 
-		// Resolve CLI path dynamically to work in any environment
+		// Explicitly set the path to CLI to avoid spawning issues
 		// See: https://github.com/anthropics/claude-code/issues/4619
-		// Try multiple possible locations for the CLI in a monorepo setup
-		const possiblePaths = [
-			resolve(process.cwd(), "node_modules/@anthropic-ai/claude-agent-sdk/cli.js"), // From project root
-			resolve(__dirname, "../../../node_modules/@anthropic-ai/claude-agent-sdk/cli.js"), // From API package
-			resolve(process.cwd(), "../node_modules/@anthropic-ai/claude-agent-sdk/cli.js"), // From apps directory
-		]
-		
-		let pathToClaudeCodeExecutable = ""
-		for (const tryPath of possiblePaths) {
-			try {
-				const fs = await import("node:fs/promises")
-				const stats = await fs.stat(tryPath)
-				if (stats.isFile()) {
-					pathToClaudeCodeExecutable = tryPath
-					break
-				}
-			} catch {
-				// Continue to next path
-			}
-		}
-		
-		if (!pathToClaudeCodeExecutable) {
-			console.error("[executeClaudeAgent] Claude CLI not found in any location:")
-			possiblePaths.forEach(p => console.error("  -", p))
-			throw new Error("Claude Agent SDK CLI not properly installed or accessible")
-		}
-		
+		// Use absolute path from project root (known working path)
+		const pathToClaudeCodeExecutable = resolve(process.cwd(), "node_modules/@anthropic-ai/claude-agent-sdk/cli.js")
 		console.log("[executeClaudeAgent] Using CLI at:", pathToClaudeCodeExecutable)
 
 		const queryOptions: Record<string, unknown> = {

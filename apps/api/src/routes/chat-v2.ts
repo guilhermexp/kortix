@@ -3,6 +3,8 @@ import { z } from "zod"
 import { env } from "../env"
 import { ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
 import { executeClaudeAgent, type AgentMessage } from "../services/claude-agent"
+import { EventStorageService } from "../services/event-storage"
+import { ErrorHandler } from "../services/error-handler"
 
 const chatRequestSchema = z.object({
 	messages: z.array(
@@ -15,6 +17,8 @@ const chatRequestSchema = z.object({
 				.optional(),
 		}),
 	),
+	conversationId: z.string().uuid().optional(),
+	useStoredHistory: z.boolean().default(false),
 	mode: z.enum(["simple", "agentic", "deep"]).default("simple"),
 	metadata: z.record(z.string(), z.any()).optional(),
 	model: z.string().optional(),
@@ -113,10 +117,12 @@ function normalizeModel(requested: string | undefined, fallback: string): string
 
 export async function handleChatV2({
 	orgId,
+	userId,
 	client,
 	body,
 }: {
 	orgId: string
+	userId?: string
 	client: SupabaseClient
 	body: unknown
 }) {
@@ -125,7 +131,33 @@ export async function handleChatV2({
 		payload = chatRequestSchema.parse(body ?? {})
 	} catch (error) {
 		console.error("Chat V2 validation failed", error)
+		if (error instanceof z.ZodError) {
+			return ErrorHandler.validation(
+				"Invalid chat payload",
+				{ errors: error.errors }
+			).toResponse()
+		}
 		return new Response("Invalid chat payload", { status: 400 })
+	}
+
+	const eventStorage = new EventStorageService(client)
+	let conversationId = payload.conversationId
+
+	// Create new conversation if conversationId not provided
+	if (!conversationId) {
+		try {
+			const conversation = await eventStorage.createConversation(
+				orgId,
+				userId,
+				undefined, // title will be auto-generated or set later
+				{ mode: payload.mode }
+			)
+			conversationId = conversation.id
+			console.log(`[Chat V2] Created new conversation: ${conversationId}`)
+		} catch (error) {
+			console.error("[Chat V2] Failed to create conversation:", error)
+			// Continue without conversation tracking
+		}
 	}
 
 	const { items: agentMessages, extraSystem } = buildAgentMessages(
@@ -191,21 +223,58 @@ export async function handleChatV2({
 	const maxTurns = payload.mode === "deep" ? 12 : payload.mode === "agentic" ? 10 : 6
 
 	try {
-    const { events, text, parts } = await executeClaudeAgent({
-      messages: agentMessages,
-      client,
-      orgId,
-      systemPrompt,
-      model: resolvedModel,
+		// Store user messages if conversationId exists
+		if (conversationId) {
+			try {
+				for (const message of agentMessages) {
+					if (message.role === "user") {
+						await eventStorage.storeEvent({
+							conversationId,
+							type: "user",
+							role: "user",
+							content: { text: message.content },
+						})
+					}
+				}
+			} catch (error) {
+				console.error("[Chat V2] Failed to store user messages:", error)
+				// Continue without storing
+			}
+		}
+
+		const { events, text, parts } = await executeClaudeAgent({
+			messages: agentMessages,
+			client,
+			orgId,
+			conversationId,
+			systemPrompt,
+			model: resolvedModel,
 			context: toolContext,
 			maxTurns,
+			useStoredHistory: payload.useStoredHistory,
 		})
 
-    return new Response(
-      JSON.stringify({
-        message: { role: "assistant", content: text, parts },
-        events,
-      }),
+		// Store assistant response if conversationId exists
+		if (conversationId && text) {
+			try {
+				await eventStorage.storeEvent({
+					conversationId,
+					type: "assistant",
+					role: "assistant",
+					content: { text, parts },
+				})
+			} catch (error) {
+				console.error("[Chat V2] Failed to store assistant response:", error)
+				// Continue without storing
+			}
+		}
+
+		return new Response(
+			JSON.stringify({
+				message: { role: "assistant", content: text, parts },
+				conversationId,
+				events,
+			}),
 			{
 				headers: {
 					"Content-Type": "application/json",
@@ -213,10 +282,6 @@ export async function handleChatV2({
 			},
 		)
 	} catch (error) {
-		console.error("Chat V2 execution failed", error)
-		return new Response(
-			JSON.stringify({ error: "Chat unavailable" }),
-			{ status: 500, headers: { "Content-Type": "application/json" } },
-		)
+		return ErrorHandler.handleError(error)
 	}
 }
