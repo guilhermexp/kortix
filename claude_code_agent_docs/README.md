@@ -94,11 +94,25 @@ const prompt = createPromptStream(userOnlyMessages)
 
 **Por quê?** Assistant messages com tool_use blocks causam crash no CLI quando reenviadas como texto simples.
 
-#### 3. Path Explícito do CLI
+#### 3. Path Dinâmico do CLI (Corrigido)
 
 ```typescript
-const queryOptions = {
-  pathToClaudeCodeExecutable: "/absolute/path/to/node_modules/@anthropic-ai/claude-agent-sdk/cli.js"
+import { resolve } from "node:path"
+
+const pathToClaudeCodeExecutable = resolve(
+  process.cwd(),
+  "node_modules/@anthropic-ai/claude-agent-sdk/cli.js"
+)
+
+// Validação automática incluida
+try {
+  const fs = await import("node:fs/promises")
+  const stats = await fs.stat(pathToClaudeCodeExecutable)
+  if (!stats.isFile()) {
+    throw new Error("CLI file not found")
+  }
+} catch (error) {
+  throw new Error("Claude Agent SDK CLI not properly installed")
 }
 ```
 
@@ -110,7 +124,7 @@ const queryOptions = {
 |----------|-------|---------|
 | `query: undefined` | Schema com `z.object()` | Usar objeto direto |
 | CLI crash com histórico | Assistant messages sem tool_use blocks | Filtrar apenas user messages |
-| CLI não encontrado | Path relativo | Path absoluto explícito |
+| CLI não encontrado | Path relativo | Path dinâmico com validação |
 
 Detalhes completos em [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md#-problemas-encontrados-e-soluções)
 
@@ -238,7 +252,7 @@ Ver detalhes em [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md#-próximos
 
 **Causa:** Path relativo ou ambiente incorreto
 
-**Solução:** Especificar path absoluto em `pathToClaudeCodeExecutable`
+**Solução:** Usar `resolve(process.cwd(), "node_modules/@anthropic-ai/claude-agent-sdk/cli.js")` com validação automática
 
 ---
 

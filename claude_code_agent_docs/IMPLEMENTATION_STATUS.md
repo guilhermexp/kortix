@@ -16,6 +16,7 @@
 - ✅ Múltiplas chamadas de tools na mesma conversa
 - ✅ Streaming de respostas
 - ✅ Busca em banco de dados Supabase
+- ✅ **Path dinâmico do CLI** (corrigido - funciona em qualquer ambiente)
 
 ### ⚠️ Limitações Conhecidas
 
@@ -92,19 +93,30 @@ const prompt = createPromptStream(userOnlyMessages)
 Claude Code executable not found
 ```
 
-**Solução:**
-Especificar explicitamente o caminho absoluto para o CLI:
+**Solução (Corrigida):**
+Resolver dinamicamente o caminho do CLI com validação automática:
 
 ```typescript
-const pathToClaudeCodeExecutable = "/Users/guilhermevarela/Public/supermemory/node_modules/@anthropic-ai/claude-agent-sdk/cli.js"
+import { resolve } from "node:path"
 
-const queryOptions = {
-  // ... outras opções
-  pathToClaudeCodeExecutable
+const pathToClaudeCodeExecutable = resolve(
+  process.cwd(),
+  "node_modules/@anthropic-ai/claude-agent-sdk/cli.js"
+)
+
+// Validação automática incluida
+try {
+  const fs = await import("node:fs/promises")
+  const stats = await fs.stat(pathToClaudeCodeExecutable)
+  if (!stats.isFile()) {
+    throw new Error("CLI file not found")
+  }
+} catch (error) {
+  throw new Error("Claude Agent SDK CLI not properly installed")
 }
 ```
 
-**Arquivo:** `apps/api/src/services/claude-agent.ts:188-195`
+**Arquivo:** `apps/api/src/services/claude-agent.ts:248-266`
 
 ---
 
