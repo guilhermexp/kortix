@@ -272,39 +272,92 @@ For VPS or Docker deployment:
 
 ## Architecture
 
+> **📊 Detailed Architecture**: See [`DATA_MODEL.md`](DATA_MODEL.md) for complete database schema, search flow, and performance metrics.
+
 ### Content Processing Pipeline
 
 ```
-Document Creation
+Document Upload (File/URL/Text)
     ↓
-Queueing (background job)
+Content Extraction
+  • Text: Direct processing
+  • PDF: Text + OCR fallback
+  • Images: Vision API (OCR)
+  • Videos: Audio transcription
+  • Web: HTML → Markdown
+  • GitHub: Repository clone
     ↓
-Content Extraction (PDF, HTML, images, etc.)
+Document Storage (documents table)
+  • Full content + metadata
+  • AI-generated summary
+  • Document-level embedding
     ↓
-Text Chunking (semantic chunks)
+Chunking (document_chunks table)
+  • Split into 800-token chunks
+  • 200-token overlap
+  • Semantic boundaries preserved
     ↓
-Vector Embedding (1536-dim via Gemini)
+Vector Embedding
+  • 1536-dimensional vectors
+  • Google Gemini text-embedding-004
+  • Parallel batch processing
     ↓
-Database Indexing (pgvector)
+Database Indexing
+  • pgvector IVFFlat index
+  • Cosine similarity search
+  • Sub-second query latency
     ↓
-Done (ready for search)
+Ready for Search & Chat
 ```
+
+### Data Layers
+
+The system uses three complementary data layers:
+
+1. **Documents Layer** (`documents` table)
+   - Original content preservation
+   - Full-text storage
+   - Metadata and summaries
+
+2. **Chunks Layer** (`document_chunks` table)
+   - Semantic search via vector embeddings
+   - Precise passage retrieval
+   - Fast similarity matching
+
+3. **Memories Layer** (`memories` table - optional)
+   - AI-processed insights
+   - Relationship extraction
+   - Knowledge graph nodes
 
 ### Search System
 
-- **Vector Search**: Semantic similarity using pgvector HNSW indexes
-- **Keyword Search**: Full-text search with pg_trgm
-- **Hybrid Search**: Combined vector + keyword with configurable weighting
-- **Reranking**: Optional Cohere-based result reranking
-- **Agentic Search**: Web search integration for external knowledge
+**Multi-Path Search Strategy:**
+- **Vector Search** (primary): Semantic similarity using pgvector with IVFFlat indexing
+- **Fallback Modes**: Local cosine similarity, metadata-only, recent documents
+- **Caching**: In-memory cache with 1-hour TTL
+- **Reranking**: Optional Cohere-based relevance improvement
+- **Recency Boosting**: Time-weighted scoring for recent content
+
+**Performance:**
+- Typical search: 200-500ms end-to-end
+- Vector similarity: 50-200ms (with index)
+- Result aggregation: 10-50ms
+- Reranking: +100-300ms (optional)
 
 ### Chat System
 
-- Streaming responses via Vercel AI SDK
-- Automatic context retrieval from knowledge base
-- Citation system with source references
-- Language detection and matching
-- Configurable system prompts
+**Claude Agent SDK Integration:**
+- Streaming responses via Anthropic Claude
+- Tool: `searchDatabase` - MCP server for knowledge base access
+- Automatic context retrieval from vector search
+- Multi-turn conversations with history tracking
+- Three modes: `simple` (6 turns), `agentic` (10 turns), `deep` (12 turns)
+
+**Conversation Storage:**
+- Full chat history in `conversations` table
+- Event tracking (user, assistant, tool use/result)
+- Tool execution logs with timing
+- Supports conversation replay and context loading
 
 ## API Documentation
 
@@ -325,11 +378,15 @@ Once running, API documentation is available at:
 
 ## Documentation
 
-- **Architecture**: [`spec/TECH_SPEC.md`](spec/TECH_SPEC.md)
-- **Product Roadmap**: [`spec/PRD.md`](spec/PRD.md)
-- **Railway Deployment**: [`ai_docs/RAILWAY_DEPLOYMENT.md`](ai_docs/RAILWAY_DEPLOYMENT.md)
-- **Current State**: [`ai_docs/CURRENT_STATE_ANALYSIS.md`](ai_docs/CURRENT_STATE_ANALYSIS.md)
-- **Developer Docs**: Run `bun run --cwd apps/docs dev` for interactive docs
+### Technical Documentation
+- **📊 Data Model & Architecture**: [`DATA_MODEL.md`](DATA_MODEL.md) - Complete database schema, search architecture, and data flow
+- **🏗️ Technical Specification**: [`spec/TECH_SPEC.md`](spec/TECH_SPEC.md) - System architecture and design
+- **🚀 Railway Deployment**: [`ai_docs/RAILWAY_DEPLOYMENT.md`](ai_docs/RAILWAY_DEPLOYMENT.md) - Production deployment guide
+- **📈 Current State Analysis**: [`ai_docs/CURRENT_STATE_ANALYSIS.md`](ai_docs/CURRENT_STATE_ANALYSIS.md) - Project status
+
+### Product Documentation
+- **🗺️ Product Roadmap**: [`spec/PRD.md`](spec/PRD.md)
+- **📖 Interactive Docs**: Run `bun run --cwd apps/docs dev` for Mintlify documentation
 
 ## Contributing
 

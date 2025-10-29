@@ -1,0 +1,5 @@
+# Local settings (never commit)
+settings.local.json
+
+# Session files
+*.session

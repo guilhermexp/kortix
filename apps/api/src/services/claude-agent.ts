@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { query } from "@anthropic-ai/claude-agent-sdk"
-import { join, resolve } from "node:path"
+import { resolve } from "node:path"
+import { fileURLToPath } from "node:url"
+import { access } from "node:fs/promises"
 import { ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
 import { env } from "../env"
 import { createSupermemoryTools } from "./claude-agent-tools"
@@ -24,19 +26,67 @@ export type AgentContextOptions = {
 }
 
 export type ClaudeAgentOptions = {
-	messages: AgentMessage[]
+	message: string // Single user message for this turn
+	sdkSessionId?: string // SDK session ID to resume (from SDK, not our DB)
+	continueSession?: boolean // If true, use 'continue' to resume most recent session automatically
 	client: SupabaseClient
 	orgId: string
-	conversationId?: string
 	systemPrompt?: string
 	model?: string
 	context?: AgentContextOptions
 	allowedTools?: string[]
 	maxTurns?: number
-	useStoredHistory?: boolean
+}
+
+export type ClaudeAgentCallbacks = {
+	onEvent?: (event: unknown) => void | Promise<void>
 }
 
 type ToolState = "output-available" | "output-error"
+
+let cachedCliPath: string | null = null
+
+async function resolveClaudeCodeCliPath(): Promise<string> {
+	if (cachedCliPath) {
+		return cachedCliPath
+	}
+
+	const moduleDir = fileURLToPath(new URL(".", import.meta.url))
+	const candidateBases = [
+		process.cwd(),
+		resolve(process.cwd(), ".."),
+		moduleDir,
+		resolve(moduleDir, ".."),
+		resolve(moduleDir, "..", ".."),
+		resolve(moduleDir, "..", "..", ".."),
+		resolve(moduleDir, "..", "..", "..", ".."),
+	]
+	const candidatePaths = Array.from(
+		new Set(
+			candidateBases.map((base) =>
+				resolve(base, "node_modules/@anthropic-ai/claude-agent-sdk/cli.js"),
+			),
+		),
+	)
+
+	const tried: string[] = []
+	for (const candidate of candidatePaths) {
+		tried.push(candidate)
+		try {
+			await access(candidate)
+			cachedCliPath = candidate
+			return candidate
+		} catch {
+			// Continuar verificação em outros caminhos
+		}
+	}
+
+	throw new Error(
+		`[executeClaudeAgent] Claude Code CLI não encontrado. Caminhos verificados: ${tried.join(
+			", ",
+		)}`,
+	)
+}
 
 export type AgentPart =
 	| { type: "text"; text: string }
@@ -82,37 +132,39 @@ function createPromptStream(messages: AgentMessage[]) {
 	return (async function* promptGenerator() {
 		for (let i = 0; i < messages.length; i++) {
 			const message = messages[i]
-			
+
+			// ⚠️ Claude Agent SDK limitation: prompt stream accepts ONLY user messages
+			// Assistant messages must be handled through SDK's session management or system prompt
+			if (message.role !== "user") {
+				continue
+			}
+
 			// Normalize content to array of blocks (handles both string and array formats)
 			const contentBlocks = normalizeContent(message.content)
-			
+
 			if (contentBlocks.length === 0) {
 				console.warn(`[createPromptStream] Skipping empty message ${i}`)
 				continue
 			}
-			
+
 			const payload = {
-				role: message.role === "assistant" ? ("assistant" as const) : ("user" as const),
-				content: contentBlocks,  // Now supports tool_use and tool_result blocks!
+				role: "user" as const,
+				content: contentBlocks,
 			}
-			
-			const yieldValue = message.role === "assistant"
-				? { type: "assistant" as const, message: payload }
-				: { type: "user" as const, message: payload }
 
 			const contentPreview = contentBlocks
-				.map(b => b.type === "text" ? b.text.substring(0, 30) : `[${b.type}]`)
+				.map((b) => (b.type === "text" ? b.text.substring(0, 30) : `[${b.type}]`))
 				.join(" ")
-			
+
 			console.log(`[createPromptStream] Yielding message ${i}:`, {
-				type: yieldValue.type,
+				type: "user",
 				role: payload.role,
 				blockCount: contentBlocks.length,
-				blockTypes: contentBlocks.map(b => b.type),
-				contentPreview
+				blockTypes: contentBlocks.map((b) => b.type),
+				contentPreview,
 			})
 
-			yield yieldValue
+			yield { type: "user" as const, message: payload }
 		}
 		console.log("[createPromptStream] Finished yielding all messages")
 	})();
@@ -186,79 +238,106 @@ function extractAssistantText(events: unknown[]): string {
 	return parts.join("")
 }
 
-export async function executeClaudeAgent({
-	messages,
-	client,
-	orgId,
-	conversationId,
-	systemPrompt,
-	model,
-	context,
-	allowedTools,
-	maxTurns,
-	useStoredHistory = false,
-}: ClaudeAgentOptions): Promise<{
+export async function executeClaudeAgent(
+	{
+		message,
+		sdkSessionId,
+		continueSession,
+		client,
+		orgId,
+		systemPrompt,
+		model,
+		context,
+		allowedTools,
+		maxTurns,
+	}: ClaudeAgentOptions,
+	callbacks: ClaudeAgentCallbacks = {},
+): Promise<{
 	events: unknown[]
 	text: string
 	parts: AgentPart[]
+	sdkSessionId: string | null // SDK session ID for future requests
 }> {
-	console.log("[executeClaudeAgent] Starting with", messages.length, "messages")
-
-	const eventStorage = new EventStorageService(client)
+	const sessionMode = continueSession
+		? "continuing session"
+		: sdkSessionId
+			? "resuming specific session"
+			: "new session"
+	console.log("[executeClaudeAgent] Starting", sessionMode)
 
 	try {
-		// Use stored history if conversationId is provided and useStoredHistory is enabled
-		let historyMessages: AgentMessage[] = messages
-		
-		if (conversationId && useStoredHistory) {
-			try {
-				const claudeMessages = await eventStorage.buildClaudeMessages(conversationId)
-				console.log("[executeClaudeAgent] Loaded", claudeMessages.length, "messages from stored history")
-				
-				// ✅ Convert ClaudeMessage format to AgentMessage format
-			// IMPORTANT: Preserve tool_use and tool_result blocks!
-			historyMessages = claudeMessages.map(cm => ({
-				role: cm.role,
-				content: cm.content  // ✅ Keep full content blocks array (including tool_use/tool_result)
-			}))
-			
-			console.log("[executeClaudeAgent] History blocks summary:",
-				historyMessages.map(m => {
-					const blocks = Array.isArray(m.content) ? m.content : []
-					return {
-						role: m.role,
-						blockTypes: blocks.map(b => b.type)
-					}
-				})
-			)
-				
-				// Append current messages to history
-				historyMessages = [...historyMessages, ...messages]
-			} catch (error) {
-				console.error("[executeClaudeAgent] Failed to load stored history:", error)
-				// Fall back to provided messages
-			}
+		// Create prompt stream with just the current message
+		const userMessage: AgentMessage = {
+			role: "user",
+			content: message,
 		}
-
-		const prompt = createPromptStream(historyMessages)
+		const prompt = createPromptStream([userMessage])
 		const toolsServer = createSupermemoryTools(client, orgId, context)
 		const toolNames = Array.isArray(allowedTools) && allowedTools.length > 0 ? allowedTools : undefined
 
-		// Explicitly set the path to CLI to avoid spawning issues
-		// See: https://github.com/anthropics/claude-code/issues/4619
-		// Use absolute path from project root (known working path)
-		const pathToClaudeCodeExecutable = resolve(process.cwd(), "node_modules/@anthropic-ai/claude-agent-sdk/cli.js")
+		// Explicitly resolve the CLI path to avoid spawning issues in different runtimes
+		const pathToClaudeCodeExecutable = await resolveClaudeCodeCliPath()
 		console.log("[executeClaudeAgent] Using CLI at:", pathToClaudeCodeExecutable)
 
+		// Determine if this is a new session (no continue, no resume)
+		const isNewSession = !continueSession && !sdkSessionId
+
+		// Debug: Check if CLAUDE.md exists
+		const workingDir = resolve(process.cwd())
+		const claudeMdPath = resolve(workingDir, ".claude", "CLAUDE.md")
+		console.log("[executeClaudeAgent] Working directory:", workingDir)
+		console.log("[executeClaudeAgent] Looking for CLAUDE.md at:", claudeMdPath)
+		try {
+			await access(claudeMdPath)
+			console.log("[executeClaudeAgent] ✓ CLAUDE.md found")
+		} catch {
+			console.warn("[executeClaudeAgent] ✗ CLAUDE.md NOT found - will use inline fallback")
+		}
+
 		const queryOptions: Record<string, unknown> = {
-			systemPrompt: systemPrompt ?? ENHANCED_SYSTEM_PROMPT,
 			model: model ?? env.CHAT_MODEL,
 			mcpServers: {
 				"supermemory-tools": toolsServer,
 			},
 			permissionMode: "bypassPermissions",
+			includePartialMessages: Boolean(callbacks.onEvent),
+			allowDangerouslySkipPermissions: true,
 			pathToClaudeCodeExecutable,
+
+			// Enable loading CLAUDE.md from .claude/ directory
+			settingSources: ["project"],
+
+			// Set working directory to API root so SDK finds .claude/CLAUDE.md
+			cwd: resolve(process.cwd()),
+
+			stderr: (data: string) => {
+				const output = data.trim()
+				if (output.length > 0) {
+					console.error("[Claude CLI]", output)
+				}
+			},
 		}
+
+		// DO NOT send inline systemPrompt when settingSources is enabled
+		// The SDK will read from .claude/CLAUDE.md automatically
+		// If we pass systemPrompt here, it will override the file!
+		if (isNewSession) {
+			console.log("[executeClaudeAgent] New session - SDK will load system prompt from .claude/CLAUDE.md")
+		} else {
+			console.log("[executeClaudeAgent] Existing session - reusing stored system prompt from SDK")
+		}
+
+		// Session management: continue (most recent) vs resume (specific session)
+		if (continueSession) {
+			// Continue most recent session automatically (for sequential chat)
+			queryOptions.continue = true
+			console.log("[executeClaudeAgent] Using continue mode (most recent session)")
+		} else if (sdkSessionId) {
+			// Resume specific session (for returning to old conversation)
+			queryOptions.resume = sdkSessionId
+			console.log("[executeClaudeAgent] Resuming specific session:", sdkSessionId)
+		}
+		// else: new session (no continue, no resume)
 		if (toolNames) {
 			queryOptions.allowedTools = toolNames
 		}
@@ -266,36 +345,55 @@ export async function executeClaudeAgent({
 			queryOptions.maxTurns = maxTurns
 		}
 
-		console.log("[executeClaudeAgent] Starting query with options:", {
+		console.log("[executeClaudeAgent] Query options:", {
 			model: queryOptions.model,
-			permissionMode: queryOptions.permissionMode,
+			sessionMode: queryOptions.continue
+				? "continue (most recent)"
+				: queryOptions.resume
+					? `resume (${queryOptions.resume})`
+					: "new session",
 			maxTurns: queryOptions.maxTurns,
 			hasTools: !!queryOptions.mcpServers,
-			cliPath: pathToClaudeCodeExecutable,
+			message: message.substring(0, 50),
 		})
-		console.log("[executeClaudeAgent] Messages being sent:", messages.map(m => ({
-			role: m.role,
-			contentLength: m.content.length
-		})))
 
 		const agentIterator = query({
 			prompt,
 			options: queryOptions,
 		})
 
+		const onEvent = callbacks.onEvent
 		const events: unknown[] = []
 		let eventCount = 0
+		let capturedSessionId: string | null = sdkSessionId || null
+
 		for await (const event of agentIterator) {
 			eventCount++
 			if (event && typeof event === 'object' && 'type' in event) {
 				console.log(`[executeClaudeAgent] Event ${eventCount}:`, (event as any).type)
+
+				// Capture SDK session ID from events
+				if ('session_id' in event && typeof (event as any).session_id === 'string') {
+					capturedSessionId = (event as any).session_id
+					if (!sdkSessionId) {
+						console.log("[executeClaudeAgent] Captured new SDK session ID:", capturedSessionId)
+					}
+				}
 			}
 			events.push(event)
+			if (onEvent) {
+				await onEvent(event)
+			}
 		}
 		console.log("[executeClaudeAgent] Completed with", events.length, "events")
 
 		const { text, parts } = buildAssistantResponse(events)
-		return { events, text, parts }
+		return {
+			events,
+			text,
+			parts,
+			sdkSessionId: capturedSessionId
+		}
 	} catch (error) {
 		console.error("[executeClaudeAgent] Error:", error)
 		throw error
@@ -351,7 +449,8 @@ function buildAssistantResponse(events: unknown[]): {
 							typeof value.tool_use_id === "string" ? value.tool_use_id : ""
 						const info = toolCalls.get(toolUseId)
 						const toolName = info?.name ?? toolUseId
-						const raw = collectTextFromContent(value.content)
+						const segments = collectTextFromContent(value.content)
+						const raw = segments.join("")
 						const isError = Boolean(value.is_error)
 						if (toolName === "mcp__supermemory-tools__searchDatabase") {
 							toolParts.push(
