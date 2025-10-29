@@ -33,6 +33,11 @@ import { NavigationControls, useGraphInteractions } from "@repo/ui/memory-graph"
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
 
+const CARD_WIDTH = 320
+const CARD_HEIGHT = 420
+const CARD_HALF_WIDTH = CARD_WIDTH / 2
+const CARD_HALF_HEIGHT = CARD_HEIGHT / 2
+
 export function InfinityCanvas() {
 	const { selectedProject } = useProject()
 	const {
@@ -81,6 +86,8 @@ export function InfinityCanvas() {
 	// Pan/zoom state and container size
     const containerRef = useRef<HTMLDivElement | null>(null)
     const viewportRef = useRef<HTMLDivElement | null>(null)
+	const previousPlacedIdsRef = useRef<string[]>([])
+	const hydratedFromStorageRef = useRef(false)
 	const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
     const {
         panX,
@@ -283,20 +290,76 @@ export function InfinityCanvas() {
 		if (containerSize.width <= 0 || containerSize.height <= 0) return
 		if (documents.length === 0) return
 
-		// Use functional update to avoid dependency on cardPositions
-		setCardPositions((currentPositions) => {
-			const missing = documents
-				.filter((d) => !currentPositions[d.id])
-				.map((d) => d.id)
-			if (missing.length === 0) return currentPositions
+		const missingIds = documents
+			.filter((doc) => !cardPositions[doc.id])
+			.map((doc) => doc.id)
 
-			const newPositions = computeCenterPositions(missing, currentPositions)
-			if (Object.keys(newPositions).length > 0) {
-				return { ...currentPositions, ...newPositions }
-			}
-			return currentPositions
-		})
-	}, [documents, containerSize.width, containerSize.height, computeCenterPositions, setCardPositions])
+		if (missingIds.length === 0) return
+
+		const newPositions = computeCenterPositions(missingIds, cardPositions)
+		if (Object.keys(newPositions).length === 0) return
+
+		setCardPositions({ ...cardPositions, ...newPositions })
+
+		const targetId = missingIds[missingIds.length - 1]
+		const targetPosition = newPositions[targetId]
+		if (!targetPosition) return
+
+		centerViewportOn(
+			targetPosition.x + CARD_HALF_WIDTH,
+			targetPosition.y + CARD_HALF_HEIGHT,
+			containerSize.width,
+			containerSize.height,
+			true,
+		)
+	}, [
+		documents,
+		cardPositions,
+		containerSize.width,
+		containerSize.height,
+		computeCenterPositions,
+		setCardPositions,
+		centerViewportOn,
+	])
+
+	useEffect(() => {
+		const previous = previousPlacedIdsRef.current
+		const newIds = placedDocumentIds.filter((id) => !previous.includes(id))
+		const skipInitialView =
+			previous.length === 0 &&
+			placedDocumentIds.length > 0 &&
+			hydratedFromStorageRef.current
+
+		previousPlacedIdsRef.current = placedDocumentIds
+
+		if (skipInitialView) {
+			hydratedFromStorageRef.current = false
+			return
+		}
+		if (newIds.length === 0) return
+		if (containerSize.width <= 0 || containerSize.height <= 0) return
+
+		for (let i = newIds.length - 1; i >= 0; i--) {
+			const id = newIds[i]!
+			const position = cardPositions[id]
+			if (!position) continue
+
+			centerViewportOn(
+				position.x + CARD_HALF_WIDTH,
+				position.y + CARD_HALF_HEIGHT,
+				containerSize.width,
+				containerSize.height,
+				true,
+			)
+			break
+		}
+	}, [
+		placedDocumentIds,
+		cardPositions,
+		containerSize.width,
+		containerSize.height,
+		centerViewportOn,
+	])
 
 	// Load palette documents (like modal list) lazily when panel opens or project changes
 	const loadPalette = useCallback(async (pageNum: number, append = false) => {
@@ -463,6 +526,9 @@ export function InfinityCanvas() {
 			if (rawDocs) {
 				const parsedDocs = JSON.parse(rawDocs)
 				if (Array.isArray(parsedDocs) && parsedDocs.every((v) => typeof v === "string")) {
+					if (parsedDocs.length > 0) {
+						hydratedFromStorageRef.current = true
+					}
 					setPlacedDocumentIds(parsedDocs)
 				}
 			}
@@ -531,19 +597,43 @@ export function InfinityCanvas() {
             if (!placedDocumentIds.includes(doc.id)) {
                 addPlacedDocuments([doc.id])
             }
-            updateCardPosition(doc.id, worldX - 160, worldY - 120)
+            updateCardPosition(
+				doc.id,
+				worldX - CARD_HALF_WIDTH,
+				worldY - CARD_HALF_HEIGHT,
+			)
             // Center viewport on the newly added document (delayed to ensure render)
             setTimeout(() => {
-                centerViewportOn(worldX, worldY, { animate: true })
+                centerViewportOn(
+					worldX,
+					worldY,
+					containerSize.width,
+					containerSize.height,
+					true,
+				)
             }, 100)
             // Use functional update to avoid stale state from batching
-            setScopedDocumentIds((prevScoped) => [...new Set([...prevScoped, doc.id])])
+            setScopedDocumentIds(
+				Array.from(new Set([...placedDocumentIds, doc.id])),
+			)
             // Optimistically show the card immediately
             if (!documents.find((d) => d.id === doc.id)) {
                 setDocuments((prev) => [...prev, doc])
             }
         }
-    }, [panX, panY, zoom, placedDocumentIds, documents, addPlacedDocuments, updateCardPosition, setScopedDocumentIds, centerViewportOn])
+    }, [
+		panX,
+		panY,
+		zoom,
+		placedDocumentIds,
+		documents,
+		containerSize.width,
+		containerSize.height,
+		addPlacedDocuments,
+		updateCardPosition,
+		setScopedDocumentIds,
+		centerViewportOn,
+	])
 
 	// Handle document removal
 	const handleRemoveDocument = useCallback(
@@ -878,7 +968,13 @@ export function InfinityCanvas() {
                                                     updateCardPosition(doc.id, pos[doc.id].x, pos[doc.id].y)
                                                     // Center viewport on the newly added document (delayed to ensure render)
                                                     setTimeout(() => {
-                                                        centerViewportOn(pos[doc.id].x + 160, pos[doc.id].y + 120, { animate: true })
+                                                        centerViewportOn(
+															pos[doc.id]!.x + CARD_HALF_WIDTH,
+															pos[doc.id]!.y + CARD_HALF_HEIGHT,
+															containerSize.width,
+															containerSize.height,
+															true,
+														)
                                                     }, 100)
                                                 }
                                                 // Optimistically inject into canvas
