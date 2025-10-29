@@ -532,6 +532,10 @@ export function InfinityCanvas() {
                 addPlacedDocuments([doc.id])
             }
             updateCardPosition(doc.id, worldX - 160, worldY - 120)
+            // Center viewport on the newly added document (delayed to ensure render)
+            setTimeout(() => {
+                centerViewportOn(worldX, worldY, { animate: true })
+            }, 100)
             // Use functional update to avoid stale state from batching
             setScopedDocumentIds((prevScoped) => [...new Set([...prevScoped, doc.id])])
             // Optimistically show the card immediately
@@ -539,7 +543,7 @@ export function InfinityCanvas() {
                 setDocuments((prev) => [...prev, doc])
             }
         }
-    }, [panX, panY, zoom, placedDocumentIds, documents, addPlacedDocuments, updateCardPosition, setScopedDocumentIds])
+    }, [panX, panY, zoom, placedDocumentIds, documents, addPlacedDocuments, updateCardPosition, setScopedDocumentIds, centerViewportOn])
 
 	// Handle document removal
 	const handleRemoveDocument = useCallback(
@@ -796,7 +800,7 @@ export function InfinityCanvas() {
                     onZoomOut={() => zoomOut(containerSize.width / 2, containerSize.height / 2)}
                     onAutoFit={handleAutoFit}
                     nodes={nodesForControls as any}
-                    className="absolute bottom-4 left-4 z-10"
+                    className="absolute bottom-4 left-4 z-30"
                 />
             )}
 
@@ -872,6 +876,10 @@ export function InfinityCanvas() {
                                                 const pos = computeCenterPositions([doc.id], cardPositions, { strategy: "random" })
                                                 if (pos[doc.id]) {
                                                     updateCardPosition(doc.id, pos[doc.id].x, pos[doc.id].y)
+                                                    // Center viewport on the newly added document (delayed to ensure render)
+                                                    setTimeout(() => {
+                                                        centerViewportOn(pos[doc.id].x + 160, pos[doc.id].y + 120, { animate: true })
+                                                    }, 100)
                                                 }
                                                 // Optimistically inject into canvas
                                                 if (!documents.find((d) => d.id === doc.id)) {

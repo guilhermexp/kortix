@@ -1,8 +1,24 @@
 # PRD: Refatoração do Chat - Substituição do AI SDK pelo Claude Agent SDK
 
+> 🏛️ **DOCUMENTO HISTÓRICO**
+>
+> **Este é o PRD original da migração.** A implementação já foi **COMPLETAMENTE CONCLUÍDA** em 28/10/2025.
+>
+> **Atualização:** Em 29/10/2025, a arquitetura evoluiu para **v3.0 - SDK Session Management**,
+> simplificando ainda mais o sistema ao delegar todo gerenciamento de histórico ao SDK.
+>
+> ✅ Para o estado atual da implementação, consulte:
+> - **[IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)** - Status atual e arquitetura v3.0 completa
+> - **[README.md](./README.md)** - Guia de uso e quick start v3.0
+>
+> Este documento é mantido apenas como **referência histórica** do planejamento inicial.
+> A implementação atual difere significativamente deste PRD original devido à evolução para v3.0.
+
+---
+
 **Autor:** Gemini (Validado Tecnicamente)
 **Data:** 27 de Outubro de 2025
-**Status:** Pronto para Implementação
+**Status:** ~~Pronto para Implementação~~ → ✅ **IMPLEMENTADO COMPLETAMENTE**
 **Tipo:** REFATORAÇÃO COMPLETA (Substituição, não Adição)
 
 ---
@@ -92,6 +108,12 @@ O chat atual usa Vercel AI SDK com capacidades básicas de busca em banco de dad
    - Sem código legado do AI SDK após migração
 
 ---
+
+## Atualização (Out/2025)
+
+- Backend passou a emitir eventos `thinking` e `tool_event` durante o streaming NDJSON para suportar feedback visual imediato no chat.
+- Frontend (chat-messages.tsx) consome esses eventos para o spinner global e para renderização incremental dos resultados de tools.
+- Documentação sincronizada em `README.md` e `IMPLEMENTATION_STATUS.md`.
 
 ## 5. Escopo da Refatoração
 

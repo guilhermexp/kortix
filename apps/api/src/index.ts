@@ -31,6 +31,15 @@ import {
 import { generateChatTitle, handleChat } from "./routes/chat"
 import { handleChatV2 } from "./routes/chat-v2"
 import {
+	handleCreateConversation,
+	handleGetConversation,
+	handleGetConversationEvents,
+	handleGetConversationHistory,
+	handleUpdateConversation,
+	handleDeleteConversation,
+	handleListConversations,
+} from "./routes/conversations"
+import {
 	createConnection,
 	createConnectionInputSchema,
 	deleteConnection,
@@ -463,8 +472,7 @@ app.post(
         const { url, mode, title, githubToken, useExa } = body
 
 		try {
-
-        const service = new AnalysisService(undefined, useExa)
+        const service = new AnalysisService("gemini-2.5-flash", useExa)
         const result = await service.analyzeAuto(url, title, githubToken, { useExa })
 			return c.json(result)
 		} catch (error) {
@@ -849,10 +857,10 @@ app.post("/chat", async (c) => {
 
 // New enhanced chat endpoint with AI SDK
 app.post("/chat/v2", async (c) => {
-	const { organizationId } = c.var.session
+	const { organizationId, userId } = c.var.session
 	const body = await c.req.json()
-	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
-	return handleChatV2({ orgId: organizationId, client: supabase, body })
+	const supabase = createScopedSupabase(organizationId, userId)
+	return handleChatV2({ orgId: organizationId, userId, client: supabase, body })
 })
 
 app.post("/chat/title", async (c) => {
@@ -864,6 +872,56 @@ app.post("/chat/title", async (c) => {
 		console.error("Failed to generate chat title", error)
 		return c.text("Untitled conversation", 400)
 	}
+})
+
+// Conversation management endpoints
+app.post("/v3/conversations", async (c) => {
+	const { organizationId, userId } = c.var.session
+	const body = await c.req.json()
+	const supabase = createScopedSupabase(organizationId, userId)
+	return handleCreateConversation({ client: supabase, orgId: organizationId, userId, body })
+})
+
+app.get("/v3/conversations", async (c) => {
+	const { organizationId } = c.var.session
+	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
+	return handleListConversations({ client: supabase, orgId: organizationId, searchParams: new URLSearchParams(c.req.query()) })
+})
+
+app.get("/v3/conversations/:id", async (c) => {
+	const { organizationId } = c.var.session
+	const conversationId = c.req.param("id")
+	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
+	return handleGetConversation({ client: supabase, conversationId })
+})
+
+app.get("/v3/conversations/:id/events", async (c) => {
+	const { organizationId } = c.var.session
+	const conversationId = c.req.param("id")
+	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
+	return handleGetConversationEvents({ client: supabase, conversationId })
+})
+
+app.get("/v3/conversations/:id/history", async (c) => {
+	const { organizationId } = c.var.session
+	const conversationId = c.req.param("id")
+	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
+	return handleGetConversationHistory({ client: supabase, conversationId })
+})
+
+app.patch("/v3/conversations/:id", async (c) => {
+	const { organizationId } = c.var.session
+	const conversationId = c.req.param("id")
+	const body = await c.req.json()
+	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
+	return handleUpdateConversation({ client: supabase, conversationId, body })
+})
+
+app.delete("/v3/conversations/:id", async (c) => {
+	const { organizationId } = c.var.session
+	const conversationId = c.req.param("id")
+	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
+	return handleDeleteConversation({ client: supabase, conversationId })
 })
 
 serve({

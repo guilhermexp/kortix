@@ -14,16 +14,16 @@ interface NavigationControlsProps {
 
 export const NavigationControls = memo<NavigationControlsProps>(
 	({ onCenter, onZoomIn, onZoomOut, onAutoFit, nodes, className = "" }) => {
-		if (nodes.length === 0) {
-			return null;
-		}
+		// Always show zoom controls, but disable Fit/Center if no nodes
+		const hasNodes = nodes.length > 0;
 
 		return (
 			<div className={`flex flex-col gap-1 ${className}`}>
 				<button
 					type="button"
 					onClick={onAutoFit}
-					className="bg-black/20 backdrop-blur-sm hover:bg-black/30 border border-white/10 hover:border-white/20 rounded-lg p-2 text-white/70 hover:text-white transition-colors text-xs font-medium min-w-16"
+					disabled={!hasNodes}
+					className="bg-black/20 backdrop-blur-sm hover:bg-black/30 border border-white/10 hover:border-white/20 rounded-lg p-2 text-white/70 hover:text-white transition-colors text-xs font-medium min-w-16 disabled:opacity-50 disabled:cursor-not-allowed"
 					title="Auto-fit graph to viewport"
 				>
 					Fit
@@ -31,7 +31,8 @@ export const NavigationControls = memo<NavigationControlsProps>(
 				<button
 					type="button"
 					onClick={onCenter}
-					className="bg-black/20 backdrop-blur-sm hover:bg-black/30 border border-white/10 hover:border-white/20 rounded-lg p-2 text-white/70 hover:text-white transition-colors text-xs font-medium min-w-16"
+					disabled={!hasNodes}
+					className="bg-black/20 backdrop-blur-sm hover:bg-black/30 border border-white/10 hover:border-white/20 rounded-lg p-2 text-white/70 hover:text-white transition-colors text-xs font-medium min-w-16 disabled:opacity-50 disabled:cursor-not-allowed"
 					title="Center view on graph"
 				>
 					Center
