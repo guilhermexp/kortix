@@ -34,7 +34,7 @@
 .chat-markdown h3 {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #cbd5f5;
+  color: #e2e8f0;
   margin-top: 0.75rem;
   margin-bottom: 0.5rem;
   line-height: 1.4;
@@ -43,7 +43,7 @@
 .chat-markdown h4 {
   font-size: 1rem;
   font-weight: 600;
-  color: #cbd5f5;
+  color: #e2e8f0;
   margin-top: 0.625rem;
   margin-bottom: 0.5rem;
 }
@@ -92,17 +92,17 @@
 }
 
 .chat-markdown code {
-  background-color: #1f2937;
+  background-color: #1f2937 !important;
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   font-family: "Monaco", "Courier New", monospace;
   font-size: 0.875rem;
-  color: #f8fafc;
+  color: #f8fafc !important;
   border: 1px solid #1e293b;
 }
 
 .chat-markdown pre {
-  background-color: #111827;
+  background-color: #111827 !important;
   padding: 0.75rem;
   border-radius: 0.5rem;
   overflow-x: auto;
@@ -111,10 +111,27 @@
 }
 
 .chat-markdown pre code {
-  background-color: transparent;
+  background-color: transparent !important;
   padding: 0;
   border: none;
-  color: #f8fafc;
+  color: #f8fafc !important;
+}
+
+/* Estilos adicionais para garantir que o Streamdown respeite o tema escuro */
+.chat-markdown pre[class*="language-"],
+.chat-markdown code[class*="language-"] {
+  background-color: #111827 !important;
+  color: #f8fafc !important;
+}
+
+/* Force dark background for any code blocks that might bypass the .chat-markdown class */
+.chat-markdown div pre,
+.chat-markdown div code {
+  background-color: #111827 !important;
+}
+
+.chat-markdown div pre code {
+  background-color: transparent !important;
 }
 
 .chat-markdown a {
