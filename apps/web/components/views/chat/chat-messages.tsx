@@ -1539,7 +1539,7 @@ export function ChatMessages() {
     <div className="flex flex-col h-full">
       <div className="relative flex-1 bg-[#0f1419] overflow-hidden">
         <div
-          className="flex flex-col gap-3 absolute inset-0 overflow-y-auto px-4 pt-4 pb-32"
+          className="flex flex-col gap-3 absolute inset-0 overflow-y-auto px-4 pt-4 pb-6"
           onScroll={onScroll}
           ref={scrollContainerRef}
         >

@@ -237,7 +237,7 @@ function Menu({
 
 	// Collapse menu to icons when chat panel is open (desktop only)
 	const isCollapsedToIcons = !isMobile && !expandedView && isChatPanelOpen
-	const menuWidth = isCollapsedToIcons ? 320 : 600
+	const menuWidth = isCollapsedToIcons ? 280 : 600
 
 	// Dynamic z-index for mobile based on active panel
 	const mobileZIndex = isMobile && activePanel === "menu" ? "z-[70]" : "z-[100]"
