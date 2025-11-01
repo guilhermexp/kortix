@@ -31,6 +31,7 @@ import { usePersistentChat, useProject } from "@/stores";
 import { useCanvasSelection, useCanvasState } from "@/stores/canvas";
 import { useGraphHighlights } from "@/stores/highlights";
 import { Spinner } from "../../spinner";
+import { ProviderSelector, useProviderSelection, type ProviderId } from "./provider-selector";
 
 interface MemoryResult {
   documentId?: string;
@@ -1188,6 +1189,9 @@ export function ChatMessages() {
   const [mentionedDocIds, setMentionedDocIds] = useState<string[]>([]);
   const pendingMentionedDocIdsRef = useRef<string[]>([]);
 
+  // Provider selection
+  const { provider, setProvider } = useProviderSelection();
+
   const composeRequestBody = useCallback(
     (
       userMessage: string,
@@ -1228,6 +1232,7 @@ export function ChatMessages() {
           ? { scopedDocumentIds: scopedIds }
           : {}),
         ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
+        provider, // Include provider selection
       };
     },
     [
@@ -1236,6 +1241,7 @@ export function ChatMessages() {
       scopedDocumentIds,
       project,
       expandContext,
+      provider, // Add provider to dependencies
     ],
   );
 
@@ -1871,9 +1877,11 @@ export function ChatMessages() {
             })}
           </div>
         )}
-        {/* Project context indicator */}
-        {project && project !== "__ALL__" && (
-          <div className="px-1 pb-2">
+        {/* Provider selector and Project context indicator */}
+        <div className="flex items-center justify-between px-1 pb-2">
+          <ProviderSelector value={provider} onChange={setProvider} disabled={status === "submitted"} />
+
+          {project && project !== "__ALL__" && (
             <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-500/10 border border-blue-500/20">
               <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
               <span className="text-[11px] text-blue-300 font-medium">
@@ -1885,8 +1893,8 @@ export function ChatMessages() {
                 })()}
               </span>
             </div>
-          </div>
-        )}
+          )}
+        </div>
         <InputGroup className="rounded-xl border border-white/10 bg-black/25 backdrop-blur-sm focus-within:ring-0 focus-within:ring-offset-0">
           <InputGroupTextarea
             className="text-white placeholder-white/40"
