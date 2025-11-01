@@ -305,13 +305,39 @@ export function InfinityCanvas() {
 		const targetPosition = newPositions[targetId]
 		if (!targetPosition) return
 
-		centerViewportOn(
-			targetPosition.x + CARD_HALF_WIDTH,
-			targetPosition.y + CARD_HALF_HEIGHT,
-			containerSize.width,
-			containerSize.height,
-			true,
-		)
+		// Always ensure zoom is at a good level (0.9) for new documents
+		const targetZoom = 0.9
+		const needsZoomAdjustment = Math.abs(zoom - targetZoom) > 0.2
+
+		if (needsZoomAdjustment) {
+			const centerX = containerSize.width / 2
+			const centerY = containerSize.height / 2
+			const zoomSteps = Math.ceil(Math.abs(Math.log(targetZoom / zoom) / Math.log(1.15)))
+			const zoomFunc = zoom < targetZoom ? zoomIn : zoomOut
+
+			for (let i = 0; i < zoomSteps; i++) {
+				setTimeout(() => zoomFunc(centerX, centerY), i * 40)
+			}
+			// Center after zoom completes
+			setTimeout(() => {
+				centerViewportOn(
+					targetPosition.x + CARD_HALF_WIDTH,
+					targetPosition.y + CARD_HALF_HEIGHT,
+					containerSize.width,
+					containerSize.height,
+					true,
+				)
+			}, zoomSteps * 40 + 100)
+		} else {
+			// Just center without zoom adjustment
+			centerViewportOn(
+				targetPosition.x + CARD_HALF_WIDTH,
+				targetPosition.y + CARD_HALF_HEIGHT,
+				containerSize.width,
+				containerSize.height,
+				true,
+			)
+		}
 	}, [
 		documents,
 		cardPositions,
@@ -320,6 +346,11 @@ export function InfinityCanvas() {
 		computeCenterPositions,
 		setCardPositions,
 		centerViewportOn,
+		zoom,
+		zoomIn,
+		zoomOut,
+		panX,
+		panY,
 	])
 
 	useEffect(() => {
@@ -593,25 +624,19 @@ export function InfinityCanvas() {
 			const safeZoom = Math.max(0.05, zoom)
 			const worldX = (screenX - bounds.left - panX) / safeZoom
 			const worldY = (screenY - bounds.top - panY) / safeZoom
-			// Add document and set its position (robust against rapid clicks)
-            if (!placedDocumentIds.includes(doc.id)) {
-                addPlacedDocuments([doc.id])
-            }
+
+			// SET POSITION FIRST before adding document, so effect won't recalculate
             updateCardPosition(
 				doc.id,
 				worldX - CARD_HALF_WIDTH,
 				worldY - CARD_HALF_HEIGHT,
 			)
-            // Center viewport on the newly added document (delayed to ensure render)
-            setTimeout(() => {
-                centerViewportOn(
-					worldX,
-					worldY,
-					containerSize.width,
-					containerSize.height,
-					true,
-				)
-            }, 100)
+
+			// Then add document (effect will skip since position already exists)
+            if (!placedDocumentIds.includes(doc.id)) {
+                addPlacedDocuments([doc.id])
+            }
+
             // Use functional update to avoid stale state from batching
             setScopedDocumentIds(
 				Array.from(new Set([...placedDocumentIds, doc.id])),
@@ -627,12 +652,9 @@ export function InfinityCanvas() {
 		zoom,
 		placedDocumentIds,
 		documents,
-		containerSize.width,
-		containerSize.height,
 		addPlacedDocuments,
 		updateCardPosition,
 		setScopedDocumentIds,
-		centerViewportOn,
 	])
 
 	// Handle document removal
@@ -961,26 +983,12 @@ export function InfinityCanvas() {
                                                 onClick={(e) => {
                                                     e.stopPropagation()
                                             if (!placedDocumentIds.includes(doc.id)) {
-                                                addPlacedDocuments([doc.id])
-                                                // Place immediately near center without overlap, using random strategy for variety
-                                                const pos = computeCenterPositions([doc.id], cardPositions, { strategy: "random" })
-                                                if (pos[doc.id]) {
-                                                    updateCardPosition(doc.id, pos[doc.id].x, pos[doc.id].y)
-                                                    // Center viewport on the newly added document (delayed to ensure render)
-                                                    setTimeout(() => {
-                                                        centerViewportOn(
-															pos[doc.id]!.x + CARD_HALF_WIDTH,
-															pos[doc.id]!.y + CARD_HALF_HEIGHT,
-															containerSize.width,
-															containerSize.height,
-															true,
-														)
-                                                    }, 100)
-                                                }
                                                 // Optimistically inject into canvas
                                                 if (!documents.find((d) => d.id === doc.id)) {
                                                     setDocuments([...documents, doc])
                                                 }
+                                                addPlacedDocuments([doc.id])
+                                                // Position and zoom will be handled by effect automatically
                                             }
                                             }}
                                             >

@@ -1186,6 +1186,7 @@ export function ChatMessages() {
 
   // Inline mentions: pick canvas docs per message (@)
   const [mentionedDocIds, setMentionedDocIds] = useState<string[]>([]);
+  const pendingMentionedDocIdsRef = useRef<string[]>([]);
 
   const composeRequestBody = useCallback(
     (
@@ -1193,9 +1194,14 @@ export function ChatMessages() {
       sdkSessionId: string | null,
       continueSession: boolean,
     ) => {
+      // Use pending ref if available, otherwise use current state
+      const currentMentionedIds = pendingMentionedDocIdsRef.current.length > 0
+        ? pendingMentionedDocIdsRef.current
+        : mentionedDocIds;
+
       const scopedIds =
-        mentionedDocIds.length > 0
-          ? mentionedDocIds
+        currentMentionedIds.length > 0
+          ? currentMentionedIds
           : hasScopedDocuments
             ? scopedDocumentIds
             : undefined;
@@ -1207,9 +1213,12 @@ export function ChatMessages() {
       if (expandContext) {
         metadata.expandContext = true;
       }
-      if (mentionedDocIds.length > 0) {
+      if (currentMentionedIds.length > 0) {
         metadata.forceRawDocs = true;
       }
+
+      // Clear the pending ref after using it
+      pendingMentionedDocIdsRef.current = [];
 
       return {
         message: userMessage,
@@ -1294,45 +1303,81 @@ export function ChatMessages() {
     let ignore = false;
     async function load() {
       try {
-        if (!placedDocumentIds || placedDocumentIds.length === 0) {
-          setCanvasDocs([]);
-          return;
+        // If there are canvas docs, use those. Otherwise fetch all project docs
+        if (placedDocumentIds && placedDocumentIds.length > 0) {
+          const res = await fetch(
+            `${BACKEND_URL}/v3/documents/documents/by-ids`,
+            {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ids: placedDocumentIds, by: "id" }),
+            },
+          );
+          if (!res.ok) return;
+          const data = await res.json();
+          if (ignore) return;
+          const docs = Array.isArray(data?.documents) ? data.documents : [];
+          setCanvasDocs(
+            docs.map((d: any) => ({
+              id: d.id,
+              title: d.title ?? null,
+              type: d.type ?? null,
+              url: d.url ?? null,
+              preview:
+                (d.metadata &&
+                  (d.metadata.ogImage ||
+                    d.metadata.twitterImage ||
+                    d.metadata.previewImage)) ||
+                d.ogImage ||
+                null,
+            })),
+          );
+        } else {
+          // Fetch all documents from current project
+          const containerTags = selectedProject && selectedProject !== DEFAULT_PROJECT_ID ? [selectedProject] : undefined;
+          const res = await fetch(
+            `${BACKEND_URL}/v3/documents/documents`,
+            {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                containerTags,
+                limit: 50,
+                page: 1,
+                sort: "updatedAt",
+                order: "desc",
+              }),
+            },
+          );
+          if (!res.ok) return;
+          const data = await res.json();
+          if (ignore) return;
+          const docs = Array.isArray(data?.documents) ? data.documents : [];
+          setCanvasDocs(
+            docs.map((d: any) => ({
+              id: d.id,
+              title: d.title ?? null,
+              type: d.type ?? null,
+              url: d.url ?? null,
+              preview:
+                (d.metadata &&
+                  (d.metadata.ogImage ||
+                    d.metadata.twitterImage ||
+                    d.metadata.previewImage)) ||
+                d.ogImage ||
+                null,
+            })),
+          );
         }
-        const res = await fetch(
-          `${BACKEND_URL}/v3/documents/documents/by-ids`,
-          {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ids: placedDocumentIds, by: "id" }),
-          },
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        if (ignore) return;
-        const docs = Array.isArray(data?.documents) ? data.documents : [];
-        setCanvasDocs(
-          docs.map((d: any) => ({
-            id: d.id,
-            title: d.title ?? null,
-            type: d.type ?? null,
-            url: d.url ?? null,
-            preview:
-              (d.metadata &&
-                (d.metadata.ogImage ||
-                  d.metadata.twitterImage ||
-                  d.metadata.previewImage)) ||
-              d.ogImage ||
-              null,
-          })),
-        );
       } catch {}
     }
     load();
     return () => {
       ignore = true;
     };
-  }, [placedDocumentIds]);
+  }, [placedDocumentIds, selectedProject]);
 
   const filteredMention = useMemo(() => {
     const q = mentionQuery.trim().toLowerCase();
@@ -1360,9 +1405,13 @@ export function ChatMessages() {
 
   const sendUserMessage = (text: string) => {
     const ids = [...mentionedDocIds];
+    // Store in ref so composeRequestBody can access it synchronously
+    pendingMentionedDocIdsRef.current = ids;
     sendMessage({ text });
     // Inject chips into the just-sent user message in the local chat history
     setTimeout(() => injectMentionsIntoLastUserMessage(ids), 0);
+    // Clear mentioned docs after capturing them
+    if (ids.length > 0) setMentionedDocIds([]);
   };
 
   const getPreviewUrl = (doc: CanvasDoc): string | null => {
@@ -1785,8 +1834,6 @@ export function ChatMessages() {
             enableAutoScroll();
             scrollToBottom("auto");
             sendUserMessage(input);
-            // Clear one-shot mentioned docs after send
-            if (mentionedDocIds.length > 0) setMentionedDocIds([]);
             setInput("");
           }
         }}
@@ -1864,7 +1911,6 @@ export function ChatMessages() {
                   enableAutoScroll();
                   scrollToBottom("auto");
                   sendUserMessage(input);
-                  if (mentionedDocIds.length > 0) setMentionedDocIds([]);
                   setMentionOpen(false);
                   setInput("");
                 }
@@ -1932,7 +1978,7 @@ export function ChatMessages() {
             </div>
             {filteredMention.length === 0 ? (
               <div className="text-xs text-white/60 px-1 py-2">
-                Nenhum documento no canvas
+                Nenhum documento encontrado
               </div>
             ) : (
               filteredMention.map((d) => {
