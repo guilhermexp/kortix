@@ -265,6 +265,12 @@ export async function executeClaudeAgent(
 			: "new session"
 	console.log("[executeClaudeAgent] Starting", sessionMode)
 
+	// Ensure SDK CLI inherits custom API configuration
+	if (env.ANTHROPIC_BASE_URL) {
+		process.env.ANTHROPIC_BASE_URL = env.ANTHROPIC_BASE_URL
+		console.log("[executeClaudeAgent] Using custom base URL:", env.ANTHROPIC_BASE_URL)
+	}
+
 	try {
 		// Create prompt stream with just the current message
 		const userMessage: AgentMessage = {
