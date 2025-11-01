@@ -126,6 +126,42 @@ async function retryWithBackoff<T>(
 }
 
 /**
+ * Validate MarkItDown result to ensure we got actual content, not just HTML footer
+ * YouTube transcripts should be substantial (>1000 chars for most videos)
+ */
+function isValidYouTubeTranscript(markdown: string, url: string): boolean {
+	// Check if URL is YouTube
+	const isYouTube = url.toLowerCase().includes('youtube.com') || url.toLowerCase().includes('youtu.be')
+	if (!isYouTube) return true // Not YouTube, skip validation
+
+	// Check for minimum content length (YouTube footer is ~750 chars)
+	const MIN_VALID_LENGTH = 1000
+	if (markdown.length < MIN_VALID_LENGTH) {
+		console.warn(`[MarkItDown] YouTube result too short: ${markdown.length} chars (expected >${MIN_VALID_LENGTH})`)
+		return false
+	}
+
+	// Check for common footer patterns that indicate failed extraction
+	const footerPatterns = [
+		'[Sobre](https://www.youtube.com/about/)',
+		'[Imprensa](https://www.youtube.com/about/press/)',
+		'© 2025 Google LLC',
+		'[Direitos autorais](https://www.youtube.com/about/copyright/)'
+	]
+
+	const hasOnlyFooter = footerPatterns.some(pattern =>
+		markdown.includes(pattern) && markdown.length < 1500
+	)
+
+	if (hasOnlyFooter) {
+		console.warn('[MarkItDown] YouTube result contains only footer, no actual transcript')
+		return false
+	}
+
+	return true
+}
+
+/**
  * Run MarkItDown via Python API (convert_url method)
  * This is specifically for URLs that need special handling like YouTube
  * Implements retry with exponential backoff for rate limiting
@@ -181,6 +217,16 @@ except Exception as e:
 				const result = JSON.parse(jsonLine)
 
 				if (result.success) {
+					// Validate content before resolving
+					if (!isValidYouTubeTranscript(result.markdown, url)) {
+						reject(new Error(
+							`MarkItDown returned invalid YouTube transcript (likely rate limited). ` +
+							`Got ${result.markdown.length} chars, expected >1000. ` +
+							`This will trigger retry with backoff.`
+						))
+						return
+					}
+
 					resolve({
 						markdown: result.markdown,
 						metadata: {
@@ -248,15 +294,17 @@ export async function convertUrlWithMarkItDown(
 			maxDelayMs: 8000, // Cap at 8 seconds
 			backoffMultiplier: 2, // Double delay each retry
 			shouldRetry: (error) => {
-				// Retry on rate limiting, IP blocking, or network errors
+				// Retry on rate limiting, IP blocking, network errors, or invalid content
 				const errorMsg = error.message.toLowerCase()
 				const isRateLimit = errorMsg.includes('429') ||
 					errorMsg.includes('too many requests') ||
 					errorMsg.includes('ipblocked') ||
-					errorMsg.includes('rate limit')
+					errorMsg.includes('rate limit') ||
+					errorMsg.includes('invalid youtube transcript') ||
+					errorMsg.includes('likely rate limited')
 
 				if (isRateLimit) {
-					console.warn('[MarkItDown] Rate limit detected, will retry with backoff')
+					console.warn('[MarkItDown] Rate limit/invalid content detected, will retry with backoff')
 					return true
 				}
 
