@@ -355,7 +355,7 @@ const MemoryGraphPage = () => {
 	// Surgical fetch of missing highlighted documents (customId-based IDs from search)
 	useEffect(() => {
 		if (!isOpen) return
-		if (allHighlightDocumentIds.length === 0) return
+		if (!allHighlightDocumentIds || allHighlightDocumentIds.length === 0) return
 		const present = new Set<string>()
 		for (const doc of [...baseDocuments, ...injectedDocs]) {
 			present.add(doc.id)
@@ -363,7 +363,7 @@ const MemoryGraphPage = () => {
 				present.add(doc.customId)
 			}
 		}
-		const missing = allHighlightDocumentIds.filter((id) => !present.has(id))
+		const missing = (allHighlightDocumentIds ?? []).filter((id) => !present.has(id))
 		if (missing.length === 0) return
 		let cancelled = false
 		const run = async () => {
@@ -417,7 +417,7 @@ const MemoryGraphPage = () => {
 		}
 	}, [
 		isOpen,
-		allHighlightDocumentIds,
+		allHighlightDocumentIds?.length,
 		baseDocuments,
 		injectedDocs,
 		selectedProject,
@@ -433,12 +433,12 @@ const MemoryGraphPage = () => {
 
 	useEffect(() => {
 		const hasCompletedTour = localStorage.getItem(TOUR_STORAGE_KEY) === "true"
-		if (hasCompletedTour && allDocuments.length === 0 && !showTourDialog) {
+		if (hasCompletedTour && (allDocuments?.length ?? 0) === 0 && !showTourDialog) {
 			setShowConnectAIModal(true)
 		} else if (showTourDialog) {
 			setShowConnectAIModal(false)
 		}
-	}, [allDocuments.length, showTourDialog])
+	}, [allDocuments?.length, showTourDialog])
 
 	// Prevent body scrolling
 	useEffect(() => {

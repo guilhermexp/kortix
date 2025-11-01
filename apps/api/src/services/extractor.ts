@@ -319,7 +319,7 @@ async function extractPreviewImageWithGemini(
 	html: string,
 	url: string,
 ): Promise<string | null> {
-	const model = getGoogleModel(env.CHAT_MODEL)
+	const model = getGoogleModel(env.SUMMARY_MODEL || "google/gemini-2.5-flash")
 	if (!model) {
 		console.warn("extractPreviewImageWithGemini: Google Generative AI not configured")
 		return null
