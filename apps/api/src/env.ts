@@ -11,6 +11,7 @@ const envSchema = z.object({
 	SUPABASE_ANON_KEY: z.string().min(1), // Required for RLS enforcement
 	GOOGLE_API_KEY: z.string().min(1).optional(),
 	ANTHROPIC_API_KEY: z.string().min(1),
+	ANTHROPIC_BASE_URL: z.string().url().optional(),
 	COHERE_API_KEY: z.string().min(1).optional(),
 	EXA_API_KEY: z.string().min(1).optional(),
 	ENABLE_AGENTIC_MODE: z
@@ -81,6 +82,7 @@ const parsed = envSchema.safeParse({
 	SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
 	GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
 	ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+	ANTHROPIC_BASE_URL: process.env.ANTHROPIC_BASE_URL,
 	COHERE_API_KEY: process.env.COHERE_API_KEY,
 	EXA_API_KEY: process.env.EXA_API_KEY,
 	ENABLE_AGENTIC_MODE: process.env.ENABLE_AGENTIC_MODE,

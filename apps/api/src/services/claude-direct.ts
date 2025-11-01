@@ -80,6 +80,7 @@ export async function executeClaudeDirect({
 }: ClaudeDirectOptions): Promise<{ text: string; toolCalls: number }> {
 	const anthropic = new Anthropic({
 		apiKey: env.ANTHROPIC_API_KEY,
+		baseURL: env.ANTHROPIC_BASE_URL,
 	})
 
 	// Definir tool searchDatabase
