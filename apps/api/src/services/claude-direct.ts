@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { env } from "../env"
 import { ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
 import { searchDocuments } from "../routes/search"
+import { getProviderConfig, getDefaultProvider, type ProviderId } from "../config/providers"
 
 export type AgentMessage = {
 	role: "user" | "assistant"
@@ -20,6 +21,7 @@ export type ClaudeDirectOptions = {
 	orgId: string
 	systemPrompt?: string
 	model?: string
+	provider?: ProviderId // AI provider to use (glm or minimax)
 	context?: AgentContextOptions
 	maxTurns?: number
 }
@@ -75,12 +77,20 @@ export async function executeClaudeDirect({
 	orgId,
 	systemPrompt,
 	model,
+	provider,
 	context,
 	maxTurns = 10,
 }: ClaudeDirectOptions): Promise<{ text: string; toolCalls: number }> {
+	// Get provider configuration
+	const providerId = provider || getDefaultProvider()
+	const providerConfig = getProviderConfig(providerId)
+
+	console.log("[executeClaudeDirect] Using provider:", providerConfig.name, `(${providerId})`)
+	console.log("[executeClaudeDirect] Base URL:", providerConfig.baseURL)
+
 	const anthropic = new Anthropic({
-		apiKey: env.ANTHROPIC_API_KEY,
-		baseURL: env.ANTHROPIC_BASE_URL,
+		apiKey: providerConfig.apiKey,
+		baseURL: providerConfig.baseURL,
 	})
 
 	// Definir tool searchDatabase
@@ -117,7 +127,7 @@ export async function executeClaudeDirect({
 		turn++
 
 		const response = await anthropic.messages.create({
-			model: model || env.CHAT_MODEL,
+			model: model || providerConfig.models.balanced,
 			max_tokens: 4096,
 			system: systemPrompt || ENHANCED_SYSTEM_PROMPT,
 			messages: currentMessages,
@@ -185,7 +195,7 @@ export async function executeClaudeDirect({
 
 	// Atingiu max turns, fazer chamada final sem tools
 	const finalResponse = await anthropic.messages.create({
-		model: model || env.CHAT_MODEL,
+		model: model || providerConfig.models.balanced,
 		max_tokens: 4096,
 		system: systemPrompt || ENHANCED_SYSTEM_PROMPT,
 		messages: currentMessages,

@@ -23,6 +23,7 @@ const chatRequestSchema = z.object({
   mode: z.enum(["simple", "agentic", "deep"]).default("simple"),
   metadata: z.record(z.string(), z.any()).optional(),
   model: z.string().optional(),
+  provider: z.enum(["glm", "minimax", "anthropic"]).optional(), // AI provider selection
   scopedDocumentIds: z.array(z.string()).optional(),
 });
 
@@ -41,6 +42,7 @@ const legacyChatRequestSchema = z.object({
   mode: z.enum(["simple", "agentic", "deep"]).default("simple"),
   metadata: z.record(z.string(), z.any()).optional(),
   model: z.string().optional(),
+  provider: z.enum(["glm", "minimax", "anthropic"]).optional(), // AI provider selection
   scopedDocumentIds: z.array(z.string()).optional(),
 });
 
@@ -411,6 +413,7 @@ function convertLegacyRequest(
     mode: legacy.mode,
     metadata: legacy.metadata,
     model: legacy.model,
+    provider: legacy.provider,
     scopedDocumentIds: legacy.scopedDocumentIds,
   };
 }
@@ -517,7 +520,11 @@ export async function handleChatV2({
     ? `${ENHANCED_SYSTEM_PROMPT}\n\n${instructions.join("\n")}`
     : ENHANCED_SYSTEM_PROMPT;
 
-  const resolvedModel = normalizeModel(payload.model, env.CHAT_MODEL);
+  // If a provider is specified, let executeClaudeAgent decide the model from provider config
+  // Otherwise use the model from payload or fallback to env.CHAT_MODEL
+  const resolvedModel = payload.provider
+    ? undefined  // Let executeClaudeAgent use provider's default model
+    : normalizeModel(payload.model, env.CHAT_MODEL);
 
   const toolContext = {
     containerTags:
@@ -732,6 +739,7 @@ export async function handleChatV2({
               orgId,
               systemPrompt,
               model: resolvedModel,
+              provider: payload.provider, // Pass provider selection
               context: toolContext,
               maxTurns,
             },

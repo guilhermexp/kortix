@@ -7,6 +7,7 @@ import { ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
 import { env } from "../env"
 import { createSupermemoryTools } from "./claude-agent-tools"
 import { EventStorageService, type ClaudeMessage } from "./event-storage"
+import { getProviderConfig, getDefaultProvider, type ProviderId } from "../config/providers"
 
 // Content block types for Claude messages
 export type TextBlock = { type: "text"; text: string }
@@ -33,6 +34,7 @@ export type ClaudeAgentOptions = {
 	orgId: string
 	systemPrompt?: string
 	model?: string
+	provider?: ProviderId // AI provider to use (glm or minimax)
 	context?: AgentContextOptions
 	allowedTools?: string[]
 	maxTurns?: number
@@ -247,6 +249,7 @@ export async function executeClaudeAgent(
 		orgId,
 		systemPrompt,
 		model,
+		provider,
 		context,
 		allowedTools,
 		maxTurns,
@@ -263,13 +266,23 @@ export async function executeClaudeAgent(
 		: sdkSessionId
 			? "resuming specific session"
 			: "new session"
-	console.log("[executeClaudeAgent] Starting", sessionMode)
 
-	// Ensure SDK CLI inherits custom API configuration
-	if (env.ANTHROPIC_BASE_URL) {
-		process.env.ANTHROPIC_BASE_URL = env.ANTHROPIC_BASE_URL
-		console.log("[executeClaudeAgent] Using custom base URL:", env.ANTHROPIC_BASE_URL)
-	}
+	// Get provider configuration
+	const providerId = provider || getDefaultProvider()
+	const providerConfig = getProviderConfig(providerId)
+
+	console.log("[executeClaudeAgent] Starting", sessionMode)
+	console.log("[executeClaudeAgent] Provider:", providerConfig.name, `(${providerId})`)
+
+	// Apply provider-specific configuration to environment
+	process.env.ANTHROPIC_API_KEY = providerConfig.apiKey
+	process.env.ANTHROPIC_BASE_URL = providerConfig.baseURL
+
+	// Use provider's default model if no specific model provided
+	const resolvedModel = model || providerConfig.models.balanced
+
+	console.log("[executeClaudeAgent] Using base URL:", providerConfig.baseURL)
+	console.log("[executeClaudeAgent] Using model:", resolvedModel)
 
 	try {
 		// Create prompt stream with just the current message
@@ -301,7 +314,7 @@ export async function executeClaudeAgent(
 		}
 
 		const queryOptions: Record<string, unknown> = {
-			model: model ?? env.CHAT_MODEL,
+			model: resolvedModel,
 			mcpServers: {
 				"supermemory-tools": toolsServer,
 			},
