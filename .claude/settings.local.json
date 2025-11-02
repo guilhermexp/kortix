@@ -6,7 +6,12 @@
       "mcp__supabase__list_extensions",
       "mcp__supabase__list_migrations",
       "mcp__supabase__execute_sql",
-      "mcp__supabase__apply_migration"
+      "mcp__supabase__apply_migration",
+      "SlashCommand(/commit)",
+      "SlashCommand(/commit --no-verify)",
+      "Bash(git add ai_docs/ANALYZE_VIDEO_TOOL.md ai_docs/CLAUDE_ASSISTANT_ENHANCEMENT.md ai_docs/TOOL_VISUALIZATION_TESTING.md)",
+      "SlashCommand(/commit feat(docs): add AI documentation for analyzeVideo tool and CLAUDE enhancements\n\n- Add analyzeVideo tool documentation for multimodal video analysis using Gemini\n- Add CLAUDE assistant enhancement documentation with @mention feature\n- Add tool visualization testing documentation\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>)",
+      "SlashCommand(/commit feat(specs): add Claude Agent SDK native tools specification and theme toggle component\n\n- Add specification for adding native tools to Claude Agent SDK\n- Implement theme toggle component for dark/light mode switching\n- Supports system preference detection and manual toggle\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>)"
     ]
   },
   "enableAllProjectMcpServers": true,

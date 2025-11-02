@@ -115,7 +115,7 @@ export default function MigrateMCPPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-[#0f1419] overflow-hidden relative">
+		<div className="min-h-screen bg-background overflow-hidden relative">
 			{/* Background elements */}
 			<div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-transparent to-purple-900/10" />
 

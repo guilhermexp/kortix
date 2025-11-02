@@ -13,7 +13,7 @@ import Link from "next/link"
 
 export default function ReferralHomePage() {
 	return (
-		<div className="min-h-screen flex items-center justify-center p-4 bg-[#0f1419]">
+		<div className="min-h-screen flex items-center justify-center p-4 bg-background">
 			<Card className="max-w-md w-full bg-[#1a1f2a] border-white/10">
 				<CardHeader className="text-center">
 					<div className="mx-auto mb-4 w-16 h-16 rounded-full bg-orange-500/10 flex items-center justify-center">
@@ -29,7 +29,7 @@ export default function ReferralHomePage() {
 				</CardHeader>
 				<CardContent>
 					<div className="space-y-4">
-						<div className="bg-[#0f1419] rounded-lg p-4 border border-white/10">
+						<div className="bg-background rounded-lg p-4 border border-white/10">
 							<h3 className="text-white font-semibold mb-2">
 								What is supermemory?
 							</h3>

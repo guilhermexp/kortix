@@ -227,15 +227,17 @@ export async function processDocument(input: ProcessDocumentInput) {
         const chunkRows = chunks.map((chunk, index) => ({
             document_id: documentId,
             org_id: organizationId,
-            content: chunk.content,
+            // Sanitize content to ensure valid UTF-8 for Postgres text
+            content: sanitizeString(chunk.content),
             type: "text",
             position: chunk.position,
-            metadata: {
+            // Sanitize metadata to avoid invalid JSON (22P02) on unpaired surrogates
+            metadata: sanitizeJson({
                 position: chunk.position,
                 containerTags,
                 source: extraction.source ?? document.source ?? null,
                 aiTags,
-            },
+            }) as JsonRecord,
             embedding:
                 chunkEmbeddings[index] ?? generateDeterministicEmbedding(chunk.content),
             embedding_model: env.EMBEDDING_MODEL,

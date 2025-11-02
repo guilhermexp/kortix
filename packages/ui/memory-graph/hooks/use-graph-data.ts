@@ -10,6 +10,7 @@ import { colors, LAYOUT_CONSTANTS } from "../constants";
 import type {
 	DocumentsResponse,
 	DocumentWithMemories,
+	DocumentConnectionEdge,
 	GraphEdge,
 	GraphNode,
 	MemoryEntry,
@@ -21,6 +22,7 @@ export function useGraphData(
 	selectedSpace: string,
 	nodePositions: Map<string, { x: number; y: number }>,
 	draggingNodeId: string | null,
+	externalDocEdges?: DocumentConnectionEdge[],
 ) {
 	return useMemo(() => {
 		if (!data?.documents) return { nodes: [], edges: [] };
@@ -65,6 +67,7 @@ export function useGraphData(
 
 		/* 1. Build DOCUMENT nodes with space-aware clustering */
 		const documentNodes: GraphNode[] = [];
+		const documentNodeMap = new Map<string, GraphNode>();
 		let spaceIndex = 0;
 
 		documentsBySpace.forEach((spaceDocs) => {
@@ -115,6 +118,7 @@ export function useGraphData(
 					isHovered: false,
 					isDragging: draggingNodeId === doc.id,
 				} satisfies GraphNode);
+				documentNodeMap.set(doc.id, documentNodes[documentNodes.length - 1]);
 			});
 
 			spaceIndex++;
@@ -280,7 +284,26 @@ export function useGraphData(
 
 		// Document-to-document similarity edges (within the same space)
 		// Enabled with sane defaults: threshold + Top-K per document to reduce clutter
-		{
+		const hasExternalDocEdges =
+			Array.isArray(externalDocEdges) && externalDocEdges.length > 0;
+
+		if (hasExternalDocEdges) {
+			externalDocEdges!.forEach((edge) => {
+				const sourceNode = documentNodeMap.get(edge.sourceId);
+				const targetNode = documentNodeMap.get(edge.targetId);
+				if (!sourceNode || !targetNode) return;
+				const similarity = Math.max(0, Math.min(1, edge.similarity));
+				allEdges.push({
+					id: `doc-doc-${edge.sourceId}-${edge.targetId}`,
+					source: sourceNode.id,
+					target: targetNode.id,
+					similarity,
+					visualProps: getConnectionVisualProps(similarity),
+					color: getMagicalConnectionColor(similarity, 200),
+					edgeType: "doc-doc",
+				});
+			});
+		} else {
 			const DOC_SIMILARITY_THRESHOLD = 0.72;
 			const TOP_K_PER_DOC = 3;
 
@@ -368,5 +391,5 @@ export function useGraphData(
 		}
 
 		return { nodes: allNodes, edges: allEdges };
-	}, [data, selectedSpace, nodePositions, draggingNodeId]);
+	}, [data, selectedSpace, nodePositions, draggingNodeId, externalDocEdges]);
 }

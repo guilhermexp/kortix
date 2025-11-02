@@ -15,7 +15,12 @@
   - Status: completed
   - Atualizado: 2025-11-02T05:05:43.554412+00:00
   - Assistente: Codex (terminal 0c6cefee-5910-4c3c-a1e3-83b14724977c) — comando: codex --dangerously-bypass-approvals-and-sandbox "Testar conexao e ferramentas DeepWiki MCP Validar integracao com servi...
+- [x] **T4** — Atualizar documentacao DeepWiki com API atual
+  - Status: completed
+  - Atualizado: 2025-11-02T05:15:26.149012+00:00
+  - Assistente: Codex (terminal 0c6cefee-5910-4c3c-a1e3-83b14724977c) — comando: codex --dangerously-bypass-approvals-and-sandbox "Atualizar documentacao DeepWiki com nomes corretos das ferramentas Cor...
 <!-- ORCHESTRATOR-TASKS-SYNC END -->
+
 
 
 

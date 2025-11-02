@@ -57,6 +57,7 @@ import {
 	migrateMcpDocuments,
 	updateDocument,
 } from "./routes/documents"
+import { handleGraphConnections } from "./routes/graph"
 import { healthHandler } from "./routes/health"
 import { registerMcpRoutes } from "./routes/mcp"
 import {
@@ -565,23 +566,43 @@ app.patch(
 	"/v3/documents/:id",
 	zValidator(
 		"json",
-		z.object({
-			content: z.string().optional(),
-			title: z.string().optional(),
-		}),
+		z
+			.object({
+				content: z.string().optional(),
+				title: z.string().optional(),
+				containerTag: z.string().optional(),
+				containerTags: z.array(z.string()).optional(),
+				metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+			})
+			.refine(
+				(data) =>
+					data.content !== undefined ||
+					data.title !== undefined ||
+					data.containerTag !== undefined ||
+					(Array.isArray(data.containerTags) && data.containerTags.length > 0) ||
+					data.metadata !== undefined,
+				{ message: "At least one field must be provided for update" },
+			),
 	),
 	async (c) => {
 		const { organizationId } = c.var.session
 		const documentId = c.req.param("id")
-		const { content, title } = c.req.valid("json")
+		const { content, title, containerTag, containerTags, metadata } =
+			c.req.valid("json")
 		const supabase = createScopedSupabase(organizationId, c.var.session.userId)
 
 		try {
+			const normalizedTags =
+				containerTags ??
+				(containerTag && containerTag.length > 0 ? [containerTag] : undefined)
+
 			const updatedDocument = await updateDocument(supabase, {
 				organizationId,
 				documentId,
 				content,
 				title,
+				containerTags: normalizedTags,
+				metadata,
 			})
 			return c.json(updatedDocument)
 		} catch (error) {
@@ -922,6 +943,17 @@ app.delete("/v3/conversations/:id", async (c) => {
 	const conversationId = c.req.param("id")
 	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
 	return handleDeleteConversation({ client: supabase, conversationId })
+})
+
+app.post("/v3/graph/connections", async (c) => {
+	const { organizationId, userId } = c.var.session
+	const body = await c.req.json()
+	const supabase = createScopedSupabase(organizationId, userId)
+	return handleGraphConnections({
+		client: supabase,
+		payload: body,
+		orgId: organizationId,
+	})
 })
 
 serve({

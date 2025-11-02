@@ -47,7 +47,7 @@ export function CreateProjectDialog({
 		<AnimatePresence>
 			{open && (
 				<Dialog onOpenChange={onOpenChange} open={open}>
-					<DialogContent className="sm:max-w-2xl bg-[#0f1419] backdrop-blur-xl border-white/10 text-white">
+					<DialogContent className="sm:max-w-2xl bg-background backdrop-blur-xl border-white/10 text-white">
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
 							exit={{ opacity: 0, scale: 0.95 }}

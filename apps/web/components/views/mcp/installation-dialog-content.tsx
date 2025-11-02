@@ -87,7 +87,7 @@ export function InstallationDialogContent({
 	}
 
 	return (
-		<DialogContent className="border border-white/10 bg-[#0f1419] text-white">
+		<DialogContent className="border border-white/10 bg-background text-white">
 			<DialogHeader>
 				<DialogTitle>Install the supermemory MCP Server</DialogTitle>
 				<DialogDescription>
@@ -151,7 +151,7 @@ export function InstallationDialogContent({
 						<SelectTrigger className="w-full" id="project-select">
 							<SelectValue placeholder="Select project" />
 						</SelectTrigger>
-						<SelectContent className="border border-white/10 bg-[#0f1419]">
+						<SelectContent className="border border-white/10 bg-background">
 							<SelectItem className="hover:bg-white/10" value="none">
 								Auto-select project
 							</SelectItem>

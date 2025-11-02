@@ -78,3 +78,4 @@ export function useChatOpen() {
 }
 
 export { usePersistentChat, usePersistentChatStore } from "./chat"
+export { useChatMentionQueue } from "./chat-mentions"

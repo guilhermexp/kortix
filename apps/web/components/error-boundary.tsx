@@ -190,7 +190,7 @@ export function EditorErrorBoundary({ children }: { children: ReactNode }) {
 	return (
 		<ErrorBoundary
 			fallback={(error, reset) => (
-				<div className="h-full flex items-center justify-center p-8 bg-[#0f1419]">
+				<div className="h-full flex items-center justify-center p-8 bg-background">
 					<Card className="max-w-lg w-full p-6 space-y-4 bg-[#1a1f2e] border-white/10">
 						<div className="flex items-center gap-3">
 							<AlertTriangle className="w-6 h-6 text-destructive flex-shrink-0" />

@@ -84,7 +84,7 @@ export function InstallPrompt() {
 				<div className="bg-black/90 backdrop-blur-md text-white rounded-2xl p-4 shadow-2xl border border-white/10">
 					<div className="flex items-start justify-between mb-3">
 						<div className="flex items-center gap-2">
-							<div className="w-8 h-8 bg-[#0f1419] rounded-lg flex items-center justify-center">
+							<div className="w-8 h-8 bg-background rounded-lg flex items-center justify-center">
 								<Download className="w-4 h-4" />
 							</div>
 							<h3 className="font-semibold text-sm">Install Supermemory</h3>
@@ -124,7 +124,7 @@ export function InstallPrompt() {
 						</div>
 					) : (
 						<Button
-							className="w-full bg-[#0f1419] hover:bg-[#1a1f2a] text-white text-xs"
+							className="w-full bg-background hover:bg-[#1a1f2a] text-white text-xs"
 							onClick={handleInstall}
 							size="sm"
 						>

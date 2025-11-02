@@ -32,6 +32,7 @@ export const MemoryGraph = ({
 	occludedRightPx = 0,
 	autoLoadOnViewport = true,
 	isExperimental = false,
+	documentEdges,
 }: MemoryGraphProps) => {
 	const [selectedSpace, setSelectedSpace] = useState<string>("all");
 	const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -88,6 +89,7 @@ export const MemoryGraph = ({
 		selectedSpace,
 		nodePositions,
 		draggingNodeId,
+		documentEdges,
 	);
 
 	// Auto-fit once per unique highlight set to show the full graph for context
@@ -328,8 +330,7 @@ export const MemoryGraph = ({
 	if (error) {
 		return (
 			<div
-				className="h-full flex items-center justify-center"
-				style={{ backgroundColor: colors.background.primary }}
+				className="h-full flex items-center justify-center bg-background"
 			>
 				<div className="rounded-xl overflow-hidden">
 					{/* Glass effect background */}
@@ -346,8 +347,7 @@ export const MemoryGraph = ({
 
 	return (
 		<div
-			className="h-full rounded-xl overflow-hidden"
-			style={{ backgroundColor: colors.background.primary }}
+			className="h-full rounded-xl overflow-hidden bg-background"
 		>
 			{/* Spaces selector - only shown for console */}
 			{showSpacesSelector && availableSpaces.length > 0 && (

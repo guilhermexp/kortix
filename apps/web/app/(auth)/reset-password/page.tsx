@@ -101,7 +101,7 @@ export default function ResetPasswordPage() {
 	}
 
 	return (
-		<section className="min-h-screen flex flex-col lg:grid lg:grid-cols-12 items-center justify-center p-6 md:p-10 lg:px-[5rem] lg:py-[3rem] gap-6 lg:gap-[5rem] bg-[#0f1419] text-white">
+		<section className="min-h-screen flex flex-col lg:grid lg:grid-cols-12 items-center justify-center p-6 md:p-10 lg:px-[5rem] lg:py-[3rem] gap-6 lg:gap-[5rem] bg-background text-white">
 			<div className="hidden lg:flex lg:col-span-6 flex-col gap-6">
 				<LogoFull className="w-48 text-white" />
 				<h1 className="text-4xl font-semibold">
