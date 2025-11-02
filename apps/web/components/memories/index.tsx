@@ -96,6 +96,7 @@ export const getDocumentSnippet = (document: DocumentWithMemories): string | nul
     const anyDoc = document as any
     const raw = anyDoc?.raw && typeof anyDoc.raw === "object" ? anyDoc.raw : null
     const extraction = raw?.extraction && typeof raw.extraction === "object" ? raw.extraction : null
+    const metadata = anyDoc?.metadata && typeof anyDoc.metadata === "object" ? anyDoc.metadata : null
 
     const firstActiveMemory = Array.isArray(anyDoc?.memoryEntries)
       ? anyDoc.memoryEntries.find((m: any) => !m?.isForgotten && typeof m?.memory === "string")?.memory
@@ -103,6 +104,9 @@ export const getDocumentSnippet = (document: DocumentWithMemories): string | nul
 
     const candidates = [
       typeof anyDoc?.summary === "string" ? anyDoc.summary : undefined,
+      typeof metadata?.description === "string" ? metadata.description : undefined,
+      typeof raw?.description === "string" ? raw.description : undefined,
+      typeof extraction?.description === "string" ? extraction.description : undefined,
       typeof extraction?.analysis === "string" ? extraction.analysis : undefined,
       typeof raw?.analysis === "string" ? raw.analysis : undefined,
       firstActiveMemory,

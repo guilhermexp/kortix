@@ -37,6 +37,12 @@ export interface GraphEdge {
 	relationType?: MemoryRelation;
 }
 
+export interface DocumentConnectionEdge {
+	sourceId: string;
+	targetId: string;
+	similarity: number;
+}
+
 export interface SpacesDropdownProps {
 	selectedSpace: string;
 	availableSpaces: string[];
@@ -99,6 +105,7 @@ export interface MemoryGraphProps {
 	// Whether to auto-load more documents based on viewport visibility
 	autoLoadOnViewport?: boolean;
 	isExperimental?: boolean;
+	documentEdges?: DocumentConnectionEdge[];
 }
 
 export interface LegendProps {

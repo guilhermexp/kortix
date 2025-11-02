@@ -11,11 +11,16 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Code2,
   Copy,
+  Globe,
   Info,
+  Loader2,
   Plus,
   RotateCcw,
+  Search,
   X,
+  Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -27,11 +32,15 @@ import {
   InputGroupButton,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
-import { usePersistentChat, useProject } from "@/stores";
+import { useChatMentionQueue, usePersistentChat, useProject } from "@/stores";
 import { useCanvasSelection, useCanvasState } from "@/stores/canvas";
 import { useGraphHighlights } from "@/stores/highlights";
 import { Spinner } from "../../spinner";
-import { ProviderSelector, useProviderSelection, type ProviderId } from "./provider-selector";
+import {
+  ProviderSelector,
+  useProviderSelection,
+  type ProviderId,
+} from "./provider-selector";
 
 interface MemoryResult {
   documentId?: string;
@@ -95,6 +104,11 @@ type AddMemoryPart = {
   state: ToolState;
 };
 
+type MentionedDocsPart = {
+  type: "mentioned-docs";
+  docIds: string[];
+};
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -151,6 +165,15 @@ function isGenericToolPart(part: unknown): part is GenericToolPart {
   );
 }
 
+function isMentionedDocsPart(part: unknown): part is MentionedDocsPart {
+  return (
+    isObject(part) &&
+    part.type === "mentioned-docs" &&
+    Array.isArray(part.docIds) &&
+    part.docIds.every((id) => typeof id === "string" && id.length > 0)
+  );
+}
+
 function toMemoryResult(value: unknown): MemoryResult | null {
   if (!isObject(value)) return null;
   const { documentId, title, content, url, score } = value;
@@ -174,6 +197,19 @@ function toMemoryResults(value: unknown): MemoryResult[] {
   return value
     .map((item) => toMemoryResult(item))
     .filter((item): item is MemoryResult => item !== null);
+}
+
+function getToolIcon(toolName: string) {
+  const name = toolName.toLowerCase();
+  if (name.includes("searchweb") || name.includes("web")) return Globe;
+  if (name.includes("search")) return Search;
+  if (
+    name.includes("deepwiki") ||
+    name.includes("code") ||
+    name.includes("file")
+  )
+    return Code2;
+  return Zap;
 }
 
 function formatToolLabel(raw: string): string {
@@ -231,14 +267,14 @@ function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
                     {result.content}
                   </div>
                 )}
-                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-white/5">
+                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-border">
                   {result.url && (
-                    <div className="text-xs text-blue-400/80 truncate flex-1">
+                    <div className="text-xs text-primary truncate flex-1">
                       {result.url}
                     </div>
                   )}
                   {result.score && (
-                    <div className="text-xs text-muted-foreground/70 font-mono shrink-0">
+                    <div className="text-xs text-muted-foreground font-mono shrink-0">
                       {(result.score * 100).toFixed(0)}%
                     </div>
                   )}
@@ -249,7 +285,7 @@ function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
             if (isClickable) {
               return (
                 <a
-                  className="block p-3 bg-white/5 rounded-md border border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors cursor-pointer"
+                  className="block p-3 bg-muted/80 rounded-md border border-border hover:bg-muted hover:border-border/80 transition-colors cursor-pointer"
                   href={result.url}
                   key={result.documentId || index}
                   rel="noopener noreferrer"
@@ -262,7 +298,7 @@ function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
 
             return (
               <div
-                className="p-3 bg-white/5 rounded-md border border-white/10"
+                className="p-3 bg-muted/80 rounded-md border border-border"
                 key={result.documentId || index}
               >
                 {content}
@@ -362,7 +398,12 @@ type ClaudeChatMessage = {
   role: "user" | "assistant";
   content: string;
   parts: Array<
-    TextPart | SearchMemoriesPart | AddMemoryPart | GenericToolPart | unknown
+    | TextPart
+    | SearchMemoriesPart
+    | AddMemoryPart
+    | GenericToolPart
+    | MentionedDocsPart
+    | unknown
   >;
 };
 
@@ -384,7 +425,7 @@ type ClaudeChatOptions = {
   onSdkSessionId?: (sdkSessionId: string) => void;
 };
 
-type SendMessagePayload = { text: string };
+type SendMessagePayload = { text: string; mentionedDocIds?: string[] };
 
 type RegeneratePayload = { messageId?: string };
 
@@ -474,7 +515,7 @@ function useClaudeChat({
     // Reset session when conversation changes
     sdkSessionIdRef.current = null;
     lastMessageTimeRef.current = 0;
-    console.log('[Frontend Session] Session reset due to conversation change');
+    console.log("[Frontend Session] Session reset due to conversation change");
   }, [conversationId]);
 
   useEffect(() => {
@@ -541,7 +582,7 @@ function useClaudeChat({
   }, [setMessages]);
 
   const sendMessage = useCallback(
-    async ({ text }: SendMessagePayload) => {
+    async ({ text, mentionedDocIds }: SendMessagePayload) => {
       const trimmed = text.trim();
       if (!trimmed || status !== "ready") {
         return;
@@ -556,6 +597,13 @@ function useClaudeChat({
 
       const history = messagesRef.current.slice();
       const userMessage = createTextMessage("user", trimmed);
+      if (Array.isArray(mentionedDocIds) && mentionedDocIds.length > 0) {
+        const uniqueIds = [...new Set(mentionedDocIds)];
+        userMessage.parts = [
+          ...userMessage.parts,
+          { type: "mentioned-docs", docIds: uniqueIds },
+        ];
+      }
       const assistantPlaceholder = createTextMessage("assistant", "");
       const baseWithPlaceholder = [
         ...history,
@@ -569,13 +617,15 @@ function useClaudeChat({
       // Calculate session continuity
       const now = Date.now();
       const timeSinceLastMessage = now - lastMessageTimeRef.current;
-      const hasRecentSession = sdkSessionIdRef.current !== null && timeSinceLastMessage < SESSION_TIMEOUT_MS;
+      const hasRecentSession =
+        sdkSessionIdRef.current !== null &&
+        timeSinceLastMessage < SESSION_TIMEOUT_MS;
 
       // Determine session mode: continue (< 30min) vs resume (> 30min with session) vs new (no session)
       const continueSession = hasRecentSession;
       const sdkSessionId = continueSession ? null : sdkSessionIdRef.current;
 
-      console.log('[Frontend Session]', {
+      console.log("[Frontend Session]", {
         sdkSessionId: sdkSessionIdRef.current,
         timeSinceLastMessage: Math.round(timeSinceLastMessage / 1000),
         continueSession,
@@ -847,6 +897,23 @@ function useClaudeChat({
           }
         };
 
+        const buildFinalMessages = (
+          assistantMessage: ClaudeChatMessage,
+        ): ClaudeChatMessage[] => {
+          const current = messagesRef.current;
+          if (Array.isArray(current) && current.length > 0) {
+            const base = [...current];
+            const last = base[base.length - 1];
+            if (last && last.id === assistantPlaceholder.id) {
+              base.pop();
+            } else if (last && last.role === "assistant") {
+              base.pop();
+            }
+            return [...base, assistantMessage];
+          }
+          return [...history, userMessage, assistantMessage];
+        };
+
         while (true) {
           const { value, done } = await reader.read().catch((error) => {
             if (controller.signal.aborted) {
@@ -894,19 +961,21 @@ function useClaudeChat({
                     content: finalText,
                     parts: finalParts,
                   };
-                  const finalMessages = [
-                    ...history,
-                    userMessage,
-                    updatedAssistant,
-                  ];
+                  const finalMessages = buildFinalMessages(updatedAssistant);
                   setMessages(finalMessages);
                   pushConversationId(record.conversationId);
 
                   // Capture SDK session ID and update timestamp
-                  if (typeof record.sdkSessionId === "string" && record.sdkSessionId.length > 0) {
+                  if (
+                    typeof record.sdkSessionId === "string" &&
+                    record.sdkSessionId.length > 0
+                  ) {
                     sdkSessionIdRef.current = record.sdkSessionId;
                     lastMessageTimeRef.current = Date.now();
-                    console.log('[Frontend Session] Captured sdkSessionId:', record.sdkSessionId);
+                    console.log(
+                      "[Frontend Session] Captured sdkSessionId:",
+                      record.sdkSessionId,
+                    );
                     if (onSdkSessionId) {
                       onSdkSessionId(record.sdkSessionId);
                     }
@@ -983,15 +1052,21 @@ function useClaudeChat({
                 content: finalText,
                 parts: finalParts,
               };
-              const finalMessages = [...history, userMessage, updatedAssistant];
+              const finalMessages = buildFinalMessages(updatedAssistant);
               setMessages(finalMessages);
               pushConversationId(record.conversationId);
 
               // Capture SDK session ID and update timestamp
-              if (typeof record.sdkSessionId === "string" && record.sdkSessionId.length > 0) {
+              if (
+                typeof record.sdkSessionId === "string" &&
+                record.sdkSessionId.length > 0
+              ) {
                 sdkSessionIdRef.current = record.sdkSessionId;
                 lastMessageTimeRef.current = Date.now();
-                console.log('[Frontend Session] Captured sdkSessionId:', record.sdkSessionId);
+                console.log(
+                  "[Frontend Session] Captured sdkSessionId:",
+                  record.sdkSessionId,
+                );
                 if (onSdkSessionId) {
                   onSdkSessionId(record.sdkSessionId);
                 }
@@ -1013,7 +1088,7 @@ function useClaudeChat({
                 content: message,
                 parts: [{ type: "text", text: message }],
               };
-              const finalMessages = [...history, userMessage, errorAssistant];
+              const finalMessages = buildFinalMessages(errorAssistant);
               setMessages(finalMessages);
               toast.error(message);
               finished = true;
@@ -1186,8 +1261,61 @@ export function ChatMessages() {
   }, [selectedProject]);
 
   // Inline mentions: pick canvas docs per message (@)
-  const [mentionedDocIds, setMentionedDocIds] = useState<string[]>([]);
+  const [mentionedDocIds, setMentionedDocIdsState] = useState<string[]>([]);
+  const mentionedDocIdsRef = useRef<string[]>([]);
+  const addMentionedDocId = useCallback(
+    (id: string) => {
+      setMentionedDocIdsState((prev) => {
+        const next = [...new Set([...prev, id])];
+        mentionedDocIdsRef.current = next;
+        return next;
+      });
+    },
+    [setMentionedDocIdsState],
+  );
+  const removeMentionedDocId = useCallback(
+    (id: string) => {
+      setMentionedDocIdsState((prev) => {
+        const next = prev.filter((x) => x !== id);
+        mentionedDocIdsRef.current = next;
+        return next;
+      });
+    },
+    [setMentionedDocIdsState],
+  );
+  const clearMentionedDocIds = useCallback(() => {
+    mentionedDocIdsRef.current = [];
+    setMentionedDocIdsState([]);
+  }, [setMentionedDocIdsState]);
   const pendingMentionedDocIdsRef = useRef<string[]>([]);
+  const pendingMentionDocIds = useChatMentionQueue(
+    (state) => state.pendingDocIds,
+  );
+  const consumePendingMentionDocIds = useChatMentionQueue(
+    (state) => state.consume,
+  );
+  useEffect(() => {
+    if (
+      !Array.isArray(pendingMentionDocIds) ||
+      pendingMentionDocIds.length === 0
+    ) {
+      return;
+    }
+    const nextIds = consumePendingMentionDocIds();
+    if (!Array.isArray(nextIds) || nextIds.length === 0) {
+      return;
+    }
+    let added = false;
+    nextIds.forEach((id) => {
+      if (typeof id === "string" && id.length > 0) {
+        addMentionedDocId(id);
+        added = true;
+      }
+    });
+    if (added) {
+      setMentionOpen(false);
+    }
+  }, [addMentionedDocId, consumePendingMentionDocIds, pendingMentionDocIds]);
 
   // Provider selection
   const { provider, setProvider } = useProviderSelection();
@@ -1199,9 +1327,10 @@ export function ChatMessages() {
       continueSession: boolean,
     ) => {
       // Use pending ref if available, otherwise use current state
-      const currentMentionedIds = pendingMentionedDocIdsRef.current.length > 0
-        ? pendingMentionedDocIdsRef.current
-        : mentionedDocIds;
+      const currentMentionedIds =
+        pendingMentionedDocIdsRef.current.length > 0
+          ? pendingMentionedDocIdsRef.current
+          : mentionedDocIdsRef.current;
 
       const scopedIds =
         currentMentionedIds.length > 0
@@ -1219,6 +1348,7 @@ export function ChatMessages() {
       }
       if (currentMentionedIds.length > 0) {
         metadata.forceRawDocs = true;
+        metadata.mentionedDocIds = currentMentionedIds;
       }
 
       // Clear the pending ref after using it
@@ -1236,7 +1366,6 @@ export function ChatMessages() {
       };
     },
     [
-      mentionedDocIds,
       hasScopedDocuments,
       scopedDocumentIds,
       project,
@@ -1296,6 +1425,18 @@ export function ChatMessages() {
   const [input, setInput] = useState("");
   const [mentionOpen, setMentionOpen] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
+  const mentionInputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (!mentionOpen) return;
+    const frame = requestAnimationFrame(() => {
+      const node = mentionInputRef.current;
+      if (node) {
+        node.focus();
+        node.select();
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [mentionOpen]);
 
   type CanvasDoc = {
     id: string;
@@ -1305,6 +1446,13 @@ export function ChatMessages() {
     preview?: string | null;
   };
   const [canvasDocs, setCanvasDocs] = useState<CanvasDoc[]>([]);
+  const canvasDocMap = useMemo(() => {
+    const map = new Map<string, CanvasDoc>();
+    for (const doc of canvasDocs) {
+      map.set(doc.id, doc);
+    }
+    return map;
+  }, [canvasDocs]);
   useEffect(() => {
     let ignore = false;
     async function load() {
@@ -1341,22 +1489,22 @@ export function ChatMessages() {
           );
         } else {
           // Fetch all documents from current project
-          const containerTags = selectedProject && selectedProject !== DEFAULT_PROJECT_ID ? [selectedProject] : undefined;
-          const res = await fetch(
-            `${BACKEND_URL}/v3/documents/documents`,
-            {
-              method: "POST",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                containerTags,
-                limit: 50,
-                page: 1,
-                sort: "updatedAt",
-                order: "desc",
-              }),
-            },
-          );
+          const containerTags =
+            selectedProject && selectedProject !== DEFAULT_PROJECT_ID
+              ? [selectedProject]
+              : undefined;
+          const res = await fetch(`${BACKEND_URL}/v3/documents/documents`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              containerTags,
+              limit: 50,
+              page: 1,
+              sort: "updatedAt",
+              order: "desc",
+            }),
+          });
           if (!res.ok) return;
           const data = await res.json();
           if (ignore) return;
@@ -1392,32 +1540,13 @@ export function ChatMessages() {
     return base.filter((d) => (d.title || d.id).toLowerCase().includes(q));
   }, [canvasDocs, mentionQuery, mentionedDocIds]);
 
-  const injectMentionsIntoLastUserMessage = (docIds: string[]) => {
-    setMessages((prev) => {
-      if (!prev || prev.length === 0) return prev;
-      const idx = [...prev].map((m) => m.role).lastIndexOf("user");
-      if (idx < 0) return prev;
-      const msg: any = prev[idx];
-      const baseParts =
-        Array.isArray(msg.parts) && msg.parts.length > 0
-          ? [...msg.parts]
-          : [{ type: "text", text: msg.content }];
-      baseParts.push({ type: "mentioned-docs", docIds });
-      const next = [...prev];
-      next[idx] = { ...msg, parts: baseParts };
-      return next;
-    });
-  };
-
   const sendUserMessage = (text: string) => {
-    const ids = [...mentionedDocIds];
+    const ids = [...mentionedDocIdsRef.current];
     // Store in ref so composeRequestBody can access it synchronously
     pendingMentionedDocIdsRef.current = ids;
-    sendMessage({ text });
-    // Inject chips into the just-sent user message in the local chat history
-    setTimeout(() => injectMentionsIntoLastUserMessage(ids), 0);
+    sendMessage({ text, mentionedDocIds: ids });
     // Clear mentioned docs after capturing them
-    if (ids.length > 0) setMentionedDocIds([]);
+    if (ids.length > 0) clearMentionedDocIds();
   };
 
   const getPreviewUrl = (doc: CanvasDoc): string | null => {
@@ -1448,7 +1577,6 @@ export function ChatMessages() {
     setMessages([]);
     shouldGenerateTitleRef.current = false;
   }, [project, setMessages]);
-
 
   async function saveMemory(content: string) {
     const trimmed = content.trim();
@@ -1592,7 +1720,7 @@ export function ChatMessages() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="relative flex-1 bg-[#0f1419] overflow-hidden">
+      <div className="relative flex-1 bg-chat-surface overflow-hidden">
         <div
           className="flex flex-col gap-3 absolute inset-0 overflow-y-auto px-4 pt-4 pb-6"
           onScroll={onScroll}
@@ -1608,15 +1736,11 @@ export function ChatMessages() {
             >
               <div
                 className={cn(
-                  "flex flex-col gap-2 w-full text-white",
+                  "flex flex-col gap-2 w-full",
                   message.role === "user"
-                    ? "border border-white/10 py-3 px-4 rounded-lg"
-                    : "py-1 px-0",
+                    ? "border border-border py-3 px-4 rounded-lg bg-muted/80 text-foreground"
+                    : "py-1 px-0 text-foreground",
                 )}
-                style={{
-                  backgroundColor:
-                    message.role === "user" ? "#0f1419" : "transparent",
-                }}
               >
                 {message.parts.map((part: any, index) => {
                   if (isTextPart(part)) {
@@ -1680,10 +1804,11 @@ export function ChatMessages() {
                       case "input-streaming":
                         return (
                           <div
-                            className="text-sm flex items-center gap-2 text-muted-foreground"
+                            className="text-sm flex items-center gap-2 text-primary bg-primary/5 border border-primary/20 rounded-md p-2"
                             key={`${message.id}-add-${index}`}
                           >
-                            <Spinner className="size-4" /> Adding memory...
+                            <Loader2 className="size-4 animate-spin" /> Saving
+                            memory...
                           </div>
                         );
                       case "output-error":
@@ -1710,23 +1835,126 @@ export function ChatMessages() {
                   }
 
                   if (isGenericToolPart(part)) {
+                    const ToolIcon = getToolIcon(part.toolName);
+                    const isLoading =
+                      part.state === "input-streaming" ||
+                      part.state === "input-available";
+                    const isError = part.state === "output-error";
+                    const isSuccess = part.state === "output-available";
+
                     return (
                       <div
-                        className="p-3 bg-white/5 rounded-md border border-white/10 space-y-1"
+                        className={cn(
+                          "p-3 rounded-lg border space-y-2",
+                          isError && "bg-destructive/10 border-destructive/30",
+                          isLoading &&
+                            "bg-primary/5 border-primary/20 animate-pulse",
+                          isSuccess && "bg-muted/50 border-border",
+                        )}
                         key={`${message.id}-tool-${index}`}
                       >
-                        <div className="text-xs font-semibold text-white/80">
-                          {formatToolLabel(part.toolName)}
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={cn(
+                              "p-1.5 rounded-md",
+                              isError && "bg-destructive/20 text-destructive",
+                              isLoading && "bg-primary/20 text-primary",
+                              isSuccess && "bg-muted text-foreground",
+                            )}
+                          >
+                            <ToolIcon className="size-3.5" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-xs font-semibold text-foreground">
+                              {formatToolLabel(part.toolName)}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                              {isLoading && "Executing..."}
+                              {isError && "Failed"}
+                              {isSuccess && "Completed"}
+                            </div>
+                          </div>
                         </div>
                         {part.state === "output-error" ? (
-                          <div className="text-xs text-red-400">
+                          <div className="text-xs text-destructive bg-destructive/5 rounded p-2 border border-destructive/20">
                             {part.error ?? "Tool execution failed"}
                           </div>
-                        ) : (
-                          <div className="text-xs text-muted-foreground/90 whitespace-pre-wrap">
-                            {part.outputText ?? "Tool executed successfully."}
+                        ) : part.outputText ? (
+                          <div className="text-xs text-muted-foreground whitespace-pre-wrap bg-muted/30 rounded p-2 max-h-48 overflow-auto">
+                            {part.outputText}
                           </div>
-                        )}
+                        ) : isSuccess ? (
+                          <div className="text-xs text-muted-foreground">
+                            Tool executed successfully
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  }
+                  if (isMentionedDocsPart(part)) {
+                    if (
+                      !Array.isArray(part.docIds) ||
+                      part.docIds.length === 0
+                    ) {
+                      return null;
+                    }
+                    const mentionIds = Array.from(new Set(part.docIds));
+                    return (
+                      <div
+                        className="flex flex-col gap-1 text-xs text-muted-foreground"
+                        key={`${message.id}-mentions-${index}`}
+                      >
+                        <span className="uppercase tracking-wide text-[10px] text-muted-foreground/60">
+                          Documentos mencionados
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {mentionIds.map((id) => {
+                            const doc = canvasDocMap.get(id);
+                            const label = doc?.title || id;
+                            const preview = doc ? getPreviewUrl(doc) : null;
+                            const href =
+                              doc &&
+                              typeof doc.url === "string" &&
+                              doc.url.length > 0
+                                ? doc.url
+                                : undefined;
+                            const content = (
+                              <>
+                                {preview ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    alt=""
+                                    className="w-5 h-5 rounded-sm object-cover"
+                                    src={preview}
+                                  />
+                                ) : (
+                                  <span className="w-5 h-5 rounded-sm bg-muted inline-block" />
+                                )}
+                                <span className="truncate max-w-[160px]">
+                                  @{label}
+                                </span>
+                              </>
+                            );
+                            return href ? (
+                              <a
+                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-muted/50 text-foreground hover:bg-muted transition"
+                                href={href}
+                                key={id}
+                                rel="noreferrer"
+                                target="_blank"
+                              >
+                                {content}
+                              </a>
+                            ) : (
+                              <div
+                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-muted/50 text-foreground"
+                                key={id}
+                              >
+                                {content}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   }
@@ -1737,7 +1965,7 @@ export function ChatMessages() {
               {message.role === "assistant" && (
                 <div className="flex items-center gap-1 mt-1">
                   <Button
-                    className="size-7 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
+                    className="size-7 text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border"
                     onClick={() => {
                       const combinedText = message.parts
                         .filter((part) => isTextPart(part))
@@ -1752,7 +1980,7 @@ export function ChatMessages() {
                     <Copy className="size-3.5" />
                   </Button>
                   <Button
-                    className="size-7 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
+                    className="size-7 text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border"
                     disabled={
                       message.id ? savingMessageIds.has(message.id) : false
                     }
@@ -1786,7 +2014,7 @@ export function ChatMessages() {
                     )}
                   </Button>
                   <Button
-                    className="size-7 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
+                    className="size-7 text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border"
                     onClick={() => regenerate({ messageId: message.id })}
                     size="icon"
                     variant="ghost"
@@ -1828,7 +2056,7 @@ export function ChatMessages() {
         </Button>
       </div>
       <form
-        className="px-4 pb-4 pt-1 relative bg-[#0f1419]"
+        className="px-4 pb-4 pt-1 relative bg-chat-surface"
         onSubmit={(e) => {
           e.preventDefault();
           if (status === "submitted") return;
@@ -1844,7 +2072,7 @@ export function ChatMessages() {
           }
         }}
       >
-        <div className="absolute top-0 left-0 -mt-7 w-full h-7 bg-gradient-to-t from-[#0f1419] to-transparent" />
+        <div className="absolute top-0 left-0 -mt-7 w-full h-7 bg-gradient-to-t from-background to-transparent" />
         {/* Mentioned docs chips */}
         {mentionedDocIds.length > 0 && (
           <div className="px-1 pb-1 flex flex-wrap gap-1">
@@ -1855,10 +2083,8 @@ export function ChatMessages() {
                 <button
                   key={id}
                   type="button"
-                  className="text-[11px] pl-1.5 pr-2 py-0.5 rounded-md border bg-white/5 border-white/10 text-white/80 hover:bg-white/10 inline-flex items-center gap-1.5"
-                  onClick={() =>
-                    setMentionedDocIds((prev) => prev.filter((x) => x !== id))
-                  }
+                  className="text-[11px] pl-1.5 pr-2 py-0.5 rounded-md border bg-muted/50 border-border text-foreground hover:bg-muted inline-flex items-center gap-1.5"
+                  onClick={() => removeMentionedDocId(id)}
                   title={doc?.title || id}
                 >
                   {preview ? (
@@ -1869,7 +2095,7 @@ export function ChatMessages() {
                       className="w-3.5 h-3.5 object-cover rounded-sm"
                     />
                   ) : (
-                    <span className="w-3.5 h-3.5 rounded-sm bg-white/10 inline-block" />
+                    <span className="w-3.5 h-3.5 rounded-sm bg-muted inline-block" />
                   )}
                   <span>@{doc?.title || id}</span>
                 </button>
@@ -1879,37 +2105,58 @@ export function ChatMessages() {
         )}
         {/* Provider selector and Project context indicator */}
         <div className="flex items-center justify-between px-1 pb-2">
-          <ProviderSelector value={provider} onChange={setProvider} disabled={status === "submitted"} />
+          <ProviderSelector
+            value={provider}
+            onChange={setProvider}
+            disabled={status === "submitted"}
+          />
 
           {project && project !== "__ALL__" && (
-            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-500/10 border border-blue-500/20">
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-              <span className="text-[11px] text-blue-300 font-medium">
+            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 border border-primary/20">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <span className="text-[11px] text-primary font-medium">
                 {(() => {
                   const projectData = projects.find((p) => p.id === project);
                   const displayName = projectData?.name || project;
                   // Remove prefixos técnicos como "sm_project_"
-                  return displayName.replace(/^sm_project_/i, '');
+                  return displayName.replace(/^sm_project_/i, "");
                 })()}
               </span>
             </div>
           )}
         </div>
-        <InputGroup className="rounded-xl border border-white/10 bg-black/25 backdrop-blur-sm focus-within:ring-0 focus-within:ring-offset-0">
+        <InputGroup className="rounded-xl border border-border bg-background/50 backdrop-blur-sm focus-within:ring-0 focus-within:ring-offset-0">
           <InputGroupTextarea
-            className="text-white placeholder-white/40"
+            className="text-foreground placeholder-muted-foreground/60"
             disabled={status === "submitted"}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               // Open mentions on '@'
               if (e.key === "@") {
+                const target = e.currentTarget;
+                const caret = target.selectionStart ?? target.value.length;
+                e.preventDefault();
                 setMentionOpen(true);
                 setMentionQuery("");
+                requestAnimationFrame(() => {
+                  target.selectionStart = caret;
+                  target.selectionEnd = caret;
+                });
                 return;
               }
               // Close mentions with Escape
               if (e.key === "Escape" && mentionOpen) {
                 setMentionOpen(false);
+                return;
+              }
+              if (mentionOpen && e.key === "Enter") {
+                e.preventDefault();
+                const nextDoc = filteredMention[0];
+                if (nextDoc) {
+                  addMentionedDocId(nextDoc.id);
+                  setMentionOpen(false);
+                  setMentionQuery("");
+                }
                 return;
               }
               // Submit on Enter
@@ -1930,7 +2177,7 @@ export function ChatMessages() {
           {/* Left bottom corner: quick-save button */}
           <InputGroupAddon align="inline-start" className="gap-1 bottom-0">
             <InputGroupButton
-              className="h-8 w-8 p-0 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md"
+              className="h-8 w-8 p-0 bg-muted/50 hover:bg-muted border border-border rounded-md"
               disabled={savingInput || status === "submitted"}
               onClick={async () => {
                 if (!input.trim()) {
@@ -1959,7 +2206,7 @@ export function ChatMessages() {
           {/* Submit button */}
           <InputGroupAddon align="inline-end" className="gap-1 bottom-0">
             <InputGroupButton
-              className="h-8 w-9 p-0 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-md"
+              className="h-8 w-9 p-0 bg-primary hover:bg-primary/90 text-primary-foreground border border-primary rounded-md"
               disabled={status === "submitted"}
               size="sm"
               type="submit"
@@ -1975,17 +2222,18 @@ export function ChatMessages() {
           </InputGroupAddon>
         </InputGroup>
         {mentionOpen && (
-          <div className="absolute bottom-20 left-4 w-[420px] max-h-72 overflow-auto rounded-md border border-white/10 bg-black/90 backdrop-blur-xl z-10 p-2">
+          <div className="absolute bottom-20 left-4 w-[420px] max-h-72 overflow-auto rounded-md border border-border bg-popover backdrop-blur-xl z-10 p-2">
             <div className="mb-2">
               <input
-                className="w-full text-sm bg-white/5 border border-white/10 rounded px-2 py-1 text-white"
+                className="w-full text-sm bg-muted/50 border border-border rounded px-2 py-1 text-foreground placeholder-muted-foreground/60"
                 placeholder="Filtrar documentos..."
+                ref={mentionInputRef}
                 value={mentionQuery}
                 onChange={(e) => setMentionQuery(e.target.value)}
               />
             </div>
             {filteredMention.length === 0 ? (
-              <div className="text-xs text-white/60 px-1 py-2">
+              <div className="text-xs text-muted-foreground px-1 py-2">
                 Nenhum documento encontrado
               </div>
             ) : (
@@ -1995,11 +2243,9 @@ export function ChatMessages() {
                   <button
                     key={d.id}
                     type="button"
-                    className="w-full text-left text-sm text-white/90 hover:bg-white/10 rounded px-2 py-1 flex items-center gap-2"
+                    className="w-full text-left text-sm text-foreground hover:bg-muted rounded px-2 py-1 flex items-center gap-2"
                     onClick={() => {
-                      setMentionedDocIds((prev) => [
-                        ...new Set([...prev, d.id]),
-                      ]);
+                      addMentionedDocId(d.id);
                       setMentionOpen(false);
                     }}
                   >
@@ -2011,7 +2257,7 @@ export function ChatMessages() {
                         className="w-8 h-5 object-cover rounded"
                       />
                     ) : (
-                      <span className="w-8 h-5 rounded bg-white/10 inline-block" />
+                      <span className="w-8 h-5 rounded bg-muted inline-block" />
                     )}
                     <span className="truncate">@{d.title || d.id}</span>
                   </button>

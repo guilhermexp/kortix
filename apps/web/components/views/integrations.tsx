@@ -604,7 +604,7 @@ export function IntegrationsView() {
 			{/* API Key Modal */}
 			<Dialog onOpenChange={handleDialogClose} open={showApiKeyModal}>
 				<DialogPortal>
-					<DialogContent className="bg-[#0f1419] border-white/10 text-white md:max-w-md z-[100]">
+					<DialogContent className="bg-background border-white/10 text-white md:max-w-md z-[100]">
 						<DialogHeader>
 							<DialogTitle className="text-white text-lg font-semibold">
 								Setup{" "}

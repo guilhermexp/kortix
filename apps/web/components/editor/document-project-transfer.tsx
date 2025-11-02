@@ -1,0 +1,217 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { $fetch } from "@lib/api";
+import { DEFAULT_PROJECT_ID } from "@repo/lib/constants";
+import { Button } from "@repo/ui/components/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@repo/ui/components/select";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FolderIcon, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { moveDocumentToProject } from "@/lib/api/documents-client";
+
+interface Project {
+  id: string;
+  name: string;
+  containerTag: string;
+  createdAt: string;
+  updatedAt: string;
+  isExperimental?: boolean;
+}
+
+interface DocumentProjectTransferProps {
+  documentId: string;
+  currentProject?: string | null;
+  onProjectChanged?: (containerTag: string) => void;
+}
+
+const PROJECTS_QUERY_KEY = ["projects"];
+
+export function DocumentProjectTransfer({
+  documentId,
+  currentProject,
+  onProjectChanged,
+}: DocumentProjectTransferProps) {
+  const queryClient = useQueryClient();
+  const [selection, setSelection] = useState(
+    currentProject ?? DEFAULT_PROJECT_ID,
+  );
+
+  useEffect(() => {
+    const selectedProject = currentProject ?? DEFAULT_PROJECT_ID;
+    console.log("[DocumentProjectTransfer] Setting selection:", {
+      currentProject,
+      selectedProject,
+      documentId,
+    });
+    setSelection(selectedProject);
+  }, [currentProject, documentId]);
+
+  const {
+    data: projects = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery<Project[]>({
+    queryKey: PROJECTS_QUERY_KEY,
+    queryFn: async () => {
+      const response = await $fetch("@get/projects");
+      if (response.error) {
+        throw new Error(
+          response.error?.message || "Failed to load projects list",
+        );
+      }
+      return response.data?.projects ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+  const projectOptions = useMemo(() => {
+    const map = new Map<string, Project>();
+    for (const project of projects) {
+      map.set(project.containerTag, project);
+    }
+    if (!map.has(DEFAULT_PROJECT_ID)) {
+      map.set(DEFAULT_PROJECT_ID, {
+        id: DEFAULT_PROJECT_ID,
+        name: "All Projects",
+        containerTag: DEFAULT_PROJECT_ID,
+        createdAt: "",
+        updatedAt: "",
+      });
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  }, [projects]);
+
+  const moveMutation = useMutation({
+    mutationFn: async (targetTag: string) => {
+      const result = await moveDocumentToProject(documentId, targetTag);
+      return { targetTag, result };
+    },
+    onSuccess: ({ targetTag }, variables) => {
+      const projectName = projectOptions.find(p => p.containerTag === targetTag)?.name;
+      toast.success(`Documento movido para "${projectName || targetTag}"`);
+
+      setSelection(targetTag);
+      onProjectChanged?.(targetTag);
+
+      // Invalidar queries relacionadas
+      queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (error, targetTag) => {
+      // Reverter para o projeto original em caso de erro
+      setSelection(currentProject ?? DEFAULT_PROJECT_ID);
+
+      const projectName = projectOptions.find(p => p.containerTag === targetTag)?.name;
+      const errorMessage = error instanceof Error ? error.message : "Erro inesperado";
+
+      toast.error(`Falha ao mover para "${projectName || targetTag}"`, {
+        description: errorMessage,
+        action: {
+          label: "Tentar novamente",
+          onClick: () => {
+            if (targetTag) {
+              moveMutation.mutate(targetTag);
+            }
+          },
+        },
+      });
+    },
+  });
+
+  const handleChange = (value: string) => {
+    if (value === selection) {
+      toast.info("Documento já está neste projeto");
+      return;
+    }
+
+    const targetProject = projectOptions.find(p => p.containerTag === value);
+    if (targetProject) {
+      moveMutation.mutate(value);
+    }
+  };
+
+  const triggerLabel = (() => {
+    if (moveMutation.isPending) {
+      return (
+        <span className="flex items-center gap-2 text-xs">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Movendo...
+        </span>
+      );
+    }
+    const currentOption = projectOptions.find(
+      (project) => project.containerTag === selection,
+    );
+
+    console.log("[DocumentProjectTransfer] Rendering trigger:", {
+      selection,
+      currentOption,
+      projectOptionsCount: projectOptions.length,
+      projectTags: projectOptions.map(p => ({ tag: p.containerTag, name: p.name })),
+    });
+
+    return (
+      <span className="flex items-center gap-2 text-xs">
+        <FolderIcon className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="truncate">
+          {currentOption ? currentOption.name : selection}
+        </span>
+      </span>
+    );
+  })();
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        Projeto
+        {isError && (
+          <Button
+            size="xs"
+            variant="ghost"
+            className="h-5 px-1 text-[10px]"
+            onClick={() => refetch()}
+          >
+            Tentar novamente
+          </Button>
+        )}
+      </div>
+      <Select
+        value={selection}
+        onValueChange={handleChange}
+        disabled={isLoading || moveMutation.isPending || projectOptions.length === 0}
+      >
+        <SelectTrigger className="h-8 w-52 justify-between text-xs">
+          {triggerLabel}
+        </SelectTrigger>
+        <SelectContent>
+          {projectOptions.map((project) => {
+            const isCurrent = project.containerTag === selection;
+            return (
+              <SelectItem
+                key={project.containerTag}
+                value={project.containerTag}
+                disabled={isCurrent}
+              >
+                <span className="flex items-center gap-2">
+                  {project.name}
+                  {isCurrent && (
+                    <span className="text-[10px] text-muted-foreground">(atual)</span>
+                  )}
+                </span>
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}

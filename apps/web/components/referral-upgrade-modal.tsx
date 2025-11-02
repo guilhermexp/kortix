@@ -110,7 +110,7 @@ export function ReferralUpgradeModal({
 	if (user?.isAnonymous) {
 		return (
 			<Dialog onOpenChange={onClose} open={isOpen}>
-				<DialogContent className="sm:max-w-md bg-[#0f1419] backdrop-blur-xl border-white/10 text-white">
+				<DialogContent className="sm:max-w-md bg-background backdrop-blur-xl border-white/10 text-white">
 					<motion.div
 						animate={{ opacity: 1, scale: 1 }}
 						exit={{ opacity: 0, scale: 0.95 }}
@@ -139,7 +139,7 @@ export function ReferralUpgradeModal({
 
 	return (
 		<Dialog onOpenChange={onClose} open={isOpen}>
-			<DialogContent className="sm:max-w-lg bg-[#0f1419] backdrop-blur-xl border-white/10 text-white">
+			<DialogContent className="sm:max-w-lg bg-background backdrop-blur-xl border-white/10 text-white">
 				<motion.div
 					animate={{ opacity: 1, scale: 1 }}
 					exit={{ opacity: 0, scale: 0.95 }}

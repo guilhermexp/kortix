@@ -51,6 +51,7 @@ type MetadataPayload = {
   expandContext?: boolean;
   forceRawDocs?: boolean;
   preferredTone?: string;
+  mentionedDocIds?: string[];
 };
 
 function normalizeModel(
@@ -493,12 +494,23 @@ export async function handleChatV2({
     typeof metadata.preferredTone === "string"
       ? metadata.preferredTone.trim()
       : undefined;
+  const mentionedDocIds = Array.isArray(metadata.mentionedDocIds)
+    ? metadata.mentionedDocIds.filter(
+        (id): id is string => typeof id === "string" && id.trim().length > 0,
+      )
+    : [];
 
   const scopedDocumentIds = Array.isArray(payload.scopedDocumentIds)
     ? payload.scopedDocumentIds.filter(
         (id) => typeof id === "string" && id.length > 0,
       )
     : undefined;
+  const effectiveScopedIds =
+    scopedDocumentIds && scopedDocumentIds.length > 0
+      ? scopedDocumentIds
+      : mentionedDocIds.length > 0
+        ? mentionedDocIds
+        : undefined;
 
   // Build system prompt (without mode instructions)
   const instructions: string[] = [];
@@ -515,6 +527,13 @@ export async function handleChatV2({
   if (preferredTone) {
     instructions.push(`Adopt a ${preferredTone} tone in the reply.`);
   }
+  if (mentionedDocIds.length > 0) {
+    instructions.push(
+      `The user explicitly mentioned the following document IDs: ${mentionedDocIds.join(
+        ", ",
+      )}. Prioritize retrieving and citing these documents when formulating the response.`,
+    );
+  }
 
   const systemPrompt = instructions.length > 0
     ? `${ENHANCED_SYSTEM_PROMPT}\n\n${instructions.join("\n")}`
@@ -529,8 +548,52 @@ export async function handleChatV2({
   const toolContext = {
     containerTags:
       projectId && projectId !== "__ALL__" ? [projectId] : undefined,
-    scopedDocumentIds,
+    scopedDocumentIds: effectiveScopedIds,
   };
+
+  let messageForAgent = payload.message;
+  if (mentionedDocIds.length > 0) {
+    try {
+      const { data: mentionedDocs } = await client
+        .from("documents")
+        .select("id, title, summary, content")
+        .in("id", mentionedDocIds)
+        .limit(mentionedDocIds.length);
+
+      if (Array.isArray(mentionedDocs) && mentionedDocs.length > 0) {
+        const mentionSummaries = mentionedDocs
+          .map((doc) => {
+            if (!doc || typeof doc !== "object") return null;
+            const record = doc as {
+              id?: string;
+              title?: string | null;
+              summary?: string | null;
+              content?: string | null;
+            };
+            const lines: string[] = [];
+            if (record.id) lines.push(`ID: ${record.id}`);
+            if (record.title) lines.push(`Título: ${record.title}`);
+            if (record.summary) lines.push(`Resumo: ${record.summary}`);
+            if (record.content) {
+              const snippet = record.content.slice(0, 1200);
+              lines.push(`Trecho: ${snippet}`);
+            }
+            if (lines.length === 0) return null;
+            return lines.join("\n");
+          })
+          .filter((value): value is string => Boolean(value));
+
+        if (mentionSummaries.length > 0) {
+          const contextBlock = mentionSummaries
+            .map((item, index) => `Documento ${index + 1}:\n${item}`)
+            .join("\n\n---\n\n");
+          messageForAgent = `${payload.message}\n\n[Documentos mencionados]\n${contextBlock}`;
+        }
+      }
+    } catch (error) {
+      console.error("[Chat V2] Failed to append mentioned documents context:", error);
+    }
+  }
 
   // Fixed maxTurns - Claude Agent SDK decides when to use tools based on system prompt
   const maxTurns = 10;
@@ -732,7 +795,7 @@ export async function handleChatV2({
         try {
           const { events, text, parts, sdkSessionId: returnedSessionId } = await executeClaudeAgent(
             {
-              message: payload.message,
+              message: messageForAgent,
               sdkSessionId: payload.sdkSessionId,
               continueSession: payload.continueSession,
               client,

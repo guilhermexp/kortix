@@ -55,7 +55,7 @@ export default function RootLayout({
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body
-				className={`${sans.variable} ${mono.variable} antialiased bg-[#0f1419]`}
+				className={`${sans.variable} ${mono.variable} antialiased`}
 			>
 				<ThemeProvider
 					attribute="class"
@@ -72,7 +72,7 @@ export default function RootLayout({
                                             <ErrorBoundary>
                                                 <Suspense>{children}</Suspense>
                                             </ErrorBoundary>
-											<Toaster richColors theme="dark" />
+											<Toaster richColors />
 										</TourProvider>
 									</ErrorTrackingProvider>
 								</MobilePanelProvider>

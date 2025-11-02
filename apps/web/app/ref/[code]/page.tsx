@@ -80,7 +80,7 @@ export default function ReferralPage() {
 
 	if (isLoading) {
 		return (
-			<div className="min-h-screen flex items-center justify-center p-4 bg-[#0f1419]">
+			<div className="min-h-screen flex items-center justify-center p-4 bg-background">
 				<div className="flex flex-col items-center gap-4">
 					<LoaderIcon className="w-8 h-8 text-orange-500 animate-spin" />
 					<p className="text-white/60">Checking invitation...</p>
@@ -91,7 +91,7 @@ export default function ReferralPage() {
 
 	if (!referralData?.valid) {
 		return (
-			<div className="min-h-screen flex items-center justify-center p-4 bg-[#0f1419]">
+			<div className="min-h-screen flex items-center justify-center p-4 bg-background">
 				<Card className="max-w-md w-full bg-[#1a1f2a] border-white/10">
 					<CardHeader className="text-center">
 						<CardTitle className="text-2xl font-bold text-white">
@@ -114,7 +114,7 @@ export default function ReferralPage() {
 	}
 
 	return (
-		<div className="min-h-screen flex items-center justify-center p-4 bg-[#0f1419]">
+		<div className="min-h-screen flex items-center justify-center p-4 bg-background">
 			<div className="max-w-lg w-full space-y-6">
 				{/* Welcome Card */}
 				<Card className="bg-[#1a1f2a] border-white/10">
@@ -132,7 +132,7 @@ export default function ReferralPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="space-y-4">
-							<div className="bg-[#0f1419] rounded-lg p-4 border border-white/10">
+							<div className="bg-background rounded-lg p-4 border border-white/10">
 								<h3 className="text-white font-semibold mb-2">
 									What is supermemory?
 								</h3>
@@ -169,7 +169,7 @@ export default function ReferralPage() {
 					<CardContent>
 						<div className="space-y-3">
 							<div className="flex gap-2">
-								<div className="flex-1 px-3 py-2 bg-[#0f1419] border border-white/10 rounded-md">
+								<div className="flex-1 px-3 py-2 bg-background border border-white/10 rounded-md">
 									<p className="text-white/80 text-sm font-mono truncate">
 										{referralLink}
 									</p>

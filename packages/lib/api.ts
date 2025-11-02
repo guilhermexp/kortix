@@ -40,6 +40,17 @@ const WaitlistStatusResponseSchema = z.object({
 	createdAt: z.string().datetime(),
 })
 
+const GraphConnectionsResponseSchema = z.object({
+	edges: z.array(
+		z.object({
+			sourceId: z.string(),
+			targetId: z.string(),
+			similarity: z.number(),
+		}),
+	),
+	count: z.number(),
+})
+
 export const apiSchema = createSchema({
     "@post/deep-agent/analyze": {
         input: z.object({
@@ -147,12 +158,27 @@ export const apiSchema = createSchema({
 		input: MigrateMCPRequestSchema,
 		output: MigrateMCPResponseSchema,
 	},
+	"@post/graph/connections": {
+		input: z
+			.object({
+				containerTags: z.array(z.string()).optional(),
+				documentIds: z.array(z.string()).optional(),
+				limit: z.number().optional(),
+				threshold: z.number().optional(),
+				topK: z.number().optional(),
+			})
+			.optional(),
+		output: GraphConnectionsResponseSchema,
+	},
 
 	// Update document content
 	"@patch/documents/:id": {
 		input: z.object({
 			content: z.string().optional(),
 			title: z.string().optional(),
+			containerTag: z.string().optional(),
+			containerTags: z.array(z.string()).optional(),
+			metadata: z.record(z.string(), z.unknown()).nullable().optional(),
 		}),
 		output: z.any(),
 		params: z.object({ id: z.string() }),
