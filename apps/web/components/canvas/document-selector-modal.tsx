@@ -21,7 +21,7 @@ import { getDocumentIcon } from "@/lib/document-icon";
 import { useProject } from "@/stores";
 import { useCanvasSelection } from "@/stores/canvas";
 import { formatDate } from "../memories";
-import { getDocumentSnippet } from "../memories";
+import { getDocumentSnippet, stripMarkdown } from "../memories";
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>;
 type DocumentWithMemories = DocumentsResponse["documents"][0];
@@ -266,14 +266,28 @@ export function DocumentSelectorModal({
                               <p
                                 className="text-sm font-semibold text-foreground line-clamp-2"
                                 title={
-                                  document.title?.startsWith("data:")
-                                    ? "Untitled Document"
-                                    : document.title || "Untitled Document"
+                                  (() => {
+                                    const raw = document.title || "";
+                                    const isData = raw.startsWith("data:");
+                                    const cleaned = stripMarkdown(raw)
+                                      .trim()
+                                      .replace(/^[\'"“”‘’`]+|[\'"“”‘’`]+$/g, "");
+                                    return isData || !cleaned
+                                      ? "Untitled Document"
+                                      : cleaned;
+                                  })()
                                 }
                               >
-                                {document.title?.startsWith("data:")
-                                  ? "Untitled Document"
-                                  : document.title || "Untitled Document"}
+                                {(() => {
+                                  const raw = document.title || "";
+                                  const isData = raw.startsWith("data:");
+                                  const cleaned = stripMarkdown(raw)
+                                    .trim()
+                                    .replace(/^[\'"“”‘’`]+|[\'"“”‘’`]+$/g, "");
+                                  return isData || !cleaned
+                                    ? "Untitled Document"
+                                    : cleaned;
+                                })()}
                               </p>
                               <span
                                 className={cn(

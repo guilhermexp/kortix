@@ -5,7 +5,7 @@ let singletonClient: GoogleGenerativeAI | null = null
 
 function normaliseModelId(modelId: string) {
 	if (!modelId) {
-		return "models/gemini-1.5-flash-latest"
+		return "models/gemini-2.0-flash"
 	}
 	return modelId.startsWith("models/") ? modelId : `models/${modelId}`
 }

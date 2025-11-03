@@ -341,6 +341,21 @@ export async function executeClaudeAgent(
       );
     }
 
+    // Configure optional external MCP server (sequential thinking)
+    // Allows override via env:
+    //   SEQ_MCP_COMMAND="/path/to/zed-mcp-server-sequential-thinking"
+    //   SEQ_MCP_ARGS='["--flag","value"]'
+    let seqArgs: string[] = [];
+    try {
+      seqArgs = env.SEQ_MCP_ARGS ? JSON.parse(env.SEQ_MCP_ARGS) : [];
+      if (!Array.isArray(seqArgs)) seqArgs = [];
+    } catch {
+      console.warn("[executeClaudeAgent] Invalid SEQ_MCP_ARGS JSON; ignoring");
+      seqArgs = [];
+    }
+
+    const seqCommand = env.SEQ_MCP_COMMAND || "zed-mcp-server-sequential-thinking";
+
     const queryOptions: Record<string, unknown> = {
       model: resolvedModel,
       mcpServers: {
@@ -348,6 +363,12 @@ export async function executeClaudeAgent(
         deepwiki: {
           type: "http",
           url: "https://mcp.deepwiki.com/mcp",
+        },
+        // External MCP server: Sequential Thinking (LoamStudios)
+        // Runs as a stdio MCP process. Command can be overridden via env.
+        "sequential-thinking": {
+          command: seqCommand,
+          args: seqArgs,
         },
       },
       permissionMode: "bypassPermissions",

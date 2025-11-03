@@ -2,6 +2,8 @@
 -- This migration creates tables to store conversation history, events, and tool results
 -- for the Claude Agent SDK integration
 
+BEGIN;
+
 -- Create conversations table
 CREATE TABLE IF NOT EXISTS public.conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

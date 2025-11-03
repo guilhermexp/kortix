@@ -511,6 +511,37 @@ export function AddMemoryView({
       });
     },
     onSuccess: (_data, variables) => {
+      try {
+        const dedup = (_data as any)?.data?.alreadyExists || (_data as any)?.alreadyExists;
+        const addedToProject = (_data as any)?.data?.addedToProject ?? (_data as any)?.addedToProject;
+        if (dedup) {
+          toast.info("Document already exists", {
+            description: addedToProject ? "We linked it to this project." : undefined,
+          });
+        } else {
+          toast.success("Added to memory", {
+            description:
+              variables.contentType === "repository"
+                ? "Indexing repository..."
+                : variables.contentType === "link"
+                  ? "Extracting content..."
+                  : undefined,
+          });
+        }
+      } catch {}
+      try {
+        const dedup = (_data as any)?.data?.alreadyExists || (_data as any)?.alreadyExists;
+        const addedToProject = (_data as any)?.data?.addedToProject ?? (_data as any)?.addedToProject;
+        if (dedup) {
+          toast.info("Document already exists", {
+            description: addedToProject
+              ? "We linked it to this project."
+              : "It was already in your workspace.",
+          });
+        } else {
+          toast.success("Added to memory", { description: variables.contentType === "repository" ? "Indexing repository..." : undefined });
+        }
+      } catch {}
       analytics.memoryAdded({
         type: "link",
         project_id: variables.project,
@@ -1315,6 +1346,12 @@ export function AddMemoryView({
                               "application/msword": [".doc"],
                               "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
                                 [".docx"],
+                              "application/vnd.ms-excel": [".xls"],
+                              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                                [".xlsx"],
+                              "application/vnd.ms-powerpoint": [".ppt"],
+                              "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+                                [".pptx"],
                               "text/plain": [".txt"],
                               "text/markdown": [".md"],
                               "text/csv": [".csv"],

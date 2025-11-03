@@ -93,7 +93,7 @@ export class AnalysisService {
   private modelId: string
   private defaultUseExa: boolean
 
-  constructor(modelId: string = "gemini-2.5-flash", useExa?: boolean) {
+  constructor(modelId: string = "gemini-2.0-flash", useExa?: boolean) {
     this.modelId = modelId
     this.defaultUseExa = typeof useExa === "boolean" ? useExa : Boolean(env.EXA_API_KEY)
   }

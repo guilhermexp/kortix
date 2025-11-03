@@ -8,9 +8,11 @@ import {
 	checkMarkItDownHealth,
 	convertUrlWithMarkItDown,
 	convertWithMarkItDown,
+	fetchYouTubeTranscriptFallback,
 } from "./markitdown"
 import { ingestRepository } from "./repository-ingest"
 import { summarizeYoutubeVideo } from "./summarizer"
+import { ReplicateService } from "./replicate"
 
 const DEFAULT_USER_AGENT = "SupermemorySelfHosted/1.0 (+self-hosted extractor)"
 
@@ -355,7 +357,7 @@ async function extractPreviewImageWithGemini(
 	html: string,
 	url: string,
 ): Promise<string | null> {
-	const model = getGoogleModel(env.SUMMARY_MODEL || "google/gemini-2.5-flash")
+  const model = getGoogleModel(env.SUMMARY_MODEL || "gemini-2.0-flash")
 	if (!model) {
 		console.warn("extractPreviewImageWithGemini: Google Generative AI not configured")
 		return null
@@ -644,6 +646,40 @@ export async function extractDocumentContent(
 			}
 		}
 
+		// For PDFs: Try Deepseek OCR FIRST (if configured)
+		if (mimeType.toLowerCase().includes("pdf") && ReplicateService.isAvailable()) {
+			try {
+				console.log("[extractor] Trying Deepseek OCR for uploaded PDF (primary method)")
+				const replicate = new ReplicateService()
+				const ocrText = await replicate.runDeepseekOCR(
+					buffer,
+					"application/pdf",
+					"Convert to Markdown"
+				)
+
+				if (ocrText && ocrText.trim().length > 50) {
+					console.log("[extractor] Deepseek OCR succeeded for upload", {
+						chars: ocrText.length,
+						words: countWords(ocrText),
+					})
+					return {
+						text: ocrText,
+						title: metadataTitle ?? filename,
+						source: "pdf-ocr-deepseek",
+						url: null,
+						contentType: mimeType,
+						raw: {
+							ocrMethod: "deepseek",
+							upload: { filename, mimeType, size: buffer.length },
+						},
+						wordCount: countWords(ocrText),
+					}
+				}
+			} catch (error) {
+				console.warn("[extractor] Deepseek OCR failed for upload, will try MarkItDown fallback", error)
+			}
+		}
+
 		if (shouldTryMarkItDownFirst(mimeType, filename)) {
 			const markitdownResult = await tryMarkItDownOnBuffer(buffer, filename)
 			if (markitdownResult) {
@@ -667,6 +703,35 @@ export async function extractDocumentContent(
 						},
 						wordCount: countWords(text),
 					}
+				}
+			}
+
+			// MarkItDown failed - if it's a PDF, try Gemini fallback
+			if (mimeType.toLowerCase().includes("pdf")) {
+				console.log("[extractor] MarkItDown failed for PDF upload, trying Gemini fallback")
+				try {
+					const geminiResult = await summarizeBinaryWithGemini(
+						buffer,
+						mimeType,
+						filename,
+					)
+					const geminiText = geminiResult.text || originalFallback
+					return {
+						text: geminiText,
+						title: metadataTitle ?? filename,
+						source: "pdf-ocr-gemini",
+						url: null,
+						contentType: mimeType,
+						raw: {
+							ocrMethod: "gemini",
+							...geminiResult.metadata,
+							upload: { filename, mimeType, size: buffer.length },
+						},
+						wordCount: countWords(geminiText),
+					}
+				} catch (error) {
+					console.error("[extractor] All OCR methods failed for uploaded PDF", error)
+					// Continue to next fallback
 				}
 			}
 		}
@@ -721,23 +786,36 @@ export async function extractDocumentContent(
 		const videoId = extractYouTubeVideoId(probableUrl)
 		const markitdownResult = await tryMarkItDownOnUrl(probableUrl)
 
-		if (markitdownResult) {
-			const markdown = cleanExtractedContent(
-				markitdownResult.markdown,
-				probableUrl,
-			)
-			const text = sanitiseText(markdown) || originalFallback
-			const markitdownTitle = readRecordString(
-				markitdownResult.metadata,
-				"title",
-			)
+        if (markitdownResult) {
+            const markdown = cleanExtractedContent(
+                markitdownResult.markdown,
+                probableUrl,
+            )
+            let text = sanitiseText(markdown) || originalFallback
+            const markitdownTitle = readRecordString(
+                markitdownResult.metadata,
+                "title",
+            )
 
-			if (text) {
-				try {
-					console.info("extractor: markitdown-youtube", {
-						url: probableUrl,
-						videoId,
-						chars: text.length,
+            if (text) {
+                if (countWords(text) < 100) {
+                    try {
+                        const fb = await fetchYouTubeTranscriptFallback(probableUrl)
+                        if (fb && fb.markdown && fb.markdown.length > text.length) {
+                            console.info("extractor: youtube-timedtext-fallback", {
+                                url: probableUrl,
+                                prevChars: text.length,
+                                fbChars: fb.markdown.length,
+                            })
+                            text = sanitiseText(cleanExtractedContent(fb.markdown, probableUrl))
+                        }
+                    } catch {}
+                }
+                try {
+                    console.info("extractor: markitdown-youtube", {
+                        url: probableUrl,
+                        videoId,
+                        chars: text.length,
 						words: countWords(text),
 					})
 				} catch {}
@@ -1073,16 +1151,95 @@ export async function extractDocumentContent(
 
 		if (contentType.includes("pdf")) {
 			const buffer = await getBinaryBuffer()
+
+			// Try Deepseek OCR FIRST (if configured)
+			if (ReplicateService.isAvailable()) {
+				try {
+					console.log("[extractor] Trying Deepseek OCR for PDF from URL (primary method)")
+					const replicate = new ReplicateService()
+					const ocrText = await replicate.runDeepseekOCR(
+						buffer,
+						"application/pdf",
+						"Convert to Markdown"
+					)
+
+					if (ocrText && ocrText.trim().length > 50) {
+						console.log("[extractor] Deepseek OCR succeeded for URL PDF", {
+							chars: ocrText.length,
+							words: countWords(ocrText),
+						})
+						return {
+							text: ocrText,
+							title: metadataTitle ?? "PDF Document",
+							source: "pdf-ocr-deepseek",
+							url: probableUrl,
+							contentType,
+							raw: {
+								ocrMethod: "deepseek",
+							},
+							wordCount: countWords(ocrText),
+						}
+					}
+				} catch (error) {
+					console.warn("[extractor] Deepseek OCR failed for URL PDF, will try pdf-parse fallback", error)
+				}
+			}
+
+			// Fallback to pdf-parse
 			const { text, title, raw } = await extractFromPdf(buffer)
-			const ensuredText = text || originalFallback
-			return {
-				text: ensuredText,
-				title: title ?? metadataTitle ?? null,
-				source: "pdf",
-				url: probableUrl,
-				contentType,
-				raw,
-				wordCount: countWords(ensuredText),
+
+			// Check if PDF has meaningful text
+			const hasText = text && text.trim().length > 50
+
+			if (hasText) {
+				// pdf-parse succeeded
+				const ensuredText = text || originalFallback
+				return {
+					text: ensuredText,
+					title: title ?? metadataTitle ?? null,
+					source: "pdf",
+					url: probableUrl,
+					contentType,
+					raw,
+					wordCount: countWords(ensuredText),
+				}
+			}
+
+			// pdf-parse didn't extract text - try Gemini as final fallback
+			console.log("[extractor] PDF has no text after pdf-parse, trying Gemini fallback")
+			try {
+				const geminiResult = await summarizeBinaryWithGemini(
+					buffer,
+					contentType,
+					"scanned-document.pdf"
+				)
+				const geminiText = geminiResult.text || originalFallback
+				return {
+					text: geminiText,
+					title: title ?? metadataTitle ?? "PDF Document",
+					source: "pdf-ocr-gemini",
+					url: probableUrl,
+					contentType,
+					raw: {
+						...raw,
+						ocrMethod: "gemini",
+						...geminiResult.metadata,
+					},
+					wordCount: countWords(geminiText),
+				}
+			} catch (error) {
+				console.error("[extractor] All PDF extraction methods failed", error)
+				// Return whatever we have
+				const ensuredText = text || originalFallback
+				return {
+					text: ensuredText,
+					title: title ?? metadataTitle ?? null,
+					source: "pdf",
+					url: probableUrl,
+					contentType,
+					raw,
+					wordCount: countWords(ensuredText),
+				}
 			}
 		}
 

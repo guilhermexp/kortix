@@ -44,6 +44,7 @@ const RUN_SYNC_INGESTION = (process.env.INGESTION_MODE ?? "sync") === "sync";
 const ALLOWED_DOCUMENT_TYPES = new Set([
   "text",
   "pdf",
+  "file", // Generic file uploads (CSV, Excel, Word, PowerPoint, etc.)
   "tweet",
   "google_doc",
   "google_slide",
@@ -336,6 +337,26 @@ export async function addDocument({
   );
   const initialContent = isUrl ? null : sanitizeString(rawContent);
 
+  // Ensure a mapping between a document and the target project exists
+  async function ensureDocumentInSpace(documentId: string, targetSpaceId: string) {
+    const { data: existingMap, error: mapErr } = await client
+      .from("documents_to_spaces")
+      .select("document_id, space_id")
+      .eq("document_id", documentId)
+      .eq("space_id", targetSpaceId)
+      .maybeSingle();
+    // PGRST116 = No rows found; treat as non-fatal
+    if (mapErr && mapErr.code && mapErr.code !== "PGRST116") throw mapErr;
+    if (!existingMap) {
+      const { error: insertMapErr } = await client
+        .from("documents_to_spaces")
+        .insert({ document_id: documentId, space_id: targetSpaceId });
+      if (insertMapErr) throw insertMapErr;
+      return true;
+    }
+    return false;
+  }
+
   // Deduplicate by URL: if a document for the same URL already exists in this org,
   // reuse it instead of creating duplicates. If it's failed, requeue it.
   if (isUrl && inferredUrl) {
@@ -360,7 +381,23 @@ export async function addDocument({
       ]);
 
       if (processingStates.has(currentStatus) || currentStatus === "done") {
-        return MemoryResponseSchema.parse({ id: existing.id, status: existing.status ?? "queued" });
+        // Map existing doc to requested project if not already mapped
+        let addedToProject = false;
+        try {
+          addedToProject = await ensureDocumentInSpace(existing.id, spaceId);
+        } catch (e) {
+          console.warn("[addDocument] Failed mapping doc to project", {
+            documentId: existing.id,
+            spaceId,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+        return {
+          id: existing.id,
+          status: existing.status ?? "queued",
+          alreadyExists: true,
+          addedToProject,
+        };
       }
 
       if (currentStatus === "failed") {
@@ -389,7 +426,18 @@ export async function addDocument({
           });
         if (jobError) throw jobError;
 
-        return MemoryResponseSchema.parse({ id: existing.id, status: "queued" });
+        // Ensure mapping to requested project
+        let addedToProject = false;
+        try {
+          addedToProject = await ensureDocumentInSpace(existing.id, spaceId);
+        } catch (e) {
+          console.warn("[addDocument] Failed mapping (requeue) doc to project", {
+            documentId: existing.id,
+            spaceId,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+        return { id: existing.id, status: "queued", alreadyExists: true, addedToProject };
       }
     }
   }

@@ -7,6 +7,7 @@ import {
 	generateEmbeddingsBatch,
 } from "./embedding-provider"
 import { extractDocumentContent } from "./extractor"
+import { generatePreviewImage } from "./preview"
 import { generateDeepAnalysis, generateCategoryTags } from "./summarizer"
 
 export type JsonRecord = Record<string, unknown>
@@ -163,6 +164,19 @@ export async function processDocument(input: ProcessDocumentInput) {
             console.warn("tag generation failed", e)
         }
 
+        // Generate lightweight preview image (SVG data URL) for PDFs/XLSX if none present
+        let generatedPreview: { url: string; source: string } | null = null
+        try {
+            generatedPreview = generatePreviewImage({
+                contentType: extraction.contentType,
+                filename: (extraction.raw as any)?.upload?.filename || (document.raw as any)?.upload?.filename || null,
+                title: extraction.title ?? document.title ?? null,
+                url: extraction.url ?? document.url ?? payloadUrl ?? null,
+                text: extraction.text,
+                raw: extraction.raw as any,
+            })
+        } catch {}
+
         const mergedMetadata = mergeMetadata(document.metadata, payloadMetadata, {
             // Ensure documents carry containerTags for project scoping and fallbacks
             containerTags,
@@ -173,6 +187,9 @@ export async function processDocument(input: ProcessDocumentInput) {
                 wordCount: extraction.wordCount,
                 fetchedAt: new Date().toISOString(),
             },
+            ...(generatedPreview
+                ? { previewImage: generatedPreview.url, previewImageSource: generatedPreview.source }
+                : {}),
             source:
                 extraction.source ?? document.source ?? jobPayload?.source ?? null,
             originalUrl: extraction.url ?? document.url ?? payloadUrl ?? null,

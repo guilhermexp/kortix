@@ -32,7 +32,7 @@ import { memo, useCallback, useMemo, useRef } from "react";
 import type { z } from "zod";
 import { getDocumentIcon } from "@/lib/document-icon";
 import { formatDate, getSourceUrl } from "../memories";
-import { getDocumentSnippet } from "../memories";
+import { getDocumentSnippet, stripMarkdown } from "../memories";
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>;
 type DocumentWithMemories = DocumentsResponse["documents"][0];
@@ -316,6 +316,31 @@ const getDocumentPreview = (
   const normalizedType = document.type?.toLowerCase() ?? "";
   const label = formatPreviewLabel(document.type);
 
+  // Fallback SVG placeholders (data URLs)
+  const PDF_PLACEHOLDER =
+    "data:image/svg+xml;utf8," +
+    encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400">' +
+        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7f1d1d"/><stop offset="100%" stop-color="#ef4444"/></linearGradient></defs>' +
+        '<rect width="100%" height="100%" fill="url(#g)"/>' +
+        '<rect x="24" y="24" width="96" height="32" rx="6" fill="rgba(255,255,255,0.2)"/>' +
+        '<text x="40" y="48" font-family="system-ui,Segoe UI,Roboto" font-size="18" fill="#fff" opacity="0.9">PDF</text>' +
+        '<text x="32" y="96" font-family="system-ui,Segoe UI,Roboto" font-size="28" fill="#fff" opacity="0.95">Document</text>' +
+      '</svg>'
+    );
+
+  const XLSX_PLACEHOLDER =
+    "data:image/svg+xml;utf8," +
+    encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400">' +
+        '<defs><linearGradient id="gx" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#064e3b"/><stop offset="100%" stop-color="#10b981"/></linearGradient></defs>' +
+        '<rect width="100%" height="100%" fill="url(#gx)"/>' +
+        '<rect x="24" y="24" width="120" height="32" rx="6" fill="rgba(255,255,255,0.2)"/>' +
+        '<text x="40" y="48" font-family="system-ui,Segoe UI,Roboto" font-size="18" fill="#fff" opacity="0.9">Spreadsheet</text>' +
+        '<text x="32" y="96" font-family="system-ui,Segoe UI,Roboto" font-size="28" fill="#fff" opacity="0.95">XLSX</text>' +
+      '</svg>'
+    );
+
   if (normalizedType === "image" || contentType?.startsWith("image/")) {
     const src = finalPreviewImage ?? originalUrl;
     if (src) {
@@ -326,6 +351,40 @@ const getDocumentPreview = (
         label: label || "Image",
       };
     }
+  }
+
+  // PDF preview fallback
+  if (
+    normalizedType.includes("pdf") ||
+    (typeof contentType === "string" && contentType.toLowerCase().includes("pdf"))
+  ) {
+    return {
+      kind: "image",
+      src: finalPreviewImage || PDF_PLACEHOLDER,
+      href: originalUrl ?? undefined,
+      label: label || "PDF",
+    };
+  }
+
+  // Spreadsheet (XLSX/Google Sheets) preview fallback
+  if (
+    normalizedType.includes("sheet") ||
+    normalizedType.includes("excel") ||
+    (typeof contentType === "string" && (
+      contentType.toLowerCase().includes("spreadsheet") ||
+      contentType.toLowerCase().includes("excel") ||
+      contentType.toLowerCase().includes("sheet") ||
+      contentType.toLowerCase().includes(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      )
+    ))
+  ) {
+    return {
+      kind: "image",
+      src: finalPreviewImage || XLSX_PLACEHOLDER,
+      href: originalUrl ?? undefined,
+      label: label || "Spreadsheet",
+    };
   }
 
   const youtubeUrl =
@@ -583,9 +642,12 @@ export const DocumentCard = memo(
                   document.url ? "max-w-[190px]" : "max-w-[200px]",
                 )}
               >
-                {document.title?.startsWith("data:")
-                  ? "Untitled Document"
-                  : document.title || "Untitled Document"}
+                {(() => {
+                  const raw = document.title || "";
+                  const isData = raw.startsWith("data:");
+                  const cleaned = stripMarkdown(raw).trim().replace(/^[\'"“”‘’`]+|[\'"“”‘’`]+$/g, "");
+                  return isData || !cleaned ? "Untitled Document" : cleaned;
+                })()}
               </p>
             </div>
             {document.url && (

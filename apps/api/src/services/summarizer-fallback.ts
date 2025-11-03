@@ -1,0 +1,72 @@
+import { isGitHubUrl, isHtmlContent, isPdfContent } from "../config/constants"
+import {
+  buildSummaryPrompt,
+  buildTextAnalysisPrompt,
+  buildUrlAnalysisPrompt as buildUrlAnalysisPromptI18n,
+  getSectionHeader,
+  getFallbackMessage,
+} from "../i18n"
+import { openRouterChat } from "./openrouter"
+
+function buildUrlAnalysisPrompt(url: string, title?: string | null) {
+  const isGh = isGitHubUrl(url)
+  return buildUrlAnalysisPromptI18n(url, { title, isGitHub: isGh })
+}
+
+export async function summarizeWithOpenRouter(
+  text: string,
+  context?: { title?: string | null; url?: string | null; contentType?: string | null },
+): Promise<string | null> {
+  const trimmed = (text || "").trim()
+
+  // Prefer TEXT-BASED summary first when we already have content (e.g., YouTube transcript)
+  if (trimmed.length > 0) {
+    const textPrompt = buildTextAnalysisPrompt(trimmed.slice(0, 20_000), {
+      title: context?.title,
+      url: context?.url || undefined,
+      isGitHub: context?.url ? isGitHubUrl(context.url) : false,
+      isPDF: isPdfContent(context?.contentType),
+      isWebPage: isHtmlContent(context?.contentType, context?.url),
+    })
+    console.log("[OpenRouterFallback] Attempting text-based summary via OpenRouter", {
+      hasUrl: Boolean(context?.url),
+      model: "x-ai/grok-4-fast",
+    })
+    const answer = await openRouterChat([
+      { role: "system", content: "Você é um assistente que gera resumos estruturados em Markdown." },
+      { role: "user", content: textPrompt },
+    ])
+    if (answer && answer.trim()) {
+      console.log("[OpenRouterFallback] Text-based summary generated successfully")
+      return ensureUseCases(answer)
+    }
+    console.warn("[OpenRouterFallback] Text-based summary failed or empty response; trying URL-based (if available)")
+  }
+
+  // URL-based as fallback (only if URL exists)
+  if (context?.url) {
+    const urlPrompt = buildUrlAnalysisPrompt(context.url, context?.title || undefined)
+    console.log("[OpenRouterFallback] Attempting URL-based summary via OpenRouter", {
+      url: context.url,
+      model: "x-ai/grok-4-fast",
+    })
+    const answer = await openRouterChat([
+      { role: "system", content: "Você é um assistente que gera resumos estruturados em Markdown." },
+      { role: "user", content: urlPrompt },
+    ])
+    if (answer && answer.trim()) {
+      console.log("[OpenRouterFallback] URL-based summary generated successfully")
+      return ensureUseCases(answer)
+    }
+    console.warn("[OpenRouterFallback] URL-based summary also failed or empty response")
+  }
+
+  return null
+}
+
+function ensureUseCases(markdown: string): string {
+  const hasSection = /(?:^|\n)##\s*Casos\s*de\s*Uso(?:\s|\n)/i.test(markdown)
+  if (hasSection) return markdown
+  const appendix = `\n\n${getSectionHeader("useCases")}\n${getFallbackMessage("noUseCases")}\n`
+  return markdown.trimEnd() + appendix
+}
