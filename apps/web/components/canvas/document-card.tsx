@@ -109,6 +109,39 @@ const pickFirstUrl = (
   return undefined;
 };
 
+// Prefer images from the same host as the original URL (avoid cross-site OG leaks)
+const sameHostOrTrustedCdn = (candidate?: string, baseUrl?: string): boolean => {
+  if (!candidate) return false;
+  if (candidate.startsWith("data:image/")) return true;
+  if (!baseUrl) return true; // no base to compare — allow
+  try {
+    const c = new URL(candidate);
+    const b = new URL(baseUrl);
+    if (c.hostname === b.hostname) return true;
+    // Allow GitHub CDN for GitHub pages
+    if (
+      /(^|\.)github\.com$/i.test(b.hostname) &&
+      /(^|\.)githubassets\.com$/i.test(c.hostname)
+    )
+      return true;
+  } catch {}
+  return false;
+};
+
+const pickFirstUrlSameHost = (
+  record: BaseRecord | null,
+  keys: string[],
+  baseUrl?: string,
+): string | undefined => {
+  if (!record) return undefined;
+  for (const key of keys) {
+    const candidate = record[key];
+    const url = safeHttpUrl(candidate, baseUrl);
+    if (url && sameHostOrTrustedCdn(url, baseUrl)) return url;
+  }
+  return undefined;
+};
+
 const formatPreviewLabel = (type?: string | null): string => {
   if (!type) return "Link";
   return type
@@ -167,6 +200,12 @@ const getDocumentPreview = (
   const rawFirecrawlMetadata = asRecord(rawFirecrawl?.metadata) ?? rawFirecrawl;
   const rawGemini = asRecord(raw?.geminiFile);
 
+  const isLikelyGeneric = (v?: string) => {
+    if (!v) return true;
+    const s = v.toLowerCase();
+    return s.endsWith(".svg") || s.includes("favicon") || s.includes("sprite") || s.includes("logo");
+  };
+
   const imageKeys = [
     "ogImage",
     "og_image",
@@ -188,19 +227,83 @@ const getDocumentPreview = (
     safeHttpUrl(document.url) ??
     safeHttpUrl(rawYoutube?.url);
 
-  const metadataImage = pickFirstUrl(metadata, imageKeys, originalUrl);
-  const rawDirectImage = pickFirstUrl(raw, imageKeys, originalUrl);
+  // No special-casing by domain for main preview
+
+  const metadataImage = pickFirstUrlSameHost(metadata, imageKeys, originalUrl);
+  const rawDirectImage = pickFirstUrlSameHost(raw, imageKeys, originalUrl);
   const rawImage =
-    pickFirstUrl(rawExtraction, imageKeys, originalUrl) ??
-    pickFirstUrl(rawFirecrawl, imageKeys, originalUrl) ??
-    pickFirstUrl(rawFirecrawlMetadata, imageKeys, originalUrl) ??
-    pickFirstUrl(rawGemini, imageKeys, originalUrl);
+    pickFirstUrlSameHost(rawExtraction, imageKeys, originalUrl) ??
+    pickFirstUrlSameHost(rawFirecrawl, imageKeys, originalUrl) ??
+    pickFirstUrlSameHost(rawFirecrawlMetadata, imageKeys, originalUrl) ??
+    pickFirstUrlSameHost(rawGemini, imageKeys, originalUrl);
 
   const firecrawlOgImage =
     safeHttpUrl(rawFirecrawlMetadata?.ogImage, originalUrl) ??
     safeHttpUrl(rawFirecrawl?.ogImage, originalUrl);
-  const finalPreviewImage =
-    rawDirectImage ?? metadataImage ?? rawImage ?? firecrawlOgImage;
+
+  // Prefer images extracted from page content before generic OG images
+  const extractedImages: string[] = (() => {
+    const arr =
+      (Array.isArray((rawExtraction as any)?.images) &&
+        ((rawExtraction as any).images as unknown[])) ||
+      (Array.isArray((raw as any)?.images) &&
+        ((raw as any).images as unknown[])) ||
+      [];
+    const out: string[] = [];
+    for (const u of arr) {
+      const s = safeHttpUrl(u as string | undefined, originalUrl);
+      if (s && !out.includes(s)) out.push(s);
+    }
+    return out;
+  })();
+
+  const preferredFromExtracted =
+    extractedImages.find((u) => !isLikelyGeneric(u)) || extractedImages[0];
+
+  // Heuristics: avoid badges/svg; prefer GitHub social preview when available
+  const isSvgOrBadge = (u?: string) => {
+    if (!u) return true;
+    const s = u.toLowerCase();
+    return (
+      s.endsWith(".svg") ||
+      s.includes("badge") ||
+      s.includes("shields") ||
+      s.includes("sprite") ||
+      s.includes("logo") ||
+      s.includes("icon") ||
+      s.includes("topics")
+    );
+  };
+
+  const isDisallowedBadgeDomain = (u?: string) => {
+    if (!u) return false;
+    try {
+      const h = new URL(u).hostname.toLowerCase();
+      return h === 'img.shields.io' || h.endsWith('.shields.io');
+    } catch { return false; }
+  };
+
+  const isGitHubHost = (u?: string) => {
+    if (!u) return false;
+    try { return new URL(u).hostname.toLowerCase().includes("github.com"); } catch { return false; }
+  };
+  const isGitHubAssets = (u?: string) => {
+    if (!u) return false;
+    try { return new URL(u).hostname.toLowerCase().endsWith("githubassets.com"); } catch { return false; }
+  };
+  const isGitHubOpenGraph = (u?: string) => {
+    if (!u) return false;
+    try { return isGitHubAssets(u) && new URL(u).pathname.includes("/opengraph/"); } catch { return false; }
+  };
+
+  // For GitHub pages, prefer the official OpenGraph banner
+  const preferredGitHubOg = isGitHubHost(originalUrl)
+    ? [firecrawlOgImage, metadataImage, rawImage, rawDirectImage].find(isGitHubOpenGraph)
+    : undefined;
+
+  const ordered = [rawImage, firecrawlOgImage, rawDirectImage, metadataImage].filter(Boolean) as string[];
+  const filtered = ordered.filter((u) => !isSvgOrBadge(u) && !isDisallowedBadgeDomain(u));
+  const finalPreviewImage = preferredGitHubOg || filtered[0] || ordered.find(isGitHubOpenGraph) || metadataImage;
   const contentType =
     (typeof rawExtraction?.contentType === "string" &&
       rawExtraction.contentType) ||
@@ -316,6 +419,79 @@ export const DocumentCard = memo(
       ? processingStates.has(String(document.status).toLowerCase())
       : false;
 
+    const stageForStatus = (stRaw: string) => {
+      const st = stRaw.toLowerCase();
+      switch (st) {
+        case "queued":
+          return { label: "Queued", from: 2, to: 10, duration: 6000 };
+        case "fetching":
+        case "extracting":
+          return { label: "Extracting", from: 10, to: 40, duration: 12000 };
+        case "chunking":
+          return { label: "Chunking", from: 40, to: 65, duration: 8000 };
+        case "embedding":
+        case "processing":
+          return { label: "Embedding", from: 65, to: 90, duration: 16000 };
+        case "indexing":
+          return { label: "Indexing", from: 90, to: 98, duration: 8000 };
+        default:
+          return { label: "Processing", from: 5, to: 15, duration: 6000 };
+      }
+    };
+    const stageRef = useRef<string>(String(document.status || "unknown"));
+    const startRef = useRef<number>(0);
+    const [progressPct, setProgressPct] = useState<number>(() => stageForStatus(stageRef.current).from);
+    const [progressLabel, setProgressLabel] = useState<string>(() => stageForStatus(stageRef.current).label);
+
+    useEffect(() => {
+      const currentStage = String(document.status || "unknown");
+      if (currentStage !== stageRef.current) {
+        stageRef.current = currentStage;
+        const s = stageForStatus(currentStage);
+        setProgressLabel(s.label);
+        setProgressPct(s.from);
+        startRef.current = performance.now();
+      }
+    }, [document.status]);
+
+    useEffect(() => {
+      if (!isProcessing) return;
+      let rafId = 0;
+      startRef.current = performance.now();
+      const tick = () => {
+        const s = stageForStatus(stageRef.current);
+        const elapsed = performance.now() - startRef.current;
+        const t = Math.min(1, elapsed / Math.max(1, s.duration));
+        const eased = 1 - Math.pow(1 - t, 3);
+        const next = s.from + (s.to - s.from) * eased;
+        setProgressPct(next);
+        setProgressLabel(s.label);
+        if (t < 1 && isProcessing) rafId = requestAnimationFrame(tick);
+      };
+      rafId = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(rafId);
+    }, [isProcessing]);
+
+    const getProgressInfo = () => {
+      const st = String(document.status || "unknown").toLowerCase();
+      switch (st) {
+        case "queued":
+          return { label: "Queued", pct: 5 };
+        case "fetching":
+        case "extracting":
+          return { label: "Extracting", pct: 25 };
+        case "chunking":
+          return { label: "Chunking", pct: 50 };
+        case "embedding":
+        case "processing":
+          return { label: "Embedding", pct: 75 };
+        case "indexing":
+          return { label: "Indexing", pct: 90 };
+        default:
+          return { label: "Processing", pct: 15 };
+      }
+    };
+
     const handlePrefetchEdit = useCallback(() => {
       if (hasPrefetchedRef.current) return;
       router.prefetch(`/memory/${document.id}/edit`);
@@ -383,27 +559,18 @@ export const DocumentCard = memo(
 
         {/* Processing overlay */}
         {isProcessing && (
-          <div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center pointer-events-none">
-            <svg
-              className="animate-spin h-5 w-5 text-white/70"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                fill="none"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="3"
-              />
-              <path
-                className="opacity-75"
-                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                fill="currentColor"
-              />
-            </svg>
-          </div>
+            <div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center pointer-events-none">
+              <div className="flex flex-col items-center gap-2">
+                <svg className="animate-spin h-5 w-5 text-white/70" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" fill="none" r="10" stroke="currentColor" strokeWidth="3" />
+                  <path className="opacity-75" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="currentColor" />
+                </svg>
+                <div className="text-[11px] text-white/80">{progressLabel} • {Math.floor(progressPct)}%</div>
+                <div className="h-1 w-24 rounded bg-white/20">
+                  <div className="h-1 rounded bg-white" style={{ width: `${Math.max(0, Math.min(100, progressPct))}%` }} />
+                </div>
+              </div>
+            </div>
         )}
 
         <CardHeader className="relative z-10 px-0">

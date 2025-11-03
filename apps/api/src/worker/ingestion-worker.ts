@@ -128,6 +128,25 @@ async function handleJobFailure(
 	error: unknown,
 ) {
 	const message = error instanceof Error ? error.message : String(error)
+  // Sanitize helper to avoid JSON 22P02 due to invalid surrogates
+  const sanitizeString = (value: string) =>
+    value.replace(/([\uD800-\uDBFF])(?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])([\uDC00-\uDFFF])/g, "\uFFFD")
+  const sanitizeJson = (value: unknown): unknown => {
+    if (value == null) return value
+    const t = typeof value
+    if (t === "string") return sanitizeString(value as string)
+    if (t === "number" || t === "boolean") return value
+    if (Array.isArray(value)) return value.map((v) => sanitizeJson(v))
+    if (t === "object") {
+      const out: Record<string, unknown> = {}
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        if (v === undefined || typeof v === "function") continue
+        out[k] = sanitizeJson(v)
+      }
+      return out
+    }
+    return null
+  }
 
 	if (attempts >= MAX_ATTEMPTS) {
 		await supabaseAdmin
@@ -139,7 +158,7 @@ async function handleJobFailure(
 			.from("documents")
 			.update({
 				status: "failed",
-				processing_metadata: { error: message },
+				processing_metadata: sanitizeJson({ error: message }) as Record<string, unknown>,
 			})
 			.eq("id", job.document_id)
 		console.error("ingestion-worker job permanently failed", job.id, message)
