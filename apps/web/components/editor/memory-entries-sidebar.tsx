@@ -248,6 +248,33 @@ export function MemoryEntriesSidebar({
     return undefined;
   };
 
+  const sameHostOrTrustedCdn = (candidate?: string, baseUrl?: string): boolean => {
+    if (!candidate) return false;
+    if (candidate.startsWith("data:image/")) return true;
+    if (!baseUrl) return true;
+    try {
+      const c = new URL(candidate);
+      const b = new URL(baseUrl);
+      if (c.hostname === b.hostname) return true;
+      if ((/(^|\.)github\.com$/i.test(b.hostname)) && (/((^|\.)githubassets\.com$)/i.test(c.hostname))) return true;
+    } catch {}
+    return false;
+  };
+
+  const pickFirstUrlSameHost = (
+    record: BaseRecord | null,
+    keys: string[],
+    baseUrl?: string,
+  ): string | undefined => {
+    if (!record) return undefined;
+    for (const key of keys) {
+      const candidate = record[key];
+      const url = safeHttpUrl(candidate, baseUrl);
+      if (url && sameHostOrTrustedCdn(url, baseUrl)) return url;
+    }
+    return undefined;
+  };
+
   const formatPreviewLabel = (type?: string | null): string => {
     if (!type) return "Link";
     return type
@@ -335,29 +362,93 @@ export function MemoryEntriesSidebar({
       safeHttpUrl(document.url) ??
       safeHttpUrl(youtube?.url);
 
-    const metadataImage = pickFirstUrl(metadata, imageKeys, originalUrl);
-    const rawDirectImage = pickFirstUrl(raw, imageKeys, originalUrl);
+    // No special-casing by domain for main thumbnail
+
+    const metadataImage = pickFirstUrlSameHost(metadata, imageKeys, originalUrl);
+    const rawDirectImage = pickFirstUrlSameHost(raw, imageKeys, originalUrl);
     const rawImage =
-      pickFirstUrl(extraction, imageKeys, originalUrl) ??
-      pickFirstUrl(firecrawl, imageKeys, originalUrl) ??
-      pickFirstUrl(firecrawlMetadata, imageKeys, originalUrl) ??
-      pickFirstUrl(rawGemini, imageKeys, originalUrl);
+      pickFirstUrlSameHost(extraction, imageKeys, originalUrl) ??
+      pickFirstUrlSameHost(firecrawl, imageKeys, originalUrl) ??
+      pickFirstUrlSameHost(firecrawlMetadata, imageKeys, originalUrl) ??
+      pickFirstUrlSameHost(rawGemini, imageKeys, originalUrl);
 
     const firecrawlOgImage =
       safeHttpUrl(firecrawlMetadata?.ogImage, originalUrl) ??
       safeHttpUrl(firecrawl?.ogImage, originalUrl);
+
+    // Prefer page-extracted images over generic opengraph banners
+    const isLikelyGeneric = (v?: string) => {
+      if (!v) return true;
+      const s = v.toLowerCase();
+      return (
+        s.endsWith('.svg') ||
+        s.includes('favicon') ||
+        s.includes('sprite') ||
+        s.includes('logo') ||
+        s.includes('opengraph.githubassets.com')
+      );
+    };
+
+    const extractedImages: string[] = (() => {
+      const arr =
+        (Array.isArray((extraction as any)?.images) && ((extraction as any).images as unknown[])) ||
+        (Array.isArray((raw as any)?.images) && ((raw as any).images as unknown[])) ||
+        [];
+      const out: string[] = [];
+      for (const u of arr) {
+        const s = safeHttpUrl(u as string | undefined, originalUrl);
+        if (s && !out.includes(s)) out.push(s);
+      }
+      return out;
+    })();
+
+    const preferredFromExtracted = extractedImages.find((u) => !isLikelyGeneric(u)) || extractedImages[0];
 
     const youtubeFallback = (() => {
       const id = getYouTubeId(youtube?.url ?? originalUrl);
       return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : undefined;
     })();
 
-    const finalThumbnail =
-      rawDirectImage ??
-      metadataImage ??
-      rawImage ??
-      firecrawlOgImage ??
-      youtubeFallback;
+    // Heuristics: avoid badges/svg; prefer GitHub social preview when available
+    const isSvgOrBadge = (u?: string) => {
+      if (!u) return true;
+      const s = u.toLowerCase();
+      return (
+        s.endsWith('.svg') ||
+        s.includes('badge') ||
+        s.includes('shields') ||
+        s.includes('sprite') ||
+        s.includes('logo') ||
+        s.includes('icon') ||
+        s.includes('topics')
+      );
+    };
+    const isDisallowedBadgeDomain = (u?: string) => {
+      if (!u) return false;
+      try {
+        const h = new URL(u).hostname.toLowerCase();
+        return h === 'img.shields.io' || h.endsWith('.shields.io');
+      } catch { return false; }
+    };
+    const isGitHubHost = (u?: string) => {
+      if (!u) return false;
+      try { return new URL(u).hostname.toLowerCase().includes('github.com'); } catch { return false; }
+    };
+    const isGitHubAssets = (u?: string) => {
+      if (!u) return false;
+      try { return new URL(u).hostname.toLowerCase().endsWith('githubassets.com'); } catch { return false; }
+    };
+    const isGitHubOpenGraph = (u?: string) => {
+      if (!u) return false;
+      try { return isGitHubAssets(u) && new URL(u).pathname.includes('/opengraph/'); } catch { return false; }
+    };
+
+    const preferredGitHubOg = isGitHubHost(originalUrl)
+      ? [firecrawlOgImage, metadataImage, rawImage, rawDirectImage].find(isGitHubOpenGraph)
+      : undefined;
+    const ordered = [rawImage, firecrawlOgImage, rawDirectImage, metadataImage, preferredFromExtracted, youtubeFallback].filter(Boolean) as string[];
+    const filtered = ordered.filter((u) => !isSvgOrBadge(u) && !isDisallowedBadgeDomain(u));
+    const finalThumbnail = preferredGitHubOg || filtered[0] || ordered.find(isGitHubOpenGraph) || metadataImage || youtubeFallback;
 
     const youtubeUrl =
       safeHttpUrl(youtube?.url) ??
@@ -402,6 +493,50 @@ export function MemoryEntriesSidebar({
   useEffect(() => {
     setIsVideoPlaying(false);
   }, [document?.id]);
+
+  // Build small gallery of additional images for web/repository URLs
+  const additionalImages = useMemo(() => {
+    if (!document) return [] as string[];
+    const raw = asRecord(document.raw);
+    const extraction = asRecord(raw?.extraction) || asRecord(raw);
+    const baseUrl = (document.url && typeof document.url === 'string') ? document.url : undefined;
+
+    const list: string[] = [];
+    const isDisallowedBadgeDomain = (u?: string) => {
+      if (!u) return true;
+      try {
+        const h = new URL(u).hostname.toLowerCase();
+        return h === 'img.shields.io' || h.endsWith('.shields.io');
+      } catch { return true; }
+    };
+
+    const push = (u?: unknown) => {
+      const s = safeHttpUrl(u as string | undefined, baseUrl);
+      if (!s) return;
+      if (s.toLowerCase().endsWith('.svg')) return;
+      if (s.toLowerCase().includes('badge') || s.toLowerCase().includes('shields')) return;
+      if (isDisallowedBadgeDomain(s)) return;
+      if (!list.includes(s)) list.push(s);
+    };
+
+    // Prefer images array produced by extractor
+    const images = (extraction && Array.isArray((extraction as any).images)) ? (extraction as any).images as unknown[] : [];
+    for (const u of images) push(u as string);
+
+    // Fallbacks: consider metaTags images if present
+    const metaTags = asRecord((extraction as any)?.metaTags);
+    if (metaTags) {
+      push(metaTags.ogImage);
+      push((metaTags as any).twitterImage);
+    }
+
+    // Remove the main preview thumbnail to avoid duplication
+    const mainThumb = documentPreview && 'thumbnail' in documentPreview ? documentPreview.thumbnail : undefined;
+    const filtered = list.filter((u) => u !== mainThumb);
+
+    // Cap to 4 thumbnails
+    return filtered.slice(0, 4);
+  }, [document, documentPreview]);
 
   // Get status badge
   const getStatusBadge = (memory: MemoryEntry) => {
@@ -563,6 +698,34 @@ export function MemoryEntriesSidebar({
             })()}
           </div>
         )}
+
+      {/* Additional images grid (for web/repo) */}
+      {additionalImages.length > 0 && (
+        <div className={cn(thumbnailMargin, "")}
+        >
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {additionalImages.map((src, idx) => (
+              <a
+                key={`${src}-${idx}`}
+                href={src}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-md overflow-hidden border border-border/70 bg-card group"
+                title="Open image"
+              >
+                <div className="aspect-[4/3] w-full overflow-hidden">
+                  <img
+                    src={src}
+                    alt="Related image"
+                    className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                    loading="lazy"
+                  />
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Error message */}
       {error && (

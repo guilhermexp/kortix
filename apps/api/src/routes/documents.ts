@@ -306,6 +306,14 @@ export async function addDocument({
   };
   if (isUrl) {
     baseMetadata.originalUrl = rawContent;
+    // Provide an immediate preview while extraction runs: use site favicon
+    try {
+      const u = new URL(rawContent);
+      const favicon = new URL("/favicon.ico", u.origin).toString();
+      if (!baseMetadata.favicon) {
+        baseMetadata.favicon = favicon;
+      }
+    } catch {}
   }
   // Sanitize metadata to prevent Unicode surrogate errors
   const metadata =
@@ -327,6 +335,64 @@ export async function addDocument({
       "Untitled",
   );
   const initialContent = isUrl ? null : sanitizeString(rawContent);
+
+  // Deduplicate by URL: if a document for the same URL already exists in this org,
+  // reuse it instead of creating duplicates. If it's failed, requeue it.
+  if (isUrl && inferredUrl) {
+    const { data: existing, error: existingError } = await client
+      .from("documents")
+      .select("id, status")
+      .eq("org_id", organizationId)
+      .eq("url", inferredUrl)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!existingError && existing) {
+      const currentStatus = String(existing.status ?? "unknown").toLowerCase();
+      const processingStates = new Set([
+        "queued",
+        "fetching",
+        "extracting",
+        "chunking",
+        "embedding",
+        "processing",
+      ]);
+
+      if (processingStates.has(currentStatus) || currentStatus === "done") {
+        return MemoryResponseSchema.parse({ id: existing.id, status: existing.status ?? "queued" });
+      }
+
+      if (currentStatus === "failed") {
+        // Requeue existing failed document rather than creating a new one
+        const { error: updateError } = await client
+          .from("documents")
+          .update({ status: "queued" })
+          .eq("id", existing.id)
+          .eq("org_id", organizationId);
+        if (updateError) throw updateError;
+
+        const { error: jobError } = await client
+          .from("ingestion_jobs")
+          .insert({
+            document_id: existing.id,
+            org_id: organizationId,
+            status: "queued",
+            payload: {
+              containerTags: parsed.containerTags ?? [containerTag],
+              content: rawContent,
+              metadata,
+              url: inferredUrl,
+              type: inferredType,
+              source: inferredSource,
+            },
+          });
+        if (jobError) throw jobError;
+
+        return MemoryResponseSchema.parse({ id: existing.id, status: "queued" });
+      }
+    }
+  }
 
   const { data: document, error: insertError } = await client
     .from("documents")
@@ -452,7 +518,12 @@ export async function listDocuments(
     connectionId: doc.connection_id ?? null,
     title: doc.title ?? null,
     summary: doc.summary ?? null,
-    status: doc.status ?? "unknown",
+    status: ((): string => {
+      const s = (doc.status ?? "unknown") as string;
+      if (s === "fetching") return "extracting";
+      if (s === "processing") return "embedding";
+      return s;
+    })(),
     type: doc.type ?? "text",
     metadata: doc.metadata ?? null,
     containerTags: extractContainerTags(doc.documents_to_spaces),
@@ -661,6 +732,11 @@ export async function listDocumentsWithMemories(
       doc.processing_metadata,
     );
 
+    // Normalize status to allowed enum values
+    let normalizedStatus = (doc.status ?? "unknown") as string;
+    if (normalizedStatus === "fetching") normalizedStatus = "extracting";
+    if (normalizedStatus === "processing") normalizedStatus = "embedding";
+
     return {
       id: doc.id,
       customId: doc.custom_id ?? null,
@@ -674,7 +750,7 @@ export async function listDocumentsWithMemories(
       url: doc.url ?? null,
       source: doc.source ?? null,
       type: normalizedType,
-      status: doc.status ?? "unknown",
+      status: normalizedStatus,
       metadata: cleanMetadata,
       processingMetadata: cleanProcessingMetadata,
       raw: doc.raw ?? null,

@@ -140,7 +140,8 @@ export async function processDocument(input: ProcessDocumentInput) {
 			await updateJobStatus(jobId, "processing")
 		}
 
-		await updateDocumentStatus(documentId, "fetching")
+		// Use an allowed status value per validation schema
+		await updateDocumentStatus(documentId, "extracting")
 
 		const extraction = await extractDocumentContent({
 			originalContent,
@@ -340,11 +341,15 @@ export async function processDocument(input: ProcessDocumentInput) {
 				error instanceof Error ? error.message : String(error),
 			)
 		}
+
+		// Ensure processing_metadata written on failure is valid JSON-safe
+		const safeProcessing = sanitizeJson({
+			...(input.document.processingMetadata ?? {}),
+			error: error instanceof Error ? error.message : String(error),
+		}) as JsonRecord
+
 		await updateDocumentStatus(documentId, "failed", {
-			processing_metadata: {
-				...(input.document.processingMetadata ?? {}),
-				error: error instanceof Error ? error.message : String(error),
-			},
+			processing_metadata: safeProcessing,
 		})
 		throw error
 	}

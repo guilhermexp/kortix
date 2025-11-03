@@ -315,6 +315,42 @@ function extractMetaTags(html: string): {
 	return result
 }
 
+// Extract a small set of image URLs from HTML for gallery usage
+function extractTopImages(html: string, baseUrl: string, limit = 8): string[] {
+  const collected = new Set<string>()
+
+  const tryAdd = (candidate?: string | null) => {
+    if (!candidate || typeof candidate !== 'string') return
+    const raw = candidate.trim()
+    if (!raw) return
+    try {
+      let resolved = raw
+      if (raw.startsWith('data:image/')) {
+        resolved = raw
+      } else {
+        const u = new URL(raw, baseUrl)
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') return
+        resolved = u.toString()
+      }
+      if (!collected.has(resolved)) collected.add(resolved)
+    } catch {
+      // ignore invalid url
+    }
+  }
+
+  const meta = extractMetaTags(html)
+  tryAdd(meta.ogImage)
+  tryAdd(meta.twitterImage)
+
+  const re = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi
+  for (let m: RegExpExecArray | null; (m = re.exec(html)); ) {
+    tryAdd(m[1])
+    if (collected.size >= limit) break
+  }
+
+  return Array.from(collected).slice(0, limit)
+}
+
 async function extractPreviewImageWithGemini(
 	html: string,
 	url: string,
@@ -786,6 +822,7 @@ export async function extractDocumentContent(
 							const html = await htmlResponse.text()
 							metaTags = extractMetaTags(html)
 							ogImage = metaTags.ogImage || metaTags.twitterImage || null
+							;(metaTags as any).images = extractTopImages(html, probableUrl, 8)
 
 							if (!ogImage) {
 								console.info("extractor: no-og-image, trying Gemini fallback", {
@@ -821,6 +858,9 @@ export async function extractDocumentContent(
 							hasOgImage: !!ogImage,
 						})
 					} catch {}
+					const images = Array.isArray((metaTags as any).images)
+						? ((metaTags as any).images as string[])
+						: []
 					return {
 						text,
 						title: finalTitle,
@@ -831,6 +871,7 @@ export async function extractDocumentContent(
 							markitdown: markitdownResult.metadata,
 							metaTags,
 							ogImage,
+							images,
 						},
 						wordCount: countWords(text),
 					}
@@ -1014,6 +1055,7 @@ export async function extractDocumentContent(
 				})
 			} catch {}
 
+			const images = extractTopImages(html, probableUrl, 8)
 			return {
 				text: ensuredText,
 				title: pageTitle ?? null,
@@ -1023,6 +1065,7 @@ export async function extractDocumentContent(
 				raw: {
 					metaTags,
 					ogImage,
+					images,
 				},
 				wordCount: countWords(ensuredText),
 			}
