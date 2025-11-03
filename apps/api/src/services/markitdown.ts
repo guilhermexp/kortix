@@ -127,31 +127,33 @@ async function retryWithBackoff<T>(
 
 /**
  * Validate MarkItDown result to ensure we got actual content, not just HTML footer
- * YouTube transcripts should be substantial (>1000 chars for most videos)
+ * YouTube transcripts should be substantial (>500 chars for most videos)
  */
 function isValidYouTubeTranscript(markdown: string, url: string): boolean {
 	// Check if URL is YouTube
 	const isYouTube = url.toLowerCase().includes('youtube.com') || url.toLowerCase().includes('youtu.be')
 	if (!isYouTube) return true // Not YouTube, skip validation
 
-	// Check for minimum content length (YouTube footer is ~750 chars)
-	const MIN_VALID_LENGTH = 1000
+    // Minimum content length threshold
+    // Allow shorter transcripts; some videos have brief captions
+    const MIN_VALID_LENGTH = 300
 	if (markdown.length < MIN_VALID_LENGTH) {
 		console.warn(`[MarkItDown] YouTube result too short: ${markdown.length} chars (expected >${MIN_VALID_LENGTH})`)
 		return false
 	}
 
 	// Check for common footer patterns that indicate failed extraction
-	const footerPatterns = [
-		'[Sobre](https://www.youtube.com/about/)',
-		'[Imprensa](https://www.youtube.com/about/press/)',
-		'© 2025 Google LLC',
-		'[Direitos autorais](https://www.youtube.com/about/copyright/)'
-	]
+    const footerPatterns = [
+        '[Sobre](https://www.youtube.com/about/)',
+        '[Imprensa](https://www.youtube.com/about/press/)',
+        '© 2025 Google LLC',
+        '[Direitos autorais](https://www.youtube.com/about/copyright/)'
+    ]
 
-	const hasOnlyFooter = footerPatterns.some(pattern =>
-		markdown.includes(pattern) && markdown.length < 1500
-	)
+    // Consider it "footer-only" only for very short results
+    const hasOnlyFooter = footerPatterns.some(pattern =>
+        markdown.includes(pattern)
+    ) && markdown.length < 700
 
 	if (hasOnlyFooter) {
 		console.warn('[MarkItDown] YouTube result contains only footer, no actual transcript')
@@ -220,9 +222,9 @@ except Exception as e:
 					// Validate content before resolving
 					if (!isValidYouTubeTranscript(result.markdown, url)) {
 						reject(new Error(
-							`MarkItDown returned invalid YouTube transcript (likely rate limited). ` +
-							`Got ${result.markdown.length} chars, expected >1000. ` +
-							`This will trigger retry with backoff.`
+							`MarkItDown returned invalid YouTube transcript (too short or footer only). ` +
+							`Got ${result.markdown.length} chars, expected >500. ` +
+							`Video may not have captions or transcript available.`
 						))
 						return
 					}
@@ -251,6 +253,81 @@ except Exception as e:
 			reject(error)
 		})
 	})
+}
+
+function extractYouTubeVideoIdFromUrl(url: string): string | null {
+  try {
+    const u = new URL(url)
+    if (!u.hostname.includes('youtube.com') && !u.hostname.includes('youtu.be')) return null
+    if (u.hostname.includes('youtu.be')) {
+      const id = u.pathname.replace(/^\//, '')
+      return id || null
+    }
+    const id = u.searchParams.get('v')
+    return id || null
+  } catch {
+    return null
+  }
+}
+
+function htmlDecode(input: string): string {
+  return input
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+}
+
+async function fetchYouTubeTimedTextVtt(videoId: string, lang: string, asr = false): Promise<string | null> {
+  const base = 'https://www.youtube.com/api/timedtext'
+  const params = new URLSearchParams({ v: videoId, lang, fmt: 'vtt' })
+  if (asr) params.set('kind', 'asr')
+  const url = `${base}?${params.toString()}`
+  try {
+    const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0' } })
+    if (!res.ok) return null
+    const vtt = await res.text()
+    // Parse VTT to plain text: drop headers, timestamps, cues numbers
+    const lines = vtt.split(/\r?\n/)
+    const textLines: string[] = []
+    for (const line of lines) {
+      const l = line.trim()
+      if (!l) continue
+      if (l.startsWith('WEBVTT')) continue
+      if (/^\d+$/.test(l)) continue
+      if (/^\d{2}:\d{2}:\d{2}\.\d{3} -->/.test(l)) continue
+      textLines.push(l)
+    }
+    const text = htmlDecode(textLines.join(' ')).replace(/\s+/g, ' ').trim()
+    return text.length > 0 ? text : null
+  } catch {
+    return null
+  }
+}
+
+export async function fetchYouTubeTranscriptFallback(videoUrl: string): Promise<MarkItDownResponse | null> {
+  const videoId = extractYouTubeVideoIdFromUrl(videoUrl)
+  if (!videoId) return null
+  const langs = ['en', 'en-US', 'pt', 'pt-BR']
+  for (const lang of langs) {
+    // Try official + ASR
+    const variants = [false, true]
+    for (const asr of variants) {
+      const text = await fetchYouTubeTimedTextVtt(videoId, lang, asr)
+      if (text && text.length >= 200) {
+        return {
+          markdown: text,
+          metadata: {
+            url: videoUrl,
+            title: undefined,
+            markdown_length: text.length,
+          },
+        }
+      }
+    }
+  }
+  return null
 }
 
 export async function convertWithMarkItDown(
@@ -286,41 +363,47 @@ export async function convertUrlWithMarkItDown(
 	console.log('[MarkItDown] Using convert_url() for:', url)
 
 	// Implement retry with exponential backoff for rate limiting
-	const result = await retryWithBackoff(
-		() => runMarkItDownPythonAPI(url),
-		{
-			maxRetries: 2, // Total 3 attempts (initial + 2 retries)
-			initialDelayMs: 2000, // Start with 2 second delay
-			maxDelayMs: 8000, // Cap at 8 seconds
-			backoffMultiplier: 2, // Double delay each retry
-			shouldRetry: (error) => {
-				// Retry on rate limiting, IP blocking, network errors, or invalid content
-				const errorMsg = error.message.toLowerCase()
-				const isRateLimit = errorMsg.includes('429') ||
-					errorMsg.includes('too many requests') ||
-					errorMsg.includes('ipblocked') ||
-					errorMsg.includes('rate limit') ||
-					errorMsg.includes('invalid youtube transcript') ||
-					errorMsg.includes('likely rate limited')
-
-				if (isRateLimit) {
-					console.warn('[MarkItDown] Rate limit/invalid content detected, will retry with backoff')
-					return true
+	try {
+		const result = await retryWithBackoff(
+			() => runMarkItDownPythonAPI(url),
+			{
+				maxRetries: 2,
+				initialDelayMs: 2000,
+				maxDelayMs: 8000,
+				backoffMultiplier: 2,
+				shouldRetry: (error) => {
+					const errorMsg = error.message.toLowerCase()
+					const isRateLimit = errorMsg.includes('429') ||
+						errorMsg.includes('too many requests') ||
+						errorMsg.includes('ipblocked') ||
+						errorMsg.includes('rate limit') ||
+						errorMsg.includes('invalid youtube transcript') ||
+						errorMsg.includes('likely rate limited')
+					return isRateLimit
 				}
-
-				// Don't retry on other types of errors (e.g., video not found)
-				return false
 			}
+		)
+
+		console.log('[MarkItDown] Result:', {
+			chars: result.markdown.length,
+			title: result.metadata.title,
+			preview: result.markdown.substring(0, 100)
+		})
+
+		return result
+	} catch (err) {
+		// Fallback to YouTube timedtext if applicable
+		console.warn('MarkItDown URL conversion failed warn:', err)
+		const fallback = await fetchYouTubeTranscriptFallback(url)
+		if (fallback) {
+			console.log('[MarkItDown] Fallback transcript (timedtext) used:', {
+				chars: fallback.markdown.length,
+				preview: fallback.markdown.substring(0, 80)
+			})
+			return fallback
 		}
-	)
-
-	console.log('[MarkItDown] Result:', {
-		chars: result.markdown.length,
-		title: result.metadata.title,
-		preview: result.markdown.substring(0, 100)
-	})
-
-	return result
+		throw err
+	}
 }
 
 export async function checkMarkItDownHealth(): Promise<boolean> {

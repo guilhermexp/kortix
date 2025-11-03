@@ -11,7 +11,7 @@ import {
   getPastelBackgroundColor,
   getSourceUrl,
 } from "../memories-utils";
-import { getDocumentSnippet } from "../memories";
+import { getDocumentSnippet, stripMarkdown } from "../memories";
 import { MCPIcon } from "../menu";
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>;
@@ -57,7 +57,12 @@ export const NoteCard = ({
                 document.url ? "max-w-[190px]" : "max-w-[200px]",
               )}
             >
-              {document.title || "Untitled Document"}
+              {(() => {
+                const raw = document.title || "";
+                const isData = raw.startsWith("data:");
+                const cleaned = stripMarkdown(raw).trim().replace(/^[\'"“”‘’`]+|[\'"“”‘’`]+$/g, "");
+                return isData || !cleaned ? "Untitled Document" : cleaned;
+              })()}
             </p>
           </div>
           {document.url && (

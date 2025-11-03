@@ -1,7 +1,18 @@
 import { config as loadEnv } from "dotenv"
+import { existsSync } from "node:fs"
+import { resolve } from "node:path"
 
-loadEnv({ path: ".env.local" })
-loadEnv()
+// Load env in this order: local in app → root .env.local → generic .env
+try {
+  loadEnv({ path: ".env.local" })
+  const rootEnvLocal = resolve(process.cwd(), "..", "..", ".env.local")
+  if (existsSync(rootEnvLocal)) {
+    loadEnv({ path: rootEnvLocal })
+  }
+  loadEnv()
+} catch {
+  // ignore env load errors
+}
 
 import { serve } from "@hono/node-server"
 import { zValidator } from "@hono/zod-validator"
@@ -78,6 +89,14 @@ import { createScopedSupabase } from "./supabase"
 const app = new Hono<{ Variables: { session: SessionContext } }>()
 
 const allowedOrigins = new Set(env.ALLOWED_ORIGINS)
+
+// Debug: confirm OpenRouter key presence without printing secrets
+try {
+  const hasOpenRouterKey = Boolean(process.env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY)
+  console.log("[Boot] OpenRouter key detected:", hasOpenRouterKey)
+} catch {
+  // ignore
+}
 
 app.use(
 	"*",
@@ -204,13 +223,14 @@ app.post("/v3/documents", zValidator("json", MemoryAddSchema), async (c) => {
 	const supabase = createScopedSupabase(organizationId, userId)
 
 	try {
-		const doc = await addDocument({
-			organizationId,
-			userId,
-			payload,
-			client: supabase,
-		})
-		return c.json(doc, 201)
+    const doc = await addDocument({
+      organizationId,
+      userId,
+      payload,
+      client: supabase,
+    })
+    const statusCode = (doc as any)?.alreadyExists ? 200 : 201
+    return c.json(doc, statusCode)
 	} catch (error) {
 		console.error("Failed to add document", error)
 		return c.json(
@@ -241,12 +261,21 @@ app.post("/v3/documents/file", async (c) => {
 		const ALLOWED_MIME = new Set([
 			"text/plain",
 			"text/markdown",
+			"text/csv",
 			"application/pdf",
 			"application/json",
 			"text/html",
 			"image/png",
 			"image/jpeg",
 			"image/webp",
+			"image/gif",
+			// Microsoft Office formats
+			"application/msword", // .doc
+			"application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+			"application/vnd.ms-excel", // .xls
+			"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+			"application/vnd.ms-powerpoint", // .ppt
+			"application/vnd.openxmlformats-officedocument.presentationml.presentation", // .pptx
 		])
 
 		if (file.size > MAX_SIZE_BYTES) {
@@ -325,14 +354,14 @@ app.post("/v3/documents/file", async (c) => {
 		}
 
 		const supabase = createScopedSupabase(organizationId, userId)
-		const doc = await addDocument({
-			organizationId,
-			userId,
-			payload,
-			client: supabase,
-		})
-
-		return c.json(doc, 201)
+    const doc = await addDocument({
+      organizationId,
+      userId,
+      payload,
+      client: supabase,
+    })
+    const statusCode = (doc as any)?.alreadyExists ? 200 : 201
+    return c.json(doc, statusCode)
 	} catch (error) {
 		console.error("File upload failed", error)
 		return c.json(

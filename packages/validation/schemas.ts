@@ -12,6 +12,7 @@ export type Visibility = z.infer<typeof VisibilityEnum>
 export const DocumentTypeEnum = z.enum([
 	"text",
 	"pdf",
+	"file", // Generic file uploads (CSV, Excel, Word, PowerPoint, etc.)
 	"tweet",
 	"google_doc",
 	"google_slide",

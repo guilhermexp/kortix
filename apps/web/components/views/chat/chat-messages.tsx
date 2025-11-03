@@ -72,6 +72,7 @@ type SearchMemoriesPart =
       toolUseId?: string;
       state: Exclude<ToolState, "output-available">;
       error?: string;
+      durationMs?: number;
     }
   | {
       type: "tool-searchMemories";
@@ -82,6 +83,7 @@ type SearchMemoriesPart =
         results?: unknown;
       };
       error?: string;
+      durationMs?: number;
     };
 
 type SearchMemoriesOutputPart = Extract<
@@ -96,6 +98,7 @@ type GenericToolPart = {
   state: ToolState;
   outputText?: string;
   error?: string;
+  durationMs?: number;
 };
 
 type AddMemoryPart = {
@@ -214,6 +217,10 @@ function getToolIcon(toolName: string) {
 
 function formatToolLabel(raw: string): string {
   if (!raw) return "Ferramenta";
+  const lname = raw.toLowerCase();
+  if (lname.includes('searchdatabase')) return 'Busca no banco de dados';
+  if (lname.includes('searchweb') || lname.includes('web')) return 'Busca na internet';
+  if (lname.includes('gemini') || lname.includes('analyz')) return 'Análise com Gemini';
   return raw
     .replace(/^mcp__/, "")
     .replace(/__/g, " • ")
@@ -683,6 +690,8 @@ function useClaudeChat({
           });
         };
 
+        const toolStartTimes = new Map<string, number>();
+
         const applyToolEvent = (eventRecord: Record<string, unknown>) => {
           const rawState =
             typeof eventRecord.state === "string" ? eventRecord.state : null;
@@ -729,6 +738,14 @@ function useClaudeChat({
             }
           }
 
+          const now = Date.now();
+          if (
+            (toolState === "input-streaming" || toolState === "input-available") &&
+            toolUseId
+          ) {
+            if (!toolStartTimes.has(toolUseId)) toolStartTimes.set(toolUseId, now);
+          }
+
           mutateAssistant((message) => {
             const existingParts = Array.isArray(message.parts)
               ? [...message.parts]
@@ -765,6 +782,13 @@ function useClaudeChat({
                     };
               basePart.toolUseId = toolUseId;
               basePart.state = toolState;
+              if (toolUseId && (toolState === "output-available" || toolState === "output-error")) {
+                const started = toolStartTimes.get(toolUseId);
+                if (typeof started === "number") {
+                  basePart.durationMs = Math.max(0, now - started);
+                  toolStartTimes.delete(toolUseId);
+                }
+              }
               if (toolState === "output-available") {
                 const parsedResults =
                   outputPayload && Array.isArray(outputPayload.results)
@@ -818,6 +842,13 @@ function useClaudeChat({
               basePart.toolUseId = toolUseId;
               basePart.toolName = resolvedToolName;
               basePart.state = toolState;
+              if (toolUseId && (toolState === "output-available" || toolState === "output-error")) {
+                const started = toolStartTimes.get(toolUseId);
+                if (typeof started === "number") {
+                  basePart.durationMs = Math.max(0, now - started);
+                  toolStartTimes.delete(toolUseId);
+                }
+              }
               if (toolState === "output-error") {
                 basePart.error =
                   errorText ??
@@ -1742,6 +1773,39 @@ export function ChatMessages() {
                     : "py-1 px-0 text-foreground",
                 )}
               >
+                {/* Active tool indicators */}
+                {message.role === "assistant" && (
+                  (() => {
+                    const activeTools: Array<{ key: string; label: string }> = [];
+                    for (let i = 0; i < message.parts.length; i += 1) {
+                      const part: any = message.parts[i];
+                      if (
+                        (isGenericToolPart(part) || isSearchMemoriesPart(part)) &&
+                        (part.state === "input-streaming" || part.state === "input-available")
+                      ) {
+                        const key = `live-${message.id}-${i}`;
+                        const rawName = isGenericToolPart(part)
+                          ? part.toolName
+                          : "searchDatabase";
+                        activeTools.push({ key, label: formatToolLabel(rawName) });
+                      }
+                    }
+                    if (activeTools.length === 0) return null;
+                    return (
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                        {activeTools.map((t) => (
+                          <div
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/40 border border-border"
+                            key={t.key}
+                          >
+                            <Spinner className="size-3" /> {t.label}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()
+                )}
+
                 {message.parts.map((part: any, index) => {
                   if (isTextPart(part)) {
                     return (
@@ -1845,7 +1909,7 @@ export function ChatMessages() {
                     return (
                       <div
                         className={cn(
-                          "p-3 rounded-lg border space-y-2",
+                          "p-2 rounded-lg border space-y-1.5",
                           isError && "bg-destructive/10 border-destructive/30",
                           isLoading &&
                             "bg-primary/5 border-primary/20 animate-pulse",
@@ -1856,13 +1920,13 @@ export function ChatMessages() {
                         <div className="flex items-center gap-2">
                           <div
                             className={cn(
-                              "p-1.5 rounded-md",
+                              "p-1 rounded-md",
                               isError && "bg-destructive/20 text-destructive",
                               isLoading && "bg-primary/20 text-primary",
                               isSuccess && "bg-muted text-foreground",
                             )}
                           >
-                            <ToolIcon className="size-3.5" />
+                            <ToolIcon className="size-3" />
                           </div>
                           <div className="flex-1">
                             <div className="text-xs font-semibold text-foreground">
@@ -1872,15 +1936,20 @@ export function ChatMessages() {
                               {isLoading && "Executing..."}
                               {isError && "Failed"}
                               {isSuccess && "Completed"}
+                              {typeof part.durationMs === 'number' && part.durationMs > 0 && (
+                                <span className="ml-2 normal-case text-[11px] text-muted-foreground/80">
+                                  ({Math.round(part.durationMs)} ms)
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
                         {part.state === "output-error" ? (
-                          <div className="text-xs text-destructive bg-destructive/5 rounded p-2 border border-destructive/20">
+                          <div className="text-xs text-destructive bg-destructive/5 rounded p-1.5 border border-destructive/20">
                             {part.error ?? "Tool execution failed"}
                           </div>
                         ) : part.outputText ? (
-                          <div className="text-xs text-muted-foreground whitespace-pre-wrap bg-muted/30 rounded p-2 max-h-48 overflow-auto">
+                          <div className="text-xs text-muted-foreground whitespace-pre-wrap bg-muted/30 rounded p-1.5 max-h-40 overflow-auto">
                             {part.outputText}
                           </div>
                         ) : isSuccess ? (

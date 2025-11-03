@@ -38,7 +38,7 @@ import { getDocumentIcon } from "@/lib/document-icon";
 import { useProject } from "@/stores";
 import { InlineLoader } from "./editor/loading-states";
 import { formatDate, getSourceUrl } from "./memories";
-import { getDocumentSnippet } from "./memories";
+import { getDocumentSnippet, stripMarkdown } from "./memories";
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>;
 type DocumentWithMemories = DocumentsResponse["documents"][0];
@@ -514,9 +514,14 @@ const DocumentCard = memo(
                   document.url ? "max-w-[190px]" : "max-w-[200px]",
                 )}
               >
-                {document.title?.startsWith("data:")
-                  ? "Untitled Document"
-                  : document.title || "Untitled Document"}
+                {(() => {
+                  const raw = document.title || "";
+                  const isData = raw.startsWith("data:");
+                  const cleaned = stripMarkdown(raw)
+                    .trim()
+                    .replace(/^[\'"“”‘’`]+|[\'"“”‘’`]+$/g, "");
+                  return isData || !cleaned ? "Untitled Document" : cleaned;
+                })()}
               </p>
             </div>
             {document.url && (

@@ -152,7 +152,12 @@ export const getDocumentSnippet = (document: DocumentWithMemories): string | nul
       return rest || text
     }
 
-    return sanitizeHeading(cleaned) || null
+    const body = sanitizeHeading(cleaned)
+    const trimmed = body
+      .replace(/^[\'"“”‘’`]+/, "")
+      .replace(/[\'"“”‘’`]+$/, "")
+      .trim()
+    return trimmed || null
   } catch {
     return null
   }

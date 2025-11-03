@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from "motion/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { stripMarkdown } from "../memories";
 import { useRouter } from "next/navigation";
 import { ChatRewrite } from "@/components/views/chat";
 import type { DocumentWithMemories } from "@/lib/types/document";
@@ -170,7 +171,13 @@ export function MemoryEditClient({
 
   const [isContentOpen, setIsContentOpen] = useState(false);
 
-  const documentTitle = document.title || "Untitled document";
+  const documentTitle = (() => {
+    const raw = document.title || "";
+    const cleaned = stripMarkdown(raw)
+      .trim()
+      .replace(/^[\'"“”‘’`]+|[\'"“”‘’`]+$/g, "");
+    return !cleaned || raw.startsWith("data:") ? "Untitled document" : cleaned;
+  })();
 
   return (
     <div className="relative h-screen bg-background overflow-hidden">

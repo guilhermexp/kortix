@@ -665,7 +665,9 @@ export async function handleChatV2({
                 continue;
               }
 
-              if (blockType === "mcp_tool_use" && block) {
+              // Normalize block type names across providers
+              const isToolUse = blockType === "mcp_tool_use" || blockType === "tool_use";
+              if (isToolUse && block) {
                 const toolUseId =
                   typeof block.id === "string" ? block.id : undefined;
                 const toolName =
@@ -687,7 +689,8 @@ export async function handleChatV2({
                 continue;
               }
 
-              if (blockType === "mcp_tool_result" && block) {
+              const isToolResult = blockType === "mcp_tool_result" || blockType === "tool_result";
+              if (isToolResult && block) {
                 const toolUseId =
                   typeof block.tool_use_id === "string"
                     ? block.tool_use_id

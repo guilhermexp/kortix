@@ -11,7 +11,7 @@
 
 export const AI_MODELS = {
 	/** Gemini Flash model for summarization and analysis */
-	GEMINI_FLASH: "gemini-2.5-flash",
+	GEMINI_FLASH: "gemini-2.0-flash",
 } as const
 
 // ============================================================================

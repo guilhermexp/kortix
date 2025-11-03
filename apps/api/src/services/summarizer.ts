@@ -1,4 +1,5 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
+// Use central helpers to avoid model ID mismatches
+import { getGoogleClient, getGoogleModel } from "./google-genai"
 import {
 	AI_GENERATION_CONFIG,
 	AI_MODELS,
@@ -10,7 +11,6 @@ import {
 	QUALITY_THRESHOLDS,
 	TEXT_LIMITS,
 } from "../config/constants"
-import { env } from "../env"
 import {
 	buildSummaryPrompt,
 	buildTextAnalysisPrompt,
@@ -19,49 +19,21 @@ import {
 	getFallbackMessage,
 	getSectionHeader,
 } from "../i18n"
+import { summarizeWithOpenRouter } from "./summarizer-fallback"
+import { openRouterChat } from "./openrouter"
+import { convertUrlWithMarkItDown } from "./markitdown"
 
-const googleClient = env.GOOGLE_API_KEY
-	? new GoogleGenerativeAI(env.GOOGLE_API_KEY)
-	: null
+const googleClient = null // Disable Gemini for summaries/tags; use OpenRouter
 
 export async function generateSummary(
-	text: string,
-	context?: { title?: string | null; url?: string | null },
+  text: string,
+  context?: { title?: string | null; url?: string | null },
 ): Promise<string | null> {
-	const trimmed = text.trim()
-	if (!trimmed) return null
-
-	if (!googleClient) {
-		return buildFallbackSummary(trimmed, context)
-	}
-
-	const snippet = trimmed.slice(0, TEXT_LIMITS.SUMMARY_MAX_CHARS)
-	const modelId = AI_MODELS.GEMINI_FLASH
-	try {
-		const model = googleClient.getGenerativeModel({ model: modelId })
-		const prompt = buildPrompt(snippet, context)
-		const result = await model.generateContent({
-			contents: [
-				{
-					role: "user",
-					parts: [{ text: prompt }],
-				},
-			],
-			generationConfig: {
-				maxOutputTokens: AI_GENERATION_CONFIG.TOKENS.SUMMARY,
-			},
-		})
-
-		let textPart = result.response.text().trim()
-		if (!textPart) {
-			return buildFallbackSummary(trimmed, context)
-		}
-		textPart = ensureUseCasesSection(textPart)
-		return textPart
-	} catch (error) {
-		console.warn("generateSummary fallback", error)
-		return buildFallbackSummary(trimmed, context)
-	}
+  const trimmed = text.trim()
+  if (!trimmed) return null
+  console.log("[Summarizer] Using OpenRouter (summary)", { hasUrl: Boolean(context?.url) })
+  const viaOpenRouter = await summarizeWithOpenRouter(trimmed, context)
+  return viaOpenRouter || buildFallbackSummary(trimmed, context)
 }
 
 function buildPrompt(
@@ -152,49 +124,9 @@ export async function generateDeepAnalysis(
 	const trimmed = text.trim()
 	if (!trimmed) return null
 
-	if (!googleClient) {
-		console.warn("Google AI not configured, cannot generate deep analysis")
-		return null
-	}
-
-	try {
-		const model = googleClient.getGenerativeModel({
-			model: AI_MODELS.GEMINI_FLASH,
-		})
-
-		// Se tiver URL, deixa o Gemini ler diretamente (mais limpo)
-		if (context?.url) {
-			const prompt = buildUrlAnalysisPrompt(context)
-
-			const result = await model.generateContent({
-				contents: [{ role: "user", parts: [{ text: prompt }] }],
-				generationConfig: {
-					maxOutputTokens: AI_GENERATION_CONFIG.TOKENS.ANALYSIS,
-					temperature: AI_GENERATION_CONFIG.TEMPERATURE.DEFAULT,
-				},
-				tools: [{ urlContext: {} }],
-			})
-
-			const analysis = result.response.text().trim()
-
-			if (
-				!analysis ||
-				analysis.length < QUALITY_THRESHOLDS.MIN_SUMMARY_LENGTH
-			) {
-				console.warn("URL-based analysis returned empty, trying text fallback")
-				// Fallback: usar o texto extraído
-				return generateTextBasedAnalysis(text, context, model)
-			}
-
-			return ensureUseCasesSection(analysis)
-		}
-
-		// Sem URL: usa o texto extraído
-		return generateTextBasedAnalysis(text, context, model)
-	} catch (error) {
-		console.warn("generateDeepAnalysis error", error)
-		return buildFallbackSummary(trimmed, context)
-	}
+  console.log("[Summarizer] Using OpenRouter (deep analysis)", { hasUrl: Boolean(context?.url) })
+  const viaOpenRouter = await summarizeWithOpenRouter(trimmed, context)
+  return viaOpenRouter || buildFallbackSummary(trimmed, context)
 }
 
 /**
@@ -212,32 +144,13 @@ async function generateTextBasedAnalysis(
 	const trimmed = text.trim()
 	if (!trimmed) return null
 
-	if (!googleClient) return null
-
-	const snippet = trimmed.slice(0, TEXT_LIMITS.ANALYSIS_MAX_CHARS)
-	const prompt = buildDeepAnalysisPrompt(snippet, context)
-
-	const geminiModel =
-		model ||
-		googleClient.getGenerativeModel({
-			model: AI_MODELS.GEMINI_FLASH,
-		})
-
-	const result = await geminiModel.generateContent({
-		contents: [{ role: "user", parts: [{ text: prompt }] }],
-		generationConfig: {
-			maxOutputTokens: AI_GENERATION_CONFIG.TOKENS.ANALYSIS,
-			temperature: AI_GENERATION_CONFIG.TEMPERATURE.DEFAULT,
-		},
-	})
-
-	const analysis = result.response.text().trim()
-
-	if (!analysis || analysis.length < QUALITY_THRESHOLDS.MIN_SUMMARY_LENGTH) {
-		return buildFallbackSummary(trimmed, context)
-	}
-
-	return ensureUseCasesSection(analysis)
+  try {
+    const viaOpenRouter = await summarizeWithOpenRouter(trimmed, context)
+    if (viaOpenRouter && viaOpenRouter.trim()) {
+      return ensureUseCasesSection(viaOpenRouter)
+    }
+  } catch {}
+  return buildFallbackSummary(trimmed, context)
 }
 
 /**
@@ -284,51 +197,20 @@ function buildDeepAnalysisPrompt(
 export async function summarizeYoutubeVideo(
 	url: string,
 ): Promise<string | null> {
-	if (!googleClient) {
-		console.warn("Google AI not configured, cannot analyze YouTube video")
-		return null
-	}
-
 	try {
-		const modelId = AI_MODELS.GEMINI_FLASH
-		const model = googleClient.getGenerativeModel({ model: modelId })
-
-		const prompt = buildYoutubePrompt()
-
-		const result = await model.generateContent({
-			contents: [
-				{
-					role: "user",
-					parts: [
-						{
-							fileData: {
-								mimeType: "video/*",
-								fileUri: url,
-							},
-						},
-						{ text: prompt },
-					],
-				},
-			],
-			generationConfig: {
-				maxOutputTokens: AI_GENERATION_CONFIG.TOKENS.YOUTUBE_SUMMARY,
-				temperature: AI_GENERATION_CONFIG.TEMPERATURE.YOUTUBE,
-			},
+		// 1) Extract transcript/content with MarkItDown
+		const md = await convertUrlWithMarkItDown(url)
+		const text = (md.markdown || "").trim()
+		if (!text) return null
+		// 2) Summarize with OpenRouter (Grok)
+		const viaOpenRouter = await summarizeWithOpenRouter(text, {
+			title: md.metadata.title || null,
+			url,
+			contentType: "video/youtube",
 		})
-
-		const summary = result.response.text().trim()
-
-		if (!summary || summary.length < QUALITY_THRESHOLDS.MIN_SUMMARY_LENGTH) {
-			console.warn("YouTube video analysis returned empty or very short result")
-			return null
-		}
-
-		return ensureUseCasesSection(summary)
+		return viaOpenRouter ? ensureUseCasesSection(viaOpenRouter) : null
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error)
-		console.error("summarizeYoutubeVideo error:", message)
-
-		// Se falhar com Gemini 2.0, não tentar fallback pois não funciona bem
+		console.error("summarizeYoutubeVideo (text+OpenRouter) failed:", error)
 		return null
 	}
 }
@@ -378,34 +260,26 @@ export async function generateCategoryTags(
     }
   }
 
-  if (!googleClient) return fallback()
-
   try {
-    const model = googleClient.getGenerativeModel({ model: AI_MODELS.GEMINI_FLASH })
     const langHint = opts?.locale === "en-US" ? "English" : "Portuguese (pt-BR)"
     const prompt = [
-      "Gere de 3 a 8 tags curtas e descritivas para o conteúdo abaixo.",
-      "- Saída apenas as tags, separadas por vírgula.",
-      "- Sem #, sem frases, tudo em minúsculas.",
-      "- Use termos de categoria/assunto, não IDs.",
-      context?.title ? `Título: ${context.title}` : null,
-      "\nConteúdo:",
+      `Generate between 3 and ${MAX_TAGS} short, descriptive tags for the content below.`,
+      "- Output only the tags, comma-separated.",
+      "- No #, no sentences, all lowercase.",
+      "- Use topical/category terms, not IDs.",
+      context?.title ? `Title: ${context.title}` : null,
+      "\nContent:",
       snippet,
-      "\nResponda somente com as tags.",
-      `Idioma: ${langHint}`,
+      "\nRespond ONLY with the tags.",
+      `Language: ${langHint}`,
     ]
       .filter(Boolean)
       .join("\n")
 
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        maxOutputTokens: 128,
-        temperature: 0.2,
-      },
-    })
-
-    const raw = (result.response.text() || "").trim()
+    const raw = (await openRouterChat([
+      { role: "system", content: "You generate concise topical tags." },
+      { role: "user", content: prompt },
+    ]))?.trim() || ""
     if (!raw) return fallback()
 
     // Accept comma, newline, or bullet separated
@@ -428,7 +302,7 @@ export async function generateCategoryTags(
 
     return uniq.length > 0 ? uniq : fallback()
   } catch (err) {
-    console.warn("generateCategoryTags fallback", err)
+    console.warn("generateCategoryTags via OpenRouter failed; using heuristic fallback", err)
     return fallback()
   }
 }

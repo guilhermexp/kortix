@@ -14,6 +14,7 @@ const envSchema = z.object({
 	ANTHROPIC_BASE_URL: z.string().url().optional(),
 	COHERE_API_KEY: z.string().min(1).optional(),
 	EXA_API_KEY: z.string().min(1).optional(),
+	REPLICATE_API_TOKEN: z.string().min(1).optional(),
 	ENABLE_AGENTIC_MODE: z
 		.string()
 		.transform((value) => value === "true")
@@ -73,6 +74,29 @@ const envSchema = z.object({
 				.map((origin) => origin.trim())
 				.filter((origin) => origin.length > 0),
 		),
+	// OpenRouter (fallback provider)
+	OPENROUTER_API_KEY: z.string().min(1).optional(),
+	OPENROUTER_SITE_URL: z.string().url().optional(),
+	OPENROUTER_SITE_NAME: z.string().min(1).optional(),
+	OPENROUTER_MODEL: z.string().optional(),
+	OPENROUTER_TEMPERATURE: z
+		.string()
+		.optional()
+		.transform((v) => (v != null ? Number(v) : undefined))
+		.refine((v) => v === undefined || (typeof v === "number" && v >= 0 && v <= 2), {
+			message: "OPENROUTER_TEMPERATURE must be between 0 and 2",
+		}),
+	OPENROUTER_MAX_TOKENS: z
+		.string()
+		.optional()
+		.transform((v) => (v != null ? Number.parseInt(v, 10) : undefined))
+		.refine((v) => v === undefined || (Number.isFinite(v) && v! > 0), {
+			message: "OPENROUTER_MAX_TOKENS must be a positive integer",
+		}),
+	// Optional: configure external MCP (sequential thinking) server spawn command
+	SEQ_MCP_COMMAND: z.string().min(1).optional(),
+	// JSON array of args, e.g.: ["--flag", "value"]
+	SEQ_MCP_ARGS: z.string().optional(),
 })
 
 const parsed = envSchema.safeParse({
@@ -85,6 +109,7 @@ const parsed = envSchema.safeParse({
 	ANTHROPIC_BASE_URL: process.env.ANTHROPIC_BASE_URL,
 	COHERE_API_KEY: process.env.COHERE_API_KEY,
 	EXA_API_KEY: process.env.EXA_API_KEY,
+	REPLICATE_API_TOKEN: process.env.REPLICATE_API_TOKEN,
 	ENABLE_AGENTIC_MODE: process.env.ENABLE_AGENTIC_MODE,
 	ENABLE_RERANKING: process.env.ENABLE_RERANKING,
 	EMBEDDING_MODEL: process.env.EMBEDDING_MODEL,
@@ -103,6 +128,14 @@ const parsed = envSchema.safeParse({
 	RESEND_API_KEY: process.env.RESEND_API_KEY,
 	RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
 	ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
+	OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+	OPENROUTER_SITE_URL: process.env.OPENROUTER_SITE_URL,
+	OPENROUTER_SITE_NAME: process.env.OPENROUTER_SITE_NAME,
+	OPENROUTER_MODEL: process.env.OPENROUTER_MODEL,
+	OPENROUTER_TEMPERATURE: process.env.OPENROUTER_TEMPERATURE,
+	OPENROUTER_MAX_TOKENS: process.env.OPENROUTER_MAX_TOKENS,
+	SEQ_MCP_COMMAND: process.env.SEQ_MCP_COMMAND,
+	SEQ_MCP_ARGS: process.env.SEQ_MCP_ARGS,
 })
 
 if (!parsed.success) {

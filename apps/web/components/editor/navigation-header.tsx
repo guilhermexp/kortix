@@ -15,6 +15,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import type { DocumentWithMemories } from "@/lib/types/document";
+import { stripMarkdown } from "../memories";
 import type { SaveStatus } from "./auto-save-service";
 
 interface NavigationHeaderProps {
@@ -158,10 +159,16 @@ export function NavigationHeader({
   const canSave = saveStatus === "pending" || saveStatus === "error";
 
   // Truncate title for mobile
-  const displayTitle =
-    document.title && document.title.length > 40
-      ? `${document.title.substring(0, 40)}...`
-      : document.title || "Untitled Document";
+  const rawTitle = document.title || "";
+  const cleanedTitle = stripMarkdown(rawTitle)
+    .trim()
+    .replace(/^[\'"“”‘’`]+|[\'"“”‘’`]+$/g, "");
+  const baseTitle = !cleanedTitle || rawTitle.startsWith("data:")
+    ? "Untitled Document"
+    : cleanedTitle;
+  const displayTitle = baseTitle.length > 40
+    ? `${baseTitle.substring(0, 40)}...`
+    : baseTitle;
 
   return (
     <header className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10">
