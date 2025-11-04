@@ -30,15 +30,16 @@ Supermemory is a self-hosted, AI-powered memory and knowledge management system 
 
 ⚠️ **IMPORTANT USER INSTRUCTION**: Never say something is working without testing using devtools first.
 
-### Recent Changes (Last 8 commits)
-1. UI/menu styling improvements
-2. Claude Agent SDK integration and fixes
-3. Infinity Canvas implementation completed
-4. Rich text editor with 20,000+ lines of code
-5. Migration from AI SDK to Claude Agent SDK
-6. Chat system refactoring
-7. Infinite loop in chat component (fixed)
-8. Direct Anthropic API integration
+### Recent Changes (Last 9 commits)
+1. **Multi-provider AI integration** (Nov 3) - OpenRouter, Deepseek OCR, enhanced fallbacks
+2. UI/menu styling improvements
+3. Claude Agent SDK integration and fixes
+4. Infinity Canvas implementation completed
+5. Rich text editor with 20,000+ lines of code
+6. Migration from AI SDK to Claude Agent SDK
+7. Chat system refactoring
+8. Infinite loop in chat component (fixed)
+9. Direct Anthropic API integration
 
 ---
 
@@ -50,7 +51,8 @@ Frontend:      Next.js 16 + React 19 + Turbopack
 Backend:       Bun + Hono (REST API)
 Database:      Supabase Postgres + pgvector
 Storage:       Supabase Storage
-AI Models:     Claude 3.5 Sonnet + Google Gemini
+AI Models:     Claude 3.5 Sonnet + OpenRouter + Gemini + Deepseek OCR
+               (Multi-provider with intelligent fallbacks)
 Search:        Vector similarity + hybrid ranking
 Deployment:    Railway + GitHub integration
 ```
@@ -83,6 +85,7 @@ Claude Agent → Tool Use (searchDatabase) → Streaming Response
 | **Rich Editor** | `apps/web/components/ui/rich-editor/` | Advanced markdown editing | ✅ Complete |
 | **Memory Editor** | `apps/web/components/editor/` | Full editing experience | ✅ Complete |
 | **Claude Agent** | `apps/api/src/services/claude-agent.ts` | AI chat with tools | ✅ Complete |
+| **Multi-Provider AI** | `apps/api/src/services/openrouter.ts`, `summarizer.ts` | Flexible AI provider switching | ✅ Complete |
 | **Hybrid Search** | `apps/api/src/services/hybrid-search.ts` | Search orchestration | ✅ Complete |
 | **Content Extractor** | `apps/api/src/services/extractor.ts` | Multi-modal processing | ✅ Complete |
 
@@ -216,7 +219,37 @@ bun run --cwd apps/api migrate # Run migrations
   - `0002_add_conversation_tables.sql` - Conversation storage
   - `0003_add_sdk_session_id.sql` - Session tracking
 
-### 4. Hybrid Search System
+### 4. Multi-Provider AI Integration (NEW - Nov 2025)
+- **Status**: ✅ Complete
+- **Files**: `apps/api/src/services/openrouter.ts`, `replicate.ts`, `summarizer.ts`, `extractor.ts`
+- **Features**:
+  - **OpenRouter Integration** - Primary AI provider with access to multiple models
+    - Summary generation (x-ai/grok-4-fast)
+    - Deep content analysis
+    - Category tag generation
+    - Fallback to Gemini for compatibility
+  - **Deepseek OCR** - High-quality document extraction via Replicate
+    - PDF OCR for scanned documents
+    - Image text extraction
+    - Intelligent fallback chain: MarkItDown → Deepseek OCR → Gemini Vision
+  - **Enhanced MarkItDown** - Improved document conversion
+    - Exponential backoff retry (2s → 4s → 8s delays)
+    - YouTube transcript validation (min 300 chars)
+    - Multi-language subtitle support (en, en-US, pt, pt-BR)
+    - Timedtext API fallback for YouTube
+  - **API Improvements** - Better reliability and data handling
+    - Unicode sanitization (prevents PostgreSQL 22P02 errors)
+    - Document status normalization
+    - Enhanced meta tag extraction (og:image, twitter:image)
+    - GitHub URL cleanup (60+ regex patterns)
+  - **UI Provider Selection** - User-selectable AI models
+    - Provider dropdown in chat interface
+    - Tool execution tracking
+    - Mentioned documents visualization
+- **Documentation**: `ai_docs/MULTI_PROVIDER_AI_INTEGRATION.md`
+- **Environment Variables**: `OPENROUTER_API_KEY`, `REPLICATE_API_KEY`
+
+### 5. Hybrid Search System
 - **Status**: ✅ Complete
 - **Files**: `apps/api/src/services/hybrid-search.ts`
 - **Algorithm**:
@@ -225,7 +258,7 @@ bun run --cwd apps/api migrate # Run migrations
   - Adaptive combination of results
   - Configurable weights and thresholds
 
-### 5. Multi-Modal Content Ingestion
+### 6. Multi-Modal Content Ingestion
 - **Status**: ✅ Complete
 - **Files**: `apps/api/src/services/extractor.ts`
 - **Supported Types**:

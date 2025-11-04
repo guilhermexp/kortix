@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "bun run --hot src/index.ts",
-    "start": "bun run src/index.ts",
+    "start": "bun --expose-gc run src/index.ts",
     "test": "echo \"No tests yet for @repo/api\"",
     "ingest:worker": "bun run src/worker/ingestion-worker.ts",
     "postinstall": "bash install-markitdown.sh"

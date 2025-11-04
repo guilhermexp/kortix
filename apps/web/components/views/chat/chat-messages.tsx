@@ -11,27 +11,42 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  Code2,
   Copy,
-  Globe,
   Info,
   Loader2,
   Plus,
   RotateCcw,
   Search,
   X,
-  Zap,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
-import { TextShimmer } from "@/components/text-shimmer";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolOutput,
+} from "@/components/ai-elements/tool";
+import {
+  CodeBlock,
+  CodeBlockCopyButton,
+} from "@/components/ai-elements/code-block";
+import { Response } from "@/components/ai-elements/response";
 import { useChatMentionQueue, usePersistentChat, useProject } from "@/stores";
 import { useCanvasSelection, useCanvasState } from "@/stores/canvas";
 import { useGraphHighlights } from "@/stores/highlights";
@@ -202,31 +217,6 @@ function toMemoryResults(value: unknown): MemoryResult[] {
     .filter((item): item is MemoryResult => item !== null);
 }
 
-function getToolIcon(toolName: string) {
-  const name = toolName.toLowerCase();
-  if (name.includes("searchweb") || name.includes("web")) return Globe;
-  if (name.includes("search")) return Search;
-  if (
-    name.includes("deepwiki") ||
-    name.includes("code") ||
-    name.includes("file")
-  )
-    return Code2;
-  return Zap;
-}
-
-function formatToolLabel(raw: string): string {
-  if (!raw) return "Ferramenta";
-  const lname = raw.toLowerCase();
-  if (lname.includes('searchdatabase')) return 'Busca no banco de dados';
-  if (lname.includes('searchweb') || lname.includes('web')) return 'Busca na internet';
-  if (lname.includes('gemini') || lname.includes('analyz')) return 'Análise com Gemini';
-  return raw
-    .replace(/^mcp__/, "")
-    .replace(/__/g, " • ")
-    .replace(/_/g, " ");
-}
-
 function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -315,6 +305,131 @@ function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
         </div>
       )}
     </div>
+  );
+}
+
+type TextSegment =
+  | { type: "text"; content: string }
+  | { type: "code"; content: string; language?: string | null };
+
+function splitTextIntoSegments(text: string): TextSegment[] {
+  const segments: TextSegment[] = [];
+  const fenceRegex = /```([\w+-]+)?\n([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = fenceRegex.exec(text)) !== null) {
+    const [rawMatch, language, codeContent] = match;
+    const matchIndex = match.index ?? 0;
+    if (matchIndex > lastIndex) {
+      segments.push({
+        type: "text",
+        content: text.slice(lastIndex, matchIndex),
+      });
+    }
+    segments.push({
+      type: "code",
+      content: codeContent ?? "",
+      language: language ?? undefined,
+    });
+    lastIndex = matchIndex + rawMatch.length;
+  }
+
+  if (lastIndex < text.length) {
+    segments.push({ type: "text", content: text.slice(lastIndex) });
+  }
+
+  if (segments.length === 0) {
+    return [{ type: "text", content: text }];
+  }
+
+  return segments;
+}
+
+function buildToolType(toolName?: string | null, toolUseId?: string): string {
+  const base = toolName && toolName.length > 0 ? toolName : toolUseId ?? "generic";
+  const normalized = base
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[^a-zA-Z0-9_]+/g, "_")
+    .replace(/__+/g, "_")
+    .trim()
+    .toLowerCase();
+  return `tool-${normalized.length > 0 ? normalized : "generic"}`;
+}
+
+function formatDuration(duration?: number) {
+  if (!duration || Number.isNaN(duration)) return null;
+  if (duration < 1000) return `${Math.round(duration)} ms`;
+  return `${(duration / 1000).toFixed(1)} s`;
+}
+
+interface ToolCardProps {
+  type: string;
+  state: ToolState;
+  durationMs?: number;
+  loadingMessage?: ReactNode;
+  successMessage?: ReactNode;
+  errorMessage?: string;
+  children?: ReactNode;
+}
+
+function ToolCard({
+  type,
+  state,
+  durationMs,
+  loadingMessage,
+  successMessage,
+  errorMessage,
+  children,
+}: ToolCardProps) {
+  const isLoading = state === "input-streaming" || state === "input-available";
+  const isSuccess = state === "output-available";
+  const isError = state === "output-error";
+  const durationLabel = formatDuration(durationMs);
+
+  const resolvedLoading =
+    typeof loadingMessage === "string"
+      ? (
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Spinner className="size-3" /> {loadingMessage}
+          </span>
+        )
+      : loadingMessage;
+
+  const outputNode = (() => {
+    if (isError) return null;
+    if (children) return children;
+    if (isLoading) return resolvedLoading ?? null;
+    return successMessage ?? null;
+  })();
+
+  const hasContent = Boolean(durationLabel || resolvedLoading || successMessage || children);
+  const shouldRenderContent = hasContent || isError;
+
+  return (
+    <Tool
+      defaultOpen={isSuccess || isError}
+      className="border-border/50 bg-background/50"
+    >
+      <ToolHeader state={state} type={type} />
+      {shouldRenderContent && (
+        <ToolContent>
+          {durationLabel && (
+            <p className="text-[11px] uppercase text-muted-foreground/70">
+              Duração: {durationLabel}
+            </p>
+          )}
+          <ToolOutput
+            errorText={
+              isError
+                ? errorMessage ?? "Falha ao executar a ferramenta"
+                : undefined
+            }
+            output={isError ? undefined : outputNode}
+          />
+        </ToolContent>
+      )}
+    </Tool>
   );
 }
 
@@ -1749,6 +1864,22 @@ export function ChatMessages() {
     scrollToBottom,
   } = useStickyAutoScroll([messages, status]);
 
+  const hasActiveTools = useMemo(() => {
+    for (const message of messages) {
+      if (message.role !== "assistant") continue;
+      const parts = Array.isArray(message.parts) ? message.parts : [];
+      for (const part of parts) {
+        if (
+          (isGenericToolPart(part) || isSearchMemoriesPart(part)) &&
+          (part.state === "input-streaming" || part.state === "input-available")
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }, [messages]);
+
   return (
     <div className="flex flex-col h-full">
       <div className="relative flex-1 bg-chat-surface overflow-hidden">
@@ -1773,205 +1904,153 @@ export function ChatMessages() {
                     : "py-1 px-0 text-foreground",
                 )}
               >
-                {/* Active tool indicators */}
-                {message.role === "assistant" && (
-                  (() => {
-                    const activeTools: Array<{ key: string; label: string }> = [];
-                    for (let i = 0; i < message.parts.length; i += 1) {
-                      const part: any = message.parts[i];
-                      if (
-                        (isGenericToolPart(part) || isSearchMemoriesPart(part)) &&
-                        (part.state === "input-streaming" || part.state === "input-available")
-                      ) {
-                        const key = `live-${message.id}-${i}`;
-                        const rawName = isGenericToolPart(part)
-                          ? part.toolName
-                          : "searchDatabase";
-                        activeTools.push({ key, label: formatToolLabel(rawName) });
-                      }
-                    }
-                    if (activeTools.length === 0) return null;
-                    return (
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                        {activeTools.map((t) => (
-                          <div
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/40 border border-border"
-                            key={t.key}
-                          >
-                            <Spinner className="size-3" /> {t.label}
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()
-                )}
+                {message.parts.flatMap((part: any, index) => {
+                  const partKey = `${message.id}-${index}`;
 
-                {message.parts.map((part: any, index) => {
                   if (isTextPart(part)) {
-                    return (
-                      <div
-                        className="chat-markdown"
-                        key={`${message.id}-text-${index}`}
-                      >
-                        <Streamdown>{part.text}</Streamdown>
-                      </div>
-                    );
+                    const segments = splitTextIntoSegments(part.text ?? "");
+                    return segments.map((segment, segmentIndex) => {
+                      const segmentKey = `${partKey}-text-${segmentIndex}`;
+                      if (segment.type === "code") {
+                        return (
+                          <CodeBlock
+                            className="mt-2"
+                            code={segment.content.trimEnd()}
+                            key={segmentKey}
+                            language={segment.language ?? undefined}
+                          >
+                            <CodeBlockCopyButton className="h-7 px-2 text-[11px]" />
+                          </CodeBlock>
+                        );
+                      }
+                      if (segment.content.trim().length === 0) {
+                        return <div className="h-2" key={segmentKey} />;
+                      }
+                      return (
+                        <Response key={segmentKey}>
+                          <Streamdown>{segment.content}</Streamdown>
+                        </Response>
+                      );
+                    });
                   }
 
                   if (isSearchMemoriesPart(part)) {
-                    switch (part.state) {
-                      case "input-available":
-                      case "input-streaming":
-                        return (
-                          <div
-                            className="text-sm flex items-center gap-2 text-muted-foreground"
-                            key={`${message.id}-search-${index}`}
-                          >
-                            <Spinner className="size-4" /> Searching memories...
-                          </div>
-                        );
-                      case "output-error":
-                        return (
-                          <div
-                            className="text-sm flex items-center gap-2 text-muted-foreground"
-                            key={`${message.id}-search-${index}`}
-                          >
-                            <X className="size-4" /> Error recalling memories
-                          </div>
-                        );
-                      case "output-available": {
-                        const countValue = part.output?.count;
-                        const foundCount =
-                          typeof countValue === "number"
-                            ? countValue
-                            : typeof countValue === "string"
-                              ? Number(countValue)
-                              : 0;
-                        const results = toMemoryResults(part.output?.results);
+                    const isSuccess = part.state === "output-available";
+                    const countValue = isSuccess ? part.output?.count : undefined;
+                    const foundCount =
+                      typeof countValue === "number"
+                        ? countValue
+                        : typeof countValue === "string"
+                          ? Number(countValue)
+                          : undefined;
+                    const results = isSuccess ? toMemoryResults(part.output?.results) : [];
 
-                        return (
+                    return [
+                      <ToolCard
+                        key={`${partKey}-search`}
+                        type="tool-search_memories"
+                        state={part.state}
+                        durationMs={part.durationMs}
+                        loadingMessage="Procurando memórias relevantes..."
+                        errorMessage={part.error ?? "Erro ao buscar memórias"}
+                      >
+                        {isSuccess ? (
                           <ExpandableMemories
-                            foundCount={foundCount}
-                            key={`${message.id}-search-${index}`}
+                            foundCount={foundCount ?? results.length}
                             results={results}
                           />
-                        );
-                      }
-                      default:
-                        return null;
-                    }
+                        ) : null}
+                      </ToolCard>,
+                    ];
                   }
 
                   if (isAddMemoryPart(part)) {
-                    switch (part.state) {
-                      case "input-available":
-                      case "input-streaming":
-                        return (
-                          <div
-                            className="text-sm flex items-center gap-2 text-primary bg-primary/5 border border-primary/20 rounded-md p-2"
-                            key={`${message.id}-add-${index}`}
-                          >
-                            <Loader2 className="size-4 animate-spin" /> Saving
-                            memory...
-                          </div>
-                        );
-                      case "output-error":
-                        return (
-                          <div
-                            className="text-sm flex items-center gap-2 text-muted-foreground"
-                            key={`${message.id}-add-${index}`}
-                          >
-                            <X className="size-4" /> Error adding memory
-                          </div>
-                        );
-                      case "output-available":
-                        return (
-                          <div
-                            className="text-sm flex items-center gap-2 text-muted-foreground"
-                            key={`${message.id}-add-${index}`}
-                          >
-                            <Check className="size-4" /> Memory added
-                          </div>
-                        );
-                      default:
-                        return null;
-                    }
+                    const isSuccess = part.state === "output-available";
+                    return [
+                      <ToolCard
+                        key={`${partKey}-add`}
+                        type="tool-add_memory"
+                        state={part.state}
+                        durationMs={part.durationMs}
+                        loadingMessage="Salvando memória..."
+                        errorMessage={part.error ?? "Não foi possível salvar a memória"}
+                        successMessage={
+                          <span className="text-xs text-muted-foreground">
+                            Memória adicionada com sucesso
+                          </span>
+                        }
+                      />,
+                    ];
                   }
 
                   if (isGenericToolPart(part)) {
-                    const ToolIcon = getToolIcon(part.toolName);
-                    const isLoading =
-                      part.state === "input-streaming" ||
-                      part.state === "input-available";
-                    const isError = part.state === "output-error";
+                    const outputSegments = part.outputText
+                      ? splitTextIntoSegments(part.outputText)
+                      : [];
                     const isSuccess = part.state === "output-available";
 
-                    return (
-                      <div
-                        className={cn(
-                          "p-2 rounded-lg border space-y-1.5",
-                          isError && "bg-destructive/10 border-destructive/30",
-                          isLoading &&
-                            "bg-primary/5 border-primary/20 animate-pulse",
-                          isSuccess && "bg-muted/50 border-border",
-                        )}
-                        key={`${message.id}-tool-${index}`}
+                    return [
+                      <ToolCard
+                        key={`${partKey}-tool`}
+                        type={buildToolType(part.toolName, part.toolUseId)}
+                        state={part.state}
+                        durationMs={part.durationMs}
+                        loadingMessage="Executando..."
+                        errorMessage={
+                          part.error ??
+                          (typeof part.outputText === "string" && part.outputText.trim().length > 0
+                            ? part.outputText
+                            : undefined)
+                        }
+                        successMessage={
+                          isSuccess && outputSegments.length === 0 ? (
+                            <span className="text-xs text-muted-foreground">
+                              Ferramenta executada com sucesso
+                            </span>
+                          ) : null
+                        }
                       >
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={cn(
-                              "p-1 rounded-md",
-                              isError && "bg-destructive/20 text-destructive",
-                              isLoading && "bg-primary/20 text-primary",
-                              isSuccess && "bg-muted text-foreground",
-                            )}
-                          >
-                            <ToolIcon className="size-3" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-xs font-semibold text-foreground">
-                              {formatToolLabel(part.toolName)}
-                            </div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                              {isLoading && "Executing..."}
-                              {isError && "Failed"}
-                              {isSuccess && "Completed"}
-                              {typeof part.durationMs === 'number' && part.durationMs > 0 && (
-                                <span className="ml-2 normal-case text-[11px] text-muted-foreground/80">
-                                  ({Math.round(part.durationMs)} ms)
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        {part.state === "output-error" ? (
-                          <div className="text-xs text-destructive bg-destructive/5 rounded p-1.5 border border-destructive/20">
-                            {part.error ?? "Tool execution failed"}
-                          </div>
-                        ) : part.outputText ? (
-                          <div className="text-xs text-muted-foreground whitespace-pre-wrap bg-muted/30 rounded p-1.5 max-h-40 overflow-auto">
-                            {part.outputText}
-                          </div>
-                        ) : isSuccess ? (
-                          <div className="text-xs text-muted-foreground">
-                            Tool executed successfully
-                          </div>
-                        ) : null}
-                      </div>
-                    );
+                        {isSuccess && outputSegments.length > 0
+                          ? outputSegments.map((segment, outputIndex) => {
+                              const segmentKey = `${partKey}-tool-output-${outputIndex}`;
+                              if (segment.type === "code") {
+                                return (
+                                  <CodeBlock
+                                    className="mt-2"
+                                    code={segment.content.trimEnd()}
+                                    key={segmentKey}
+                                    language={segment.language ?? undefined}
+                                  >
+                                    <CodeBlockCopyButton className="h-7 px-2 text-[11px]" />
+                                  </CodeBlock>
+                                );
+                              }
+                              if (segment.content.trim().length === 0) {
+                                return <div className="h-2" key={segmentKey} />;
+                              }
+                              return (
+                                <Response key={segmentKey}>
+                                  <Streamdown>{segment.content}</Streamdown>
+                                </Response>
+                              );
+                            })
+                          : null}
+                      </ToolCard>,
+                    ];
                   }
+
                   if (isMentionedDocsPart(part)) {
                     if (
                       !Array.isArray(part.docIds) ||
                       part.docIds.length === 0
                     ) {
-                      return null;
+                      return [];
                     }
                     const mentionIds = Array.from(new Set(part.docIds));
-                    return (
+                    return [
                       <div
                         className="flex flex-col gap-1 text-xs text-muted-foreground"
-                        key={`${message.id}-mentions-${index}`}
+                        key={`${partKey}-mentions`}
                       >
                         <span className="uppercase tracking-wide text-[10px] text-muted-foreground/60">
                           Documentos mencionados
@@ -1990,7 +2069,6 @@ export function ChatMessages() {
                             const content = (
                               <>
                                 {preview ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
                                   <img
                                     alt=""
                                     className="w-5 h-5 rounded-sm object-cover"
@@ -2024,12 +2102,13 @@ export function ChatMessages() {
                             );
                           })}
                         </div>
-                      </div>
-                    );
+                      </div>,
+                    ];
                   }
 
-                  return null;
+                  return [];
                 })}
+
               </div>
               {message.role === "assistant" && (
                 <div className="flex items-center gap-1 mt-1">
@@ -2094,12 +2173,9 @@ export function ChatMessages() {
               )}
             </div>
           ))}
-          {(status === "submitted" || isThinking) && (
-            <div className="flex text-muted-foreground justify-start gap-2 px-4 py-3 items-center w-full">
-              <Spinner className="size-4" />
-              <TextShimmer className="text-sm" duration={1.5}>
-                {isThinking ? "Thinking..." : "Connecting..."}
-              </TextShimmer>
+          {isThinking && !hasActiveTools && (
+            <div className="flex text-muted-foreground justify-start gap-1.5 px-4 py-3 items-center w-full">
+              <Spinner className="size-3" /> Pensando...
             </div>
           )}
           <div ref={bottomRef} />

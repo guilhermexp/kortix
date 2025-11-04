@@ -237,10 +237,43 @@ export async function processDocument(input: ProcessDocumentInput) {
 		const chunks = chunkText(extraction.text)
 		await updateDocumentStatus(documentId, "chunking")
 
-		const chunkEmbeddings =
-			chunks.length > 0
-				? await generateEmbeddingsBatch(chunks.map((chunk) => chunk.content))
-				: []
+		// Strategy for large documents to prevent crashes:
+		// - If <= 30 chunks: Use full Gemini embeddings
+		// - If > 30 chunks: Use hybrid approach (sample + deterministic)
+		// Reduced from 50 to 30 to prevent memory issues and rate limiting
+		const MAX_GEMINI_CHUNKS = 30
+		const useHybridApproach = chunks.length > MAX_GEMINI_CHUNKS
+
+		if (useHybridApproach) {
+			console.warn(`[ingestion] Document has ${chunks.length} chunks - using hybrid embedding strategy (${MAX_GEMINI_CHUNKS} Gemini + ${chunks.length - MAX_GEMINI_CHUNKS} deterministic)`)
+		}
+
+		const chunkEmbeddings: number[][] = []
+
+		if (chunks.length === 0) {
+			// No chunks, nothing to do
+		} else if (!useHybridApproach) {
+			// Small document - use full Gemini embeddings
+			const embeddings = await generateEmbeddingsBatch(chunks.map((chunk) => chunk.content))
+			chunkEmbeddings.push(...embeddings)
+		} else {
+			// Large document - use hybrid approach
+			// 1. Sample first N chunks for Gemini embeddings (better quality)
+			const geminiChunks = chunks.slice(0, MAX_GEMINI_CHUNKS)
+			const geminiEmbeddings = await generateEmbeddingsBatch(
+				geminiChunks.map((chunk) => chunk.content)
+			)
+			chunkEmbeddings.push(...geminiEmbeddings)
+
+			// 2. Use deterministic embeddings for the rest (instant, no API calls)
+			const remainingChunks = chunks.slice(MAX_GEMINI_CHUNKS)
+			const deterministicEmbeddings = remainingChunks.map(chunk =>
+				generateDeterministicEmbedding(chunk.content)
+			)
+			chunkEmbeddings.push(...deterministicEmbeddings)
+
+			console.info(`[ingestion] Hybrid embeddings complete: ${geminiEmbeddings.length} Gemini + ${deterministicEmbeddings.length} deterministic`)
+		}
 
         const chunkRows = chunks.map((chunk, index) => ({
             document_id: documentId,

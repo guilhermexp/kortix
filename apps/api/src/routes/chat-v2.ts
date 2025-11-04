@@ -52,6 +52,11 @@ type MetadataPayload = {
   forceRawDocs?: boolean;
   preferredTone?: string;
   mentionedDocIds?: string[];
+  contextDocument?: {
+    id: string;
+    title: string | null;
+    content: string | null;
+  };
 };
 
 function normalizeModel(
@@ -499,6 +504,7 @@ export async function handleChatV2({
         (id): id is string => typeof id === "string" && id.trim().length > 0,
       )
     : [];
+  const contextDocument = metadata.contextDocument;
 
   const scopedDocumentIds = Array.isArray(payload.scopedDocumentIds)
     ? payload.scopedDocumentIds.filter(
@@ -527,7 +533,17 @@ export async function handleChatV2({
   if (preferredTone) {
     instructions.push(`Adopt a ${preferredTone} tone in the reply.`);
   }
-  if (mentionedDocIds.length > 0) {
+  if (contextDocument && contextDocument.content) {
+    instructions.push(
+      `The user is currently viewing a specific document. You have DIRECT ACCESS to the full content of this document. DO NOT use the searchDatabase tool for questions about this document - answer directly from the content provided.`,
+    );
+    instructions.push(
+      `Document ID: ${contextDocument.id}`,
+    );
+    if (contextDocument.title) {
+      instructions.push(`Document Title: ${contextDocument.title}`);
+    }
+  } else if (mentionedDocIds.length > 0) {
     instructions.push(
       `The user explicitly mentioned the following document IDs: ${mentionedDocIds.join(
         ", ",
@@ -552,7 +568,21 @@ export async function handleChatV2({
   };
 
   let messageForAgent = payload.message;
-  if (mentionedDocIds.length > 0) {
+
+  // If user is viewing a specific document, inject its full content
+  if (contextDocument && contextDocument.content) {
+    const lines: string[] = [];
+    if (contextDocument.title) {
+      lines.push(`Título: ${contextDocument.title}`);
+    }
+    lines.push(`Conteúdo completo:\n${contextDocument.content}`);
+
+    const contextBlock = lines.join("\n");
+    messageForAgent = `${payload.message}\n\n[Documento sendo visualizado - Responda diretamente deste conteúdo, sem fazer buscas]\n${contextBlock}`;
+
+    console.log(`[Chat V2] Using context document ${contextDocument.id} - ${contextDocument.content.length} chars`);
+  } else if (mentionedDocIds.length > 0) {
+    // Fallback to mentioned documents query if not viewing a specific document
     try {
       const { data: mentionedDocs } = await client
         .from("documents")

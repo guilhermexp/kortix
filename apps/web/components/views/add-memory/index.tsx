@@ -156,6 +156,14 @@ const mergeOptimisticMemory = (
   data: DocumentsQueryData | undefined,
   memory: DocumentListItem,
 ): DocumentsQueryData => {
+  if (!data) {
+    const firstPage = withOptimisticMemory(undefined, memory);
+    return {
+      pages: [firstPage],
+      pageParams: [1],
+    } as InfiniteDocumentsListData;
+  }
+
   if (isInfiniteDocumentsListData(data)) {
     const [firstPage, ...restPages] = data.pages;
     const updatedFirstPage = withOptimisticMemory(firstPage, memory);
@@ -170,6 +178,54 @@ const mergeOptimisticMemory = (
   }
 
   return withOptimisticMemory(undefined, memory);
+};
+
+const promoteOptimisticMemory = (
+  data: DocumentsQueryData | undefined,
+  optimisticId: string,
+  patch: Partial<DocumentListItem>,
+): DocumentsQueryData | undefined => {
+  if (!data) return data;
+
+  let replaced = false;
+
+  const applyPatch = (list?: DocumentsListData): DocumentsListData | undefined => {
+    if (!list) return list;
+    const updatedDocuments = list.documents.map((doc) => {
+      if (doc.id !== optimisticId) return doc;
+      replaced = true;
+      return {
+        ...doc,
+        ...patch,
+        isOptimistic: false,
+      };
+    });
+    return {
+      ...list,
+      documents: updatedDocuments,
+    };
+  };
+
+  if (isInfiniteDocumentsListData(data)) {
+    const pages = data.pages.map((page, index) =>
+      index === 0 ? applyPatch(page) ?? page : page,
+    );
+    if (replaced) {
+      return {
+        ...data,
+        pages,
+      };
+    }
+    return data;
+  }
+
+  if (isDocumentsListData(data)) {
+    const next = applyPatch(data);
+    if (replaced && next) return next;
+    return data;
+  }
+
+  return data;
 };
 
 // // Processing status component
@@ -510,63 +566,68 @@ export function AddMemoryView({
         description: _error instanceof Error ? _error.message : "Unknown error",
       });
     },
-    onSuccess: (_data, variables) => {
-      try {
-        const dedup = (_data as any)?.data?.alreadyExists || (_data as any)?.alreadyExists;
-        const addedToProject = (_data as any)?.data?.addedToProject ?? (_data as any)?.addedToProject;
-        if (dedup) {
-          toast.info("Document already exists", {
-            description: addedToProject ? "We linked it to this project." : undefined,
-          });
-        } else {
-          toast.success("Added to memory", {
-            description:
-              variables.contentType === "repository"
-                ? "Indexing repository..."
-                : variables.contentType === "link"
-                  ? "Extracting content..."
-                  : undefined,
-          });
+    onSuccess: (_data, variables, context) => {
+      const payload = (typeof _data === "object" && _data !== null && "data" in (_data as any))
+        ? ( _data as any).data
+        : _data;
+      const dedup =
+        Boolean((payload as any)?.alreadyExists) ||
+        Boolean((payload as any)?.data?.alreadyExists);
+      const addedToProject =
+        Boolean((payload as any)?.addedToProject) ||
+        Boolean((payload as any)?.data?.addedToProject);
+      const documentId =
+        (payload as any)?.id ?? (payload as any)?.data?.id ?? null;
+      const status =
+        (payload as any)?.status ?? (payload as any)?.data?.status ?? "queued";
+
+      let successDescription: string | undefined;
+
+      if (dedup) {
+        if (context?.previousMemories) {
+          queryClient.setQueryData(
+            ["documents-with-memories", variables.project],
+            context.previousMemories,
+          );
         }
-      } catch {}
-      try {
-        const dedup = (_data as any)?.data?.alreadyExists || (_data as any)?.alreadyExists;
-        const addedToProject = (_data as any)?.data?.addedToProject ?? (_data as any)?.addedToProject;
-        if (dedup) {
-          toast.info("Document already exists", {
-            description: addedToProject
-              ? "We linked it to this project."
-              : "It was already in your workspace.",
-          });
-        } else {
-          toast.success("Added to memory", { description: variables.contentType === "repository" ? "Indexing repository..." : undefined });
+        toast.warning("Conteúdo já existe", {
+          description: addedToProject
+            ? "Ligamos o documento ao projeto atual."
+            : "Esse link já está presente na sua memória.",
+        });
+      } else {
+        if (context?.optimisticId && documentId) {
+          queryClient.setQueryData<DocumentsQueryData | undefined>(
+            ["documents-with-memories", variables.project],
+            (current) =>
+              promoteOptimisticMemory(current, context.optimisticId!, {
+                id: documentId,
+                status,
+              }),
+          );
         }
-      } catch {}
-      analytics.memoryAdded({
-        type: "link",
-        project_id: variables.project,
-        content_length: variables.content.length,
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: ["documents-with-memories", variables.project],
-      });
-
-      // Additional invalidations for polling
-      setTimeout(() => {
-        queryClient.invalidateQueries({
-          queryKey: ["documents-with-memories", variables.project],
+        successDescription =
+          variables.contentType === "repository"
+            ? "Indexando repositório..."
+            : variables.contentType === "link"
+              ? "Extraindo conteúdo..."
+              : undefined;
+      }
+      if (!dedup) {
+        analytics.memoryAdded({
+          type: "link",
+          project_id: variables.project,
+          content_length: variables.content.length,
         });
-      }, 30000); // 30 seconds
+      }
 
-      setTimeout(() => {
-        queryClient.invalidateQueries({
-          queryKey: ["documents-with-memories", variables.project],
-        });
-      }, 120000); // 2 minutes
-
+      // No additional invalidations needed - the polling effect in page.tsx will handle it
       setShowAddDialog(false);
-      toast.success("Memória salva com Deep Agent");
+      if (!dedup) {
+        toast.success("Memória salva com Deep Agent", {
+          description: successDescription,
+        });
+      }
     },
   });
 
@@ -585,6 +646,10 @@ export function AddMemoryView({
         toast.error("Please select a file to upload");
         return;
       }
+
+      // Mirror link/repository flow: close the dialog immediately and let optimistic card show processing state
+      setShowAddDialog(false);
+      onClose?.();
 
       for (const file of selectedFiles) {
         fileUploadMutation.mutate({
@@ -829,21 +894,8 @@ export function AddMemoryView({
         content_length: variables.content.length,
       });
 
-      queryClient.invalidateQueries({
-        queryKey: ["documents-with-memories", variables.project],
-      });
-
-      setTimeout(() => {
-        queryClient.invalidateQueries({
-          queryKey: ["documents-with-memories", variables.project],
-        });
-      }, 30000); // 30 seconds
-
-      setTimeout(() => {
-        queryClient.invalidateQueries({
-          queryKey: ["documents-with-memories", variables.project],
-        });
-      }, 120000); // 2 minutes
+      // No immediate invalidation needed - the polling effect in page.tsx will handle it
+      // This prevents the optimistic card from disappearing before backend persists the document
 
       setShowAddDialog(false);
       onClose?.();
@@ -919,8 +971,9 @@ export function AddMemoryView({
       ]);
 
       // Create optimistic memory for the file
+      const optimisticId = `temp-file-${Date.now()}`;
       const optimisticMemory: DocumentListItem = {
-        id: `temp-file-${Date.now()}`,
+        id: optimisticId,
         content: "",
         url: null,
         title: title || file.name,
@@ -946,7 +999,7 @@ export function AddMemoryView({
       );
 
       // Return a context object with the snapshotted value
-      return { previousMemories };
+      return { previousMemories, optimisticId, project };
     },
     // If the mutation fails, roll back to the previous value
     onError: (error, variables, context) => {
@@ -960,7 +1013,49 @@ export function AddMemoryView({
         description: error instanceof Error ? error.message : "Unknown error",
       });
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables, context) => {
+      const projectKey = context?.project ?? variables.project;
+      if (context?.optimisticId) {
+        queryClient.setQueryData<DocumentsQueryData | undefined>(
+          ["documents-with-memories", projectKey],
+          (current) =>
+            promoteOptimisticMemory(current, context.optimisticId!, {
+              id: data?.id,
+              title: data?.title ?? variables.title ?? variables.file.name,
+              description:
+                variables.description ||
+                (typeof data?.summary === "string" ? data.summary : undefined),
+              status: data?.status ?? "processing",
+              type: data?.type ?? "file",
+              url: data?.url ?? null,
+              content: typeof data?.content === "string" ? data.content : "",
+              metadata:
+                (data?.metadata as Record<string, unknown>) ??
+                {
+                  fileName: variables.file.name,
+                  fileSize: variables.file.size,
+                  mimeType: variables.file.type,
+                },
+              raw: (data?.raw as Record<string, unknown>) ?? undefined,
+            }),
+        );
+      }
+
+      // Immediately refetch documents for the affected project
+      queryClient.invalidateQueries({
+        queryKey: ["documents-with-memories", projectKey],
+        refetchType: "active",
+      });
+      // Schedule a follow-up refresh in case ingestion finishes shortly after
+      if (typeof window !== "undefined") {
+        window.setTimeout(() => {
+          queryClient.invalidateQueries({
+            queryKey: ["documents-with-memories", projectKey],
+            refetchType: "inactive",
+          });
+        }, 4000);
+      }
+
       analytics.memoryAdded({
         type: "file",
         project_id: variables.project,
@@ -974,8 +1069,15 @@ export function AddMemoryView({
       onClose?.();
     },
     // Always refetch after error or success
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents-with-memories"] });
+    onSettled: (_result, _variables, context) => {
+      const projectKey =
+        context?.project ??
+        (_variables as { project?: string } | undefined)?.project ??
+        selectedProject ??
+        "sm_project_default";
+      queryClient.invalidateQueries({
+        queryKey: ["documents-with-memories", projectKey],
+      });
     },
   });
 
