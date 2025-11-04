@@ -371,6 +371,20 @@ export async function executeClaudeAgent(
           args: seqArgs,
         },
       },
+      disallowedTools: [
+        "Bash",
+        "bash",
+        "Grep",
+        "grep",
+        "KillShell",
+        "killshell",
+        "Agent",
+        "agent",
+        "BashOutput",
+        "bashoutput",
+        "ExitPlanMode",
+        "exitplanmode",
+      ],
       permissionMode: "bypassPermissions",
       includePartialMessages: Boolean(callbacks.onEvent),
       allowDangerouslySkipPermissions: true,
@@ -380,7 +394,7 @@ export async function executeClaudeAgent(
       settingSources: ["project"],
 
       // Set working directory to API root so SDK finds .claude/CLAUDE.md
-      cwd: resolve(process.cwd()),
+      cwd: workingDir,
 
       stderr: (data: string) => {
         const output = data.trim();

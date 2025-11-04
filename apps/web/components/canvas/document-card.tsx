@@ -226,6 +226,8 @@ const getDocumentPreview = (
     safeHttpUrl((metadata as any)?.sourceUrl) ??
     safeHttpUrl(document.url) ??
     safeHttpUrl(rawYoutube?.url);
+  const geminiFileUri = safeHttpUrl(rawGemini?.["uri"], originalUrl);
+  const geminiFileUrl = safeHttpUrl(rawGemini?.["url"], originalUrl);
 
   // No special-casing by domain for main preview
 
@@ -301,7 +303,7 @@ const getDocumentPreview = (
     ? [firecrawlOgImage, metadataImage, rawImage, rawDirectImage].find(isGitHubOpenGraph)
     : undefined;
 
-  const ordered = [rawImage, firecrawlOgImage, rawDirectImage, metadataImage].filter(Boolean) as string[];
+  const ordered = [rawImage, firecrawlOgImage, rawDirectImage, geminiFileUri, geminiFileUrl, metadataImage].filter(Boolean) as string[];
   const filtered = ordered.filter((u) => !isSvgOrBadge(u) && !isDisallowedBadgeDomain(u));
   const finalPreviewImage = preferredGitHubOg || filtered[0] || ordered.find(isGitHubOpenGraph) || metadataImage;
   const contentType =

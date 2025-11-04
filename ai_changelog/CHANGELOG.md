@@ -5,6 +5,99 @@ All notable changes to Supermemory will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2025-11-03 (Branch: claudenewagent)
+
+### 🚀 Major Refactoring - Multi-Provider AI Integration
+
+**Commit**: `469d6b8` - "refactor(ingestion): implement multi-provider AI integration with OpenRouter, Deepseek OCR, and enhanced fallbacks"
+
+#### AI Provider Integration
+- 🔄 **CHANGED**: Primary summarization moved from Gemini to OpenRouter
+  - Supports multiple AI models via OpenRouter API
+  - Maintains Gemini as tertiary fallback for compatibility
+  - Implements graceful degradation across providers
+  - **Files**: `apps/api/src/services/summarizer.ts`, `apps/api/src/services/openrouter.ts`
+
+#### Document Extraction Enhancement
+- ➕ **NEW**: Deepseek OCR integration for PDF/document processing
+  - Primary OCR method via Replicate API
+  - Intelligent fallback chain: MarkItDown → Deepseek OCR → Gemini Vision
+  - **Files**: `apps/api/src/services/replicate.ts`, `apps/api/src/services/extractor.ts`
+
+- 🔨 **IMPROVED**: Content extraction pipeline
+  - 60+ regex patterns for GitHub URL cleanup (removes nav UI, menus, footers)
+  - Enhanced meta tag extraction (og:image, twitter:image, favicon)
+  - Improved YouTube transcript handling with validation (min 300 chars)
+  - Added YouTube timedtext fallback API (VTT subtitles: en, en-US, pt, pt-BR)
+  - **Files**: `apps/api/src/services/extractor.ts`
+
+#### MarkItDown Service Enhancement
+- ➕ **NEW**: Exponential backoff retry logic for rate-limited services
+  - 3 retry attempts with 2s → 4s → 8s delays
+  - Intelligent rate limit detection (HTTP 429, IpBlocked errors)
+  - Detailed logging for debugging
+  - **Files**: `apps/api/src/services/markitdown.ts`
+
+- 🔨 **IMPROVED**: YouTube transcript processing
+  - Transcript validation (minimum content thresholds)
+  - Fallback to timedtext API when MarkItDown fails
+  - URL parsing, VTT parsing, and HTML decoding helpers
+  - Health check caching for performance
+  - **Files**: `apps/api/src/services/markitdown.ts`
+
+#### API Response Normalization
+- 🐛 **FIXED**: Unicode surrogate character handling
+  - Prevents PostgreSQL 22P02 errors
+  - Sanitization at both API and ingestion layers
+  - **Files**: `apps/api/src/routes/documents.ts`, `apps/api/src/services/ingestion.ts`
+
+- 🔨 **IMPROVED**: Document status normalization
+  - Status mappings: "fetching"→"extracting", "processing"→"embedding"
+  - Added missing fields: `documentId`, `ogImage` in API responses
+  - Metadata cleaning to prevent complex type issues
+  - **Files**: `apps/api/src/routes/documents.ts`
+
+#### UI/Chat Enhancement
+- ➕ **NEW**: Provider selection system for model switching
+  - Backend-driven provider selection
+  - Tool event tracking (execution duration, state visualization)
+  - Mentioned documents tracking with visual display
+  - Portuguese i18n labels for tool display
+  - **Files**: `apps/web/components/views/chat/chat-messages.tsx`
+
+#### New Services Created
+- `apps/api/src/services/openrouter.ts` - OpenRouter API integration
+- `apps/api/src/services/preview.ts` - Lightweight preview image generation
+- `apps/api/src/services/replicate.ts` - Replicate API for Deepseek OCR
+- `apps/api/src/services/summarizer-fallback.ts` - Fallback summarization logic
+
+#### Configuration & Documentation
+- 📝 **ADDED**: Environment variable definitions for new providers
+- 📝 **UPDATED**: `.env.example` with OpenRouter, Replicate, Deepseek settings
+- 📝 **NEW**: `apps/api/DEEPSEEK_OCR.md` - OCR integration documentation
+- 📝 **UPDATED**: `CLAUDE.md` with latest architecture changes
+
+#### Testing & Verification
+- ✅ API health check verified (database connectivity OK)
+- ✅ Web UI loads correctly (no console errors)
+- ✅ Type checking passes without errors
+- ✅ Dev servers running successfully (API: 4000, Web: 3001)
+
+### 🐛 Known Issues
+- ⚠️ Foreign key constraint error in logs (pre-existing architecture issue)
+  - Chunks inserted before atomic document finalization
+  - Does not affect new implementation
+  - Requires refactoring of ingestion transaction logic
+
+### 📊 Statistics
+- **Files changed**: 33 files
+- **Insertions**: +1,569 lines
+- **Deletions**: -302 lines
+- **New services**: 4 files
+- **Documentation**: 3 files
+
+---
+
 ## [2.0.0] - 2025-10-30 (Branch: claudenewagent)
 
 ### 🎉 Major Features Added

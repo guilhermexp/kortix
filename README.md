@@ -76,10 +76,12 @@ Open http://localhost:3000 and create your account.
 - 📱 **Responsive design** - Works on all devices
 
 ### AI-Powered Features
-- 🤖 **Claude 3.5 Sonnet** - Advanced reasoning and tool use
+- 🤖 **Multi-Provider AI** - Flexible AI provider switching (OpenRouter, Claude, Gemini)
 - 🔧 **Custom tools** - Database search with MCP integration
 - 💬 **Conversation history** - Full context preservation
 - 🎯 **Smart retrieval** - Automatic context fetching
+- 🔄 **Intelligent fallbacks** - Multi-layer AI fallback chains for reliability
+- 🌐 **Enhanced OCR** - Deepseek OCR integration for document extraction
 
 ### Integrations
 - 🔌 **OAuth connections** - Google Drive, Notion, OneDrive
@@ -96,7 +98,7 @@ Open http://localhost:3000 and create your account.
 - **Backend**: Bun + Hono (REST API)
 - **Database**: Supabase Postgres + pgvector
 - **Storage**: Supabase Storage
-- **AI**: Claude 3.5 Sonnet + Google Gemini
+- **AI**: Multi-Provider (OpenRouter, Claude 3.5 Sonnet, Gemini, Deepseek OCR)
 - **Search**: Vector similarity + hybrid ranking
 
 ### Data Flow

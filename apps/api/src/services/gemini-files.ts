@@ -81,7 +81,7 @@ export async function summarizeBinaryWithGemini(
 	}
 
 	const prompt = buildPrompt(mimeType, filename)
-const modelId = env.CHAT_MODEL ?? "models/gemini-2.0-flash"
+const modelId = env.SUMMARY_MODEL ?? "gemini-2.0-flash"
 
 	try {
 		const normalizedModelId = modelId.startsWith("models/")

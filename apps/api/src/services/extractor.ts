@@ -737,6 +737,8 @@ export async function extractDocumentContent(
 		}
 
 		if (shouldUseGemini(mimeType)) {
+			const isImage = mimeType.startsWith("image/")
+			const inlinePreview = isImage ? `data:${mimeType};base64,${base64Data}` : undefined
 			const geminiResult = await summarizeBinaryWithGemini(
 				buffer,
 				mimeType,
@@ -752,7 +754,13 @@ export async function extractDocumentContent(
 				contentType: mimeType,
 				raw: {
 					...geminiResult.metadata,
-					upload: { filename, mimeType, size: buffer.length },
+					...(inlinePreview ? { previewImage: inlinePreview } : {}),
+					upload: {
+						filename,
+						mimeType,
+						size: buffer.length,
+						...(inlinePreview ? { previewDataUrl: inlinePreview } : {}),
+					},
 				},
 				wordCount: countWords(text),
 			}
