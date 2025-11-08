@@ -117,25 +117,7 @@ export const getDocumentSnippet = (document: DocumentWithMemories): string | nul
     ].filter(Boolean) as string[]
 
     if (candidates.length === 0) return null
-
-    // DEBUG: Log para rastrear de onde vem o resumo
-    const selectedCandidate = candidates[0]
-    if (selectedCandidate.includes("##")) {
-      console.log("🔍 DEBUG - Document with ##:", {
-        title: anyDoc?.title,
-        candidateSource: selectedCandidate.substring(0, 100),
-        hasSummary: !!anyDoc?.summary,
-        hasMetadataDesc: !!metadata?.description,
-        hasRawDesc: !!raw?.description,
-        hasExtractionDesc: !!extraction?.description,
-        hasExtractionAnalysis: !!extraction?.analysis,
-        hasRawAnalysis: !!raw?.analysis,
-        hasMemory: !!firstActiveMemory,
-        hasContent: !!anyDoc?.content
-      })
-    }
-
-    const cleaned = stripMarkdown(selectedCandidate)
+    const cleaned = stripMarkdown(candidates[0])
 
     // Remove generic heading lines like "RESUMO EXECUTIVO --" at the start
     const sanitizeHeading = (text: string): string => {
