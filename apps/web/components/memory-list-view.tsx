@@ -705,18 +705,7 @@ const DocumentCard = memo(
             </div>
           )}
           {(() => {
-            const raw = asRecord(document.raw);
-            const extraction = asRecord(raw?.extraction);
-            const metadata = asRecord(document.metadata);
-
-            const summary =
-              (typeof extraction?.analysis === "string" && extraction.analysis) ||
-              (typeof raw?.analysis === "string" && raw.analysis) ||
-              (typeof metadata?.description === "string" && metadata.description) ||
-              (typeof document.summary === "string" && document.summary) ||
-              null;
-
-            const displayText = summary || document.content;
+            const displayText = getDocumentSnippet(document);
 
             return (
               displayText &&
