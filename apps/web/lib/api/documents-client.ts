@@ -43,3 +43,20 @@ export async function moveDocumentToProject(
 		throw error
 	}
 }
+
+export async function cancelDocument(id: string): Promise<void> {
+	try {
+		const response = await $fetch("@post/documents/:id/cancel", {
+			params: { id },
+		})
+
+		if (response.error) {
+			throw new Error(
+				response.error?.message || "Failed to cancel document processing",
+			)
+		}
+	} catch (error) {
+		console.error("Error cancelling document:", error)
+		throw error
+	}
+}

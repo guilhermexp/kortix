@@ -308,7 +308,30 @@
 
 @layer utilities {
   .bg-chat-surface {
-    background-color: color-mix(in oklch, var(--background) 70%, transparent);
-    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.65) !important;
+    backdrop-filter: blur(32px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(120%) !important;
+  }
+
+  /* Only apply text colors to direct chat content, not buttons/controls */
+  .bg-chat-surface > div:not([class*="sticky"]) *:not(button):not(svg) {
+    color: rgb(30, 30, 30) !important;
+  }
+
+  .bg-chat-surface code {
+    background-color: rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .dark .bg-chat-surface {
+    background: rgba(10, 10, 10, 0.45) !important;
+  }
+
+  /* Only apply text colors to direct chat content, not buttons/controls */
+  .dark .bg-chat-surface > div:not([class*="sticky"]) *:not(button):not(svg) {
+    color: rgb(240, 240, 240) !important;
+  }
+
+  .dark .bg-chat-surface code {
+    background-color: rgba(255, 255, 255, 0.1) !important;
   }
 }

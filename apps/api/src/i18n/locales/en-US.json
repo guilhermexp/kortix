@@ -4,9 +4,9 @@
 			"system": "You are an assistant that summarizes content for the Supermemory application. Respond in English.",
 			"format_instruction": "ALWAYS respond in Markdown format with the following sections, even if some are empty:",
 			"sections": {
-				"executive": "## Executive Summary — 2 to 3 direct sentences about the main topic.",
-				"key_points": "## Key Points — List 6 to 10 short bullets with relevant facts, insights, or arguments.",
-				"use_cases": "## Use Cases — Generate 3 to 6 bullets with practical applications, scenarios, or use examples observed OR clearly inferred from the content (without inventing facts)."
+				"executive": "Executive Summary — 2 to 3 direct sentences about the main topic.",
+				"key_points": "Key Points — List 6 to 10 short bullets with relevant facts, insights, or arguments.",
+				"use_cases": "Use Cases — Generate 3 to 6 bullets with practical applications, scenarios, or use examples observed OR clearly inferred from the content (without inventing facts)."
 			},
 			"context": {
 				"detected_title": "Detected title: {{title}}",
@@ -20,10 +20,10 @@
 				"intro": "Analyze the content from this URL: {{url}}",
 				"format": "ALWAYS respond in Markdown format with the following sections:",
 				"sections": {
-					"executive": "## Executive Summary\n2-3 direct sentences about the main topic, context, and relevance.",
-					"key_points": "## Key Points\nList 6-10 bullets with concepts, facts, data, or important insights.",
-					"technologies": "## Technologies and Tools\nList mentioned languages, frameworks, libraries, or architectures.",
-					"use_cases": "## Use Cases\nList practical applications, scenarios, or use examples.",
+					"executive": "Executive Summary\n2-3 direct sentences about the main topic, context, and relevance.",
+					"key_points": "Key Points\nList 6-10 bullets with concepts, facts, data, or important insights.",
+					"technologies": "Technologies and Tools\nList mentioned languages, frameworks, libraries, or architectures.",
+					"use_cases": "Use Cases\nList practical applications, scenarios, or use examples.",
 					"context_title": "**Title:** {{title}}"
 				},
 				"footer": "**IMPORTANT:** Be objective and direct. Do not start with 'Here is' or 'Following is the summary'."
@@ -31,11 +31,11 @@
 			"text_based": {
 				"intro": "Analyze the content below and ALWAYS respond in Markdown format with the following sections:",
 				"sections": {
-					"executive": "## Executive Summary\n2-3 direct sentences about the main topic, context, and content relevance.",
-					"key_points": "## Key Points\nList 6-10 bullets with:\n- Core concepts, ideas, or arguments\n- Important facts, data, or statistics\n- Relevant insights or conclusions",
-					"technologies": "## Technologies and Tools\nIf applicable, list:\n- Programming languages or mentioned frameworks\n- Relevant libraries, APIs, or dependencies\n- Architecture or design patterns",
-					"use_cases": "## Use Cases\nList bullets with practical applications, scenarios, or use examples\nIf there are no clear cases, write: `- (no use cases identified)`",
-					"additional_context": "## Additional Context\nIf relevant, mention:\n- Cited authors, organizations, or sources\n- Publication or update date (if available)\n- Target audience or use case"
+					"executive": "Executive Summary\n2-3 direct sentences about the main topic, context, and content relevance.",
+					"key_points": "Key Points\nList 6-10 bullets with:\n- Core concepts, ideas, or arguments\n- Important facts, data, or statistics\n- Relevant insights or conclusions",
+					"technologies": "Technologies and Tools\nIf applicable, list:\n- Programming languages or mentioned frameworks\n- Relevant libraries, APIs, or dependencies\n- Architecture or design patterns",
+					"use_cases": "Use Cases\nList bullets with practical applications, scenarios, or use examples\nIf there are no clear cases, write: `- (no use cases identified)`",
+					"additional_context": "Additional Context\nIf relevant, mention:\n- Cited authors, organizations, or sources\n- Publication or update date (if available)\n- Target audience or use case"
 				},
 				"context": {
 					"title": "**Title:** {{title}}",
@@ -47,10 +47,10 @@
 		"youtube": {
 			"intro": "Analyze this YouTube video and create a structured summary in English.",
 			"sections": {
-				"executive": "## Executive Summary\nWrite 2-3 sentences about the main topic and general context of the video.",
-				"main_points": "## Main Points\nList 6-10 bullet points with:\n- Important topics discussed\n- Key insights and conclusions\n- Relevant data, statistics, or facts",
-				"use_cases": "## Use Cases\nIf applicable, list practical applications, scenarios, or use examples mentioned in the video.",
-				"visual_context": "## Visual Context\nIf relevant, describe:\n- Important visual elements (charts, demos, slides)\n- Presenters or people who appear"
+				"executive": "Executive Summary\nWrite 2-3 sentences about the main topic and general context of the video.",
+				"main_points": "Main Points\nList 6-10 bullet points with:\n- Important topics discussed\n- Key insights and conclusions\n- Relevant data, statistics, or facts",
+				"use_cases": "Use Cases\nIf applicable, list practical applications, scenarios, or use examples mentioned in the video.",
+				"visual_context": "Visual Context\nIf relevant, describe:\n- Important visual elements (charts, demos, slides)\n- Presenters or people who appear"
 			},
 			"footer": "Be objective and detailed. Do not start with phrases like 'Here is' or 'Following is the summary'."
 		},
@@ -84,13 +84,13 @@
 		"youtubeSummaryEmpty": "YouTube video analysis returned empty or very short result"
 	},
 	"sectionHeaders": {
-		"executive": "## Executive Summary",
-		"keyPoints": "## Key Points",
-		"useCases": "## Use Cases",
-		"source": "## Source",
-		"technologies": "## Technologies and Tools",
-		"additionalContext": "## Additional Context",
-		"visualContext": "## Visual Context",
-		"mainPoints": "## Main Points"
+		"executive": "Executive Summary",
+		"keyPoints": "Key Points",
+		"useCases": "Use Cases",
+		"source": "Source",
+		"technologies": "Technologies and Tools",
+		"additionalContext": "Additional Context",
+		"visualContext": "Visual Context",
+		"mainPoints": "Main Points"
 	}
 }

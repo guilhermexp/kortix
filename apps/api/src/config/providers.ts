@@ -10,7 +10,7 @@ export const PROVIDER_CONFIGS = {
 		id: "glm" as const,
 		name: "Z.AI (GLM)",
 		displayName: "GLM-4.6",
-		apiKey: "fabf94f1576e4265b4796559172f6666.ahUCMi5fSyfg8g2z",
+		apiKey: "REMOVED_API_KEY",
 		baseURL: "https://api.z.ai/api/anthropic",
 		models: {
 			fast: "GLM-4.5-Air",

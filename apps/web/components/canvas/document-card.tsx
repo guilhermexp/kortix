@@ -28,11 +28,12 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { memo, useCallback, useMemo, useRef } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import type { z } from "zod";
 import { getDocumentIcon } from "@/lib/document-icon";
 import { formatDate, getSourceUrl } from "../memories";
 import { getDocumentSnippet, stripMarkdown } from "../memories";
+import { cancelDocument } from "@/lib/api/documents-client";
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>;
 type DocumentWithMemories = DocumentsResponse["documents"][0];
@@ -604,8 +605,20 @@ export const DocumentCard = memo(
         {showRemoveButton && onRemove && (
           <button
             className="absolute top-2 left-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-red-500/20"
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
+
+              // If document is processing, cancel it via API
+              if (isProcessing) {
+                try {
+                  await cancelDocument(document.id);
+                  console.log(`[DocumentCard] Cancelled processing for document ${document.id}`);
+                } catch (error) {
+                  console.error("[DocumentCard] Failed to cancel document:", error);
+                }
+              }
+
+              // Always call onRemove to update UI
               onRemove(document);
             }}
             style={{
@@ -620,7 +633,7 @@ export const DocumentCard = memo(
 
         {/* Processing overlay */}
         {isProcessing && (
-            <div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 z-20 bg-black/60 flex items-end justify-center pb-8 pointer-events-none">
               <div className="flex flex-col items-center gap-2">
                 <svg className="animate-spin h-5 w-5 text-white/70" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" fill="none" r="10" stroke="currentColor" strokeWidth="3" />

@@ -1,8 +1,8 @@
 # Supermemory - Agent Context & Integration Guide
 
-> **Last Updated**: October 30, 2025
+> **Last Updated**: November 4, 2025
 > **For**: Claude Code & AI Development Agents
-> **Version**: 2.0.0
+> **Version**: 2.1.0
 
 ## 🤖 Agent Onboarding
 
@@ -10,7 +10,7 @@ This document provides AI agents with complete context about Supermemory archite
 
 ### Quick Context Summary
 - **Project**: Supermemory - Self-hosted AI memory layer
-- **Tech Stack**: Next.js 16, Bun, Hono, Supabase + pgvector, Claude 3.5
+- **Tech Stack**: Next.js 16, Bun, Hono, Supabase + pgvector, multi-provider AI (GLM 4.6, MiniMax M2, Haiku 4.5)
 - **Status**: Production-ready, actively developed
 - **Key Features**: Infinity Canvas, Rich Editor, Claude Agent SDK integration
 - **Deployment**: Railway with GitHub integration
@@ -34,6 +34,9 @@ This document provides AI agents with complete context about Supermemory archite
 - **Implementation Status**: `ai_docs/IMPLEMENTATION_SUMMARY.md`
 - **Code Standards**: `ai_docs/CODE_GENERATION_GUARDRAILS.md`
 - **Claude Integration**: `ai_docs/CLAUDE_AGENT_INTEGRATION_ANALYSIS.md`
+- **UI Refactoring (Nov 4)**: `ai_docs/UI_GLASSMORPHISM_REFACTORING.md` - Glassmorphism design and theme fixes
+- **Code Refactoring (Nov 4)**: `ai_docs/CODE_REFACTORING_LEGACY_LAYERS.md` - Service delegation patterns
+- **Multi-Provider AI**: `ai_docs/MULTI_PROVIDER_AI_INTEGRATION.md` - OpenRouter, Deepseek, Gemini integration
 
 ### Feature Specifications
 - **Cards to Markdown**: `ai_specs/cards-to-full-markdown-pages/`

@@ -104,13 +104,13 @@ export function ProfileView() {
 					initial={{ opacity: 0, scale: 0.9 }}
 					transition={{ type: "spring", damping: 20 }}
 				>
-					<p className="text-white/70 mb-4">
+					<p className="text-foreground dark:text-foreground dark:text-white/70 mb-4">
 						Sign in to access your profile and billing
 					</p>
 					<motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
 						<Button
 							asChild
-							className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+							className="bg-white/10 hover:bg-white/20 text-foreground dark:text-foreground dark:text-white border-white/20"
 							size="sm"
 						>
 							<Link href="/login">Sign in</Link>
@@ -127,11 +127,11 @@ export function ProfileView() {
 			<div className="bg-white/5 rounded-lg p-4 space-y-3">
 				<div className="flex items-center gap-3">
 					<div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-						<User className="w-5 h-5 text-white/80" />
+						<User className="w-5 h-5 text-foreground dark:text-foreground dark:text-white/80" />
 					</div>
 					<div className="flex-1">
-						<p className="text-white font-medium text-sm">{session?.email}</p>
-						<p className="text-white/60 text-xs">Logged in</p>
+						<p className="text-foreground dark:text-foreground dark:text-white font-medium text-sm">{session?.email}</p>
+						<p className="text-foreground dark:text-foreground dark:text-white/60 text-xs">Logged in</p>
 					</div>
 				</div>
 			</div>
@@ -147,10 +147,10 @@ export function ProfileView() {
 					<div className="bg-white/5 rounded-lg p-4 space-y-3">
 						<div className="flex items-center gap-3 mb-3">
 							<div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-								<CreditCard className="w-5 h-5 text-white/80" />
+								<CreditCard className="w-5 h-5 text-foreground dark:text-foreground dark:text-white/80" />
 							</div>
 							<div className="flex-1">
-								<HeadingH3Bold className="text-white text-sm">
+								<HeadingH3Bold className="text-foreground dark:text-foreground dark:text-white text-sm">
 									{billingData.isPro ? "Pro Plan" : "Free Plan"}
 									{billingData.isPro && (
 										<span className="ml-2 text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
@@ -158,7 +158,7 @@ export function ProfileView() {
 										</span>
 									)}
 								</HeadingH3Bold>
-								<p className="text-white/60 text-xs">
+								<p className="text-foreground dark:text-foreground dark:text-white/60 text-xs">
 									{billingData.isPro
 										? "Expanded memory capacity"
 										: "Basic plan"}
@@ -169,9 +169,9 @@ export function ProfileView() {
 						{/* Usage Stats */}
 						<div className="space-y-2">
 							<div className="flex justify-between items-center">
-								<span className="text-sm text-white/70">Memories</span>
+								<span className="text-sm text-foreground dark:text-foreground dark:text-white/70">Memories</span>
 								<span
-									className={`text-sm ${billingData.memoriesUsed >= billingData.memoriesLimit ? "text-red-400" : "text-white/90"}`}
+									className={`text-sm ${billingData.memoriesUsed >= billingData.memoriesLimit ? "text-red-400" : "text-foreground dark:text-foreground dark:text-white/90"}`}
 								>
 									{billingData.memoriesUsed} / {billingData.memoriesLimit}
 								</span>
@@ -194,8 +194,8 @@ export function ProfileView() {
 
 						{billingData.isPro && (
 							<div className="flex justify-between items-center">
-								<span className="text-sm text-white/70">Connections</span>
-								<span className="text-sm text-white/90">
+								<span className="text-sm text-foreground dark:text-foreground dark:text-white/70">Connections</span>
+								<span className="text-sm text-foreground dark:text-foreground dark:text-white/90">
 									{billingData.connectionsUsed} / 10
 								</span>
 							</div>
@@ -209,7 +209,7 @@ export function ProfileView() {
 									whileTap={{ scale: 0.98 }}
 								>
 									<Button
-										className="w-full bg-white/10 hover:bg-white/20 text-white border-white/20"
+										className="w-full bg-white/10 hover:bg-white/20 text-foreground dark:text-foreground dark:text-white border-white/20"
 										onClick={handleManageBilling}
 										size="sm"
 										variant="outline"
@@ -223,7 +223,7 @@ export function ProfileView() {
 									whileTap={{ scale: 0.98 }}
 								>
 									<Button
-										className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+										className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-foreground dark:text-foreground dark:text-white border-0"
 										disabled={isLoading || isCustomerLoading}
 										onClick={handleUpgrade}
 										size="sm"
@@ -245,26 +245,26 @@ export function ProfileView() {
 					{/* Plan Comparison - Only show for free users */}
 					{!billingData.isPro && (
 						<div className="bg-white/5 rounded-lg p-4 space-y-4">
-							<HeadingH3Bold className="text-white text-sm">
+							<HeadingH3Bold className="text-foreground dark:text-foreground dark:text-white text-sm">
 								Upgrade to Pro
 							</HeadingH3Bold>
 
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								{/* Free Plan */}
 								<div className="p-3 bg-white/5 rounded-lg border border-white/10">
-									<h4 className="font-medium text-white/90 mb-3 text-sm">
+									<h4 className="font-medium text-foreground dark:text-foreground dark:text-white/90 mb-3 text-sm">
 										Free Plan
 									</h4>
 									<ul className="space-y-2">
-										<li className="flex items-center gap-2 text-sm text-white/70">
+										<li className="flex items-center gap-2 text-sm text-foreground dark:text-foreground dark:text-white/70">
 											<CheckCircle className="h-4 w-4 text-green-400" />
 											200 memories
 										</li>
-										<li className="flex items-center gap-2 text-sm text-white/70">
+										<li className="flex items-center gap-2 text-sm text-foreground dark:text-foreground dark:text-white/70">
 											<X className="h-4 w-4 text-red-400" />
 											No connections
 										</li>
-										<li className="flex items-center gap-2 text-sm text-white/70">
+										<li className="flex items-center gap-2 text-sm text-foreground dark:text-foreground dark:text-white/70">
 											<CheckCircle className="h-4 w-4 text-green-400" />
 											Basic search
 										</li>
@@ -273,26 +273,26 @@ export function ProfileView() {
 
 								{/* Pro Plan */}
 								<div className="p-3 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-lg border border-blue-500/20">
-									<h4 className="font-medium text-white mb-3 flex items-center gap-2 text-sm">
+									<h4 className="font-medium text-foreground dark:text-foreground dark:text-white mb-3 flex items-center gap-2 text-sm">
 										Pro Plan
 										<span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
 											Recommended
 										</span>
 									</h4>
 									<ul className="space-y-2">
-										<li className="flex items-center gap-2 text-sm text-white/90">
+										<li className="flex items-center gap-2 text-sm text-foreground dark:text-foreground dark:text-white/90">
 											<CheckCircle className="h-4 w-4 text-green-400" />
 											Unlimited memories
 										</li>
-										<li className="flex items-center gap-2 text-sm text-white/90">
+										<li className="flex items-center gap-2 text-sm text-foreground dark:text-foreground dark:text-white/90">
 											<CheckCircle className="h-4 w-4 text-green-400" />
 											10 connections
 										</li>
-										<li className="flex items-center gap-2 text-sm text-white/90">
+										<li className="flex items-center gap-2 text-sm text-foreground dark:text-foreground dark:text-white/90">
 											<CheckCircle className="h-4 w-4 text-green-400" />
 											Advanced search
 										</li>
-										<li className="flex items-center gap-2 text-sm text-white/90">
+										<li className="flex items-center gap-2 text-sm text-foreground dark:text-foreground dark:text-white/90">
 											<CheckCircle className="h-4 w-4 text-green-400" />
 											Priority support
 										</li>
@@ -300,7 +300,7 @@ export function ProfileView() {
 								</div>
 							</div>
 
-							<p className="text-xs text-white/50 text-center">
+							<p className="text-xs text-foreground dark:text-foreground dark:text-white/50 text-center">
 								$15/month (only for first 100 users) • Cancel anytime. No
 								questions asked.
 							</p>

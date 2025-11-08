@@ -319,6 +319,7 @@ const MemoryGraphPage = () => {
       return undefined;
     },
     staleTime: 5 * 60 * 1000,
+    refetchInterval: 3000, // Poll every 3 seconds to auto-update document statuses
   });
 
   const baseDocuments = useMemo(() => {
@@ -562,9 +563,9 @@ const MemoryGraphPage = () => {
   }, []);
 
   const viewToggleBaseClasses =
-    "bg-background border text-white/80 hover:text-white hover:bg-white/10 px-2 sm:px-3 rounded-md";
-  const viewToggleActiveClasses = "border-white/40 text-white";
-  const viewToggleInactiveClasses = "border-white/15";
+    "bg-background border text-foreground/80 hover:text-foreground hover:bg-foreground/10 px-2 sm:px-3 rounded-md";
+  const viewToggleActiveClasses = "border-foreground/40 text-foreground";
+  const viewToggleInactiveClasses = "border-foreground/15";
 
   return (
     <div className="relative h-screen bg-background overflow-hidden touch-none">

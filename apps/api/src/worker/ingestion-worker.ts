@@ -98,7 +98,7 @@ async function hydrateDocument(
 	const userId = document.user_id ?? (await getDefaultUserId())
 
 	if (!userId) {
-		throw new Error("Missing user for ingestion job")
+		console.warn(`[ingestion-worker] No user found for job ${jobId}, processing without user_id`)
 	}
 
 	await processDocument({
@@ -184,6 +184,12 @@ async function handleJobFailure(
 async function processJob(job: IngestionJobRow) {
 	const attempts = (job.attempts ?? 0) + 1
 
+	console.log("[ingestion-worker] Starting job processing", {
+		jobId: job.id,
+		documentId: job.document_id,
+		attempts,
+	})
+
 	await supabaseAdmin
 		.from("ingestion_jobs")
 		.update({ attempts })
@@ -191,7 +197,18 @@ async function processJob(job: IngestionJobRow) {
 
 	try {
 		await hydrateDocument(job.id, job.document_id, job.org_id, job.payload)
+
+		console.log("[ingestion-worker] Job completed successfully", {
+			jobId: job.id,
+			documentId: job.document_id,
+		})
 	} catch (error) {
+		console.error("[ingestion-worker] Job failed with error", {
+			jobId: job.id,
+			documentId: job.document_id,
+			error: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+		})
 		await handleJobFailure(job, attempts, error)
 	}
 }
@@ -201,18 +218,40 @@ async function tick() {
 		const jobs = await fetchQueuedJobs()
 		if (jobs.length === 0) return
 
+		console.log(`[ingestion-worker] Processing ${jobs.length} queued jobs`)
+
 		for (const job of jobs) {
 			await processJob(job)
 		}
+
+		console.log(`[ingestion-worker] Finished processing ${jobs.length} jobs`)
 	} catch (error) {
-		console.error("ingestion-worker tick error", error)
+		console.error("[ingestion-worker] Tick error", {
+			error: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+		})
 	}
 }
 
 async function main() {
-	console.log("Ingestion worker started")
-	await tick()
-	setInterval(tick, POLL_INTERVAL)
+	console.log("[ingestion-worker] Ingestion worker started")
+	console.log("[ingestion-worker] Configuration:", {
+		maxBatch: MAX_BATCH,
+		pollInterval: POLL_INTERVAL,
+		maxAttempts: MAX_ATTEMPTS,
+	})
+
+	try {
+		await tick()
+		console.log(`[ingestion-worker] Starting polling (every ${POLL_INTERVAL}ms)`)
+		setInterval(tick, POLL_INTERVAL)
+	} catch (error) {
+		console.error("[ingestion-worker] Fatal error during startup", {
+			error: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+		})
+		process.exit(1)
+	}
 }
 
 void main()

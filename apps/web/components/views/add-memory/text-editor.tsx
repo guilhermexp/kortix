@@ -285,7 +285,7 @@ export function TextEditor({
 				return (
 					<blockquote
 						{...props.attributes}
-						className="border-l-4 border-white/20 pl-4 italic text-white/80"
+						className="border-l-4 border-white/20 pl-4 italic text-foreground dark:text-white/80"
 					>
 						{props.children}
 					</blockquote>
@@ -382,7 +382,7 @@ export function TextEditor({
 				>
 					<Editable
 						className={cn(
-							"outline-none w-full h-full text-white placeholder:text-white/50",
+							"outline-none w-full h-full text-foreground dark:text-white placeholder:text-foreground dark:text-white/50",
 							disabled && "opacity-50 cursor-not-allowed",
 						)}
 						onBlur={onBlur}

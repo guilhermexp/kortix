@@ -26,9 +26,20 @@ This directory contains comprehensive technical documentation, analysis, guides,
 ### Integrations & Features
 - **`CLAUDE_AGENT_INTEGRATION_ANALYSIS.md`** - Claude Agent SDK integration details
 - **`XAI_INTEGRATION.md`** - XAI (Explainable AI) integration guide
+- **`MULTI_PROVIDER_AI_INTEGRATION.md`** - Multi-provider AI system (OpenRouter, Deepseek, Gemini)
+- **`PROVIDER_SWITCHING_SYSTEM.md`** - Provider selection and fallback strategy
+- **`DEEPWIKI_INTEGRATION.md`** - DeepWiki MCP integration
+- **`ANALYZE_VIDEO_TOOL.md`** - Video analysis tool implementation
+- **`CLAUDE_ASSISTANT_ENHANCEMENT.md`** - Claude assistant features and @mention support
+
+### UI/UX & Refactoring (November 4, 2025)
+- **`UI_GLASSMORPHISM_REFACTORING.md`** - Glassmorphism design implementation and light/dark mode fixes
+- **`CODE_REFACTORING_LEGACY_LAYERS.md`** - Service layer refactoring with delegation patterns
+- **`INTERFACE_IMPLEMENTATION_SUMMARY.md`** - Interface and component implementation details
 
 ### Testing & Quality
 - **`teste-login-producao-2025-10-22.md`** - Production login testing documentation
+- **`TOOL_VISUALIZATION_TESTING.md`** - Tool visualization and testing procedures
 
 ### Administrative
 - **`DOCUMENTATION_STATUS.md`** - Status of all documentation in the project
@@ -63,6 +74,10 @@ ai_docs/
 | RAILWAY_DEPLOYMENT.md | ✅ Active | Oct 25, 2025 | Deployment guide |
 | IMPLEMENTATION_SUMMARY.md | ✅ Reference | Oct 9, 2025 | Phase implementation |
 | CODE_GENERATION_GUARDRAILS.md | ✅ Active | Oct 25, 2025 | Code standards |
+| UI_GLASSMORPHISM_REFACTORING.md | ✅ Active | Nov 4, 2025 | UI theme implementation |
+| CODE_REFACTORING_LEGACY_LAYERS.md | ✅ Active | Nov 4, 2025 | Service layer refactoring |
+| MULTI_PROVIDER_AI_INTEGRATION.md | ✅ Active | Nov 3, 2025 | Multi-provider AI system |
+| PROVIDER_SWITCHING_SYSTEM.md | ✅ Active | Nov 1, 2025 | AI provider selection |
 
 ## Cross-References
 
@@ -73,7 +88,7 @@ ai_docs/
 
 ## Last Updated
 
-October 30, 2025 - Documentation structure reorganized and indexed
+November 4, 2025 - Added UI refactoring and code refactoring documentation, updated status matrix with latest entries (31 total documents)
 
 ## Adding New Documentation
 

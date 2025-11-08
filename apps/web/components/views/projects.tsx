@@ -159,16 +159,16 @@ export function ProjectsView() {
 	return (
 		<div className="space-y-4">
 			<div className="mb-4">
-				<p className="text-sm text-white/70">
+				<p className="text-sm text-foreground dark:text-white/70">
 					Organize your memories into separate projects
 				</p>
 			</div>
 
 			<div className="flex justify-between items-center mb-4">
-				<p className="text-sm text-white/50">Current project:</p>
+				<p className="text-sm text-foreground dark:text-white/50">Current project:</p>
 				<motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
 					<Button
-						className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+						className="bg-white/10 hover:bg-white/20 text-foreground dark:text-white border-white/20"
 						onClick={() => setShowCreateDialog(true)}
 						size="sm"
 					>
@@ -199,10 +199,10 @@ export function ProjectsView() {
 					initial={{ opacity: 0, scale: 0.9 }}
 					transition={{ type: "spring", damping: 20 }}
 				>
-					<p className="text-white/50 mb-4">No projects yet</p>
+					<p className="text-foreground dark:text-white/50 mb-4">No projects yet</p>
 					<motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
 						<Button
-							className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+							className="bg-white/10 hover:bg-white/20 text-foreground dark:text-white border-white/20"
 							onClick={() => setShowCreateDialog(true)}
 							size="sm"
 							variant="secondary"
@@ -234,11 +234,11 @@ export function ProjectsView() {
 									initial={{ rotate: -180, opacity: 0 }}
 									transition={{ delay: 0.1 }}
 								>
-									<FolderIcon className="h-5 w-5 text-white/80" />
+									<FolderIcon className="h-5 w-5 text-foreground dark:text-white/80" />
 								</motion.div>
 								<div>
-									<p className="font-medium text-white">All Projects</p>
-									<p className="text-sm text-white/60">
+									<p className="font-medium text-foreground dark:text-white">All Projects</p>
+									<p className="text-sm text-foreground dark:text-white/60">
 										Global view across all projects
 									</p>
 								</div>
@@ -278,11 +278,11 @@ export function ProjectsView() {
 											initial={{ rotate: -180, opacity: 0 }}
 											transition={{ delay: (index + 1) * 0.05 + 0.2 }}
 										>
-											<FolderIcon className="h-5 w-5 text-white/80" />
+											<FolderIcon className="h-5 w-5 text-foreground dark:text-white/80" />
 										</motion.div>
 										<div>
-											<p className="font-medium text-white">{project.name}</p>
-											<p className="text-sm text-white/60">
+											<p className="font-medium text-foreground dark:text-white">{project.name}</p>
+											<p className="text-sm text-foreground dark:text-white/60">
 												Created{" "}
 												{new Date(project.createdAt).toLocaleDateString()}
 											</p>
@@ -301,7 +301,7 @@ export function ProjectsView() {
 										<DropdownMenu>
 											<DropdownMenuTrigger asChild>
 												<Button
-													className="text-white/50 hover:text-white"
+													className="text-foreground dark:text-white/50 hover:text-foreground dark:text-white"
 													onClick={(e) => e.stopPropagation()}
 													size="icon"
 													variant="ghost"
@@ -345,7 +345,7 @@ export function ProjectsView() {
 			<AnimatePresence>
 				{showCreateDialog && (
 					<Dialog onOpenChange={setShowCreateDialog} open={showCreateDialog}>
-						<DialogContent className="sm:max-w-2xl bg-black/90 backdrop-blur-xl border-white/10 text-white">
+						<DialogContent className="sm:max-w-2xl bg-black/90 backdrop-blur-xl border-white/10 text-foreground dark:text-white">
 							<motion.div
 								animate={{ opacity: 1, scale: 1 }}
 								exit={{ opacity: 0, scale: 0.95 }}
@@ -353,7 +353,7 @@ export function ProjectsView() {
 							>
 								<DialogHeader>
 									<DialogTitle>Create New Project</DialogTitle>
-									<DialogDescription className="text-white/60">
+									<DialogDescription className="text-foreground dark:text-white/60">
 										Give your project a unique name
 									</DialogDescription>
 								</DialogHeader>
@@ -366,13 +366,13 @@ export function ProjectsView() {
 									>
 										<Label htmlFor="projectName">Project Name</Label>
 										<Input
-											className="bg-white/5 border-white/10 text-white"
+											className="bg-white/5 border-white/10 text-foreground dark:text-white"
 											id="projectName"
 											onChange={(e) => setProjectName(e.target.value)}
 											placeholder="My Awesome Project"
 											value={projectName}
 										/>
-										<p className="text-xs text-white/50">
+										<p className="text-xs text-foreground dark:text-white/50">
 											This will help you organize your memories
 										</p>
 									</motion.div>
@@ -383,7 +383,7 @@ export function ProjectsView() {
 										whileTap={{ scale: 0.95 }}
 									>
 										<Button
-											className="bg-white/5 hover:bg-white/10 border-white/10 text-white"
+											className="bg-white/5 hover:bg-white/10 border-white/10 text-foreground dark:text-white"
 											onClick={() => {
 												setShowCreateDialog(false)
 												setProjectName("")
@@ -399,7 +399,7 @@ export function ProjectsView() {
 										whileTap={{ scale: 0.95 }}
 									>
 										<Button
-											className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+											className="bg-white/10 hover:bg-white/20 text-foreground dark:text-white border-white/20"
 											disabled={
 												createProjectMutation.isPending || !projectName.trim()
 											}
@@ -432,7 +432,7 @@ export function ProjectsView() {
 						}
 						open={deleteDialog.open}
 					>
-						<DialogContent className="sm:max-w-3xl bg-black/90 backdrop-blur-xl border-white/10 text-white">
+						<DialogContent className="sm:max-w-3xl bg-black/90 backdrop-blur-xl border-white/10 text-foreground dark:text-white">
 							<motion.div
 								animate={{ opacity: 1, scale: 1 }}
 								exit={{ opacity: 0, scale: 0.95 }}
@@ -440,7 +440,7 @@ export function ProjectsView() {
 							>
 								<DialogHeader>
 									<DialogTitle>Delete Project</DialogTitle>
-									<DialogDescription className="text-white/60">
+									<DialogDescription className="text-foreground dark:text-white/60">
 										Are you sure you want to delete "{deleteDialog.project.name}
 										"? Choose what to do with the documents in this project.
 									</DialogDescription>
@@ -462,7 +462,7 @@ export function ProjectsView() {
 												type="radio"
 											/>
 											<Label
-												className="text-white cursor-pointer"
+												className="text-foreground dark:text-white cursor-pointer"
 												htmlFor="move"
 											>
 												Move documents to another project
@@ -484,12 +484,12 @@ export function ProjectsView() {
 													}
 													value={deleteDialog.targetProjectId}
 												>
-													<SelectTrigger className="w-full bg-white/5 border-white/10 text-white">
+													<SelectTrigger className="w-full bg-white/5 border-white/10 text-foreground dark:text-white">
 														<SelectValue placeholder="Select target project..." />
 													</SelectTrigger>
 													<SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
 														<SelectItem
-															className="text-white hover:bg-white/10"
+															className="text-foreground dark:text-white hover:bg-white/10"
 															value="sm_project_default"
 														>
 															All Projects
@@ -502,7 +502,7 @@ export function ProjectsView() {
 															)
 															.map((project) => (
 																<SelectItem
-																	className="text-white hover:bg-white/10"
+																	className="text-foreground dark:text-white hover:bg-white/10"
 																	key={project.id}
 																	value={project.id}
 																>
@@ -528,7 +528,7 @@ export function ProjectsView() {
 												type="radio"
 											/>
 											<Label
-												className="text-white cursor-pointer"
+												className="text-foreground dark:text-white cursor-pointer"
 												htmlFor="delete"
 											>
 												Delete all documents in this project
@@ -552,7 +552,7 @@ export function ProjectsView() {
 										whileTap={{ scale: 0.95 }}
 									>
 										<Button
-											className="bg-white/5 hover:bg-white/10 border-white/10 text-white"
+											className="bg-white/5 hover:bg-white/10 border-white/10 text-foreground dark:text-white"
 											onClick={() =>
 												setDeleteDialog({
 													open: false,
@@ -576,7 +576,7 @@ export function ProjectsView() {
 												deleteDialog.action === "delete"
 													? "bg-red-600 hover:bg-red-700"
 													: "bg-white/10 hover:bg-white/20"
-											} text-white border-white/20`}
+											} text-foreground dark:text-white border-white/20`}
 											disabled={
 												deleteProjectMutation.isPending ||
 												(deleteDialog.action === "move" &&

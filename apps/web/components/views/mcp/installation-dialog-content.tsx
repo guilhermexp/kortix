@@ -87,7 +87,7 @@ export function InstallationDialogContent({
 	}
 
 	return (
-		<DialogContent className="border border-white/10 bg-background text-white">
+		<DialogContent className="border border-white/10 bg-background text-foreground dark:text-white">
 			<DialogHeader>
 				<DialogTitle>Install the supermemory MCP Server</DialogTitle>
 				<DialogDescription>

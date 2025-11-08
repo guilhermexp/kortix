@@ -4,9 +4,9 @@
 			"system": "Você é um assistente que resume conteúdos para o aplicativo Supermemory. Responda em português do Brasil.",
 			"format_instruction": "Responda SEMPRE no formato Markdown com as seguintes seções, mesmo que alguma fique vazia:",
 			"sections": {
-				"executive": "## Resumo Executivo — 2 a 3 frases diretas sobre o tema principal.",
-				"key_points": "## Pontos-Chave — Liste de 6 a 10 bullets curtos com fatos relevantes, insights ou argumentos.",
-				"use_cases": "## Casos de Uso — Gere de 3 a 6 bullets com aplicações práticas, cenários ou exemplos de uso observados OU claramente inferidos do conteúdo (sem inventar fatos)."
+				"executive": "Resumo Executivo — 2 a 3 frases diretas sobre o tema principal.",
+				"key_points": "Pontos-Chave — Liste de 6 a 10 bullets curtos com fatos relevantes, insights ou argumentos.",
+				"use_cases": "Casos de Uso — Gere de 3 a 6 bullets com aplicações práticas, cenários ou exemplos de uso observados OU claramente inferidos do conteúdo (sem inventar fatos)."
 			},
 			"context": {
 				"detected_title": "Título detectado: {{title}}",
@@ -20,10 +20,10 @@
 				"intro": "Analise o conteúdo desta URL: {{url}}",
 				"format": "Responda SEMPRE no formato Markdown com as seguintes seções:",
 				"sections": {
-					"executive": "## Resumo Executivo\n2-3 frases diretas sobre o tema principal, contexto e relevância.",
-					"key_points": "## Pontos-Chave\nListe 6-10 bullets com conceitos, fatos, dados ou insights importantes.",
-					"technologies": "## Tecnologias e Ferramentas\nListe linguagens, frameworks, bibliotecas ou arquiteturas mencionadas.",
-					"use_cases": "## Casos de Uso\nListe aplicações práticas, cenários ou exemplos de uso.",
+					"executive": "Resumo Executivo\n2-3 frases diretas sobre o tema principal, contexto e relevância.",
+					"key_points": "Pontos-Chave\nListe 6-10 bullets com conceitos, fatos, dados ou insights importantes.",
+					"technologies": "Tecnologias e Ferramentas\nListe linguagens, frameworks, bibliotecas ou arquiteturas mencionadas.",
+					"use_cases": "Casos de Uso\nListe aplicações práticas, cenários ou exemplos de uso.",
 					"context_title": "**Título:** {{title}}"
 				},
 				"footer": "**IMPORTANTE:** Seja objetivo e direto. Não inicie com 'Aqui está' ou 'Segue o resumo'."
@@ -31,11 +31,11 @@
 			"text_based": {
 				"intro": "Analise o conteúdo abaixo e responda SEMPRE no formato Markdown com as seguintes seções:",
 				"sections": {
-					"executive": "## Resumo Executivo\n2-3 frases diretas sobre o tema principal, contexto e relevância do conteúdo.",
-					"key_points": "## Pontos-Chave\nListe 6-10 bullets com:\n- Conceitos, ideias ou argumentos centrais\n- Fatos, dados ou estatísticas importantes\n- Insights ou conclusões relevantes",
-					"technologies": "## Tecnologias e Ferramentas\nSe aplicável, liste:\n- Linguagens de programação ou frameworks mencionados\n- Bibliotecas, APIs ou dependências relevantes\n- Arquitetura ou padrões de design",
-					"use_cases": "## Casos de Uso\nListe bullets com aplicações práticas, cenários ou exemplos de uso\nSe não houver casos claros, escreva: `- (sem casos de uso identificados)`",
-					"additional_context": "## Contexto Adicional\nSe relevante, mencione:\n- Autores, organizações ou fontes citadas\n- Data de publicação ou atualização (se disponível)\n- Público-alvo ou caso de uso"
+					"executive": "Resumo Executivo\n2-3 frases diretas sobre o tema principal, contexto e relevância do conteúdo.",
+					"key_points": "Pontos-Chave\nListe 6-10 bullets com:\n- Conceitos, ideias ou argumentos centrais\n- Fatos, dados ou estatísticas importantes\n- Insights ou conclusões relevantes",
+					"technologies": "Tecnologias e Ferramentas\nSe aplicável, liste:\n- Linguagens de programação ou frameworks mencionados\n- Bibliotecas, APIs ou dependências relevantes\n- Arquitetura ou padrões de design",
+					"use_cases": "Casos de Uso\nListe bullets com aplicações práticas, cenários ou exemplos de uso\nSe não houver casos claros, escreva: `- (sem casos de uso identificados)`",
+					"additional_context": "Contexto Adicional\nSe relevante, mencione:\n- Autores, organizações ou fontes citadas\n- Data de publicação ou atualização (se disponível)\n- Público-alvo ou caso de uso"
 				},
 				"context": {
 					"title": "**Título:** {{title}}",
@@ -47,10 +47,10 @@
 		"youtube": {
 			"intro": "Analise este vídeo do YouTube e crie um resumo estruturado em português do Brasil.",
 			"sections": {
-				"executive": "## Resumo Executivo\nEscreva 2-3 frases sobre o tema principal e contexto geral do vídeo.",
-				"main_points": "## Pontos Principais\nListe 6-10 bullet points com:\n- Tópicos importantes discutidos\n- Insights e conclusões chave\n- Dados, estatísticas ou fatos relevantes",
-				"use_cases": "## Casos de Uso\nSe aplicável, liste aplicações práticas, cenários ou exemplos de uso mencionados no vídeo.",
-				"visual_context": "## Contexto Visual\nSe relevante, descreva:\n- Elementos visuais importantes (gráficos, demos, slides)\n- Apresentadores ou pessoas que aparecem"
+				"executive": "Resumo Executivo\nEscreva 2-3 frases sobre o tema principal e contexto geral do vídeo.",
+				"main_points": "Pontos Principais\nListe 6-10 bullet points com:\n- Tópicos importantes discutidos\n- Insights e conclusões chave\n- Dados, estatísticas ou fatos relevantes",
+				"use_cases": "Casos de Uso\nSe aplicável, liste aplicações práticas, cenários ou exemplos de uso mencionados no vídeo.",
+				"visual_context": "Contexto Visual\nSe relevante, descreva:\n- Elementos visuais importantes (gráficos, demos, slides)\n- Apresentadores ou pessoas que aparecem"
 			},
 			"footer": "Seja objetivo e detalhado. Não inicie com frases como 'Aqui está' ou 'Segue o resumo'."
 		},
@@ -84,13 +84,13 @@
 		"youtubeSummaryEmpty": "YouTube video analysis returned empty or very short result"
 	},
 	"sectionHeaders": {
-		"executive": "## Resumo Executivo",
-		"keyPoints": "## Pontos-Chave",
-		"useCases": "## Casos de Uso",
-		"source": "## Fonte",
-		"technologies": "## Tecnologias e Ferramentas",
-		"additionalContext": "## Contexto Adicional",
-		"visualContext": "## Contexto Visual",
-		"mainPoints": "## Pontos Principais"
+		"executive": "Resumo Executivo",
+		"keyPoints": "Pontos-Chave",
+		"useCases": "Casos de Uso",
+		"source": "Fonte",
+		"technologies": "Tecnologias e Ferramentas",
+		"additionalContext": "Contexto Adicional",
+		"visualContext": "Contexto Visual",
+		"mainPoints": "Pontos Principais"
 	}
 }

@@ -1,0 +1,242 @@
+{
+  "project_name": "Supermemory",
+  "project_root": "/Users/guilhermevarela/Public/supermemory",
+  "analysis_date": "2025-01-07",
+  "tech_stack": {
+    "frontend": {
+      "framework": "Next.js 16",
+      "ui_library": "React 19",
+      "styling": "Tailwind CSS",
+      "components": "Radix UI primitives",
+      "animations": "Framer Motion",
+      "state_management": "Zustand",
+      "server_state": "TanStack Query (React Query)",
+      "rich_text": "Slate.js",
+      "drag_drop": "DnD Kit",
+      "language": "TypeScript (strict mode)"
+    },
+    "backend": {
+      "runtime": "Bun",
+      "framework": "Hono",
+      "validation": "Zod",
+      "orm": "Drizzle ORM",
+      "database": "PostgreSQL with pgvector",
+      "provider": "Supabase",
+      "vector_search": "pgvector with IVFFlat indexing"
+    },
+    "ai_services": {
+      "primary": "GLM 4.6 (Anthropic-compatible endpoint)",
+      "multi_provider": "OpenRouter",
+      "embeddings": "Google Gemini",
+      "ocr": "Deepseek OCR via Replicate",
+      "reranking": "Cohere",
+      "document_conversion": "MarkItDown",
+      "web_scraping": "Firecrawl",
+      "web_search": "EXA"
+    },
+    "testing": {
+      "unit": "Vitest",
+      "component": "Testing Library",
+      "react": "React Testing Library"
+    },
+    "build_tools": {
+      "package_manager": "Bun",
+      "monorepo": "Turbo",
+      "type_checking": "TypeScript",
+      "linting": "Biome"
+    },
+    "deployment": {
+      "platform": "Railway",
+      "version_control": "GitHub",
+      "ci_cd": "GitHub Actions"
+    }
+  },
+  "key_features": {
+    "infinity_canvas": {
+      "description": "Visual memory organization with drag-and-drop cards",
+      "capabilities": [
+        "Drag-and-drop card positioning with animations",
+        "Zoom controls (25%-200%) with mouse wheel support",
+        "Pan navigation with click-and-drag",
+        "Persistent card positions saved to database",
+        "Document selector modal",
+        "Touch support for mobile",
+        "Project-based organization"
+      ],
+      "implementation": "apps/web/components/canvas/infinity-canvas.tsx"
+    },
+    "rich_text_editor": {
+      "description": "Advanced markdown editor with 20,000+ lines of code",
+      "capabilities": [
+        "Block-based editing with drag-and-drop",
+        "Inline formatting (bold, italic, underline, strikethrough, code)",
+        "Headers (H1-H6), paragraphs, quotes, code blocks",
+        "Table builder interface",
+        "Image upload/paste with galleries",
+        "Video embedding (YouTube, local)",
+        "Link editing with popover",
+        "Color picker + font sizing",
+        "Keyboard shortcuts",
+        "Command menu",
+        "Undo/redo with history",
+        "Auto-save integration",
+        "Markdown parsing and HTML export"
+      ],
+      "implementation": "apps/web/components/ui/rich-editor/"
+    },
+    "claude_agent_sdk": {
+      "description": "AI chat integration with custom tools",
+      "capabilities": [
+        "Direct Anthropic API integration",
+        "Custom MCP tools (searchDatabase)",
+        "Streaming responses via SSE",
+        "Three chat modes: simple (6 turns), agentic (10 turns), deep (12 turns)",
+        "Conversation history preservation",
+        "Event storage for conversation logs",
+        "Tool use tracking and logging",
+        "Auto-context retrieval from knowledge base"
+      ],
+      "implementation": "apps/api/src/services/claude-agent.ts"
+    },
+    "multi_provider_ai": {
+      "description": "Flexible AI provider integration with fallbacks",
+      "capabilities": [
+        "OpenRouter primary provider with multiple models",
+        "Deepseek OCR for document extraction",
+        "Enhanced MarkItDown with retry logic",
+        "YouTube transcript validation with multi-language support",
+        "Unicode sanitization for PostgreSQL compatibility",
+        "UI provider selection with model dropdown",
+        "Tool execution tracking"
+      ],
+      "implementation": "apps/api/src/services/openrouter.ts, replicator.ts, summarizer.ts"
+    },
+    "hybrid_search": {
+      "description": "Advanced search combining vector and text search",
+      "capabilities": [
+        "Vector similarity search (pgvector IVFFlat)",
+        "BM25 text search reranking",
+        "Adaptive combination of results",
+        "Configurable weights and thresholds",
+        "Reciprocal Rank Fusion (RRF) algorithm",
+        "Multi-modal search across document types"
+      ],
+      "implementation": "apps/api/src/services/hybrid-search.ts"
+    },
+    "content_ingestion": {
+      "description": "Multi-modal content processing pipeline",
+      "supported_types": [
+        "Text (raw, markdown)",
+        "PDFs (with OCR fallback)",
+        "Images (vision API extraction)",
+        "Audio/Video (transcription)",
+        "Web URLs (MarkItDown scraping)",
+        "Code repositories (GitHub sync)"
+      ],
+      "implementation": "apps/api/src/services/extractor.ts, ingestion.ts"
+    }
+  },
+  "api_endpoints": {
+    "core": [
+      "/v3/documents - CRUD operations for documents",
+      "/v3/search/hybrid - Hybrid search with vector/keyword modes",
+      "/chat/v2 - Enhanced chat with AI SDK",
+      "/v3/conversations - Conversation management",
+      "/v3/connections - External service connections",
+      "/v3/settings - User settings management",
+      "/v3/projects - Project organization",
+      "/v3/graph/connections - Document relationship mapping"
+    ],
+    "authentication": [
+      "Session-based auth with secure cookies",
+      "JWT-based API authentication",
+      "API key rotation support",
+      "Row-level security (RLS) on all tables"
+    ],
+    "security": [
+      "Rate limiting per user/IP",
+      "CORS protection with allowed origins",
+      "Input validation with Zod schemas",
+      "File upload hardening with size limits and MIME validation",
+      "Unicode sanitization to prevent PostgreSQL errors"
+    ]
+  },
+  "database_schema": {
+    "core_tables": [
+      "organizations - Multi-tenant support",
+      "documents - Document metadata and content",
+      "chunks - Text chunks with embeddings",
+      "memories - AI-processed insights",
+      "canvas_positions - Visual card positions",
+      "conversations - Chat history",
+      "events - Detailed conversation logs",
+      "spaces - Project organization",
+      "ingestion_jobs - Background job tracking"
+    ],
+    "relationships": [
+      "1-to-Many: Organization → Users, Documents, Projects",
+      "1-to-Many: Document → Chunks, Memories",
+      "1-to-Many: User → Conversations",
+      "Vector Index: chunks table uses pgvector with IVFFlat"
+    ],
+    "advanced_features": [
+      "Atomic document finalization with job tracking",
+      "Document status normalization and timeout monitoring",
+      "Content deduplication by URL",
+      "Processing metadata tracking",
+      "Embedding versioning for model updates"
+    ]
+  },
+  "ui_patterns": {
+    "design_system": [
+      "Glassmorphism UI with semi-transparent backdrop blur effects",
+      "Theme-aware components with light/dark mode support",
+      "Responsive design with mobile-first approach",
+      "Consistent spacing and typography system"
+    ],
+    "key_components": [
+      "Memory Graph - Visual relationship mapping",
+      "Infinity Canvas - Visual memory organization",
+      "Chat Interface - AI-powered conversation",
+      "Document Cards - Rich content display",
+      "Project Selector - Context switching",
+      "Connection Manager - External service integration",
+      "Settings Panel - User preferences"
+    ],
+    "interactions": [
+      "Smooth animations with Framer Motion",
+      "Drag-and-drop interactions",
+      "Keyboard shortcuts",
+      "Infinite scrolling for large datasets",
+      "Progressive loading with pagination",
+      "Real-time updates with polling",
+      "Resizable panels with smooth transitions"
+    ]
+  },
+  "performance_optimizations": [
+    "IVFFlat indexing for vector search performance",
+    "Lazy loading for components and data",
+    "Memoization throughout the application",
+    "Virtual scrolling for large lists",
+    "Circuit breaker pattern for external services",
+    "Exponential backoff for retries",
+    "Document timeout monitoring to prevent stuck processing",
+    "Graceful shutdown handling",
+    "Error boundaries for critical sections"
+  ],
+  "recent_enhancements": [
+    "Glassmorphism UI Refactoring (Nov 4, 2025) - Full theme-aware implementation with 50+ component fixes",
+    "Code Refactoring (Nov 4, 2025) - Legacy service layers with delegation pattern, 60-85% code reduction",
+    "Multi-provider AI Integration (Nov 3, 2025) - OpenRouter, Deepseek OCR, enhanced fallbacks",
+    "UI/Menu improvements - Better user experience",
+    "Claude Agent SDK integration - Direct API access with custom tools",
+    "Infinity Canvas implementation - Complete visual organization system"
+  ],
+  "project_status": {
+    "development_stage": "Production-ready with active development",
+    "current_branch": "claudenewagent",
+    "main_branch": "main",
+    "deployment": "Railway production environment",
+    "quality": "Comprehensive testing, error handling, and monitoring"
+  }
+}

@@ -39,6 +39,7 @@ import { useProject } from "@/stores";
 import { InlineLoader } from "./editor/loading-states";
 import { formatDate, getSourceUrl } from "./memories";
 import { getDocumentSnippet, stripMarkdown } from "./memories";
+import { cancelDocument } from "@/lib/api/documents-client";
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>;
 type DocumentWithMemories = DocumentsResponse["documents"][0];
@@ -191,6 +192,26 @@ const getYouTubeThumbnail = (value?: string): string | undefined => {
   return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 };
 
+const isLowResolutionImage = (url?: string): boolean => {
+  if (!url) return false;
+  try {
+    const lower = url.toLowerCase();
+    if (lower.endsWith(".ico") || lower.includes("favicon")) return true;
+    if (/(apple-touch-icon|android-chrome)/.test(lower)) return true;
+    const sizeMatch = lower.match(/(\d{1,3})x(\d{1,3})/);
+    if (sizeMatch) {
+      const width = Number(sizeMatch[1]);
+      const height = Number(sizeMatch[2]);
+      if (Number.isFinite(width) && Number.isFinite(height)) {
+        if (Math.max(width, height) <= 160) return true;
+      }
+    }
+  } catch {
+    // ignore parsing errors
+  }
+  return false;
+};
+
 const getDocumentPreview = (
   document: DocumentWithMemories,
 ): PreviewData | null => {
@@ -202,6 +223,9 @@ const getDocumentPreview = (
     asRecord(raw?.firecrawl) ?? asRecord(rawExtraction?.firecrawl);
   const rawFirecrawlMetadata = asRecord(rawFirecrawl?.metadata) ?? rawFirecrawl;
   const rawGemini = asRecord(raw?.geminiFile);
+
+  // Get preview_image directly from document (from database)
+  const documentPreviewImage = (document as any).previewImage ?? (document as any).preview_image;
 
   const imageKeys = [
     "ogImage",
@@ -276,10 +300,78 @@ const getDocumentPreview = (
   };
 
   const preferredGitHubOg = isGitHubHost(originalUrl)
-    ? [firecrawlOgImage, metadataImage, rawImage, rawDirectImage].find(isGitHubOpenGraph)
+    ? [documentPreviewImage, firecrawlOgImage, metadataImage, rawImage, rawDirectImage].find(isGitHubOpenGraph)
     : undefined;
-  const ordered = [rawImage, firecrawlOgImage, rawDirectImage, geminiFileUri, geminiFileUrl, metadataImage].filter(Boolean) as string[];
-  const filtered = ordered.filter((u) => !isSvgOrBadge(u) && !isDisallowedBadgeDomain(u));
+  const ordered = [documentPreviewImage, rawImage, firecrawlOgImage, rawDirectImage, geminiFileUri, geminiFileUrl, metadataImage].filter(Boolean) as string[];
+  const filtered = ordered.filter(
+    (u) => !isSvgOrBadge(u) && !isDisallowedBadgeDomain(u) && !isLowResolutionImage(u),
+  );
+  const extractionImages = (() => {
+    const list: string[] = [];
+    const push = (value?: unknown) => {
+      const candidate = safeHttpUrl(value as string | undefined, originalUrl);
+      if (!candidate) return;
+      if (isSvgOrBadge(candidate)) return;
+      if (isDisallowedBadgeDomain(candidate)) return;
+      if (isLowResolutionImage(candidate)) return;
+      if (!list.includes(candidate)) list.push(candidate);
+    };
+
+    const extractionArray = Array.isArray((rawExtraction as any)?.images)
+      ? ((rawExtraction as any).images as unknown[])
+      : [];
+    for (const item of extractionArray) push(item);
+
+    const metaTags = asRecord((rawExtraction as any)?.metaTags);
+    if (metaTags) {
+      push(metaTags.ogImage);
+      push((metaTags as any).twitterImage);
+    }
+
+    return list;
+  })();
+  const memoryImages = (() => {
+    const seen = new Set<string>();
+    const collected: string[] = [];
+    const addCandidate = (value?: unknown) => {
+      if (!value) return;
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (!trimmed) return;
+        const resolved =
+          trimmed.startsWith("data:image/")
+            ? trimmed
+            : safeHttpUrl(trimmed, originalUrl);
+        if (!resolved) return;
+        if (isLowResolutionImage(resolved)) return;
+        if (!seen.has(resolved)) {
+          seen.add(resolved);
+          collected.push(resolved);
+        }
+        return;
+      }
+      const record = asRecord(value);
+      if (record?.url) addCandidate(record.url);
+    };
+
+    for (const entry of document.memoryEntries) {
+      const meta = asRecord(entry.metadata);
+      if (!meta) continue;
+      const images = Array.isArray(meta.images) ? meta.images : [];
+      for (const img of images) addCandidate(img);
+      const thumbs = Array.isArray((meta as any).thumbnails)
+        ? ((meta as any).thumbnails as unknown[])
+        : [];
+      for (const thumb of thumbs) addCandidate(thumb);
+      if (typeof meta.cover === "string") addCandidate(meta.cover);
+      if (typeof (meta as any).preview === "string")
+        addCandidate((meta as any).preview);
+      if (typeof (meta as any).previewImage === "string")
+        addCandidate((meta as any).previewImage);
+    }
+
+    return collected;
+  })();
   const finalPreviewImage = preferredGitHubOg || filtered[0] || ordered.find(isGitHubOpenGraph) || metadataImage;
   const contentType =
     (typeof rawExtraction?.contentType === "string" &&
@@ -293,8 +385,40 @@ const getDocumentPreview = (
   const normalizedType = document.type?.toLowerCase() ?? "";
   const label = formatPreviewLabel(document.type);
 
+  const previewImageCandidate =
+    typeof documentPreviewImage === "string"
+      ? documentPreviewImage.trim()
+      : null;
+  const sanitizedPreviewImage =
+    previewImageCandidate && previewImageCandidate.startsWith("data:image/")
+      ? previewImageCandidate
+      : safeHttpUrl(previewImageCandidate, originalUrl);
+
+  let fallbackImage =
+    finalPreviewImage ??
+    sanitizedPreviewImage ??
+    extractionImages[0] ??
+    memoryImages[0] ??
+    (ordered.find((candidate) => !isLowResolutionImage(candidate)) ?? null);
+
+  if (!fallbackImage && isGitHubHost(originalUrl)) {
+    try {
+      const parsed = new URL(originalUrl ?? "");
+      const segments = parsed.pathname
+        .split("/")
+        .filter(Boolean)
+        .slice(0, 2);
+      if (segments.length === 2) {
+        const repoSlug = segments.join("/");
+        fallbackImage = `https://opengraph.githubassets.com/${document.id}/${repoSlug}`;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   if (normalizedType === "image" || contentType?.startsWith("image/")) {
-    const src = finalPreviewImage ?? originalUrl;
+    const src = fallbackImage ?? originalUrl;
     if (src) {
       return {
         kind: "image",
@@ -319,19 +443,16 @@ const getDocumentPreview = (
   if (isVideoDocument) {
     return {
       kind: "video",
-      src:
-        youtubeThumbnail ??
-        finalPreviewImage ??
-        getYouTubeThumbnail(originalUrl),
+      src: youtubeThumbnail ?? fallbackImage ?? getYouTubeThumbnail(originalUrl),
       href: youtubeUrl ?? originalUrl ?? undefined,
       label: contentType === "video/youtube" ? "YouTube" : label || "Video",
     };
   }
 
-  if (finalPreviewImage) {
+  if (fallbackImage) {
     return {
       kind: "image",
-      src: finalPreviewImage,
+      src: fallbackImage,
       href: originalUrl ?? undefined,
       label: label || "Preview",
     };
@@ -491,7 +612,7 @@ const DocumentCard = memo(
       >
         {/* Inline processing feedback overlay inside the card */}
         {isProcessing && (
-            <div className="absolute inset-0 z-20 bg-background/60 flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 z-20 bg-background/60 flex items-end justify-center pb-8 pointer-events-none">
               <div className="flex flex-col items-center gap-2">
                 <div className="relative">
                   <svg className="animate-spin h-5 w-5 text-muted-foreground" viewBox="0 0 24 24">
@@ -689,8 +810,20 @@ const DocumentCard = memo(
                   </AlertDialogCancel>
                   <AlertDialogAction
                     className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
+
+                      // If document is processing, cancel it first
+                      if (isProcessing) {
+                        try {
+                          await cancelDocument(document.id);
+                          console.log(`[MemoryListView] Cancelled processing for document ${document.id}`);
+                        } catch (error) {
+                          console.error("[MemoryListView] Failed to cancel document:", error);
+                        }
+                      }
+
+                      // Then delete
                       onDelete(document);
                     }}
                   >

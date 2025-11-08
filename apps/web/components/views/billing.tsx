@@ -76,11 +76,11 @@ export function BillingView() {
 				initial={{ opacity: 0, scale: 0.9 }}
 				transition={{ type: "spring", damping: 20 }}
 			>
-				<p className="text-white/70 mb-4">Sign in to unlock premium features</p>
+				<p className="text-foreground dark:text-white/70 mb-4">Sign in to unlock premium features</p>
 				<motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
 					<Button
 						asChild
-						className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+						className="bg-white/10 hover:bg-white/20 text-foreground dark:text-white border-white/20"
 						size="sm"
 					>
 						<Link href="/login">Sign in</Link>
@@ -98,24 +98,24 @@ export function BillingView() {
 				initial={{ opacity: 0, y: 10 }}
 			>
 				<div className="space-y-3">
-					<HeadingH3Bold className="text-white flex items-center gap-2">
+					<HeadingH3Bold className="text-foreground dark:text-white flex items-center gap-2">
 						Pro Plan
 						<span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
 							Active
 						</span>
 					</HeadingH3Bold>
-					<p className="text-sm text-white/70">
+					<p className="text-sm text-foreground dark:text-white/70">
 						You're enjoying expanded memory capacity with supermemory Pro!
 					</p>
 				</div>
 
 				{/* Current Usage */}
 				<div className="space-y-3">
-					<h4 className="text-sm font-medium text-white/90">Current Usage</h4>
+					<h4 className="text-sm font-medium text-foreground dark:text-white/90">Current Usage</h4>
 					<div className="space-y-2">
 						<div className="flex justify-between items-center">
-							<span className="text-sm text-white/70">Memories</span>
-							<span className="text-sm text-white/90">
+							<span className="text-sm text-foreground dark:text-white/70">Memories</span>
+							<span className="text-sm text-foreground dark:text-white/90">
 								{memoriesUsed} / {memoriesLimit}
 							</span>
 						</div>
@@ -130,8 +130,8 @@ export function BillingView() {
 					</div>
 					<div className="space-y-2">
 						<div className="flex justify-between items-center">
-							<span className="text-sm text-white/70">Connections</span>
-							<span className="text-sm text-white/90">
+							<span className="text-sm text-foreground dark:text-white/70">Connections</span>
+							<span className="text-sm text-foreground dark:text-white/90">
 								{connectionsUsed} / 10
 							</span>
 						</div>
@@ -140,7 +140,7 @@ export function BillingView() {
 
 				<motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
 					<Button
-						className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+						className="bg-white/10 hover:bg-white/20 text-foreground dark:text-white border-white/20"
 						onClick={handleManageBilling}
 						size="sm"
 						variant="outline"
@@ -160,12 +160,12 @@ export function BillingView() {
 		>
 			{/* Current Usage - Free Plan */}
 			<div className="space-y-3">
-				<HeadingH3Bold className="text-white">Current Plan: Free</HeadingH3Bold>
+				<HeadingH3Bold className="text-foreground dark:text-white">Current Plan: Free</HeadingH3Bold>
 				<div className="space-y-2">
 					<div className="flex justify-between items-center">
-						<span className="text-sm text-white/70">Memories</span>
+						<span className="text-sm text-foreground dark:text-white/70">Memories</span>
 						<span
-							className={`text-sm ${memoriesUsed >= memoriesLimit ? "text-red-400" : "text-white/90"}`}
+							className={`text-sm ${memoriesUsed >= memoriesLimit ? "text-red-400" : "text-foreground dark:text-white/90"}`}
 						>
 							{memoriesUsed} / {memoriesLimit}
 						</span>
@@ -185,22 +185,22 @@ export function BillingView() {
 
 			{/* Comparison */}
 			<div className="space-y-4">
-				<HeadingH3Bold className="text-white">Upgrade to Pro</HeadingH3Bold>
+				<HeadingH3Bold className="text-foreground dark:text-white">Upgrade to Pro</HeadingH3Bold>
 
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					{/* Free Plan */}
 					<div className="p-4 bg-white/5 rounded-lg border border-white/10">
-						<h4 className="font-medium text-white/90 mb-3">Free Plan</h4>
+						<h4 className="font-medium text-foreground dark:text-white/90 mb-3">Free Plan</h4>
 						<ul className="space-y-2">
-							<li className="flex items-center gap-2 text-sm text-white/70">
+							<li className="flex items-center gap-2 text-sm text-foreground dark:text-white/70">
 								<CheckCircle className="h-4 w-4 text-green-400" />
 								200 memories
 							</li>
-							<li className="flex items-center gap-2 text-sm text-white/70">
+							<li className="flex items-center gap-2 text-sm text-foreground dark:text-white/70">
 								<X className="h-4 w-4 text-red-400" />
 								No connections
 							</li>
-							<li className="flex items-center gap-2 text-sm text-white/70">
+							<li className="flex items-center gap-2 text-sm text-foreground dark:text-white/70">
 								<CheckCircle className="h-4 w-4 text-green-400" />
 								Basic search
 							</li>
@@ -209,26 +209,26 @@ export function BillingView() {
 
 					{/* Pro Plan */}
 					<div className="p-4 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-lg border border-blue-500/20">
-						<h4 className="font-medium text-white mb-3 flex items-center gap-2">
+						<h4 className="font-medium text-foreground dark:text-white mb-3 flex items-center gap-2">
 							Pro Plan
 							<span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
 								Recommended
 							</span>
 						</h4>
 						<ul className="space-y-2">
-							<li className="flex items-center gap-2 text-sm text-white/90">
+							<li className="flex items-center gap-2 text-sm text-foreground dark:text-white/90">
 								<CheckCircle className="h-4 w-4 text-green-400" />
 								Unlimited memories
 							</li>
-							<li className="flex items-center gap-2 text-sm text-white/90">
+							<li className="flex items-center gap-2 text-sm text-foreground dark:text-white/90">
 								<CheckCircle className="h-4 w-4 text-green-400" />
 								10 connections
 							</li>
-							<li className="flex items-center gap-2 text-sm text-white/90">
+							<li className="flex items-center gap-2 text-sm text-foreground dark:text-white/90">
 								<CheckCircle className="h-4 w-4 text-green-400" />
 								Advanced search
 							</li>
-							<li className="flex items-center gap-2 text-sm text-white/90">
+							<li className="flex items-center gap-2 text-sm text-foreground dark:text-white/90">
 								<CheckCircle className="h-4 w-4 text-green-400" />
 								Priority support
 							</li>
@@ -238,7 +238,7 @@ export function BillingView() {
 
 				<motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
 					<Button
-						className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0 w-full"
+						className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-foreground dark:text-white border-0 w-full"
 						disabled={isLoading || isCheckingStatus}
 						onClick={handleUpgrade}
 						size="sm"
@@ -254,7 +254,7 @@ export function BillingView() {
 					</Button>
 				</motion.div>
 
-				<p className="text-xs text-white/50 text-center">
+				<p className="text-xs text-foreground dark:text-white/50 text-center">
 					Cancel anytime. No questions asked.
 				</p>
 			</div>

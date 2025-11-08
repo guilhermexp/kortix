@@ -660,7 +660,7 @@ function Menu({
                                 "Integrations"}
                             </HeadingH2Bold>
                             <Button
-                              className="text-white/70 hover:text-white transition-colors duration-200"
+                              className="text-foreground dark:text-white/70 hover:text-foreground dark:text-white transition-colors duration-200"
                               onClick={() => {
                                 setIsCollapsing(true);
                                 setExpandedView(null);

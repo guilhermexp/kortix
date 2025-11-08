@@ -409,7 +409,7 @@ function ToolCard({
   return (
     <Tool
       defaultOpen={isSuccess || isError}
-      className="border-border/50 bg-background/50"
+      className="border-border/30 bg-background/5 backdrop-blur-xl"
     >
       <ToolHeader state={state} type={type} />
       {shouldRenderContent && (
@@ -1900,7 +1900,7 @@ export function ChatMessages() {
                 className={cn(
                   "flex flex-col gap-2 w-full",
                   message.role === "user"
-                    ? "border border-border py-3 px-4 rounded-lg bg-muted/80 text-foreground"
+                    ? "border border-border/30 py-3 px-4 rounded-lg bg-muted/20 backdrop-blur-xl text-foreground"
                     : "py-1 px-0 text-foreground",
                 )}
               >
@@ -2185,6 +2185,7 @@ export function ChatMessages() {
           className={cn(
             "rounded-full w-fit mx-auto shadow-md z-10 absolute inset-x-0 bottom-4 flex justify-center",
             "transition-all duration-200 ease-out",
+            "!text-black",
             isFarFromBottom
               ? "opacity-100 scale-100 pointer-events-auto"
               : "opacity-0 scale-95 pointer-events-none",
@@ -2201,7 +2202,7 @@ export function ChatMessages() {
         </Button>
       </div>
       <form
-        className="px-4 pb-4 pt-1 relative bg-chat-surface"
+        className="px-4 pb-4 pt-1 relative bg-chat-surface border-t border-border/50"
         onSubmit={(e) => {
           e.preventDefault();
           if (status === "submitted") return;
@@ -2217,7 +2218,7 @@ export function ChatMessages() {
           }
         }}
       >
-        <div className="absolute top-0 left-0 -mt-7 w-full h-7 bg-gradient-to-t from-background to-transparent" />
+        <div className="absolute top-0 left-0 -mt-7 w-full h-7 bg-gradient-to-t from-chat-surface to-transparent" />
         {/* Mentioned docs chips */}
         {mentionedDocIds.length > 0 && (
           <div className="px-1 pb-1 flex flex-wrap gap-1">
@@ -2270,7 +2271,7 @@ export function ChatMessages() {
             </div>
           )}
         </div>
-        <InputGroup className="rounded-xl border border-border bg-background/50 backdrop-blur-sm focus-within:ring-0 focus-within:ring-offset-0">
+        <InputGroup className="rounded-xl border border-border/30 bg-background/10 backdrop-blur-xl focus-within:ring-0 focus-within:ring-offset-0">
           <InputGroupTextarea
             className="text-foreground placeholder-muted-foreground/60"
             disabled={status === "submitted"}
