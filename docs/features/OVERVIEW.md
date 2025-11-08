@@ -66,7 +66,7 @@ Full-featured editing experience for memories.
 Advanced AI chat with tool use and streaming.
 
 **Key Capabilities:**
-- Claude 3.5 Sonnet integration
+- Multi-provider LLM integration (GLM 4.6, MiniMax M2, Haiku 4.5)
 - Custom `searchDatabase` tool via MCP
 - Streaming responses with SSE
 - Conversation history preservation

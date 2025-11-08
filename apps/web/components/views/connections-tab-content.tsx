@@ -185,16 +185,16 @@ export function ConnectionsTabContent() {
 	return (
 		<div className="space-y-4">
 			<div className="mb-4">
-				<p className="text-sm text-white/70">
+				<p className="text-sm text-foreground dark:text-white/70">
 					Connect your favorite services to import documents
 				</p>
 				{isProUser && !autumn.isLoading && (
-					<p className="text-xs text-white/50 mt-1">
+					<p className="text-xs text-foreground dark:text-white/50 mt-1">
 						{connectionsUsed} of {connectionsLimit} connections used
 					</p>
 				)}
 				{!isProUser && !autumn.isLoading && (
-					<p className="text-xs text-white/50 mt-1">
+					<p className="text-xs text-foreground dark:text-white/50 mt-1">
 						Connections require a Pro subscription
 					</p>
 				)}
@@ -210,7 +210,7 @@ export function ConnectionsTabContent() {
 					<p className="text-sm text-yellow-400 mb-2">
 						🔌 Connections are a Pro feature
 					</p>
-					<p className="text-xs text-white/60 mb-3">
+					<p className="text-xs text-foreground dark:text-white/60 mb-3">
 						Connect Google Drive, Notion, OneDrive and more to automatically
 						sync your documents.
 					</p>
@@ -246,8 +246,8 @@ export function ConnectionsTabContent() {
 					initial={{ opacity: 0, scale: 0.9 }}
 					transition={{ type: "spring", damping: 20 }}
 				>
-					<p className="text-white/50 mb-2">No connections yet</p>
-					<p className="text-xs text-white/40">
+					<p className="text-foreground dark:text-white/50 mb-2">No connections yet</p>
+					<p className="text-xs text-foreground dark:text-white/40">
 						Choose a service below to connect
 					</p>
 				</motion.div>
@@ -273,11 +273,11 @@ export function ConnectionsTabContent() {
 										{getProviderIcon(connection.provider)}
 									</motion.div>
 									<div>
-										<p className="font-medium text-white capitalize">
+										<p className="font-medium text-foreground dark:text-white capitalize">
 											{connection.provider.replace("-", " ")}
 										</p>
 										{connection.email && (
-											<p className="text-sm text-white/60">
+											<p className="text-sm text-foreground dark:text-white/60">
 												{connection.email}
 											</p>
 										)}
@@ -288,7 +288,7 @@ export function ConnectionsTabContent() {
 									whileTap={{ scale: 0.9 }}
 								>
 									<Button
-										className="text-white/50 hover:text-red-400"
+										className="text-foreground dark:text-white/50 hover:text-red-400"
 										disabled={deleteConnectionMutation.isPending}
 										onClick={() =>
 											deleteConnectionMutation.mutate(connection.id)
@@ -307,7 +307,7 @@ export function ConnectionsTabContent() {
 
 			{/* Available Connections Section */}
 			<div className="mt-6">
-				<h3 className="text-lg font-medium text-white mb-4">
+				<h3 className="text-lg font-medium text-foreground dark:text-white mb-4">
 					Available Connections
 				</h3>
 				<div className="grid gap-3">
@@ -323,7 +323,7 @@ export function ConnectionsTabContent() {
 								whileTap={{ scale: 0.98 }}
 							>
 								<Button
-									className="justify-start h-auto p-4 bg-white/5 hover:bg-white/10 border-white/10 text-white w-full"
+									className="justify-start h-auto p-4 bg-white/5 hover:bg-white/10 border-white/10 text-foreground dark:text-white w-full"
 									disabled={addConnectionMutation.isPending}
 									onClick={() => {
 										addConnectionMutation.mutate(provider as ConnectorProvider)
@@ -333,7 +333,7 @@ export function ConnectionsTabContent() {
 									<Icon className="h-8 w-8 mr-3" />
 									<div className="text-left">
 										<div className="font-medium">{config.title}</div>
-										<div className="text-sm text-white/60 mt-0.5">
+										<div className="text-sm text-foreground dark:text-white/60 mt-0.5">
 											{config.description}
 										</div>
 									</div>

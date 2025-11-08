@@ -1,8 +1,8 @@
 # Supermemory - Claude Development Guide
 
-> **Last Updated**: October 30, 2025
+> **Last Updated**: November 4, 2025
 > **Branch**: `claudenewagent`
-> **Version**: 2.0.0
+> **Version**: 2.1.0
 > **Status**: ✅ Production - Active Development
 
 ## Executive Summary
@@ -30,16 +30,24 @@ Supermemory is a self-hosted, AI-powered memory and knowledge management system 
 
 ⚠️ **IMPORTANT USER INSTRUCTION**: Never say something is working without testing using devtools first.
 
-### Recent Changes (Last 9 commits)
-1. **Multi-provider AI integration** (Nov 3) - OpenRouter, Deepseek OCR, enhanced fallbacks
-2. UI/menu styling improvements
-3. Claude Agent SDK integration and fixes
-4. Infinity Canvas implementation completed
-5. Rich text editor with 20,000+ lines of code
-6. Migration from AI SDK to Claude Agent SDK
-7. Chat system refactoring
-8. Infinite loop in chat component (fixed)
-9. Direct Anthropic API integration
+### Recent Changes (Latest Commits)
+1. **🎨 Glassmorphism UI Refactoring** (Nov 4) - Full theme-aware implementation with 50+ component fixes
+   - Semi-transparent backdrop blur effect on chat interface
+   - Fixed light mode text visibility across entire application
+   - Established `text-foreground dark:text-white` pattern
+   - See: `ai_docs/UI_GLASSMORPHISM_REFACTORING.md`
+
+2. **🔧 Code Refactoring** (Nov 4) - Legacy service layers with delegation pattern
+   - 60-85% code reduction in core services (extractor, preview)
+   - Backward compatibility maintained with deprecation warnings
+   - Clear migration path established for Phase 8
+   - See: `ai_docs/CODE_REFACTORING_LEGACY_LAYERS.md`
+
+3. **Multi-provider AI integration** (Nov 3) - OpenRouter, Deepseek OCR, enhanced fallbacks
+4. UI/menu styling improvements
+5. Claude Agent SDK integration and fixes
+6. Infinity Canvas implementation completed
+7. Rich text editor with 20,000+ lines of code
 
 ---
 
@@ -51,7 +59,7 @@ Frontend:      Next.js 16 + React 19 + Turbopack
 Backend:       Bun + Hono (REST API)
 Database:      Supabase Postgres + pgvector
 Storage:       Supabase Storage
-AI Models:     Claude 3.5 Sonnet + OpenRouter + Gemini + Deepseek OCR
+AI Models:     GLM 4.6 + MiniMax M2 + Haiku 4.5 + OpenRouter + Gemini + Deepseek OCR
                (Multi-provider with intelligent fallbacks)
 Search:        Vector similarity + hybrid ranking
 Deployment:    Railway + GitHub integration
@@ -88,6 +96,8 @@ Claude Agent → Tool Use (searchDatabase) → Streaming Response
 | **Multi-Provider AI** | `apps/api/src/services/openrouter.ts`, `summarizer.ts` | Flexible AI provider switching | ✅ Complete |
 | **Hybrid Search** | `apps/api/src/services/hybrid-search.ts` | Search orchestration | ✅ Complete |
 | **Content Extractor** | `apps/api/src/services/extractor.ts` | Multi-modal processing | ✅ Complete |
+| **Glassmorphism UI** | `apps/web/globals.css`, `components/views/` | Semi-transparent chat interface | ✅ Complete |
+| **Legacy Service Layers** | `apps/api/src/services/{extractor,preview}.ts` | Backward-compatible delegation | ✅ Complete |
 
 ---
 
@@ -349,6 +359,8 @@ NEXT_PUBLIC_APP_URL=${{RAILWAY_PUBLIC_DOMAIN}}
 - **Phase Summary**: `ai_docs/PHASE_5_6_IMPLEMENTATION_SUMMARY.md`
 - **Code Standards**: `ai_docs/CODE_GENERATION_GUARDRAILS.md`
 - **Claude Integration**: `ai_docs/CLAUDE_AGENT_INTEGRATION_ANALYSIS.md`
+- **Glassmorphism UI**: `ai_docs/UI_GLASSMORPHISM_REFACTORING.md` (Nov 4, 2025)
+- **Code Refactoring**: `ai_docs/CODE_REFACTORING_LEGACY_LAYERS.md` (Nov 4, 2025)
 
 ### Project Planning
 - **Changelog**: `ai_changelog/CHANGELOG.md`

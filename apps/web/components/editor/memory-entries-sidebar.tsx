@@ -202,6 +202,65 @@ export function MemoryEntriesSidebar({
     return value as BaseRecord;
   };
 
+  const autoSummaryMemory = useMemo(() => {
+    if (memories.length > 0 || !document) return null;
+
+    const raw = asRecord(document.raw);
+    const extraction = asRecord(raw?.extraction);
+    const metadata = asRecord(document.metadata);
+
+    const summary =
+      (typeof extraction?.analysis === "string" && extraction.analysis) ||
+      (typeof raw?.analysis === "string" && raw.analysis) ||
+      (typeof metadata?.description === "string" && metadata.description) ||
+      (typeof document.summary === "string" && document.summary) ||
+      null;
+
+    const displayText = summary || document.content;
+    if (!displayText || displayText.startsWith("data:")) {
+      return null;
+    }
+
+    const timestamp = (() => {
+      const rawTs =
+        (typeof document.updatedAt === "string" && document.updatedAt) ||
+        (typeof document.createdAt === "string" && document.createdAt) ||
+        null;
+      return rawTs ? new Date(rawTs) : new Date();
+    })();
+
+    return {
+      id: `auto-summary-${document.id}`,
+      documentId: document.id,
+      spaceId: document.memoryEntries?.[0]?.spaceId ?? null,
+      orgId: document.orgId,
+      userId: document.userId ?? null,
+      memory: displayText,
+      metadata: {
+        type: "auto-summary",
+        source: "document-processing",
+      },
+      memoryEmbedding: null,
+      memoryEmbeddingModel: null,
+      memoryEmbeddingNew: null,
+      memoryEmbeddingNewModel: null,
+      version: 1,
+      isLatest: true,
+      sourceCount: 0,
+      isInference: true,
+      isForgotten: false,
+      forgetAfter: null,
+      forgetReason: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    } as MemoryEntry;
+  }, [document, memories.length]);
+
+  const renderMemories = useMemo(() => {
+    if (memories.length > 0) return memories;
+    return autoSummaryMemory ? [autoSummaryMemory] : [];
+  }, [autoSummaryMemory, memories]);
+
   const safeHttpUrl = (
     value: unknown,
     baseUrl?: string,
@@ -751,7 +810,7 @@ export function MemoryEntriesSidebar({
           )}
 
           {/* Empty state */}
-          {!loading && memories.length === 0 && !editingMemory && (
+          {!loading && renderMemories.length === 0 && !editingMemory && (
             <div className="text-center py-8">
               <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-3">
                 <Plus className="w-6 h-6 text-muted-foreground" />
@@ -768,44 +827,49 @@ export function MemoryEntriesSidebar({
 
           {/* Memory list */}
           {!loading &&
-            memories.map((memory) => (
-              <div className="rounded-lg p-3" key={memory.id}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    {getStatusBadge(memory)}
-                    <span className="text-xs text-muted-foreground">
-                      v{memory.version}
-                    </span>
-                  </div>
-                  <Button
-                    className="flex-shrink-0"
-                    disabled={deletingId === memory.id}
-                    onClick={() => handleDeleteMemory(memory.id)}
-                    size="icon-sm"
-                    variant="ghost"
-                  >
-                    {deletingId === memory.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-3.5 h-3.5 text-red-400" />
+            renderMemories.map((memory) => {
+              const isSynthetic = memory.id.startsWith("auto-summary-");
+              return (
+                <div className="rounded-lg p-3" key={memory.id}>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {getStatusBadge(memory)}
+                      <span className="text-xs text-muted-foreground">
+                        v{memory.version}
+                      </span>
+                    </div>
+                    {!isSynthetic && (
+                      <Button
+                        className="flex-shrink-0"
+                        disabled={deletingId === memory.id}
+                        onClick={() => handleDeleteMemory(memory.id)}
+                        size="icon-sm"
+                        variant="ghost"
+                      >
+                        {deletingId === memory.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                        )}
+                      </Button>
                     )}
-                  </Button>
-                </div>
+                  </div>
 
-                <div className="text-sm text-foreground mb-2 prose prose-sm max-w-none prose-p:my-2 prose-headings:my-2 prose-headings:text-foreground prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-strong:text-foreground prose-strong:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-code:text-foreground prose-code:bg-muted">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {memory.memory}
-                  </ReactMarkdown>
-                </div>
+                  <div className="text-sm text-foreground mb-2 prose prose-sm max-w-none prose-p:my-2 prose-headings:my-2 prose-headings:text-foreground prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-strong:text-foreground prose-strong:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-code:text-foreground prose-code:bg-muted">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {memory.memory}
+                    </ReactMarkdown>
+                  </div>
 
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{formatDate(memory.createdAt.toString())}</span>
-                  {memory.sourceCount > 0 && (
-                    <span>{memory.sourceCount} sources</span>
-                  )}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{formatDate(memory.createdAt.toString())}</span>
+                    {memory.sourceCount > 0 && (
+                      <span>{memory.sourceCount} sources</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
           {/* Create/Edit form */}
           {editingMemory && (

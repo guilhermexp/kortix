@@ -52,7 +52,7 @@ export function ChatRewrite() {
 
   return (
     <div className="flex flex-col h-full overflow-y-hidden border-l border-border bg-chat-surface">
-      <div className="sticky top-0 z-20 border-b border-border bg-chat-surface backdrop-blur px-4 py-3 flex justify-between items-center shadow-sm">
+      <div className="sticky top-0 z-20 border-b border-border/50 bg-chat-surface backdrop-blur px-4 py-3 flex justify-between items-center shadow-sm">
         <h3 className="text-base font-semibold line-clamp-1 text-ellipsis overflow-hidden text-foreground">
           {getCurrentChat()?.title ?? "New Chat"}
         </h3>

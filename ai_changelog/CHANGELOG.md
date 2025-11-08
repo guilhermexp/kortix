@@ -5,7 +5,81 @@ All notable changes to Supermemory will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-11-03 (Branch: claudenewagent)
+## [Unreleased] - 2025-11-04 (Branch: claudenewagent)
+
+### 🎨 Glasmorphism UI Refactoring & Theme System Enhancement
+
+**Date**: November 4, 2025
+**Duration**: 3+ hours of iterative refinement
+**Impact**: Full application theme support (light/dark modes)
+
+#### UI Theme Updates
+- ✨ **NEW**: Glassmorphism effect on chat interface
+  - Semi-transparent backdrop blur (32px with 120% saturation)
+  - RGBA backgrounds: `rgba(255,255,255,0.65)` for light, `rgba(10,10,10,0.45)` for dark
+  - CSS-only implementation (no performance impact)
+  - `-webkit-` prefix for Safari compatibility
+  - **Files**: `apps/web/globals.css`
+
+- 🔨 **FIXED**: Light mode text visibility across 50+ components
+  - Replaced hardcoded `text-white` with theme-aware `text-foreground dark:text-white`
+  - Fixed invisible text on light backgrounds
+  - Updated menu, modals, buttons, dialogs
+  - Batch replacement across component tree
+  - **Files**: 13+ files in `apps/web/components/views/`, `apps/web/components/menu.tsx`, `apps/web/app/page.tsx`
+
+- 📝 **ESTABLISHED**: Theme-aware color pattern
+  - Standard form: `text-foreground dark:text-white`
+  - Muted variant: `text-foreground/70 dark:text-white/70`
+  - Clear guidelines for future components
+
+#### Documentation
+- 📄 **NEW**: `ai_docs/UI_GLASSMORPHISM_REFACTORING.md` - Full refactoring documentation with implementation details
+
+#### Testing
+- ✅ Tested in light mode (all text visible)
+- ✅ Tested in dark mode (proper contrast)
+- ✅ Verified 50+ components
+- ✅ Tested on multiple screen sizes
+
+### 🔧 Code Refactoring - Legacy Service Layers
+
+**Date**: November 4, 2025
+**Impact**: 60-85% code reduction with backward compatibility
+
+#### Service Layer Refactoring
+- 🎯 **REFACTORED**: `apps/api/src/services/extractor.ts`
+  - Reduced from 1,341 → 204 lines (-85%)
+  - Implemented singleton pattern for service instance
+  - Added type conversion utilities for seamless delegation
+  - Maintained backward compatibility with deprecation warnings
+  - Clear migration path to new architecture
+
+- 🎯 **REFACTORED**: `apps/api/src/services/preview.ts`
+  - Implemented delegation pattern
+  - Singleton service instance management
+  - Type-safe conversions between legacy and new formats
+  - SVG fallback only on service failure
+
+- 🎯 **CLEANED**: `apps/api/src/services/ingestion.ts`
+  - Reduced from 532 → 348 lines (-35%)
+  - Improved type handling
+  - Better error management
+
+#### Architecture Pattern
+- ✨ **ESTABLISHED**: Delegation pattern for legacy compatibility
+  - Old APIs still work with deprecation warnings
+  - New service implementations as single source of truth
+  - Smart type inference for service inputs
+  - Transparent error propagation
+
+#### Documentation
+- 📄 **NEW**: `ai_docs/CODE_REFACTORING_LEGACY_LAYERS.md` - Complete refactoring documentation with metrics
+
+#### Migration Path
+- Phase 7 (Current): All logic delegated ✅
+- Phase 8 (Next): Update all callers to new services
+- Phase 9 (Future): Remove legacy files entirely
 
 ### 🚀 Major Refactoring - Multi-Provider AI Integration
 

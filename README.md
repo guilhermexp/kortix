@@ -1,19 +1,25 @@
 # Supermemory - AI-Powered Memory & Knowledge Management
 
-> **Version 2.0** - A complete self-hosted AI memory layer with visual organization, advanced editing, and intelligent search.
+> **Version 2.1** - A complete self-hosted AI memory layer with visual organization, advanced editing, intelligent search, and glassmorphism UI.
 
 [![Production Status](https://img.shields.io/badge/status-production-success)](https://github.com/guilhermexp/supermemory)
 [![Platform](https://img.shields.io/badge/platform-Railway-blueviolet)](https://railway.app)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-## 🌟 What's New in v2.0
+## 🌟 What's New in v2.1
 
-### Major Features
+### Recent Updates (November 4, 2025)
+- 🎨 **Glasmorphism UI** - Semi-transparent backdrop blur effects with full theme support
+- 🌓 **Complete Theme System** - Full light/dark mode support across all components
+- 🔧 **Code Refactoring** - Legacy service layers reduced 60-85% with backward compatibility
+
+### Core Features
 - ✨ **Infinity Canvas** - Visual, spatial organization of memories with drag-and-drop
 - 📝 **Rich Text Editor** - Advanced markdown editor with tables, images, and inline formatting
 - 🎯 **Memory Editor** - Full-featured editing with auto-save and offline support
 - 🤖 **Claude Agent SDK** - Upgraded chat system with tool use and streaming
 - 🔍 **Enhanced Search** - Improved hybrid search with better relevance
+- 🤖 **Multi-Provider AI** - OpenRouter, Claude, Gemini with intelligent fallbacks
 
 [View Complete Changelog →](ai_changelog/CHANGELOG.md)
 
@@ -98,7 +104,7 @@ Open http://localhost:3000 and create your account.
 - **Backend**: Bun + Hono (REST API)
 - **Database**: Supabase Postgres + pgvector
 - **Storage**: Supabase Storage
-- **AI**: Multi-Provider (OpenRouter, Claude 3.5 Sonnet, Gemini, Deepseek OCR)
+- **AI**: Multi-Provider (OpenRouter, GLM 4.6, Gemini, Deepseek OCR, MiniMax M2, Haiku 4.5)
 - **Search**: Vector similarity + hybrid ranking
 
 ### Data Flow

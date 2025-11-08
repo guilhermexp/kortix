@@ -1,3 +1,23 @@
+/**
+ * Documents API Routes
+ *
+ * STATUS: Active - Uses legacy ingestion pipeline for backward compatibility
+ *
+ * Architecture Notes:
+ * - Currently uses processDocument() from services/ingestion.ts (legacy)
+ * - The ingestion service has been refactored with deprecation warnings
+ * - All legacy services (ingestion, extractor, preview) now have deprecation notices
+ *
+ * Migration Path (Phase 6):
+ * 1. Replace processDocument() with IngestionOrchestratorService
+ * 2. Use DocumentExtractorService for extraction
+ * 3. Use DocumentProcessorService for processing
+ * 4. Use PreviewGeneratorService for previews
+ * 5. Add comprehensive input validation throughout
+ *
+ * TODO (Phase 6): Migrate to new architecture services
+ */
+
 import {
   DocumentsWithMemoriesQuerySchema,
   DocumentsWithMemoriesResponseSchema,
@@ -10,6 +30,8 @@ import {
 } from "@repo/validation/api";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+// NOTE: Using legacy processDocument for backward compatibility
+// TODO (Phase 6): Replace with IngestionOrchestratorService
 import { processDocument } from "../services/ingestion";
 
 const defaultContainerTag = "sm_project_default";
@@ -495,37 +517,58 @@ export async function addDocument({
   const jobId = jobRecord?.id;
 
   if (RUN_SYNC_INGESTION && jobId) {
-    const processingResult = await processDocument({
+    console.log("[addDocument] Starting synchronous ingestion", {
       documentId: docId,
-      organizationId,
-      userId,
-      spaceId,
-      containerTags: parsed.containerTags ?? [containerTag],
-      jobId,
-      document: {
-        content: initialContent,
-        metadata,
-        title: initialTitle,
-        url: inferredUrl,
-        source: inferredSource,
-        type: inferredType,
-        raw: null,
-        processingMetadata: null,
-      },
-      jobPayload: {
-        containerTags: parsed.containerTags ?? [containerTag],
-        content: rawContent,
-        metadata,
-        url: inferredUrl,
-        type: inferredType,
-        source: inferredSource,
-      },
+      mode: "sync",
     });
 
-    return MemoryResponseSchema.parse({
-      id: docId,
-      status: processingResult.status,
-    });
+    try {
+      await processDocument({
+        documentId: docId,
+        organizationId,
+        userId,
+        spaceId,
+        containerTags: parsed.containerTags ?? [containerTag],
+        jobId,
+        document: {
+          content: initialContent,
+          metadata,
+          title: initialTitle,
+          url: inferredUrl,
+          source: inferredSource,
+          type: inferredType,
+          raw: null,
+          processingMetadata: null,
+        },
+        jobPayload: {
+          containerTags: parsed.containerTags ?? [containerTag],
+          content: rawContent,
+          metadata,
+          url: inferredUrl,
+          type: inferredType,
+          source: inferredSource,
+        },
+      });
+
+      console.log("[addDocument] Synchronous ingestion completed successfully", {
+        documentId: docId,
+      });
+
+      return MemoryResponseSchema.parse({
+        id: docId,
+        status: "done",  // Changed from "processing" to reflect actual status
+      });
+    } catch (error) {
+      console.error("[addDocument] Synchronous ingestion failed", {
+        documentId: docId,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      // Document and job status already updated by processDocument() error handler
+      // Just re-throw to let the caller handle it
+      throw error;
+    }
   }
 
   return MemoryResponseSchema.parse({ id: docId, status: "queued" });
@@ -545,7 +588,7 @@ export async function listDocuments(
   const { data, error, count } = await client
     .from("documents")
     .select(
-      "id, custom_id, connection_id, title, summary, status, type, metadata, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
+      "id, custom_id, connection_id, title, summary, status, type, metadata, preview_image, url, raw, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
       { count: "exact" },
     )
     .eq("org_id", organizationId)
@@ -574,6 +617,9 @@ export async function listDocuments(
     })(),
     type: doc.type ?? "text",
     metadata: doc.metadata ?? null,
+    previewImage: (doc as any).preview_image ?? null,
+    url: (doc as any).url ?? null,
+    raw: (doc as any).raw ?? null,
     containerTags: extractContainerTags(doc.documents_to_spaces),
     createdAt: doc.created_at,
     updatedAt: doc.updated_at,
@@ -663,7 +709,7 @@ export async function listDocumentsWithMemories(
     } = await client
       .from("documents")
       .select(
-        "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
+        "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
         { count: "exact" },
       )
       .eq("org_id", organizationId)
@@ -682,7 +728,7 @@ export async function listDocumentsWithMemories(
     } = await client
       .from("documents")
       .select(
-        "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
+        "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
         { count: "exact" },
       )
       .eq("org_id", organizationId)
@@ -766,11 +812,31 @@ export async function listDocumentsWithMemories(
     const cleanMetadata =
       doc.metadata && typeof doc.metadata === "object"
         ? Object.fromEntries(
-            Object.entries(doc.metadata as Record<string, unknown>).filter(
-              ([, value]) =>
-                typeof value === "string" ||
-                typeof value === "number" ||
-                typeof value === "boolean",
+            Object.entries(doc.metadata as Record<string, unknown>).flatMap(
+              ([key, value]) => {
+                if (
+                  typeof value === "string" ||
+                  typeof value === "number" ||
+                  typeof value === "boolean"
+                ) {
+                  return [[key, value]];
+                }
+                if (Array.isArray(value)) {
+                  const sanitizedArray = value
+                    .map((item) =>
+                      typeof item === "string" ||
+                      typeof item === "number" ||
+                      typeof item === "boolean"
+                        ? item
+                        : null,
+                    )
+                    .filter((item) => item !== null);
+                  if (sanitizedArray.length > 0) {
+                    return [[key, sanitizedArray]];
+                  }
+                }
+                return [] as Array<[string, unknown]>;
+              },
             ),
           )
         : null;
@@ -802,6 +868,13 @@ export async function listDocumentsWithMemories(
       metadata: cleanMetadata,
       processingMetadata: cleanProcessingMetadata,
       raw: doc.raw ?? null,
+      tags: Array.isArray(doc.tags)
+        ? (doc.tags as unknown[])
+            .map((tag) => (typeof tag === "string" ? tag : null))
+            .filter((tag): tag is string => tag != null && tag.trim().length > 0)
+        : [],
+      previewImage: doc.preview_image ?? null,
+      error: doc.error ?? null,
       tokenCount: doc.token_count ?? null,
       wordCount: doc.word_count ?? null,
       chunkCount: doc.chunk_count ?? 0,
@@ -849,7 +922,7 @@ export async function listDocumentsWithMemoriesByIds(
   const { data, error } = await client
     .from("documents")
     .select(
-      "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, og_image, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
+      "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, og_image, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
     )
     .eq("org_id", organizationId)
     .in(column, query.ids);
@@ -934,11 +1007,31 @@ export async function listDocumentsWithMemoriesByIds(
     const cleanMetadata =
       doc.metadata && typeof doc.metadata === "object"
         ? Object.fromEntries(
-            Object.entries(doc.metadata as Record<string, unknown>).filter(
-              ([, value]) =>
-                typeof value === "string" ||
-                typeof value === "number" ||
-                typeof value === "boolean",
+            Object.entries(doc.metadata as Record<string, unknown>).flatMap(
+              ([key, value]) => {
+                if (
+                  typeof value === "string" ||
+                  typeof value === "number" ||
+                  typeof value === "boolean"
+                ) {
+                  return [[key, value]];
+                }
+                if (Array.isArray(value)) {
+                  const sanitizedArray = value
+                    .map((item) =>
+                      typeof item === "string" ||
+                      typeof item === "number" ||
+                      typeof item === "boolean"
+                        ? item
+                        : null,
+                    )
+                    .filter((item) => item !== null);
+                  if (sanitizedArray.length > 0) {
+                    return [[key, sanitizedArray]];
+                  }
+                }
+                return [] as Array<[string, unknown]>;
+              },
             ),
           )
         : null;
@@ -965,6 +1058,13 @@ export async function listDocumentsWithMemoriesByIds(
       metadata: cleanMetadata,
       processingMetadata: cleanProcessingMetadata,
       raw: doc.raw ?? null,
+      tags: Array.isArray(doc.tags)
+        ? (doc.tags as unknown[])
+            .map((tag) => (typeof tag === "string" ? tag : null))
+            .filter((tag): tag is string => tag != null && tag.trim().length > 0)
+        : [],
+      previewImage: doc.preview_image ?? null,
+      error: doc.error ?? null,
       ogImage: doc.og_image ?? null,
       tokenCount: doc.token_count ?? null,
       wordCount: doc.word_count ?? null,
@@ -1095,6 +1195,14 @@ export async function deleteDocument(
     documentId: string;
   },
 ) {
+  // Skip if this is a temporary ID (not yet created in database)
+  if (documentId.startsWith("temp-")) {
+    console.log(
+      `[deleteDocument] Skipping temporary document ${documentId} - not yet in database`,
+    );
+    return;
+  }
+
   const { error } = await client
     .from("documents")
     .delete()
@@ -1102,6 +1210,53 @@ export async function deleteDocument(
     .eq("org_id", organizationId);
 
   if (error) throw error;
+}
+
+export async function cancelDocument(
+  client: SupabaseClient,
+  {
+    organizationId,
+    documentId,
+  }: {
+    organizationId: string;
+    documentId: string;
+  },
+) {
+  // Skip if this is a temporary ID (not yet created in database)
+  if (documentId.startsWith("temp-")) {
+    console.log(
+      `[cancelDocument] Skipping temporary document ${documentId} - not yet in database`,
+    );
+    return;
+  }
+
+  // First, delete any partial chunks that may have been created
+  const { error: chunksError } = await client
+    .from("document_chunks")
+    .delete()
+    .eq("document_id", documentId);
+
+  if (chunksError) {
+    console.error("Failed to delete chunks during cancellation:", chunksError);
+    // Don't throw - continue with status update even if chunk deletion fails
+  }
+
+  // Update document status to failed with cancellation message
+  const { error: updateError } = await client
+    .from("documents")
+    .update({
+      status: "failed",
+      error: "Cancelled by user",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", documentId)
+    .eq("org_id", organizationId);
+
+  if (updateError) throw updateError;
+
+  console.log(
+    `[cancelDocument] Document ${documentId} cancelled by user, cleaned up partial data`,
+  );
 }
 
 export async function migrateMcpDocuments(

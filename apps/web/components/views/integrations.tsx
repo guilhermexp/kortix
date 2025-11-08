@@ -291,17 +291,17 @@ export function IntegrationsView() {
 							<Smartphone className="h-5 w-5 text-blue-400" />
 						</div>
 						<div className="flex-1 min-w-0">
-							<h3 className="text-white font-semibold text-base mb-1">
+							<h3 className="text-foreground dark:text-foreground dark:text-white font-semibold text-base mb-1">
 								Apple shortcuts
 							</h3>
-							<p className="text-white/70 text-sm leading-relaxed">
+							<p className="text-foreground dark:text-foreground dark:text-white/70 text-sm leading-relaxed">
 								Add memories directly from iPhone, iPad or Mac.
 							</p>
 						</div>
 					</div>
 					<div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
 						<Button
-							className="flex-1 text-white hover:bg-blue-500/10 bg-[#171F59]/75 "
+							className="flex-1 text-foreground hover:bg-blue-500/10 bg-[#171F59]/75 dark:text-foreground dark:text-foreground dark:text-white"
 							disabled={createApiKeyMutation.isPending}
 							onClick={() => handleShortcutClick("add")}
 							variant="ghost"
@@ -317,7 +317,7 @@ export function IntegrationsView() {
 								: "Add Memory Shortcut"}
 						</Button>
 						<Button
-							className="flex-1 text-white  hover:bg-blue-500/10 bg-[#171F59]/75"
+							className="flex-1 text-foreground hover:bg-blue-500/10 bg-[#171F59]/75 dark:text-foreground dark:text-foreground dark:text-white"
 							disabled={createApiKeyMutation.isPending}
 							onClick={() => handleShortcutClick("search")}
 							variant="ghost"
@@ -345,11 +345,11 @@ export function IntegrationsView() {
 						</div>
 						<div className="flex-1 min-w-0 mb-3">
 							<div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2 mb-1">
-								<h3 className="text-white font-semibold text-base">
+								<h3 className="text-foreground dark:text-foreground dark:text-foreground dark:text-white font-semibold text-base">
 									Chrome Extension
 								</h3>
 								<Button
-									className="text-white bg-secondary w-fit"
+									className="text-foreground dark:text-foreground dark:text-foreground dark:text-white bg-secondary w-fit"
 									onClick={() => {
 										window.open(
 											"https://chromewebstore.google.com/detail/supermemory/afpgkkipfdpeaflnpoaffkcankadgjfc",
@@ -370,19 +370,19 @@ export function IntegrationsView() {
 					<div className="space-y-2">
 						<div className="flex items-center gap-3">
 							<div className="w-1.5 h-1.5 bg-orange-400 rounded-full flex-shrink-0" />
-							<p className="text-white/80 text-sm">
+							<p className="text-foreground dark:text-foreground dark:text-white/80 text-sm">
 								Save any webpage to supermemory
 							</p>
 						</div>
 						<div className="flex items-center gap-3">
 							<div className="w-1.5 h-1.5 bg-orange-400 rounded-full flex-shrink-0" />
-							<p className="text-white/80 text-sm">
+							<p className="text-foreground dark:text-foreground dark:text-white/80 text-sm">
 								Import All your Twitter Bookmarks
 							</p>
 						</div>
 						<div className="flex items-center gap-3">
 							<div className="w-1.5 h-1.5 bg-orange-400 rounded-full flex-shrink-0" />
-							<p className="text-white/80 text-sm">
+							<p className="text-foreground dark:text-foreground dark:text-white/80 text-sm">
 								Bring all your chatGPT memories to Supermemory
 							</p>
 						</div>
@@ -411,14 +411,14 @@ export function IntegrationsView() {
 							</svg>
 						</div>
 						<div className="flex-1 min-w-0">
-							<h3 className="text-white font-semibold text-base mb-1">
+							<h3 className="text-foreground dark:text-foreground dark:text-white font-semibold text-base mb-1">
 								Connections
 							</h3>
-							<p className="text-white/70 text-sm leading-relaxed mb-2">
+							<p className="text-foreground dark:text-foreground dark:text-white/70 text-sm leading-relaxed mb-2">
 								Connect your accounts to sync document.
 							</p>
 							{!isProUser && (
-								<p className="text-xs text-white/50">
+								<p className="text-xs text-foreground dark:text-foreground dark:text-white/50">
 									Connections require a Pro subscription
 								</p>
 							)}
@@ -435,7 +435,7 @@ export function IntegrationsView() {
 							<p className="text-sm text-yellow-400 mb-2">
 								🔌 Connections are a Pro feature
 							</p>
-							<p className="text-xs text-white/60 mb-3">
+							<p className="text-xs text-foreground dark:text-foreground dark:text-white/60 mb-3">
 								Connect Google Drive, Notion, OneDrive and more to automatically
 								sync your documents.
 							</p>
@@ -493,7 +493,7 @@ export function IntegrationsView() {
 											</motion.div>
 											<div className="flex-1 min-w-0">
 												<div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-													<p className="font-medium text-white text-sm">
+													<p className="font-medium text-foreground dark:text-foreground dark:text-white text-sm">
 														{config.title}
 													</p>
 													{isConnected ? (
@@ -512,11 +512,11 @@ export function IntegrationsView() {
 														</div>
 													)}
 												</div>
-												<p className="text-xs text-white/60 mt-0.5">
+												<p className="text-xs text-foreground dark:text-foreground dark:text-white/60 mt-0.5">
 													{config.description}
 												</p>
 												{connection?.email && (
-													<p className="text-xs text-white/50 mt-1">
+													<p className="text-xs text-foreground dark:text-foreground dark:text-white/50 mt-1">
 														{connection.email}
 													</p>
 												)}
@@ -530,7 +530,7 @@ export function IntegrationsView() {
 													whileTap={{ scale: 0.95 }}
 												>
 													<Button
-														className="text-white/70 hover:text-red-400 hover:bg-red-500/10 w-full sm:w-auto"
+														className="text-foreground dark:text-foreground dark:text-white/70 hover:text-red-400 hover:bg-red-500/10 w-full sm:w-auto"
 														disabled={deleteConnectionMutation.isPending}
 														onClick={() =>
 															deleteConnectionMutation.mutate(connection.id)
@@ -586,7 +586,7 @@ export function IntegrationsView() {
 			</div>
 
 			<div className="p-3">
-				<p className="text-white/70 text-sm leading-relaxed text-center">
+				<p className="text-foreground dark:text-foreground dark:text-white/70 text-sm leading-relaxed text-center">
 					More integrations are coming soon! Have a suggestion? Share it with us
 					on{" "}
 					<a
@@ -604,9 +604,9 @@ export function IntegrationsView() {
 			{/* API Key Modal */}
 			<Dialog onOpenChange={handleDialogClose} open={showApiKeyModal}>
 				<DialogPortal>
-					<DialogContent className="bg-background border-white/10 text-white md:max-w-md z-[100]">
+					<DialogContent className="bg-background border-white/10 text-foreground dark:text-foreground dark:text-white md:max-w-md z-[100]">
 						<DialogHeader>
-							<DialogTitle className="text-white text-lg font-semibold">
+							<DialogTitle className="text-foreground dark:text-foreground dark:text-white text-lg font-semibold">
 								Setup{" "}
 								{selectedShortcutType === "add"
 									? "Add Memory"
@@ -615,7 +615,7 @@ export function IntegrationsView() {
 										: "iOS"}{" "}
 								Shortcut
 							</DialogTitle>
-							<DialogDescription className="text-white/60">
+							<DialogDescription className="text-foreground dark:text-foreground dark:text-white/60">
 								Follow these steps to set up your iOS shortcut with your API key
 							</DialogDescription>
 						</DialogHeader>
@@ -624,21 +624,21 @@ export function IntegrationsView() {
 							{/* API Key Section */}
 							<div className="space-y-2">
 								<label
-									className="text-sm font-medium text-white/80"
+									className="text-sm font-medium text-foreground dark:text-foreground dark:text-white/80"
 									htmlFor={apiKeyId}
 								>
 									Your API Key
 								</label>
 								<div className="flex items-center gap-2">
 									<input
-										className="flex-1 bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-sm text-white font-mono"
+										className="flex-1 bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-sm text-foreground dark:text-foreground dark:text-white font-mono"
 										id={apiKeyId}
 										readOnly
 										type="text"
 										value={apiKey}
 									/>
 									<Button
-										className="text-white/70 hover:text-white hover:bg-white/10"
+										className="text-foreground dark:text-foreground dark:text-white/70 hover:text-foreground dark:text-foreground dark:text-white hover:bg-white/10"
 										onClick={handleCopyApiKey}
 										size="sm"
 										variant="ghost"
@@ -654,7 +654,7 @@ export function IntegrationsView() {
 
 							{/* Steps */}
 							<div className="space-y-3">
-								<h4 className="text-sm font-medium text-white/80">
+								<h4 className="text-sm font-medium text-foreground dark:text-foreground dark:text-white/80">
 									Follow these steps:
 								</h4>
 								<div className="space-y-2">
@@ -662,7 +662,7 @@ export function IntegrationsView() {
 										<div className="flex-shrink-0 w-6 h-6 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-medium">
 											1
 										</div>
-										<p className="text-sm text-white/70">
+										<p className="text-sm text-foreground dark:text-foreground dark:text-white/70">
 											Click "Add to Shortcuts" below to open the shortcut
 										</p>
 									</div>
@@ -670,7 +670,7 @@ export function IntegrationsView() {
 										<div className="flex-shrink-0 w-6 h-6 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-medium">
 											2
 										</div>
-										<p className="text-sm text-white/70">
+										<p className="text-sm text-foreground dark:text-foreground dark:text-white/70">
 											Paste your API key when prompted
 										</p>
 									</div>
@@ -678,7 +678,7 @@ export function IntegrationsView() {
 										<div className="flex-shrink-0 w-6 h-6 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-medium">
 											3
 										</div>
-										<p className="text-sm text-white/70">
+										<p className="text-sm text-foreground dark:text-foreground dark:text-white/70">
 											Start using your shortcut!
 										</p>
 									</div>
@@ -687,7 +687,7 @@ export function IntegrationsView() {
 
 							<div className="flex gap-2 pt-2">
 								<Button
-									className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+									className="flex-1 bg-blue-600 hover:bg-blue-700 text-foreground dark:text-foreground dark:text-white"
 									disabled={!selectedShortcutType}
 									onClick={handleOpenShortcut}
 								>

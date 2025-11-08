@@ -2,7 +2,12 @@ import { z } from "zod"
 
 export const MetadataSchema = z.record(
 	z.string(),
-	z.union([z.string(), z.number(), z.boolean()]),
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.array(z.union([z.string(), z.number(), z.boolean()])),
+	]),
 )
 export type Metadata = z.infer<typeof MetadataSchema>
 
@@ -85,6 +90,9 @@ export const DocumentSchema = z.object({
 	processingMetadata: ProcessingMetadataSchema.nullable().optional(),
 	raw: z.any().nullable().optional(), // bytea in DB
 	ogImage: z.string().nullable().optional(),
+	tags: z.array(z.string()).nullable().optional(),
+	previewImage: z.string().nullable().optional(),
+	error: z.string().nullable().optional(),
 
 	// Content statistics
 	tokenCount: z.number().nullable().optional(),

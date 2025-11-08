@@ -31,7 +31,6 @@ const envSchema = z.object({
 		.default("1536"),
 	CHAT_MODEL: z.string().default("claude-3-5-sonnet-20241022"),
 	SUMMARY_MODEL: z.string().optional(),
-	FIRECRAWL_API_KEY: z.string().optional(),
 	ENABLE_RECENCY_BOOST: z
 		.string()
 		.transform((value) => value === "true")
@@ -116,7 +115,6 @@ const parsed = envSchema.safeParse({
 	EMBEDDING_DIMENSION: process.env.EMBEDDING_DIMENSION,
 	CHAT_MODEL: process.env.CHAT_MODEL,
 	SUMMARY_MODEL: process.env.SUMMARY_MODEL,
-	FIRECRAWL_API_KEY: process.env.FIRECRAWL_API_KEY,
 	ENABLE_RECENCY_BOOST: process.env.ENABLE_RECENCY_BOOST,
 	RECENCY_WEIGHT: process.env.RECENCY_WEIGHT,
 	RECENCY_HALF_LIFE_DAYS: process.env.RECENCY_HALF_LIFE_DAYS,

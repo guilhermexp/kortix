@@ -59,6 +59,7 @@ import {
 } from "./routes/connections"
 import {
 	addDocument,
+	cancelDocument,
 	DocumentsByIdsSchema,
 	deleteDocument,
 	getDocument,
@@ -83,6 +84,7 @@ import { getSettings, updateSettings } from "./routes/settings"
 import { getWaitlistStatus } from "./routes/waitlist"
 import { hybridSearch } from "./services/hybrid-search"
 import { AnalysisService } from "./services/analysis-service"
+import { startDocumentTimeoutMonitor, stopDocumentTimeoutMonitor } from "./services/document-timeout-monitor"
 import type { SessionContext } from "./session"
 import { createScopedSupabase } from "./supabase"
 
@@ -690,6 +692,20 @@ app.post(
 	},
 )
 
+app.post("/v3/documents/:id/cancel", async (c) => {
+	const { organizationId } = c.var.session
+	const documentId = c.req.param("id")
+	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
+
+	try {
+		await cancelDocument(supabase, { organizationId, documentId })
+		return c.json({ message: "Document processing cancelled" }, 200)
+	} catch (error) {
+		console.error("Failed to cancel document", error)
+		return c.json({ error: { message: "Failed to cancel document" } }, 400)
+	}
+})
+
 app.delete("/v3/documents/:id", async (c) => {
 	const { organizationId } = c.var.session
 	const documentId = c.req.param("id")
@@ -983,6 +999,22 @@ app.post("/v3/graph/connections", async (c) => {
 		payload: body,
 		orgId: organizationId,
 	})
+})
+
+// Start document timeout monitor to prevent stuck documents
+startDocumentTimeoutMonitor()
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+	console.log('SIGTERM received, shutting down gracefully...')
+	stopDocumentTimeoutMonitor()
+	process.exit(0)
+})
+
+process.on('SIGINT', () => {
+	console.log('SIGINT received, shutting down gracefully...')
+	stopDocumentTimeoutMonitor()
+	process.exit(0)
 })
 
 serve({

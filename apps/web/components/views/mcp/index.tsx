@@ -138,7 +138,7 @@ export function MCPView() {
 	return (
 		<div className="space-y-6">
 			<div>
-				<p className="text-sm text-white/70">
+				<p className="text-sm text-foreground dark:text-white/70">
 					Use MCP to create and access memories directly from your AI assistant.
 					Integrate supermemory with Claude Desktop, Cursor, and other AI tools.
 				</p>
@@ -147,7 +147,7 @@ export function MCPView() {
 			<div className="space-y-4">
 				<div>
 					<label
-						className="text-sm font-medium text-white/80 block mb-2"
+						className="text-sm font-medium text-foreground dark:text-white/80 block mb-2"
 						htmlFor="mcp-server-url"
 					>
 						MCP Server URL
@@ -158,7 +158,7 @@ export function MCPView() {
 							value={MCP_SERVER_BASE}
 						/>
 					</div>
-					<p className="text-xs text-white/50 mt-2">
+					<p className="text-xs text-foreground dark:text-white/50 mt-2">
 						Use this URL to configure supermemory in your AI assistant
 					</p>
 				</div>
@@ -200,7 +200,7 @@ export function MCPView() {
 
 					<motion.div whileTap={{ scale: 0.95 }}>
 						<Button
-							className="bg-white/5 hover:bg-white/10 border-white/10 text-white h-8"
+							className="bg-white/5 hover:bg-white/10 border-white/10 text-foreground dark:text-white h-8"
 							onClick={() => setIsMigrateDialogOpen(true)}
 							size="sm"
 							variant="outline"
@@ -216,7 +216,7 @@ export function MCPView() {
 						onOpenChange={setIsMigrateDialogOpen}
 						open={isMigrateDialogOpen}
 					>
-						<DialogContent className="sm:max-w-2xl border border-white/10 bg-background text-white">
+						<DialogContent className="sm:max-w-2xl border border-white/10 bg-background text-foreground dark:text-white">
 							<motion.div
 								animate={{ opacity: 1, scale: 1 }}
 								exit={{ opacity: 0, scale: 0.95 }}
@@ -224,7 +224,7 @@ export function MCPView() {
 							>
 								<DialogHeader>
 									<DialogTitle>Migrate from MCP v1</DialogTitle>
-									<DialogDescription className="text-white/60">
+									<DialogDescription className="text-foreground dark:text-white/60">
 										Migrate your MCP documents from the legacy system.
 									</DialogDescription>
 								</DialogHeader>
@@ -249,7 +249,7 @@ export function MCPView() {
 												{({ state, handleChange, handleBlur }) => (
 													<>
 														<Input
-															className="bg-white/5 border-white/10 text-white"
+															className="bg-white/5 border-white/10 text-foreground dark:text-white"
 															id="mcpUrl"
 															onBlur={handleBlur}
 															onChange={(e) => handleChange(e.target.value)}
@@ -269,7 +269,7 @@ export function MCPView() {
 													</>
 												)}
 											</mcpMigrationForm.Field>
-											<p className="text-xs text-white/50">
+											<p className="text-xs text-foreground dark:text-white/50">
 												Enter your old MCP Link in the format: <br />
 												<span className="font-mono">
 													{MCP_SSE_PLACEHOLDER.replace(
@@ -286,7 +286,7 @@ export function MCPView() {
 											whileTap={{ scale: 0.95 }}
 										>
 											<Button
-												className="bg-white/5 hover:bg-white/10 border-white/10 text-white"
+												className="bg-white/5 hover:bg-white/10 border-white/10 text-foreground dark:text-white"
 												onClick={() => {
 													setIsMigrateDialogOpen(false)
 													mcpMigrationForm.reset()
@@ -302,7 +302,7 @@ export function MCPView() {
 											whileTap={{ scale: 0.95 }}
 										>
 											<Button
-												className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+												className="bg-white/10 hover:bg-white/20 text-foreground dark:text-white border-white/20"
 												disabled={
 													migrateMCPMutation.isPending ||
 													!mcpMigrationForm.state.canSubmit

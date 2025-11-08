@@ -50,7 +50,7 @@ const TextEditor = dynamic(
   {
     loading: () => (
       <div className="bg-white/5 border border-white/10 rounded-md">
-        <div className="flex-1 min-h-48 max-h-64 overflow-y-auto flex items-center justify-center text-white/70">
+        <div className="flex-1 min-h-48 max-h-64 overflow-y-auto flex items-center justify-center text-foreground dark:text-white/70">
           Loading editor...
         </div>
         <div className="p-1 flex items-center gap-2 bg-white/5 backdrop-blur-sm rounded-b-md">
@@ -1107,7 +1107,7 @@ export function AddMemoryView({
                     <DialogTitle className="text-base">
                       Add to Memory
                     </DialogTitle>
-                    <DialogDescription className="text-white/50">
+                    <DialogDescription className="text-foreground dark:text-white/50">
                       Save any webpage, article, or file to your memory
                     </DialogDescription>
                   </div>
@@ -1187,7 +1187,7 @@ export function AddMemoryView({
                                   }`}
                                 >
                                   <TextEditor
-                                    className="text-white"
+                                    className="text-foreground dark:text-white"
                                     disabled={addContentMutation.isPending}
                                     onBlur={handleBlur}
                                     onChange={handleChange}
@@ -1304,7 +1304,7 @@ export function AddMemoryView({
                             {({ state, handleChange, handleBlur }) => (
                               <>
                                 <Input
-                                  className={`bg-background border-white/20 text-white ${
+                                  className={`bg-background border-white/20 text-foreground dark:text-white ${
                                     addContentMutation.isPending
                                       ? "opacity-50"
                                       : ""
@@ -1383,8 +1383,8 @@ export function AddMemoryView({
                           }}
                           className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
                             useAgentForLink
-                              ? "bg-white/10 border-white/20 text-white"
-                              : "bg-white/5 border-white/10 text-white/80 hover:bg-white/8"
+                              ? "bg-white/10 border-white/20 text-foreground dark:text-white"
+                              : "bg-white/5 border-white/10 text-foreground dark:text-white/80 hover:bg-white/8"
                           }`}
                         >
                           Deep Agent
@@ -1399,8 +1399,8 @@ export function AddMemoryView({
                           }}
                           className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
                             !useAgentForLink
-                              ? "bg-white/10 border-white/20 text-white"
-                              : "bg-white/5 border-white/10 text-white/80 hover:bg-white/8"
+                              ? "bg-white/10 border-white/20 text-foreground dark:text-white"
+                              : "bg-white/5 border-white/10 text-foreground dark:text-white/80 hover:bg-white/8"
                           }`}
                         >
                           Standard
@@ -1494,7 +1494,7 @@ export function AddMemoryView({
                           <fileUploadForm.Field name="title">
                             {({ state, handleChange, handleBlur }) => (
                               <Input
-                                className="bg-white/5 border-white/10 text-white"
+                                className="bg-white/5 border-white/10 text-foreground dark:text-white"
                                 id="file-title"
                                 onBlur={handleBlur}
                                 onChange={(e) => handleChange(e.target.value)}
@@ -1520,7 +1520,7 @@ export function AddMemoryView({
                           <fileUploadForm.Field name="description">
                             {({ state, handleChange, handleBlur }) => (
                               <Textarea
-                                className="bg-white/5 border-white/10 text-white min-h-20 max-h-40 overflow-y-auto resize-none"
+                                className="bg-white/5 border-white/10 text-foreground dark:text-white min-h-20 max-h-40 overflow-y-auto resize-none"
                                 id="file-description"
                                 onBlur={handleBlur}
                                 onChange={(e) => handleChange(e.target.value)}
@@ -1628,7 +1628,7 @@ export function AddMemoryView({
                             {({ state, handleChange, handleBlur }) => (
                               <>
                                 <Input
-                                  className={`bg-white/5 border-white/10 text-white ${
+                                  className={`bg-white/5 border-white/10 text-foreground dark:text-white ${
                                     addContentMutation.isPending
                                       ? "opacity-50"
                                       : ""
@@ -1660,7 +1660,7 @@ export function AddMemoryView({
                               </>
                             )}
                           </addContentForm.Field>
-                          <p className="text-xs text-white/50">
+                          <p className="text-xs text-foreground dark:text-white/50">
                             The repository will be indexed and made searchable
                             in your memory
                           </p>
@@ -1723,14 +1723,14 @@ export function AddMemoryView({
           onOpenChange={setShowCreateProjectDialog}
           open={showCreateProjectDialog}
         >
-          <DialogContent className="w-[95vw] max-w-2xl sm:max-w-2xl bg-black/90 backdrop-blur-xl border-white/10 text-white z-[80] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] max-w-2xl sm:max-w-2xl bg-black/90 backdrop-blur-xl border-white/10 text-foreground dark:text-white z-[80] max-h-[90vh] overflow-y-auto">
             <motion.div
               animate={{ opacity: 1, scale: 1 }}
               initial={{ opacity: 0, scale: 0.95 }}
             >
               <DialogHeader>
                 <DialogTitle>Create New Project</DialogTitle>
-                <DialogDescription className="text-white/60">
+                <DialogDescription className="text-foreground dark:text-white/60">
                   Give your project a unique name
                 </DialogDescription>
               </DialogHeader>
@@ -1743,13 +1743,13 @@ export function AddMemoryView({
                 >
                   <Label htmlFor="projectName">Project Name</Label>
                   <Input
-                    className="bg-white/5 border-white/10 text-white"
+                    className="bg-white/5 border-white/10 text-foreground dark:text-white"
                     id="projectName"
                     onChange={(e) => setNewProjectName(e.target.value)}
                     placeholder="My Awesome Project"
                     value={newProjectName}
                   />
-                  <p className="text-xs text-white/50">
+                  <p className="text-xs text-foreground dark:text-white/50">
                     This will help you organize your memories
                   </p>
                 </motion.div>
@@ -1761,7 +1761,7 @@ export function AddMemoryView({
                   whileTap={{ scale: 0.95 }}
                 >
                   <Button
-                    className="bg-white/5 hover:bg-white/10 border-white/10 text-white w-full sm:w-auto"
+                    className="bg-white/5 hover:bg-white/10 border-white/10 text-foreground dark:text-white w-full sm:w-auto"
                     onClick={() => {
                       setShowCreateProjectDialog(false);
                       setNewProjectName("");
@@ -1778,7 +1778,7 @@ export function AddMemoryView({
                   whileTap={{ scale: 0.95 }}
                 >
                   <Button
-                    className="bg-white/10 hover:bg-white/20 text-white border-white/20 w-full sm:w-auto"
+                    className="bg-white/10 hover:bg-white/20 text-foreground dark:text-white border-white/20 w-full sm:w-auto"
                     disabled={
                       createProjectMutation.isPending || !newProjectName.trim()
                     }
@@ -1824,14 +1824,14 @@ export function AddMemoryExpandedView() {
         className="space-y-6"
         initial={{ opacity: 0, y: 10 }}
       >
-        <p className="text-sm text-white/70">
+        <p className="text-sm text-foreground dark:text-white/70">
           Save any webpage, article, or file to your memory
         </p>
 
         <div className="flex flex-wrap gap-2">
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+              className="bg-white/10 hover:bg-white/20 text-foreground dark:text-white border-white/20"
               onClick={() => handleOpenDialog("note")}
               size="sm"
               variant="outline"
@@ -1843,7 +1843,7 @@ export function AddMemoryExpandedView() {
 
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+              className="bg-white/10 hover:bg-white/20 text-foreground dark:text-white border-white/20"
               onClick={() => handleOpenDialog("link")}
               size="sm"
               variant="outline"
@@ -1855,7 +1855,7 @@ export function AddMemoryExpandedView() {
 
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+              className="bg-white/10 hover:bg-white/20 text-foreground dark:text-white border-white/20"
               onClick={() => handleOpenDialog("file")}
               size="sm"
               variant="outline"
@@ -1867,7 +1867,7 @@ export function AddMemoryExpandedView() {
 
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+              className="bg-white/10 hover:bg-white/20 text-foreground dark:text-white border-white/20"
               onClick={() => handleOpenDialog("connect")}
               size="sm"
               variant="outline"
@@ -1879,7 +1879,7 @@ export function AddMemoryExpandedView() {
 
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+              className="bg-white/10 hover:bg-white/20 text-foreground dark:text-white border-white/20"
               onClick={() => handleOpenDialog("repository")}
               size="sm"
               variant="outline"

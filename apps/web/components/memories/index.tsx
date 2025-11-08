@@ -70,8 +70,11 @@ export const stripMarkdown = (input: string): string => {
     // Bold/italic **text** *text* __text__ _text_
     text = text.replace(/(\*\*|__)(.*?)\1/g, "$2")
     text = text.replace(/(\*|_)(.*?)\1/g, "$2")
-    // Headings starting with #
-    text = text.replace(/^#{1,6}\s*/gm, "")
+    // Headings starting with # - AGGRESSIVE REMOVAL
+    text = text.replace(/^#+\s*/gm, "")       // Remove # at start of lines (any count)
+    text = text.replace(/#+\s+/g, " ")         // Replace # followed by space with just space
+    text = text.replace(/^#+/gm, "")           // Remove any remaining # at start of lines
+    text = text.replace(/#/g, "")              // Remove ALL remaining # characters
     // Blockquotes >
     text = text.replace(/^>\s?/gm, "")
     // Lists (-, *, +, 1.)
@@ -114,7 +117,25 @@ export const getDocumentSnippet = (document: DocumentWithMemories): string | nul
     ].filter(Boolean) as string[]
 
     if (candidates.length === 0) return null
-    const cleaned = stripMarkdown(candidates[0])
+
+    // DEBUG: Log para rastrear de onde vem o resumo
+    const selectedCandidate = candidates[0]
+    if (selectedCandidate.includes("##")) {
+      console.log("🔍 DEBUG - Document with ##:", {
+        title: anyDoc?.title,
+        candidateSource: selectedCandidate.substring(0, 100),
+        hasSummary: !!anyDoc?.summary,
+        hasMetadataDesc: !!metadata?.description,
+        hasRawDesc: !!raw?.description,
+        hasExtractionDesc: !!extraction?.description,
+        hasExtractionAnalysis: !!extraction?.analysis,
+        hasRawAnalysis: !!raw?.analysis,
+        hasMemory: !!firstActiveMemory,
+        hasContent: !!anyDoc?.content
+      })
+    }
+
+    const cleaned = stripMarkdown(selectedCandidate)
 
     // Remove generic heading lines like "RESUMO EXECUTIVO --" at the start
     const sanitizeHeading = (text: string): string => {
