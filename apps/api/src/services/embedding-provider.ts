@@ -5,6 +5,10 @@ import {
 	generateDeterministicEmbedding,
 	VECTOR_SIZE,
 } from "./embedding"
+import {
+	generateVoyageEmbedding,
+	isVoyageAvailable,
+} from "./voyage-provider"
 
 const embeddingModel = getGoogleModel(env.EMBEDDING_MODEL)
 
@@ -14,38 +18,54 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 		return new Array<number>(VECTOR_SIZE).fill(0)
 	}
 
-	if (!embeddingModel) {
-		return ensureVectorSize(generateDeterministicEmbedding(normalizedText))
-	}
-
-	try {
-		// Gemini API has ~36KB limit. Truncate if needed to prevent errors
-		const maxBytes = 30000 // Safety margin below 36KB limit
-		const textBytes = Buffer.byteLength(normalizedText, "utf8")
-		const safeText =
-			textBytes > maxBytes
-				? normalizedText.slice(
-						0,
-						Math.floor((normalizedText.length * maxBytes) / textBytes),
-					)
-				: normalizedText
-
-		const result = await embeddingModel.embedContent({
-			content: {
-				parts: [{ text: safeText }],
-			},
-		})
-		const values = result?.embedding?.values
-		if (Array.isArray(values) && values.length > 0) {
-			return ensureVectorSize(values, VECTOR_SIZE)
+	// Priority 1: Try Voyage AI (best quality, 100M tokens/month free)
+	if (isVoyageAvailable()) {
+		try {
+			const embedding = await generateVoyageEmbedding(normalizedText, {
+				inputType: "document",
+				truncation: true,
+			})
+			return embedding
+		} catch (error) {
+			console.warn(
+				"[embedding] Voyage AI failed, falling back to Gemini",
+				error instanceof Error ? error.message : error
+			)
 		}
-	} catch (error) {
-		console.warn(
-			"Embedding provider failed, falling back to deterministic vector",
-			error,
-		)
 	}
 
+	// Priority 2: Try Gemini (fallback)
+	if (embeddingModel) {
+		try {
+			// Gemini API has ~36KB limit. Truncate if needed to prevent errors
+			const maxBytes = 30000 // Safety margin below 36KB limit
+			const textBytes = Buffer.byteLength(normalizedText, "utf8")
+			const safeText =
+				textBytes > maxBytes
+					? normalizedText.slice(
+							0,
+							Math.floor((normalizedText.length * maxBytes) / textBytes),
+						)
+					: normalizedText
+
+			const result = await embeddingModel.embedContent({
+				content: {
+					parts: [{ text: safeText }],
+				},
+			})
+			const values = result?.embedding?.values
+			if (Array.isArray(values) && values.length > 0) {
+				return ensureVectorSize(values, VECTOR_SIZE)
+			}
+		} catch (error) {
+			console.warn(
+				"[embedding] Gemini failed, falling back to deterministic vector",
+				error instanceof Error ? error.message : error
+			)
+		}
+	}
+
+	// Priority 3: Deterministic fallback (always works)
 	return ensureVectorSize(generateDeterministicEmbedding(normalizedText))
 }
 

@@ -571,7 +571,75 @@ export async function processDocument(input: ProcessDocumentInput) {
         );
 
         // Validate and potentially truncate preview_image if too large
-        let previewImage = preview?.url ?? null;
+        // Priority for preview images (NEVER use SVG placeholders):
+        // 1. Thumbnail URL from extraction (e.g. YouTube thumbnail)
+        // 2. Generated preview from PreviewGenerator (only if NOT SVG)
+        // 3. Existing preview from database (only if NOT SVG)
+        // 4. NULL (no preview) if all above are SVG or unavailable
+        let previewImage: string | null = null;
+
+        // Priority 1: Check if extraction has a thumbnail URL (e.g. from YouTube)
+        const extractionMeta = extraction?.extractionMetadata as Record<string, unknown> | null | undefined;
+        const thumbnailUrl = typeof extractionMeta?.thumbnailUrl === 'string'
+          ? extractionMeta.thumbnailUrl
+          : null;
+
+        if (thumbnailUrl) {
+          console.log("[ingestion.ts] Using thumbnail URL from extraction", {
+            documentId: input.documentId,
+            thumbnailUrl: thumbnailUrl.substring(0, 100) + '...',
+          });
+          previewImage = thumbnailUrl;
+        }
+        // Priority 2: Use generated preview ONLY if it's NOT an SVG placeholder
+        else if (preview?.url && !preview.url.includes('data:image/svg+xml')) {
+          console.log("[ingestion.ts] Using generated preview (not SVG)", {
+            documentId: input.documentId,
+            previewLength: preview.url.length,
+          });
+          previewImage = preview.url;
+        }
+        // Priority 3: Try to preserve existing preview from database ONLY if it's NOT SVG
+        else {
+          try {
+            const { data: currentDoc } = await supabaseAdmin
+              .from("documents")
+              .select("preview_image")
+              .eq("id", input.documentId)
+              .single();
+
+            const existingPreview = typeof currentDoc?.preview_image === "string"
+              ? currentDoc.preview_image
+              : null;
+
+            // Only preserve if it exists AND is NOT an SVG placeholder
+            if (existingPreview && !existingPreview.includes('data:image/svg+xml')) {
+              console.log("[ingestion.ts] Preserving existing preview_image from database (not SVG)", {
+                documentId: input.documentId,
+                existingPreviewLength: existingPreview.length,
+              });
+              previewImage = existingPreview;
+            } else if (existingPreview?.includes('data:image/svg+xml')) {
+              console.log("[ingestion.ts] Skipping SVG placeholder from database", {
+                documentId: input.documentId,
+              });
+            }
+          } catch (error) {
+            console.warn("[ingestion.ts] Failed to fetch current document for preview preservation", {
+              documentId: input.documentId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
+
+        // Final safety check: NEVER save SVG placeholders
+        if (previewImage?.includes('data:image/svg+xml')) {
+          console.warn("[ingestion.ts] Blocked SVG placeholder from being saved", {
+            documentId: input.documentId,
+          });
+          previewImage = null;
+        }
+
         if (previewImage && previewImage.length > 1000000) {
           // > 1MB
           console.warn("[ingestion.ts] Preview image too large, truncating", {
@@ -598,13 +666,13 @@ export async function processDocument(input: ProcessDocumentInput) {
         const processedMetadata = isJsonRecord(processed?.metadata)
           ? (processed?.metadata as JsonRecord)
           : null;
-        const extractionMetadata = isJsonRecord(extraction?.extractionMetadata)
+        const extractionMetadataForMerge = isJsonRecord(extraction?.extractionMetadata)
           ? (extraction?.extractionMetadata as JsonRecord)
           : null;
 
         const mergedMetadataRaw = mergeRecords(
           existingMetadata,
-          extractionMetadata,
+          extractionMetadataForMerge,
           processedMetadata,
         );
 

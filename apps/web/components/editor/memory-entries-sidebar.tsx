@@ -367,14 +367,14 @@ export function MemoryEntriesSidebar({
     return `https://www.youtube.com/embed/${id}`;
   };
 
-  type DocumentPreviewData =
-    | {
-        kind: "video";
-        label: string;
-        thumbnail?: string;
-        url?: string;
-        embedUrl?: string;
-      }
+type DocumentPreviewData =
+  | {
+      kind: "video";
+      label: string;
+      thumbnail?: string;
+      url?: string;
+      embedUrl?: string;
+    }
     | {
         kind: "image";
         label: string;
@@ -383,10 +383,43 @@ export function MemoryEntriesSidebar({
       }
     | {
         kind: "link";
-        label: string;
-        url: string;
-        thumbnail?: string;
-      };
+      label: string;
+      url: string;
+      thumbnail?: string;
+    };
+
+const isInlineSvgDataUrl = (value?: string | null): boolean => {
+  if (!value) return false;
+  return value.trim().toLowerCase().startsWith('data:image/svg+xml');
+};
+
+const previewsEqual = (
+  a: DocumentPreviewData | null,
+  b: DocumentPreviewData | null,
+): boolean => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.kind !== b.kind) return false;
+  if (a.label !== b.label) return false;
+  const thumbA = 'thumbnail' in a ? a.thumbnail ?? '' : '';
+  const thumbB = 'thumbnail' in b ? b.thumbnail ?? '' : '';
+  if (thumbA !== thumbB) return false;
+  const urlA = 'url' in a ? a.url ?? '' : '';
+  const urlB = 'url' in b ? b.url ?? '' : '';
+  if (urlA !== urlB) return false;
+  const embedA = 'kind' in a && a.kind === 'video' ? a.embedUrl ?? '' : '';
+  const embedB = 'kind' in b && b.kind === 'video' ? b.embedUrl ?? '' : '';
+  return embedA === embedB;
+};
+
+const PROCESSING_STATUSES = new Set([
+  'queued',
+  'fetching',
+  'extracting',
+  'chunking',
+  'embedding',
+  'processing',
+]);
 
   const documentPreview = useMemo<DocumentPreviewData | null>(() => {
     if (!document) return null;
@@ -420,6 +453,19 @@ export function MemoryEntriesSidebar({
       safeHttpUrl((metadata as any)?.sourceUrl) ??
       safeHttpUrl(document.url) ??
       safeHttpUrl(youtube?.url);
+
+    const documentPreviewImage = (() => {
+      const rawPreview = (document as any)?.previewImage ?? (document as any)?.preview_image;
+      if (typeof rawPreview !== 'string') return undefined;
+      const trimmed = rawPreview.trim();
+      if (!trimmed) return undefined;
+      if (isInlineSvgDataUrl(trimmed)) return undefined;
+      if (trimmed.startsWith('data:image/')) return trimmed;
+      const resolved = safeHttpUrl(trimmed, originalUrl);
+      if (!resolved) return undefined;
+      if (resolved.toLowerCase().endsWith('.svg')) return undefined;
+      return resolved;
+    })();
 
     // No special-casing by domain for main thumbnail
 
@@ -456,7 +502,9 @@ export function MemoryEntriesSidebar({
       const out: string[] = [];
       for (const u of arr) {
         const s = safeHttpUrl(u as string | undefined, originalUrl);
-        if (s && !out.includes(s)) out.push(s);
+        if (!s) continue;
+        if (s.toLowerCase().startsWith('data:image/svg+xml')) continue;
+        if (!out.includes(s)) out.push(s);
       }
       return out;
     })();
@@ -473,6 +521,7 @@ export function MemoryEntriesSidebar({
       if (!u) return true;
       const s = u.toLowerCase();
       return (
+        s.startsWith('data:image/svg+xml') ||
         s.endsWith('.svg') ||
         s.includes('badge') ||
         s.includes('shields') ||
@@ -503,9 +552,9 @@ export function MemoryEntriesSidebar({
     };
 
     const preferredGitHubOg = isGitHubHost(originalUrl)
-      ? [firecrawlOgImage, metadataImage, rawImage, rawDirectImage].find(isGitHubOpenGraph)
+      ? [documentPreviewImage, firecrawlOgImage, metadataImage, rawImage, rawDirectImage].find(isGitHubOpenGraph)
       : undefined;
-    const ordered = [rawImage, firecrawlOgImage, rawDirectImage, metadataImage, preferredFromExtracted, youtubeFallback].filter(Boolean) as string[];
+    const ordered = [documentPreviewImage, rawImage, firecrawlOgImage, rawDirectImage, metadataImage, preferredFromExtracted, youtubeFallback].filter(Boolean) as string[];
     const filtered = ordered.filter((u) => !isSvgOrBadge(u) && !isDisallowedBadgeDomain(u));
     const finalThumbnail = preferredGitHubOg || filtered[0] || ordered.find(isGitHubOpenGraph) || metadataImage || youtubeFallback;
 
@@ -547,6 +596,56 @@ export function MemoryEntriesSidebar({
     return null;
   }, [document]);
 
+  const sanitizedDocumentPreview = useMemo<DocumentPreviewData | null>(() => {
+    if (!documentPreview) return null;
+    if (
+      documentPreview.kind !== 'link' &&
+      documentPreview.thumbnail &&
+      isInlineSvgDataUrl(documentPreview.thumbnail)
+    ) {
+      if (documentPreview.kind === 'video') {
+        const fallback = getYouTubeThumbnail(documentPreview.url ?? document?.url);
+        if (fallback) {
+          return { ...documentPreview, thumbnail: fallback };
+        }
+      }
+      return null;
+    }
+    if (
+      documentPreview.kind === 'link' &&
+      documentPreview.thumbnail &&
+      isInlineSvgDataUrl(documentPreview.thumbnail)
+    ) {
+      return { ...documentPreview, thumbnail: undefined };
+    }
+    return documentPreview;
+  }, [documentPreview, document?.url]);
+
+  const isProcessing = document?.status
+    ? PROCESSING_STATUSES.has(String(document.status).toLowerCase())
+    : false;
+
+  const [stickyPreview, setStickyPreview] = useState<DocumentPreviewData | null>(null);
+
+  useEffect(() => {
+    setStickyPreview(null);
+  }, [document?.id]);
+
+  useEffect(() => {
+    if (!isProcessing) {
+      setStickyPreview(null);
+      return;
+    }
+    if (!sanitizedDocumentPreview) return;
+    setStickyPreview((current) =>
+      previewsEqual(current, sanitizedDocumentPreview) ? current : sanitizedDocumentPreview,
+    );
+  }, [isProcessing, sanitizedDocumentPreview]);
+
+  const previewToRender = isProcessing
+    ? stickyPreview ?? sanitizedDocumentPreview
+    : sanitizedDocumentPreview;
+
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
   useEffect(() => {
@@ -573,6 +672,7 @@ export function MemoryEntriesSidebar({
       const s = safeHttpUrl(u as string | undefined, baseUrl);
       if (!s) return;
       if (s.toLowerCase().endsWith('.svg')) return;
+      if (s.toLowerCase().startsWith('data:image/svg+xml')) return;
       if (s.toLowerCase().includes('badge') || s.toLowerCase().includes('shields')) return;
       if (isDisallowedBadgeDomain(s)) return;
       if (!list.includes(s)) list.push(s);
@@ -590,12 +690,12 @@ export function MemoryEntriesSidebar({
     }
 
     // Remove the main preview thumbnail to avoid duplication
-    const mainThumb = documentPreview && 'thumbnail' in documentPreview ? documentPreview.thumbnail : undefined;
+    const mainThumb = previewToRender && 'thumbnail' in previewToRender ? previewToRender.thumbnail : undefined;
     const filtered = list.filter((u) => u !== mainThumb);
 
     // Cap to 4 thumbnails
     return filtered.slice(0, 4);
-  }, [document, documentPreview]);
+  }, [document, previewToRender]);
 
   // Get status badge
   const getStatusBadge = (memory: MemoryEntry) => {
@@ -662,32 +762,32 @@ export function MemoryEntriesSidebar({
       </div>
 
       {/* Thumbnail/Preview */}
-      {documentPreview && documentPreview.kind === "video" && (
+      {previewToRender && previewToRender.kind === "video" && (
         <div className={thumbnailMargin}>
           <div className="relative w-full overflow-hidden rounded-lg border border-border/80 bg-card">
-            {isVideoPlaying && documentPreview.embedUrl ? (
+            {isVideoPlaying && previewToRender.embedUrl ? (
               <iframe
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
                 className="aspect-video w-full"
                 src={
-                  documentPreview.embedUrl.includes("?")
-                    ? `${documentPreview.embedUrl}&autoplay=1`
-                    : `${documentPreview.embedUrl}?autoplay=1`
+                  previewToRender.embedUrl.includes("?")
+                    ? `${previewToRender.embedUrl}&autoplay=1`
+                    : `${previewToRender.embedUrl}?autoplay=1`
                 }
-                title={document?.title || documentPreview.label}
+                title={document?.title || previewToRender.label}
               />
             ) : (
               <button
                 className="group relative block w-full overflow-hidden"
                 onClick={() => {
-                  if (documentPreview.embedUrl) {
+                  if (previewToRender.embedUrl) {
                     setIsVideoPlaying(true);
                     return;
                   }
-                  if (documentPreview.url && typeof window !== "undefined") {
+                  if (previewToRender.url && typeof window !== "undefined") {
                     window.open(
-                      documentPreview.url,
+                      previewToRender.url,
                       "_blank",
                       "noopener,noreferrer",
                     );
@@ -695,15 +795,15 @@ export function MemoryEntriesSidebar({
                 }}
                 type="button"
               >
-                {documentPreview.thumbnail ? (
+                {previewToRender.thumbnail ? (
                   <img
                     alt={document?.title || "Video preview"}
                     className="aspect-video w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
-                    src={documentPreview.thumbnail}
+                    src={previewToRender.thumbnail}
                   />
                 ) : (
                   <div className="aspect-video flex items-center justify-center text-sm text-muted-foreground">
-                    {documentPreview.label}
+                    {previewToRender.label}
                   </div>
                 )}
                 <span className="absolute inset-0 flex items-center justify-center">
@@ -717,22 +817,22 @@ export function MemoryEntriesSidebar({
         </div>
       )}
 
-      {documentPreview &&
-        documentPreview.kind !== "video" &&
-        (documentPreview.thumbnail || documentPreview.url) && (
+      {previewToRender &&
+        previewToRender.kind !== "video" &&
+        (previewToRender.thumbnail || previewToRender.url) && (
           <div className={thumbnailMargin}>
             {(() => {
-              const previewLink = documentPreview.url ?? document?.url ?? null;
-              const content = documentPreview.thumbnail ? (
+              const previewLink = previewToRender.url ?? document?.url ?? null;
+              const content = previewToRender.thumbnail ? (
                 <img
                   alt={document?.title || "Document preview"}
                   className="w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
-                  src={documentPreview.thumbnail}
+                  src={previewToRender.thumbnail}
                   style={{ maxHeight: "200px" }}
                 />
               ) : (
                 <div className="flex min-h-[160px] items-center justify-center bg-muted/30 text-sm text-muted-foreground">
-                  {documentPreview.label}
+                  {previewToRender.label}
                 </div>
               );
 
@@ -748,7 +848,7 @@ export function MemoryEntriesSidebar({
                 >
                   {content}
                   <span className="absolute left-3 top-3 rounded-full bg-background/80 px-2 py-0.5 text-[11px] font-medium text-foreground shadow-sm backdrop-blur">
-                    {documentPreview.label}
+                    {previewToRender.label}
                   </span>
                 </a>
               ) : (
