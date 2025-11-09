@@ -6,7 +6,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@repo/ui/components/collapsible";
-import { Badge } from "@ui/components/badge";
 import { ScrollArea } from "@ui/components/scroll-area";
 import {
   CheckCircle2,
@@ -26,7 +25,7 @@ export function Tool({
   return (
     <Collapsible
       className={cn(
-        "rounded-lg border border-border/60 bg-muted/40 text-sm",
+        "rounded-md border border-border/30 bg-transparent text-sm",
         className,
       )}
       {...props}
@@ -49,28 +48,23 @@ export function ToolHeader({
   children,
   ...props
 }: ToolHeaderProps) {
-  const { icon: Icon, label, badgeVariant } = getStateMeta(state);
+  const { icon: Icon } = getStateMeta(state);
 
   return (
     <CollapsibleTrigger
       className={cn(
-        "flex w-full items-center justify-between gap-3 px-3 py-2 text-left",
-        "font-medium text-foreground",
+        "flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left",
+        "text-sm text-muted-foreground hover:text-foreground transition-colors",
         className,
       )}
       {...props}
     >
-      <span className="flex items-center gap-2">
-        <Icon className={cn("size-4", state === "input-streaming" && "animate-spin")}
+      <span className="flex items-center gap-1.5">
+        <Icon className={cn("size-3.5", state === "input-streaming" && "animate-spin")}
         />
-        <span>{formatToolType(type)}</span>
+        <span className="font-normal">{formatToolType(type)}</span>
       </span>
-      <span className="flex items-center gap-2">
-        <Badge variant={badgeVariant} className="text-[10px] uppercase tracking-wide">
-          {label}
-        </Badge>
-        <ChevronDown className="size-4 transition-transform data-[state=open]:rotate-180" />
-      </span>
+      <ChevronDown className="size-3.5 text-muted-foreground transition-transform data-[state=open]:rotate-180" />
       {children}
     </CollapsibleTrigger>
   );
@@ -84,13 +78,13 @@ export function ToolContent({
   return (
     <CollapsibleContent
       className={cn(
-        "overflow-hidden border-t border-border/50 bg-background/60",
+        "overflow-hidden border-t border-border/20 bg-transparent",
         className,
       )}
       {...props}
     >
       <ScrollArea className="max-h-80">
-        <div className="px-3 py-3 space-y-3 text-sm text-muted-foreground">
+        <div className="px-2 py-2 space-y-2 text-sm text-muted-foreground">
           {children}
         </div>
       </ScrollArea>
@@ -107,7 +101,7 @@ export function ToolInput({
   return (
     <div className={cn("space-y-1", className)} {...props}>
       <p className="text-xs uppercase text-muted-foreground/80">Input</p>
-      <pre className="whitespace-pre-wrap rounded-md bg-muted/80 px-3 py-2 text-xs text-foreground">
+      <pre className="whitespace-pre-wrap rounded-md bg-transparent px-3 py-2 text-xs text-foreground">
         {formatJSON(input)}
       </pre>
     </div>
@@ -134,7 +128,7 @@ export function ToolOutput({
           {errorText}
         </div>
       ) : (
-        <div className="rounded-md border border-border/50 bg-muted/80 px-3 py-2 text-xs text-foreground">
+        <div className="rounded-md border border-border/50 bg-transparent px-3 py-2 text-xs text-foreground">
           {output}
         </div>
       )}
@@ -146,13 +140,13 @@ function getStateMeta(state: ToolState) {
   switch (state) {
     case "input-streaming":
     case "input-available":
-      return { icon: Loader2, label: "Running", badgeVariant: "secondary" as const };
+      return { icon: Loader2 };
     case "output-available":
-      return { icon: CheckCircle2, label: "Completed", badgeVariant: "default" as const };
+      return { icon: CheckCircle2 };
     case "output-error":
-      return { icon: CircleAlert, label: "Error", badgeVariant: "destructive" as const };
+      return { icon: CircleAlert };
     default:
-      return { icon: Sparkles, label: state, badgeVariant: "secondary" as const };
+      return { icon: Sparkles };
   }
 }
 

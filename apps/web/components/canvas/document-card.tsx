@@ -28,7 +28,8 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { z } from "zod";
 import { getDocumentIcon } from "@/lib/document-icon";
 import { formatDate, getSourceUrl } from "../memories";
@@ -67,19 +68,38 @@ const asRecord = (value: unknown): BaseRecord | null => {
   return value as BaseRecord;
 };
 
+/**
+ * Sanitize and validate URLs for image previews
+ * Security: Prevents XSS via javascript:, data:text/html, and other malicious URLs
+ */
 const safeHttpUrl = (value: unknown, baseUrl?: string): string | undefined => {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   if (!trimmed) return undefined;
+
+  // Handle data: URLs - only allow image types
   if (trimmed.startsWith("data:")) {
-    if (trimmed.startsWith("data:image/")) {
+    // Only allow data:image/ URLs
+    if (trimmed.startsWith("data:image/svg+xml") ||
+        trimmed.startsWith("data:image/png") ||
+        trimmed.startsWith("data:image/jpeg") ||
+        trimmed.startsWith("data:image/jpg") ||
+        trimmed.startsWith("data:image/gif") ||
+        trimmed.startsWith("data:image/webp")) {
+      // Limit data URL size to prevent DoS (2MB max)
+      if (trimmed.length > 2 * 1024 * 1024) {
+        console.warn("Data URL too large, ignoring");
+        return undefined;
+      }
       return trimmed;
     }
+    // Reject any other data: URLs (text/html, application/javascript, etc.)
     return undefined;
   }
 
   try {
     const url = new URL(trimmed);
+    // Only allow http: and https: protocols (blocks javascript:, file:, etc.)
     if (url.protocol === "http:" || url.protocol === "https:") {
       return url.toString();
     }
@@ -571,19 +591,16 @@ export const DocumentCard = memo(
     return (
       <Card
         className={cn(
-          "h-full w-full p-4 transition-all cursor-pointer group relative overflow-hidden border gap-2 rounded-lg",
+          "h-full w-full p-4 cursor-pointer group relative overflow-hidden border border-border gap-2 rounded-lg bg-card",
           isDragging
-            ? "border-blue-500/50 shadow-lg shadow-blue-500/20 opacity-60"
-            : "border-white/10",
+            ? "opacity-50 pointer-events-none"
+            : "transition-all",
           className,
         )}
         onClick={handleCardClick}
-        onFocus={handlePrefetchEdit}
-        onMouseEnter={handlePrefetchEdit}
-        onTouchStart={handlePrefetchEdit}
-        style={{
-          backgroundColor: "#0f1419",
-        }}
+        onFocus={isDragging ? undefined : handlePrefetchEdit}
+        onMouseEnter={isDragging ? undefined : handlePrefetchEdit}
+        onTouchStart={isDragging ? undefined : handlePrefetchEdit}
       >
         {/* Drag handle */}
         {showDragHandle && (
@@ -698,16 +715,35 @@ export const DocumentCard = memo(
               }}
             >
               <div className="relative w-full aspect-[16/10] overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#0f1624] via-[#101c2d] to-[#161f33]" />
+                <div className="absolute inset-0 bg-gradient-to-br from-[#0f1624] via-[#101c2d] to-[#161f33] z-0" />
                 {preview.src && (
-                  <img
-                    alt={`${preview.label} preview`}
-                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                    loading="lazy"
-                    src={preview.src}
-                  />
+                  preview.src.startsWith('data:') ? (
+                    <img
+                      alt={`${preview.label} preview`}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] z-10"
+                      loading="lazy"
+                      src={preview.src}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <Image
+                      alt={`${preview.label} preview`}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] z-10"
+                      src={preview.src}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      priority={false}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                  )
                 )}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45" />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45 z-20" />
                 {preview.kind === "video" && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="rounded-full border border-white/40 bg-black/40 p-2 backdrop-blur-sm">

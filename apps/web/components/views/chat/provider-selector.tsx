@@ -78,22 +78,16 @@ export function ProviderSelector({
 
   return (
     <div className="flex items-center gap-1.5">
-      <Sparkles className="h-3 w-3 text-muted-foreground" />
       <Select
         value={selectedProvider}
         onValueChange={handleChange}
         disabled={disabled}
       >
-        <SelectTrigger className="h-6 px-2 w-[140px] bg-muted/50 hover:bg-muted border border-border rounded-md text-foreground text-xs">
+        <SelectTrigger className="h-6 px-1.5 w-fit bg-transparent hover:bg-transparent border-0 shadow-none text-muted-foreground hover:text-foreground text-xs font-normal gap-1">
           <SelectValue placeholder="Select provider">
             {currentProvider && (
-              <span className="flex items-center gap-1">
-                <span className="font-medium text-[11px]">
-                  {currentProvider.name}
-                </span>
-                <span className="text-muted-foreground text-[10px]">
-                  {currentProvider.displayName}
-                </span>
+              <span className="text-[11px]">
+                {currentProvider.displayName}
               </span>
             )}
           </SelectValue>

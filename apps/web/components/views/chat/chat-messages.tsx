@@ -644,6 +644,20 @@ function useClaudeChat({
     messagesRef.current = messagesState;
   }, [messagesState]);
 
+  // Limit messages in memory to prevent memory leaks in long conversations
+  useEffect(() => {
+    const MAX_MESSAGES_IN_MEMORY = 100;
+    if (messagesState.length > MAX_MESSAGES_IN_MEMORY) {
+      console.warn(
+        `[Chat] Message count (${messagesState.length}) exceeds limit. Trimming to last ${MAX_MESSAGES_IN_MEMORY} messages.`
+      );
+      // Keep only the most recent messages
+      const trimmed = messagesState.slice(-MAX_MESSAGES_IN_MEMORY);
+      setMessagesState(trimmed);
+      messagesRef.current = trimmed;
+    }
+  }, [messagesState]);
+
   const setMessages = useCallback(
     (
       updater:
@@ -1904,10 +1918,51 @@ export function ChatMessages() {
                     : "py-1 px-0 text-foreground",
                 )}
               >
-                {message.parts.flatMap((part: any, index) => {
-                  const partKey = `${message.id}-${index}`;
+                {(() => {
+                  // Coletar todos os tool parts
+                  const toolParts: Array<{ part: any; index: number }> = [];
+                  const textParts: Array<{ part: any; index: number }> = [];
+                  const otherParts: Array<{ part: any; index: number }> = [];
 
-                  if (isTextPart(part)) {
+                  message.parts.forEach((part: any, index) => {
+                    if (
+                      isSearchMemoriesPart(part) ||
+                      isAddMemoryPart(part) ||
+                      isGenericToolPart(part)
+                    ) {
+                      toolParts.push({ part, index });
+                    } else if (isTextPart(part)) {
+                      textParts.push({ part, index });
+                    } else {
+                      otherParts.push({ part, index });
+                    }
+                  });
+
+                  // Encontrar o último tool ativo (priorizando os que estão rodando)
+                  const getToolPriority = (part: any) => {
+                    if (isSearchMemoriesPart(part) || isAddMemoryPart(part) || isGenericToolPart(part)) {
+                      const state = part.state;
+                      // Prioridade: rodando > erro > completo
+                      if (state === "input-streaming" || state === "input-available") return 3;
+                      if (state === "output-error") return 2;
+                      if (state === "output-available") return 1;
+                    }
+                    return 0;
+                  };
+
+                  const activeTool = toolParts.length > 0
+                    ? toolParts.reduce((latest, current) => {
+                        const currentPriority = getToolPriority(current.part);
+                        const latestPriority = getToolPriority(latest.part);
+                        if (currentPriority > latestPriority) return current;
+                        if (currentPriority === latestPriority && current.index > latest.index) return current;
+                        return latest;
+                      })
+                    : null;
+
+                  // Renderizar texto primeiro
+                  const textElements = textParts.flatMap(({ part, index }) => {
+                    const partKey = `${message.id}-${index}`;
                     const segments = splitTextIntoSegments(part.text ?? "");
                     return segments.map((segment, segmentIndex) => {
                       const segmentKey = `${partKey}-text-${segmentIndex}`;
@@ -1932,182 +1987,202 @@ export function ChatMessages() {
                         </Response>
                       );
                     });
-                  }
+                  });
 
-                  if (isSearchMemoriesPart(part)) {
-                    const isSuccess = part.state === "output-available";
-                    const countValue = isSuccess ? part.output?.count : undefined;
-                    const foundCount =
-                      typeof countValue === "number"
-                        ? countValue
-                        : typeof countValue === "string"
-                          ? Number(countValue)
-                          : undefined;
-                    const results = isSuccess ? toMemoryResults(part.output?.results) : [];
+                  // Renderizar apenas o tool ativo
+                  const toolElement = activeTool ? (() => {
+                    const { part, index } = activeTool;
+                    const partKey = `${message.id}-${index}`;
 
-                    return [
-                      <ToolCard
-                        key={`${partKey}-search`}
-                        type="tool-search_memories"
-                        state={part.state}
-                        durationMs={part.durationMs}
-                        loadingMessage="Procurando memórias relevantes..."
-                        errorMessage={part.error ?? "Erro ao buscar memórias"}
-                      >
-                        {isSuccess ? (
-                          <ExpandableMemories
-                            foundCount={foundCount ?? results.length}
-                            results={results}
-                          />
-                        ) : null}
-                      </ToolCard>,
-                    ];
-                  }
+                    if (isSearchMemoriesPart(part)) {
+                      const isSuccess = part.state === "output-available";
+                      const countValue = isSuccess ? part.output?.count : undefined;
+                      const foundCount =
+                        typeof countValue === "number"
+                          ? countValue
+                          : typeof countValue === "string"
+                            ? Number(countValue)
+                            : undefined;
+                      const results = isSuccess ? toMemoryResults(part.output?.results) : [];
 
-                  if (isAddMemoryPart(part)) {
-                    const isSuccess = part.state === "output-available";
-                    return [
-                      <ToolCard
-                        key={`${partKey}-add`}
-                        type="tool-add_memory"
-                        state={part.state}
-                        durationMs={part.durationMs}
-                        loadingMessage="Salvando memória..."
-                        errorMessage={part.error ?? "Não foi possível salvar a memória"}
-                        successMessage={
-                          <span className="text-xs text-muted-foreground">
-                            Memória adicionada com sucesso
-                          </span>
-                        }
-                      />,
-                    ];
-                  }
-
-                  if (isGenericToolPart(part)) {
-                    const outputSegments = part.outputText
-                      ? splitTextIntoSegments(part.outputText)
-                      : [];
-                    const isSuccess = part.state === "output-available";
-
-                    return [
-                      <ToolCard
-                        key={`${partKey}-tool`}
-                        type={buildToolType(part.toolName, part.toolUseId)}
-                        state={part.state}
-                        durationMs={part.durationMs}
-                        loadingMessage="Executando..."
-                        errorMessage={
-                          part.error ??
-                          (typeof part.outputText === "string" && part.outputText.trim().length > 0
-                            ? part.outputText
-                            : undefined)
-                        }
-                        successMessage={
-                          isSuccess && outputSegments.length === 0 ? (
-                            <span className="text-xs text-muted-foreground">
-                              Ferramenta executada com sucesso
-                            </span>
-                          ) : null
-                        }
-                      >
-                        {isSuccess && outputSegments.length > 0
-                          ? outputSegments.map((segment, outputIndex) => {
-                              const segmentKey = `${partKey}-tool-output-${outputIndex}`;
-                              if (segment.type === "code") {
-                                return (
-                                  <CodeBlock
-                                    className="mt-2"
-                                    code={segment.content.trimEnd()}
-                                    key={segmentKey}
-                                    language={segment.language ?? undefined}
-                                  >
-                                    <CodeBlockCopyButton className="h-7 px-2 text-[11px]" />
-                                  </CodeBlock>
-                                );
-                              }
-                              if (segment.content.trim().length === 0) {
-                                return <div className="h-2" key={segmentKey} />;
-                              }
-                              return (
-                                <Response key={segmentKey}>
-                                  <Streamdown>{segment.content}</Streamdown>
-                                </Response>
-                              );
-                            })
-                          : null}
-                      </ToolCard>,
-                    ];
-                  }
-
-                  if (isMentionedDocsPart(part)) {
-                    if (
-                      !Array.isArray(part.docIds) ||
-                      part.docIds.length === 0
-                    ) {
-                      return [];
+                      return (
+                        <ToolCard
+                          key={`${partKey}-search`}
+                          type="tool-search_memories"
+                          state={part.state}
+                          durationMs={part.durationMs}
+                          loadingMessage="Procurando memórias relevantes..."
+                          errorMessage={part.error ?? "Erro ao buscar memórias"}
+                        >
+                          {isSuccess ? (
+                            <ExpandableMemories
+                              foundCount={foundCount ?? results.length}
+                              results={results}
+                            />
+                          ) : null}
+                        </ToolCard>
+                      );
                     }
-                    const mentionIds = Array.from(new Set(part.docIds));
-                    return [
-                      <div
-                        className="flex flex-col gap-1 text-xs text-muted-foreground"
-                        key={`${partKey}-mentions`}
-                      >
-                        <span className="uppercase tracking-wide text-[10px] text-muted-foreground/60">
-                          Documentos mencionados
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {mentionIds.map((id) => {
-                            const doc = canvasDocMap.get(id);
-                            const label = doc?.title || id;
-                            const preview = doc ? getPreviewUrl(doc) : null;
-                            const href =
-                              doc &&
-                              typeof doc.url === "string" &&
-                              doc.url.length > 0
-                                ? doc.url
-                                : undefined;
-                            const content = (
-                              <>
-                                {preview ? (
-                                  <img
-                                    alt=""
-                                    className="w-5 h-5 rounded-sm object-cover"
-                                    src={preview}
-                                  />
-                                ) : (
-                                  <span className="w-5 h-5 rounded-sm bg-muted inline-block" />
-                                )}
-                                <span className="truncate max-w-[160px]">
-                                  @{label}
-                                </span>
-                              </>
-                            );
-                            return href ? (
-                              <a
-                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-muted/50 text-foreground hover:bg-muted transition"
-                                href={href}
-                                key={id}
-                                rel="noreferrer"
-                                target="_blank"
-                              >
-                                {content}
-                              </a>
-                            ) : (
-                              <div
-                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-muted/50 text-foreground"
-                                key={id}
-                              >
-                                {content}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>,
-                    ];
+
+                    if (isAddMemoryPart(part)) {
+                      const isSuccess = part.state === "output-available";
+                      return (
+                        <ToolCard
+                          key={`${partKey}-add`}
+                          type="tool-add_memory"
+                          state={part.state}
+                          durationMs={part.durationMs}
+                          loadingMessage="Salvando memória..."
+                          errorMessage={part.error ?? "Não foi possível salvar a memória"}
+                          successMessage={
+                            <span className="text-xs text-muted-foreground">
+                              Memória adicionada com sucesso
+                            </span>
+                          }
+                        />
+                      );
+                    }
+
+                    if (isGenericToolPart(part)) {
+                      const outputSegments = part.outputText
+                        ? splitTextIntoSegments(part.outputText)
+                        : [];
+                      const isSuccess = part.state === "output-available";
+
+                      return (
+                        <ToolCard
+                          key={`${partKey}-tool`}
+                          type={buildToolType(part.toolName, part.toolUseId)}
+                          state={part.state}
+                          durationMs={part.durationMs}
+                          loadingMessage="Executando..."
+                          errorMessage={
+                            part.error ??
+                            (typeof part.outputText === "string" && part.outputText.trim().length > 0
+                              ? part.outputText
+                              : undefined)
+                          }
+                          successMessage={
+                            isSuccess && outputSegments.length === 0 ? (
+                              <span className="text-xs text-muted-foreground">
+                                Ferramenta executada com sucesso
+                              </span>
+                            ) : null
+                          }
+                        >
+                          {isSuccess && outputSegments.length > 0
+                            ? outputSegments.map((segment, outputIndex) => {
+                                const segmentKey = `${partKey}-tool-output-${outputIndex}`;
+                                if (segment.type === "code") {
+                                  return (
+                                    <CodeBlock
+                                      className="mt-2"
+                                      code={segment.content.trimEnd()}
+                                      key={segmentKey}
+                                      language={segment.language ?? undefined}
+                                    >
+                                      <CodeBlockCopyButton className="h-7 px-2 text-[11px]" />
+                                    </CodeBlock>
+                                  );
+                                }
+                                if (segment.content.trim().length === 0) {
+                                  return <div className="h-2" key={segmentKey} />;
+                                }
+                                return (
+                                  <Response key={segmentKey}>
+                                    <Streamdown>{segment.content}</Streamdown>
+                                  </Response>
+                                );
+                              })
+                            : null}
+                        </ToolCard>
+                      );
+                    }
+
+                    return null;
+                  })() : null;
+
+                  // Renderizar outros parts
+                  const otherElements = otherParts.flatMap(({ part, index }) => {
+                    const partKey = `${message.id}-${index}`;
+
+                    if (isMentionedDocsPart(part)) {
+                      if (
+                        !Array.isArray(part.docIds) ||
+                        part.docIds.length === 0
+                      ) {
+                        return [];
+                      }
+                      const mentionIds = Array.from(new Set(part.docIds));
+                      return [
+                        <div
+                          className="flex flex-col gap-1 text-xs text-muted-foreground"
+                          key={`${partKey}-mentions`}
+                        >
+                          <span className="uppercase tracking-wide text-[10px] text-muted-foreground/60">
+                            Documentos mencionados
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {mentionIds.map((id) => {
+                              const doc = canvasDocMap.get(id);
+                              const label = doc?.title || id;
+                              const preview = doc ? getPreviewUrl(doc) : null;
+                              const href =
+                                doc &&
+                                typeof doc.url === "string" &&
+                                doc.url.length > 0
+                                  ? doc.url
+                                  : undefined;
+                              const content = (
+                                <>
+                                  {preview ? (
+                                    <img
+                                      alt=""
+                                      className="w-5 h-5 rounded-sm object-cover"
+                                      src={preview}
+                                    />
+                                  ) : (
+                                    <span className="w-5 h-5 rounded-sm bg-muted inline-block" />
+                                  )}
+                                  <span className="truncate max-w-[160px]">
+                                    @{label}
+                                  </span>
+                                </>
+                              );
+                              return href ? (
+                                <a
+                                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-muted/50 text-foreground hover:bg-muted transition"
+                                  href={href}
+                                  key={id}
+                                  rel="noreferrer"
+                                  target="_blank"
+                                >
+                                  {content}
+                                </a>
+                              ) : (
+                                <div
+                                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-muted/50 text-foreground"
+                                  key={id}
+                                >
+                                  {content}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>,
+                      ];
                   }
 
                   return [];
-                })}
+                  });
+
+                  // Retornar todos os elementos: texto, tool ativo, e outros
+                  return [
+                    ...textElements,
+                    ...(toolElement ? [toolElement] : []),
+                    ...otherElements,
+                  ];
+                })()}
 
               </div>
               {message.role === "assistant" && (
@@ -2185,7 +2260,7 @@ export function ChatMessages() {
           className={cn(
             "rounded-full w-fit mx-auto shadow-md z-10 absolute inset-x-0 bottom-4 flex justify-center",
             "transition-all duration-200 ease-out",
-            "!text-black",
+            "!text-black h-7 px-3 text-xs",
             isFarFromBottom
               ? "opacity-100 scale-100 pointer-events-auto"
               : "opacity-0 scale-95 pointer-events-none",
@@ -2194,7 +2269,6 @@ export function ChatMessages() {
             enableAutoScroll();
             scrollToBottom("smooth");
           }}
-          size="sm"
           type="button"
           variant="default"
         >
@@ -2262,7 +2336,7 @@ export function ChatMessages() {
               <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               <span className="text-[11px] text-primary font-medium">
                 {(() => {
-                  const projectData = projects.find((p) => p.id === project);
+                  const projectData = projects.find((p) => p.containerTag === project);
                   const displayName = projectData?.name || project;
                   // Remove prefixos técnicos como "sm_project_"
                   return displayName.replace(/^sm_project_/i, "");
@@ -2352,17 +2426,17 @@ export function ChatMessages() {
           {/* Submit button */}
           <InputGroupAddon align="inline-end" className="gap-1 bottom-0">
             <InputGroupButton
-              className="h-8 w-9 p-0 bg-primary hover:bg-primary/90 text-primary-foreground border border-primary rounded-md"
-              disabled={status === "submitted"}
+              className="h-8 w-9 p-0 bg-primary hover:bg-primary/90 text-primary-foreground border border-primary rounded-md disabled:opacity-50"
+              disabled={status === "submitted" || status === "streaming"}
               size="sm"
               type="submit"
             >
               {status === "ready" ? (
-                <ArrowUp className="size-3.5" />
-              ) : status === "submitted" ? (
-                <Spinner className="size-3.5" />
+                <ArrowUp className="size-3.5 text-primary-foreground" />
+              ) : status === "submitted" || status === "streaming" ? (
+                <Spinner className="size-3.5 text-primary-foreground" />
               ) : (
-                <X className="size-3.5" />
+                <X className="size-3.5 text-primary-foreground" />
               )}
             </InputGroupButton>
           </InputGroupAddon>

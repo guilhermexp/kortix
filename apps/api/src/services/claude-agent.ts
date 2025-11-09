@@ -294,7 +294,20 @@ export async function executeClaudeAgent(
     `(${providerId})`,
   );
 
+  // Validate baseURL against whitelist to prevent credential leakage
+  const ALLOWED_BASE_URLS = [
+    "https://api.anthropic.com",
+    "https://api.z.ai/api/anthropic",
+    "https://api.minimax.io/anthropic",
+  ];
+
+  if (!ALLOWED_BASE_URLS.includes(providerConfig.baseURL)) {
+    throw new Error(`Invalid provider base URL: ${providerConfig.baseURL}`);
+  }
+
   // Apply provider-specific configuration to environment
+  // Note: This modifies global state. In production, consider using a per-request
+  // Anthropic client instance instead of environment variables.
   process.env.ANTHROPIC_API_KEY = providerConfig.apiKey;
   process.env.ANTHROPIC_BASE_URL = providerConfig.baseURL;
 

@@ -249,15 +249,17 @@ function Menu({
       {!isMobile && (
         <LayoutGroup>
           <div
-            className="fixed px-4 py-2 top-0 left-0 pointer-events-none z-[60] flex justify-center items-start"
-            style={{ right: chatRightOffset }}
+            className="fixed px-4 py-1.5 top-0 left-0 pointer-events-none z-[60] flex justify-center items-start transition-all duration-200"
+            style={{ 
+              right: isChatPanelOpen ? (chatRightOffset + 128) : chatRightOffset,
+            }}
           >
             <motion.nav
               animate={{
                 width: menuWidth,
                 scale: 1,
               }}
-              className="pointer-events-auto group relative flex text-sm font-medium flex-row items-center overflow-hidden rounded-xl shadow-2xl bg-background border border-border"
+              className={`pointer-events-auto group relative flex text-sm font-medium flex-row items-center overflow-hidden rounded-xl ${isCollapsedToIcons ? "bg-transparent border-0 shadow-none" : "shadow-2xl bg-background border border-border"}`}
               id={id}
               initial={{ width: menuWidth, scale: 0.95 }}
               layout
@@ -281,7 +283,7 @@ function Menu({
             >
               {/* Menu content */}
               <motion.div
-                className="relative z-20 flex flex-row gap-6 w-full"
+                className="relative z-20 flex flex-row gap-6 w-full pointer-events-auto"
                 layout
               >
                 <AnimatePresence
@@ -294,7 +296,7 @@ function Menu({
                       animate={{
                         opacity: 1,
                       }}
-                      className={`w-full flex flex-row ${isCollapsedToIcons ? "gap-1 px-3 py-2" : "gap-2 px-4 py-2"} justify-center items-center`}
+                      className={`w-full flex flex-row ${isCollapsedToIcons ? "gap-1 px-1 py-1.5" : "gap-2 px-4 py-1.5"} justify-center items-center`}
                       exit={{
                         opacity: 0,
                         transition: {
@@ -333,7 +335,7 @@ function Menu({
                                 },
                               }}
                               aria-label={item.text}
-                              className={`flex items-center text-foreground/80 transition-colors duration-100 hover:text-foreground cursor-pointer relative ${isCollapsedToIcons ? "w-auto justify-center px-2" : "w-full px-1"}`}
+                              className={`flex items-center text-foreground/80 transition-colors duration-100 hover:text-foreground cursor-pointer relative ${isCollapsedToIcons ? "w-auto justify-center px-1" : "w-full px-1"}`}
                               id={menuItemTourIds[item.key]}
                               initial={{ opacity: 0, y: 20, scale: 0.95 }}
                               layout
@@ -436,9 +438,10 @@ function Menu({
                             delay: 0.08,
                             duration: 0.2,
                           }}
+                          className="pointer-events-auto"
                         >
                           <Button
-                            className="text-muted-foreground hover:text-foreground transition-colors duration-200"
+                            className="text-muted-foreground hover:text-foreground transition-colors duration-200 pointer-events-auto relative z-10"
                             onClick={() => {
                               setIsCollapsing(true);
                               setExpandedView(null);
@@ -660,7 +663,7 @@ function Menu({
                                 "Integrations"}
                             </HeadingH2Bold>
                             <Button
-                              className="text-foreground dark:text-white/70 hover:text-foreground dark:text-white transition-colors duration-200"
+                              className="text-foreground dark:text-white/70 hover:text-foreground dark:text-white transition-colors duration-200 pointer-events-auto relative z-10"
                               onClick={() => {
                                 setIsCollapsing(true);
                                 setExpandedView(null);

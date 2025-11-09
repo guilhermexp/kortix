@@ -142,10 +142,14 @@ export function MemoryEditClient({
 
   const onResizeStart = (event: React.MouseEvent<HTMLDivElement>) => {
     if (isMobile) return;
+    const browserDocument =
+      typeof window !== "undefined" ? window.document : null;
+    if (!browserDocument?.body) return;
+
     resizingRef.current = true;
     startXRef.current = event.clientX;
     startWidthRef.current = chatWidth;
-    document.body.style.cursor = "ew-resize";
+    browserDocument.body.style.cursor = "ew-resize";
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!resizingRef.current) return;
@@ -159,7 +163,9 @@ export function MemoryEditClient({
 
     const handleMouseUp = () => {
       resizingRef.current = false;
-      document.body.style.cursor = "";
+      if (browserDocument?.body) {
+        browserDocument.body.style.cursor = "";
+      }
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };

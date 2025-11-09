@@ -16,7 +16,7 @@ import { createScopedSupabase, supabaseAdmin } from "../supabase";
 
 // New schema (SDK session-based)
 const chatRequestSchema = z.object({
-  message: z.string().min(1), // Single user message
+  message: z.string().min(1).max(50000), // Single user message (max 50KB)
   sdkSessionId: z.string().optional(), // SDK session ID to resume (from SDK, not our DB)
   continueSession: z.boolean().optional(), // If true, continue most recent session (for sequential chat)
   conversationId: z.string().uuid().optional(), // Our DB ID for display/analytics (optional)

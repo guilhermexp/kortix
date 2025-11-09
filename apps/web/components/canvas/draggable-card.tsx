@@ -65,22 +65,9 @@ export const DraggableCard = memo(
             }
         }, [isDragging, transform, position, document.id, updateCardPosition, zoom])
 
-        // Visual snapping while dragging
-        const GRID = 20
-        const snappedTransform = (() => {
-            if (!transform) return undefined
-            const baseX = position ? position.x : 0
-            const baseY = position ? position.y : 0
-            const worldDx = (transform.x ?? 0) / (zoom || 1)
-            const worldDy = (transform.y ?? 0) / (zoom || 1)
-            const targetX = baseX + worldDx
-            const targetY = baseY + worldDy
-            const snappedTargetX = Math.round(targetX / GRID) * GRID
-            const snappedTargetY = Math.round(targetY / GRID) * GRID
-            const snappedDx = (snappedTargetX - baseX) * (zoom || 1)
-            const snappedDy = (snappedTargetY - baseY) * (zoom || 1)
-            return { x: snappedDx, y: snappedDy }
-        })()
+        // Use transform directly without snapping during drag for better responsiveness
+        // Snapping will be applied on drop
+        const snappedTransform = transform
 
         const style = {
             position: "absolute" as const,
@@ -89,7 +76,9 @@ export const DraggableCard = memo(
             width: "320px",
             transform: CSS.Translate.toString(snappedTransform ?? transform),
             zIndex: isDragging ? 1000 : 1,
-            transition: isDragging ? "none" : "transform 200ms ease",
+            transition: "none",
+            willChange: isDragging ? "transform" : "auto",
+            pointerEvents: isDragging ? "none" : "auto",
         }
 
 		return (
