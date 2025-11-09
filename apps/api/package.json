@@ -4,7 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run --hot src/index.ts",
+    "dev": "bash -c 'bun run dev:server & SERVER_PID=$!; bun run dev:worker & WORKER_PID=$!; wait $SERVER_PID $WORKER_PID'",
+    "dev:server": "bun run --hot src/index.ts",
+    "dev:worker": "bun run src/worker/ingestion-worker.ts",
     "start": "bun --expose-gc run src/index.ts",
     "test": "echo \"No tests yet for @repo/api\"",
     "ingest:worker": "bun run src/worker/ingestion-worker.ts",
