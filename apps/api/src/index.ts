@@ -1004,6 +1004,19 @@ app.post("/v3/graph/connections", async (c) => {
 // Start document timeout monitor to prevent stuck documents
 startDocumentTimeoutMonitor()
 
+// Handle uncaught exceptions and unhandled promise rejections
+process.on('uncaughtException', (error) => {
+	console.error('[FATAL] Uncaught Exception:', error)
+	console.error('Stack:', error.stack)
+	// Log but don't exit - let the process recover if possible
+})
+
+process.on('unhandledRejection', (reason, promise) => {
+	console.error('[FATAL] Unhandled Promise Rejection:', reason)
+	console.error('Promise:', promise)
+	// Log but don't exit - let the process recover if possible
+})
+
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
 	console.log('SIGTERM received, shutting down gracefully...')

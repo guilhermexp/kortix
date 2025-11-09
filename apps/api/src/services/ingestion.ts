@@ -700,7 +700,7 @@ export async function processDocument(input: ProcessDocumentInput) {
             : "";
         const extractedTitle =
           typeof extraction?.title === "string" ? extraction.title.trim() : "";
-        if (!resolvedTitle || resolvedTitle.toLowerCase() === "untitled") {
+        if (!resolvedTitle || resolvedTitle.toLowerCase() === "untitled" || resolvedTitle.toLowerCase() === "unknown") {
           if (extractedTitle) resolvedTitle = extractedTitle;
         }
         const sanitizedTitle = resolvedTitle

@@ -1,14 +1,20 @@
+import path from "node:path"
 import type { NextConfig } from "next"
 
+const workspaceRoot = path.resolve(__dirname, "..", "..")
+
 const nextConfig: NextConfig = {
+	turbopack: {
+		// Explicitly tell Turbopack to treat the monorepo root as the project root.
+		// This keeps dependency resolution inside /Public/supermemory even when multiple lockfiles exist above.
+		root: workspaceRoot,
+	},
 	experimental: {
 		viewTransition: true,
 		// Optimize preloading to prevent unused resource warnings
 		optimizePackageImports: ['lucide-react', 'framer-motion'],
 	},
 	poweredByHeader: false,
-	// Disable automatic font optimization to prevent preload warnings
-	optimizeFonts: false,
 	// Image optimization to cache external images (prevents GitHub 429 errors)
 	images: {
 		remotePatterns: [

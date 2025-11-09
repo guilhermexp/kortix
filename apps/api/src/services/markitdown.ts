@@ -309,6 +309,39 @@ async function fetchYouTubeTimedTextVtt(videoId: string, lang: string, asr = fal
 export async function fetchYouTubeTranscriptFallback(videoUrl: string): Promise<MarkItDownResponse | null> {
   const videoId = extractYouTubeVideoIdFromUrl(videoUrl)
   if (!videoId) return null
+
+  // Extract title from YouTube page metadata
+  let title: string | undefined = undefined
+  try {
+    const response = await fetch(videoUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    })
+    const html = await response.text()
+
+    // Try multiple extraction methods
+    // 1. og:title meta tag
+    const ogTitleMatch = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i)
+    if (ogTitleMatch) {
+      title = ogTitleMatch[1]
+    } else {
+      // 2. twitter:title meta tag
+      const twitterTitleMatch = html.match(/<meta\s+name=["']twitter:title["']\s+content=["']([^"']+)["']/i)
+      if (twitterTitleMatch) {
+        title = twitterTitleMatch[1]
+      } else {
+        // 3. <title> tag
+        const titleMatch = html.match(/<title>([^<]+)<\/title>/i)
+        if (titleMatch) {
+          title = titleMatch[1].replace(/ - YouTube$/, '').trim()
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('[fetchYouTubeTranscriptFallback] Failed to extract title:', error)
+  }
+
   const langs = ['en', 'en-US', 'pt', 'pt-BR']
   for (const lang of langs) {
     // Try official + ASR
@@ -320,7 +353,7 @@ export async function fetchYouTubeTranscriptFallback(videoUrl: string): Promise<
           markdown: text,
           metadata: {
             url: videoUrl,
-            title: undefined,
+            title,
             markdown_length: text.length,
           },
         }

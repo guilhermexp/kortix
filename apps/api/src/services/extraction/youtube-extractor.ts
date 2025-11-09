@@ -237,11 +237,20 @@ export class YouTubeExtractor extends BaseService implements IYouTubeExtractor {
         `https://www.youtube.com/watch?v=${videoId}`,
       );
 
-      // Parse the result to extract metadata
-      // The result includes title and transcript in markdown format
-      const markdown = result?.markdown || "";
-      const lines = markdown.split("\n");
-      const title = lines[0]?.replace(/^#\s*/i, "") || "Unknown";
+      // Try to get title from metadata first (now extracted from page HTML)
+      let title = result?.metadata?.title;
+
+      // Fallback: parse the result to extract title from markdown
+      if (!title) {
+        const markdown = result?.markdown || "";
+        const lines = markdown.split("\n");
+        title = lines[0]?.replace(/^#\s*/i, "") || undefined;
+      }
+
+      // Final fallback
+      if (!title) {
+        title = "Unknown";
+      }
 
       return {
         videoId,
