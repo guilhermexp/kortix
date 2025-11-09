@@ -61,6 +61,26 @@ type PreviewData =
       href: string;
     };
 
+const isInlineSvgDataUrl = (value?: string | null): boolean => {
+  if (!value) return false;
+  return value.trim().toLowerCase().startsWith("data:image/svg+xml");
+};
+
+const previewsEqual = (a: PreviewData | null, b: PreviewData | null): boolean => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.kind === b.kind && a.src === b.src && a.href === b.href && a.label === b.label;
+};
+
+const PROCESSING_STATUSES = new Set([
+  "queued",
+  "fetching",
+  "extracting",
+  "chunking",
+  "embedding",
+  "processing",
+]);
+
 const asRecord = (value: unknown): BaseRecord | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -275,7 +295,9 @@ const getDocumentPreview = (
     const out: string[] = [];
     for (const u of arr) {
       const s = safeHttpUrl(u as string | undefined, originalUrl);
-      if (s && !out.includes(s)) out.push(s);
+      if (!s) continue;
+      if (isSvgOrBadge(s)) continue;
+      if (!out.includes(s)) out.push(s);
     }
     return out;
   })();
@@ -288,6 +310,7 @@ const getDocumentPreview = (
     if (!u) return true;
     const s = u.toLowerCase();
     return (
+      s.startsWith("data:image/svg+xml") ||
       s.endsWith(".svg") ||
       s.includes("badge") ||
       s.includes("shields") ||
@@ -414,6 +437,18 @@ const getDocumentPreview = (
     safeHttpUrl(rawYoutube?.url) ?? safeHttpUrl(rawYoutube?.embedUrl);
   const youtubeThumbnail = safeHttpUrl(rawYoutube?.thumbnail);
 
+  // IMPORTANT: Check document.preview_image first (from database)
+  // This field is set by the backend during ingestion and should take priority
+  // NEVER use SVG placeholders - they provide poor UX
+  const documentPreviewImage = (() => {
+    const url = safeHttpUrl(document.preview_image);
+    // Block SVG placeholders - they're generic and provide no value
+    if (url && url.includes('data:image/svg+xml')) {
+      return undefined;
+    }
+    return url;
+  })();
+
   const isVideoDocument =
     normalizedType === "video" ||
     contentType?.startsWith("video/") ||
@@ -424,6 +459,7 @@ const getDocumentPreview = (
     return {
       kind: "video",
       src:
+        documentPreviewImage ??
         youtubeThumbnail ??
         finalPreviewImage ??
         getYouTubeThumbnail(originalUrl),
@@ -475,8 +511,45 @@ export const DocumentCard = memo(
     );
     const preview = useMemo(() => getDocumentPreview(document), [document]);
 
+    const sanitizedPreview = useMemo(() => {
+      if (!preview) return null;
+      if (preview.src && isInlineSvgDataUrl(preview.src)) {
+        if (preview.kind === "video") {
+          const fallback = getYouTubeThumbnail(document.url) ?? undefined;
+          if (fallback) return { ...preview, src: fallback } as PreviewData;
+        }
+        return null;
+      }
+      return preview;
+    }, [preview, document.url]);
+
+    const isProcessing = document.status
+      ? PROCESSING_STATUSES.has(String(document.status).toLowerCase())
+      : false;
+
+    const [stickyPreview, setStickyPreview] = useState<PreviewData | null>(null);
+
+    useEffect(() => {
+      setStickyPreview(null);
+    }, [document.id]);
+
+    useEffect(() => {
+      if (!isProcessing) {
+        setStickyPreview(null);
+        return;
+      }
+      if (!sanitizedPreview) return;
+      setStickyPreview((current) =>
+        previewsEqual(current, sanitizedPreview) ? current : sanitizedPreview,
+      );
+    }, [isProcessing, sanitizedPreview]);
+
+    const previewToRender = isProcessing
+      ? stickyPreview ?? sanitizedPreview
+      : sanitizedPreview;
+
     const PreviewBadgeIcon = useMemo(() => {
-      switch (preview?.kind) {
+      switch (previewToRender?.kind) {
         case "image":
           return ImageIcon;
         case "video":
@@ -486,20 +559,7 @@ export const DocumentCard = memo(
         default:
           return null;
       }
-    }, [preview?.kind]);
-
-    const processingStates = new Set([
-      "queued",
-      "fetching",
-      "extracting",
-      "chunking",
-      "embedding",
-      "processing",
-    ]);
-
-    const isProcessing = document.status
-      ? processingStates.has(String(document.status).toLowerCase())
-      : false;
+    }, [previewToRender?.kind]);
 
     const stageForStatus = (stRaw: string) => {
       const st = stRaw.toLowerCase();
@@ -706,7 +766,7 @@ export const DocumentCard = memo(
         </CardHeader>
 
         <CardContent className="relative z-10 px-0">
-          {preview && (
+          {previewToRender && (
             <div
               className="mb-3 rounded-lg overflow-hidden border"
               style={{
@@ -716,13 +776,13 @@ export const DocumentCard = memo(
             >
               <div className="relative w-full aspect-[16/10] overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-[#0f1624] via-[#101c2d] to-[#161f33] z-0" />
-                {preview.src && (
-                  preview.src.startsWith('data:') ? (
+                {previewToRender.src && (
+                  previewToRender.src.startsWith('data:') ? (
                     <img
-                      alt={`${preview.label} preview`}
+                      alt={`${previewToRender.label} preview`}
                       className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] z-10"
                       loading="lazy"
-                      src={preview.src}
+                      src={previewToRender.src}
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
@@ -730,9 +790,9 @@ export const DocumentCard = memo(
                     />
                   ) : (
                     <Image
-                      alt={`${preview.label} preview`}
+                      alt={`${previewToRender.label} preview`}
                       className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] z-10"
-                      src={preview.src}
+                      src={previewToRender.src}
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       priority={false}
@@ -744,7 +804,7 @@ export const DocumentCard = memo(
                   )
                 )}
                 <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45 z-20" />
-                {preview.kind === "video" && (
+                {previewToRender.kind === "video" && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="rounded-full border border-white/40 bg-black/40 p-2 backdrop-blur-sm">
                       <Play className="h-5 w-5 text-white" />
@@ -762,7 +822,7 @@ export const DocumentCard = memo(
                     }}
                   >
                     <PreviewBadgeIcon className="h-3 w-3" />
-                    <span>{preview.label}</span>
+                    <span>{previewToRender.label}</span>
                   </div>
                 )}
               </div>

@@ -1,7 +1,7 @@
 /**
  * Provider Configuration
  *
- * Defines all available AI providers (GLM/Z.AI and MiniMax)
+ * Defines all available AI providers (GLM/Z.AI, MiniMax, Anthropic, and Kimi)
  * Each provider has its own API endpoint, authentication, and models
  */
 
@@ -54,6 +54,21 @@ export const PROVIDER_CONFIGS = {
 			timeout: 300000,
 		},
 	},
+	kimi: {
+		id: "kimi" as const,
+		name: "Kimi",
+		displayName: "Kimi K2 Thinking",
+		apiKey: "sk-kimi-qJ2TEiNxX2mSdFnewZJZLzbOnXiS3xJpf5MLzdRlCwtW4Mjd6zv5Gy4HhXVgspd8",
+		baseURL: "https://api.kimi.com/coding/", // Kimi For Coding API (trailing slash required)
+		models: {
+			fast: "kimi-for-coding",
+			balanced: "kimi-for-coding",
+			advanced: "kimi-for-coding",
+		},
+		settings: {
+			timeout: 300000,
+		},
+	},
 } as const
 
 export type ProviderId = keyof typeof PROVIDER_CONFIGS
@@ -88,5 +103,5 @@ export function isValidProvider(providerId: string): providerId is ProviderId {
  * Get default provider
  */
 export function getDefaultProvider(): ProviderId {
-	return "glm" // Default to GLM
+	return "kimi" // Default to Kimi K2 Thinking
 }

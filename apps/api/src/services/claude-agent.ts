@@ -299,6 +299,7 @@ export async function executeClaudeAgent(
     "https://api.anthropic.com",
     "https://api.z.ai/api/anthropic",
     "https://api.minimax.io/anthropic",
+    "https://api.kimi.com/coding/",
   ];
 
   if (!ALLOWED_BASE_URLS.includes(providerConfig.baseURL)) {

@@ -10,7 +10,7 @@ import {
 } from "@ui/components/select";
 import { Sparkles } from "lucide-react";
 
-export type ProviderId = "glm" | "minimax" | "anthropic";
+export type ProviderId = "glm" | "minimax" | "anthropic" | "kimi";
 
 interface ProviderConfig {
   id: ProviderId;
@@ -38,6 +38,12 @@ const PROVIDERS: ProviderConfig[] = [
     displayName: "Haiku 4.5",
     description: "Claude's fastest model with frontier intelligence",
   },
+  {
+    id: "kimi",
+    name: "Kimi",
+    displayName: "Kimi K2 Thinking",
+    description: "Advanced coding and reasoning with thinking mode",
+  },
 ];
 
 interface ProviderSelectorProps {
@@ -52,7 +58,7 @@ export function ProviderSelector({
   disabled = false,
 }: ProviderSelectorProps) {
   const [selectedProvider, setSelectedProvider] = useState<ProviderId>(
-    value || "glm",
+    value || "kimi",
   );
 
   useEffect(() => {
@@ -122,7 +128,7 @@ export function ProviderSelector({
  * Hook to manage provider selection with persistence
  */
 export function useProviderSelection() {
-  const [provider, setProvider] = useState<ProviderId>("glm");
+  const [provider, setProvider] = useState<ProviderId>("kimi");
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -132,7 +138,7 @@ export function useProviderSelection() {
       ) as ProviderId | null;
       if (
         saved &&
-        (saved === "glm" || saved === "minimax" || saved === "anthropic")
+        (saved === "glm" || saved === "minimax" || saved === "anthropic" || saved === "kimi")
       ) {
         setProvider(saved);
       }

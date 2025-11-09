@@ -78,6 +78,8 @@ const envSchema = z.object({
 	OPENROUTER_SITE_URL: z.string().url().optional(),
 	OPENROUTER_SITE_NAME: z.string().min(1).optional(),
 	OPENROUTER_MODEL: z.string().optional(),
+	// Voyage AI (embeddings provider)
+	VOYAGE_API_KEY: z.string().min(1).optional(),
 	OPENROUTER_TEMPERATURE: z
 		.string()
 		.optional()
@@ -132,6 +134,7 @@ const parsed = envSchema.safeParse({
 	OPENROUTER_MODEL: process.env.OPENROUTER_MODEL,
 	OPENROUTER_TEMPERATURE: process.env.OPENROUTER_TEMPERATURE,
 	OPENROUTER_MAX_TOKENS: process.env.OPENROUTER_MAX_TOKENS,
+	VOYAGE_API_KEY: process.env.VOYAGE_API_KEY,
 	SEQ_MCP_COMMAND: process.env.SEQ_MCP_COMMAND,
 	SEQ_MCP_ARGS: process.env.SEQ_MCP_ARGS,
 })

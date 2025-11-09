@@ -66,6 +66,26 @@ type PreviewData =
       href: string;
     };
 
+const isInlineSvgDataUrl = (value?: string | null): boolean => {
+  if (!value) return false;
+  return value.trim().toLowerCase().startsWith("data:image/svg+xml");
+};
+
+const previewsEqual = (a: PreviewData | null, b: PreviewData | null): boolean => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.kind === b.kind && a.src === b.src && a.href === b.href && a.label === b.label;
+};
+
+const PROCESSING_STATUSES = new Set([
+  "queued",
+  "fetching",
+  "extracting",
+  "chunking",
+  "embedding",
+  "processing",
+]);
+
 const asRecord = (value: unknown): BaseRecord | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -270,6 +290,7 @@ const getDocumentPreview = (
     if (!u) return true;
     const s = u.toLowerCase();
     return (
+      s.startsWith("data:image/svg+xml") ||
       s.endsWith(".svg") ||
       s.includes("badge") ||
       s.includes("shields") ||
@@ -299,10 +320,22 @@ const getDocumentPreview = (
     try { return isGitHubAssets(u) && new URL(u).pathname.includes("/opengraph/"); } catch { return false; }
   };
 
+  const sanitizedPreviewImage = (() => {
+    if (typeof documentPreviewImage !== "string") return null;
+    const trimmed = documentPreviewImage.trim();
+    if (!trimmed) return null;
+    if (isInlineSvgDataUrl(trimmed)) return null;
+    if (trimmed.startsWith("data:image/")) return trimmed;
+    const resolved = safeHttpUrl(trimmed, originalUrl);
+    if (!resolved) return null;
+    if (isSvgOrBadge(resolved)) return null;
+    return resolved;
+  })();
+
   const preferredGitHubOg = isGitHubHost(originalUrl)
-    ? [documentPreviewImage, firecrawlOgImage, metadataImage, rawImage, rawDirectImage].find(isGitHubOpenGraph)
+    ? [sanitizedPreviewImage, firecrawlOgImage, metadataImage, rawImage, rawDirectImage].find(isGitHubOpenGraph)
     : undefined;
-  const ordered = [documentPreviewImage, rawImage, firecrawlOgImage, rawDirectImage, geminiFileUri, geminiFileUrl, metadataImage].filter(Boolean) as string[];
+  const ordered = [sanitizedPreviewImage, rawImage, firecrawlOgImage, rawDirectImage, geminiFileUri, geminiFileUrl, metadataImage].filter(Boolean) as string[];
   const filtered = ordered.filter(
     (u) => !isSvgOrBadge(u) && !isDisallowedBadgeDomain(u) && !isLowResolutionImage(u),
   );
@@ -338,11 +371,13 @@ const getDocumentPreview = (
       if (typeof value === "string") {
         const trimmed = value.trim();
         if (!trimmed) return;
+        if (trimmed.toLowerCase().startsWith("data:image/svg+xml")) return;
         const resolved =
           trimmed.startsWith("data:image/")
             ? trimmed
             : safeHttpUrl(trimmed, originalUrl);
         if (!resolved) return;
+        if (isSvgOrBadge(resolved)) return;
         if (isLowResolutionImage(resolved)) return;
         if (!seen.has(resolved)) {
           seen.add(resolved);
@@ -384,15 +419,6 @@ const getDocumentPreview = (
 
   const normalizedType = document.type?.toLowerCase() ?? "";
   const label = formatPreviewLabel(document.type);
-
-  const previewImageCandidate =
-    typeof documentPreviewImage === "string"
-      ? documentPreviewImage.trim()
-      : null;
-  const sanitizedPreviewImage =
-    previewImageCandidate && previewImageCandidate.startsWith("data:image/")
-      ? previewImageCandidate
-      : safeHttpUrl(previewImageCandidate, originalUrl);
 
   let fallbackImage =
     finalPreviewImage ??
@@ -512,8 +538,45 @@ const DocumentCard = memo(
     );
     const preview = useMemo(() => getDocumentPreview(document), [document]);
 
+    const sanitizedPreview = useMemo(() => {
+      if (!preview) return null;
+      if (preview.src && isInlineSvgDataUrl(preview.src)) {
+        if (preview.kind === "video") {
+          const fallback = getYouTubeThumbnail(document.url) ?? undefined;
+          if (fallback) return { ...preview, src: fallback } as PreviewData;
+        }
+        return null;
+      }
+      return preview;
+    }, [preview, document.url]);
+
+    const isProcessing = document.status
+      ? PROCESSING_STATUSES.has(String(document.status).toLowerCase())
+      : false;
+
+    const [stickyPreview, setStickyPreview] = useState<PreviewData | null>(null);
+
+    useEffect(() => {
+      setStickyPreview(null);
+    }, [document.id]);
+
+    useEffect(() => {
+      if (!isProcessing) {
+        setStickyPreview(null);
+        return;
+      }
+      if (!sanitizedPreview) return;
+      setStickyPreview((current) =>
+        previewsEqual(current, sanitizedPreview) ? current : sanitizedPreview,
+      );
+    }, [isProcessing, sanitizedPreview]);
+
+    const previewToRender = isProcessing
+      ? stickyPreview ?? sanitizedPreview
+      : sanitizedPreview;
+
     const PreviewBadgeIcon = useMemo(() => {
-      switch (preview?.kind) {
+      switch (previewToRender?.kind) {
         case "image":
           return ImageIcon;
         case "video":
@@ -523,20 +586,7 @@ const DocumentCard = memo(
         default:
           return null;
       }
-    }, [preview?.kind]);
-
-    const processingStates = new Set([
-      "queued",
-      "fetching",
-      "extracting",
-      "chunking",
-      "embedding",
-      "processing",
-    ]);
-
-    const isProcessing = document.status
-      ? processingStates.has(String(document.status).toLowerCase())
-      : false;
+    }, [previewToRender?.kind]);
 
     // Dynamic progress per stage (time-based tween while waiting backend status update)
     const stageForStatus = (stRaw: string) => {
@@ -669,15 +719,15 @@ const DocumentCard = memo(
           </div>
         </CardHeader>
         <CardContent className="relative z-10 px-0">
-          {preview && (
+          {previewToRender && (
             <div className="mb-3 rounded-lg overflow-hidden border border-border bg-muted/30 relative h-48">
               <div className="absolute inset-0 bg-muted z-0" />
-              {preview.src && (
+              {previewToRender.src && (
                 <img
-                  alt={`${preview.label} preview`}
+                  alt={`${previewToRender.label} preview`}
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] z-10"
                   loading="lazy"
-                  src={preview.src}
+                  src={previewToRender.src}
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
@@ -685,7 +735,7 @@ const DocumentCard = memo(
                 />
               )}
               <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45 z-20" />
-              {preview.kind === "video" && (
+              {previewToRender.kind === "video" && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="rounded-full border border-border bg-background/40 p-2 backdrop-blur-sm">
                     <Play className="h-5 w-5 text-foreground" />
@@ -703,7 +753,7 @@ const DocumentCard = memo(
                   }}
                 >
                   <PreviewBadgeIcon className="h-3 w-3" />
-                  <span>{preview.label}</span>
+                  <span>{previewToRender.label}</span>
                 </div>
               )}
             </div>
