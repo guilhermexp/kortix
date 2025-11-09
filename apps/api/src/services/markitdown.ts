@@ -360,6 +360,21 @@ export async function fetchYouTubeTranscriptFallback(videoUrl: string): Promise<
       }
     }
   }
+
+  // If we couldn't get transcript but have a title, return basic video info
+  // This prevents losing the title when transcript extraction fails
+  if (title) {
+    console.log('[fetchYouTubeTranscriptFallback] No transcript found, but returning title:', title)
+    return {
+      markdown: `# ${title}\n\nYouTube Video: ${videoUrl}\n\n(Transcript not available)`,
+      metadata: {
+        url: videoUrl,
+        title,
+        markdown_length: 0,
+      },
+    }
+  }
+
   return null
 }
 
