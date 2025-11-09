@@ -84,7 +84,7 @@ export function InfinityCanvas() {
   // Configure drag sensors
   const mouseSensor = useSensor(MouseSensor, {
     activationConstraint: {
-      distance: 10, // 10px movement required to start drag
+      distance: 0, // Start drag immediately
     },
   });
   const touchSensor = useSensor(TouchSensor, {
@@ -504,46 +504,20 @@ export function InfinityCanvas() {
   }, [selectedProject]);
 
   const handleCenter = useCallback(() => {
-    if (nodesForControls.length === 0) return;
-    // Center and fit (like a smart center) for better UX
-    autoFitToViewport(
-      nodesForControls as any,
-      containerSize.width,
-      containerSize.height,
-      { animate: true },
-    );
-  }, [
-    nodesForControls,
-    autoFitToViewport,
-    containerSize.width,
-    containerSize.height,
-  ]);
-
-  const handleAutoFit = useCallback(() => {
     if (documents.length === 0) return;
-    // Re-distribute cards for a clean layout, then fit
-    const ids = documents.map((d) => d.id);
-    const arranged = computeCenterPositions(ids, {});
-    if (Object.keys(arranged).length > 0) {
-      setCardPositions(arranged);
-      // Build nodes from arranged positions to fit immediately
-      const nodes = documents.map((doc) => {
-        const pos = arranged[doc.id] ?? { x: 0, y: 0 };
-        return {
-          id: doc.id,
-          x: pos.x,
-          y: pos.y,
-          type: "document",
-          data: { id: doc.id },
-        };
-      }) as any[];
-      autoFitToViewport(
-        nodes as any,
+    // Center on the first document or center of all documents
+    if (documents.length === 1) {
+      const doc = documents[0];
+      const pos = cardPositions[doc.id] ?? { x: 0, y: 0 };
+      centerViewportOn(
+        pos.x + CARD_HALF_WIDTH,
+        pos.y + CARD_HALF_HEIGHT,
         containerSize.width,
         containerSize.height,
-        { animate: true },
+        true,
       );
     } else if (nodesForControls.length > 0) {
+      // Center and fit all documents
       autoFitToViewport(
         nodesForControls as any,
         containerSize.width,
@@ -553,12 +527,31 @@ export function InfinityCanvas() {
     }
   }, [
     documents,
-    computeCenterPositions,
-    setCardPositions,
+    cardPositions,
+    nodesForControls,
+    autoFitToViewport,
+    centerViewportOn,
+    containerSize.width,
+    containerSize.height,
+  ]);
+
+  const handleAutoFit = useCallback(() => {
+    if (documents.length === 0) return;
+    // Use current positions and fit to viewport
+    if (nodesForControls.length > 0) {
+      autoFitToViewport(
+        nodesForControls as any,
+        containerSize.width,
+        containerSize.height,
+        { animate: true },
+      );
+    }
+  }, [
+    documents,
+    nodesForControls,
     autoFitToViewport,
     containerSize.width,
     containerSize.height,
-    nodesForControls,
   ]);
 
   // Fetch documents by IDs
@@ -972,6 +965,7 @@ export function InfinityCanvas() {
                   backgroundImage: `repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0, rgba(255,255,255,0.03) 1px, transparent 1px, transparent ${GRID}px), repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0, rgba(255,255,255,0.03) 1px, transparent 1px, transparent ${GRID}px)`,
                   backgroundSize: `${GRID}px ${GRID}px` as any,
                   backgroundPosition: `${-offsetX}px ${-offsetY}px` as any,
+                  pointerEvents: "none",
                 };
                 return <div aria-hidden style={gridStyle} />;
               })()}
@@ -1001,13 +995,23 @@ export function InfinityCanvas() {
         </div>
 
         {/* Drag overlay for better visual feedback */}
-        <DragOverlay>
+        <DragOverlay
+          style={{
+            cursor: "grabbing",
+          }}
+        >
           {activeDocument ? (
-            <div style={{ width: "320px" }}>
+            <div 
+              style={{ 
+                width: "320px",
+                transform: "rotate(2deg)",
+                opacity: 0.9,
+              }}
+            >
               <DocumentCard
                 document={activeDocument}
                 isDragging={true}
-                showDragHandle={true}
+                showDragHandle={false}
               />
             </div>
           ) : null}

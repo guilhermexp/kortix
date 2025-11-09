@@ -209,8 +209,12 @@ export function DocumentSelectorModal({
                 ? "Clear Selection"
                 : "Select All"}
             </Button>
-            <div>
-              {selectedIds.size} selected · {totalCount} total
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="tabular-nums">{selectedIds.size}</span>
+              <span className="text-muted-foreground/60">selected</span>
+              <span className="text-muted-foreground/40">·</span>
+              <span className="tabular-nums">{totalCount}</span>
+              <span className="text-muted-foreground/60">total</span>
             </div>
           </div>
         </div>
@@ -291,7 +295,7 @@ export function DocumentSelectorModal({
                               </p>
                               <span
                                 className={cn(
-                                  "inline-flex items-center rounded-full border border-border/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground",
+                                  "inline-flex items-center rounded-full border border-border/80 px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground",
                                   isSelected &&
                                     "border-primary/50 bg-primary/20 text-primary",
                                 )}

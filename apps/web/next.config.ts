@@ -3,8 +3,31 @@ import type { NextConfig } from "next"
 const nextConfig: NextConfig = {
 	experimental: {
 		viewTransition: true,
+		// Optimize preloading to prevent unused resource warnings
+		optimizePackageImports: ['lucide-react', 'framer-motion'],
 	},
 	poweredByHeader: false,
+	// Disable automatic font optimization to prevent preload warnings
+	optimizeFonts: false,
+	// Image optimization to cache external images (prevents GitHub 429 errors)
+	images: {
+		remotePatterns: [
+			{
+				protocol: 'https',
+				hostname: 'opengraph.githubassets.com',
+			},
+			{
+				protocol: 'https',
+				hostname: '**.githubusercontent.com',
+			},
+			{
+				protocol: 'https',
+				hostname: 'i.ytimg.com',
+			},
+		],
+		// Cache images for 60 days to prevent rate limiting
+		minimumCacheTTL: 60 * 60 * 24 * 60,
+	},
 	async rewrites() {
 		// Use internal Railway URL for server-side rewrites, localhost for dev
 		const backendUrl = process.env.API_INTERNAL_URL || "http://localhost:4000"

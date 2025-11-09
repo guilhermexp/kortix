@@ -671,16 +671,20 @@ const DocumentCard = memo(
         <CardContent className="relative z-10 px-0">
           {preview && (
             <div className="mb-3 rounded-lg overflow-hidden border border-border bg-muted/30 relative h-48">
-              <div className="absolute inset-0 bg-muted" />
+              <div className="absolute inset-0 bg-muted z-0" />
               {preview.src && (
                 <img
                   alt={`${preview.label} preview`}
-                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] z-10"
                   loading="lazy"
                   src={preview.src}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
                 />
               )}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45 z-20" />
               {preview.kind === "video" && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="rounded-full border border-border bg-background/40 p-2 backdrop-blur-sm">

@@ -4,6 +4,7 @@ import type React from "react";
 import { useCallback, useState } from "react";
 import { cn } from "@lib/utils";
 import { Button } from "@ui/components/button";
+import { Copy, Check } from "lucide-react";
 
 interface CodeBlockProps extends React.HTMLAttributes<HTMLDivElement> {
   code: string;
@@ -25,7 +26,7 @@ export function CodeBlock({
     <div
       data-copy-code
       className={cn(
-        "relative rounded-lg border border-border/60 bg-muted/60 font-mono text-xs",
+        "relative rounded-lg border border-border/30 bg-transparent font-mono text-xs",
         className,
       )}
       {...props}
@@ -89,12 +90,14 @@ export function CodeBlockCopyButton({
   return (
     <Button
       data-copy-code-button
-      size="sm"
+      size="icon"
       variant="ghost"
       onClick={handleCopy}
+      className={cn("h-7 w-7", props.className)}
+      aria-label={copied ? "Copied" : "Copy code"}
       {...props}
     >
-      {children ?? (copied ? "Copied" : "Copy")}
+      {children ?? (copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />)}
     </Button>
   );
 }

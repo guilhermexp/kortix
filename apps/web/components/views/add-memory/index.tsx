@@ -332,12 +332,18 @@ export function AddMemoryView({
           : "sm_project_default",
     },
     onSubmit: async ({ value, formApi }) => {
-      addContentMutation.mutate({
-        content: value.content,
-        project: value.project,
-        contentType: activeTab as "note" | "link",
-      });
-      formApi.reset();
+      addContentMutation.mutate(
+        {
+          content: value.content,
+          project: value.project,
+          contentType: activeTab as "note" | "link",
+        },
+        {
+          onSuccess: () => {
+            formApi.reset();
+          },
+        }
+      );
     },
     validators: {
       onChange: z.object({
@@ -590,10 +596,11 @@ export function AddMemoryView({
             context.previousMemories,
           );
         }
-        toast.warning("Conteúdo já existe", {
+        toast.warning("⚠️ Conteúdo Duplicado", {
           description: addedToProject
-            ? "Ligamos o documento ao projeto atual."
-            : "Esse link já está presente na sua memória.",
+            ? "Este conteúdo já existe na sua memória. Ligamos ao projeto atual."
+            : "Este conteúdo já está salvo na sua memória.",
+          duration: 6000,
         });
       } else {
         if (context?.optimisticId && documentId) {
@@ -606,12 +613,8 @@ export function AddMemoryView({
               }),
           );
         }
-        successDescription =
-          variables.contentType === "repository"
-            ? "Indexando repositório..."
-            : variables.contentType === "link"
-              ? "Extraindo conteúdo..."
-              : undefined;
+        // Deep Agent is only used for links
+        successDescription = "Extraindo conteúdo...";
       }
       if (!dedup) {
         analytics.memoryAdded({
@@ -883,16 +886,67 @@ export function AddMemoryView({
         );
       }
     },
-    onSuccess: (_data, variables) => {
-      analytics.memoryAdded({
-        type:
-          variables.contentType === "link" ||
-          variables.contentType === "repository"
-            ? "link"
-            : "note",
-        project_id: variables.project,
-        content_length: variables.content.length,
-      });
+    onSuccess: (_data, variables, context) => {
+      // Extract the actual payload from the response
+      const payload = (typeof _data === "object" && _data !== null && "data" in (_data as any))
+        ? ( _data as any).data
+        : _data;
+
+      // Check if content already exists
+      const dedup =
+        Boolean((payload as any)?.alreadyExists) ||
+        Boolean((payload as any)?.data?.alreadyExists);
+      const addedToProject =
+        Boolean((payload as any)?.addedToProject) ||
+        Boolean((payload as any)?.data?.addedToProject);
+      const documentId =
+        (payload as any)?.id ?? (payload as any)?.data?.id ?? null;
+      const status =
+        (payload as any)?.status ?? (payload as any)?.data?.status ?? "queued";
+
+      if (dedup) {
+        // Revert optimistic update for duplicates
+        if (context?.previousMemories) {
+          queryClient.setQueryData(
+            ["documents-with-memories", variables.project],
+            context.previousMemories,
+          );
+        }
+
+        // Show warning toast for duplicate
+        toast.warning("⚠️ Conteúdo Duplicado", {
+          description: addedToProject
+            ? "Este conteúdo já existe na sua memória. Ligamos ao projeto atual."
+            : variables.contentType === "repository"
+              ? "Este repositório já está salvo na sua memória."
+              : variables.contentType === "link"
+                ? "Este link já está salvo na sua memória."
+                : "Esta nota já está salva na sua memória.",
+          duration: 6000,
+        });
+      } else {
+        // Update optimistic entry with real data
+        if (context?.optimisticId && documentId) {
+          queryClient.setQueryData<DocumentsQueryData | undefined>(
+            ["documents-with-memories", variables.project],
+            (current) =>
+              promoteOptimisticMemory(current, context.optimisticId!, {
+                id: documentId,
+                status,
+              }),
+          );
+        }
+
+        analytics.memoryAdded({
+          type:
+            variables.contentType === "link" ||
+            variables.contentType === "repository"
+              ? "link"
+              : "note",
+          project_id: variables.project,
+          content_length: variables.content.length,
+        });
+      }
 
       // No immediate invalidation needed - the polling effect in page.tsx will handle it
       // This prevents the optimistic card from disappearing before backend persists the document
@@ -1015,6 +1069,38 @@ export function AddMemoryView({
     },
     onSuccess: (data, variables, context) => {
       const projectKey = context?.project ?? variables.project;
+
+      // Check if file already exists
+      const dedup =
+        Boolean((data as any)?.alreadyExists) ||
+        Boolean((data as any)?.data?.alreadyExists);
+      const addedToProject =
+        Boolean((data as any)?.addedToProject) ||
+        Boolean((data as any)?.data?.addedToProject);
+
+      if (dedup) {
+        // Revert optimistic update for duplicates
+        if (context?.previousMemories) {
+          queryClient.setQueryData(
+            ["documents-with-memories", projectKey],
+            context.previousMemories,
+          );
+        }
+
+        // Show warning toast for duplicate
+        toast.warning("⚠️ Arquivo Duplicado", {
+          description: addedToProject
+            ? "Este arquivo já existe na sua memória. Ligamos ao projeto atual."
+            : "Este arquivo já está salvo na sua memória.",
+          duration: 6000,
+        });
+
+        setShowAddDialog(false);
+        onClose?.();
+        return;
+      }
+
+      // Not a duplicate - proceed with normal flow
       if (context?.optimisticId) {
         queryClient.setQueryData<DocumentsQueryData | undefined>(
           ["documents-with-memories", projectKey],

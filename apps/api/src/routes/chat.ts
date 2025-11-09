@@ -130,7 +130,7 @@ export async function handleChat({
 
 	try {
 		const { events, text, parts } = await executeClaudeAgent({
-			messages: agentMessages,
+			message: lastUserMessage?.content ?? "",
 			client,
 			orgId,
 			systemPrompt: contextualPrompt,

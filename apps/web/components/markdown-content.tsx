@@ -115,7 +115,7 @@ export const MarkdownContent = memo(
 							if (isInline) {
 								return (
 									<code
-										className="px-1.5 py-0.5 rounded text-xs font-mono bg-white/10"
+										className="px-1.5 py-0.5 rounded text-xs font-mono bg-transparent"
 										style={style}
 									>
 										{children}
@@ -124,7 +124,7 @@ export const MarkdownContent = memo(
 							}
 							return (
 								<code
-									className="block p-2 rounded text-xs font-mono bg-white/10 overflow-x-auto"
+									className="block p-2 rounded text-xs font-mono bg-transparent overflow-x-auto"
 									style={style}
 								>
 									{children}

@@ -186,7 +186,9 @@ export function ProfileView() {
 												: "bg-blue-500"
 									}`}
 									style={{
-										width: `${Math.min((billingData.memoriesUsed / billingData.memoriesLimit) * 100, 100)}%`,
+										width: billingData.memoriesLimit > 0
+											? `${Math.min((billingData.memoriesUsed / billingData.memoriesLimit) * 100, 100)}%`
+											: "0%",
 									}}
 								/>
 							</div>
@@ -310,12 +312,13 @@ export function ProfileView() {
 			)}
 
 			<Button
-				className="w-full bg-red-500/20 hover:bg-red-500/30 text-red-200 border-red-500/30"
+				className="w-full bg-transparent hover:bg-red-500/10 text-muted-foreground hover:text-red-500 border-0 shadow-none"
 				onClick={handleLogout}
-				variant="destructive"
+				variant="ghost"
+				size="sm"
+				aria-label="Sign Out"
 			>
-				<LogOut className="w-4 h-4 mr-2" />
-				Sign Out
+				<LogOut className="w-4 h-4" />
 			</Button>
 		</div>
 	)

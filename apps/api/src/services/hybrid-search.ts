@@ -3,6 +3,14 @@ import { env } from "../env"
 import { generateEmbedding } from "./embedding-provider"
 import { rerankSearchResults } from "./rerank"
 
+/**
+ * Escape special characters for PostgreSQL ILIKE pattern matching
+ * Prevents SQL injection via pattern matching attacks
+ */
+function escapeIlike(str: string): string {
+	return str.replace(/[%_\\]/g, '\\$&')
+}
+
 export interface HybridSearchOptions {
     query: string
     orgId: string
@@ -83,7 +91,7 @@ async function keywordSearch(
 			)
 			.eq("org_id", orgId)
 			.or(
-				`title.ilike.%${query}%,content.ilike.%${query}%,summary.ilike.%${query}%`,
+				`title.ilike.%${escapeIlike(query)}%,content.ilike.%${escapeIlike(query)}%,summary.ilike.%${escapeIlike(query)}%`,
 			)
 			.limit(limit)
 

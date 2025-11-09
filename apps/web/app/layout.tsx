@@ -19,11 +19,15 @@ import { ErrorBoundary } from "@/components/error-boundary"
 const sans = Inter({
 	subsets: ["latin"],
 	variable: "--font-sans",
+	display: 'swap', // Prevent font preload warnings
+	preload: true,
 })
 
 const mono = JetBrains_Mono({
 	subsets: ["latin"],
 	variable: "--font-mono",
+	display: 'swap', // Prevent font preload warnings
+	preload: false, // Only preload primary font
 })
 
 const metadataBase = (() => {

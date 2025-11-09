@@ -21,7 +21,6 @@ export const QueryProvider = ({ children }: { children: React.ReactNode }) => {
 	return (
 		<QueryClientProvider client={queryClient}>
 			{children}
-			{process.env.NODE_ENV === "development" && <DevtoolsDock />}
 		</QueryClientProvider>
 	)
 }
