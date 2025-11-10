@@ -1,4 +1,4 @@
-import { BACKEND_URL } from "@lib/env"
+import { BACKEND_URL_SSR } from "@lib/env"
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
 import { cookies } from "next/headers"
 import type { z } from "zod"
@@ -14,7 +14,7 @@ export async function getDocumentById(
 		const sessionCookie = cookieStore.get("sm_session")
 
 		const response = await fetch(
-			`${BACKEND_URL.replace(/\/$/, "")}/v3/documents/documents/by-ids`,
+			`${BACKEND_URL_SSR.replace(/\/$/, "")}/v3/documents/documents/by-ids`,
 			{
 				method: "POST",
 				headers: {
