@@ -496,7 +496,7 @@ const MemoryGraphPage = () => {
           disableValidation: true,
         });
         if (cancelled) return;
-        if (response.error) {
+        if ("error" in response && response.error) {
           if (process.env.NODE_ENV !== "production") {
             const message =
               typeof response.error === "object"
