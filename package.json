@@ -2,10 +2,10 @@
   "name": "supermemory",
   "private": true,
   "scripts": {
-    "build": "turbo run build --filter='!supermemory-browser-extension'",
+    "build": "turbo run build",
     "build:web": "cd apps/web && bun run build",
-    "dev": "turbo run dev --filter='!@repo/docs' --filter='!supermemory-browser-extension'",
-    "dev:all": "turbo run dev --filter='!@repo/docs' --filter=!supermemory-browser-extension",
+    "dev": "turbo run dev --filter='!@repo/docs'",
+    "dev:all": "turbo run dev",
     "test": "turbo run test",
     "format-lint": "bunx biome check --write",
     "check-types": "turbo run check-types"
