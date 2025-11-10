@@ -13,6 +13,14 @@ export const BACKEND_URL =
 		: isProduction
 			? ""
 			: DEFAULT_BACKEND_URL
+
+// For SSR (Server-Side Rendering), we need absolute URLs
+// Use internal Railway service URL or fall back to public URL
+export const BACKEND_URL_SSR =
+	process.env.BACKEND_URL_INTERNAL?.trim() ||
+	process.env.NEXT_PUBLIC_BACKEND_URL?.trim() ||
+	DEFAULT_BACKEND_URL
+
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? DEFAULT_APP_URL
 export const MCP_SERVER_URL =
 	process.env.NEXT_PUBLIC_MCP_SERVER_URL ??
