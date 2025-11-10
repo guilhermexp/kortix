@@ -66,9 +66,8 @@ async function getExtractorService() {
 				enabled: true,
 				preferredLanguages: ['en', 'en-US', 'pt', 'pt-BR']
 			},
-			firecrawl: {
-				enabled: true,
-				apiKey: process.env.FIRECRAWL_API_KEY
+			url: {
+				enabled: true
 			},
 			file: {
 				enabled: true,

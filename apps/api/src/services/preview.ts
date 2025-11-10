@@ -60,12 +60,12 @@ async function getPreviewService() {
   if (!previewServiceInstance) {
     previewServiceInstance = createPreviewGeneratorService({
       enableImageExtraction: true,
-      enableSvgGeneration: true,
-      enableFaviconExtraction: true,
+      enableSvgGeneration: false,
+      enableFaviconExtraction: false,
       preferHighResolution: true,
       timeout: 15000,
       strategyTimeout: 5000,
-      fallbackChain: ["image", "svg", "favicon"],
+      fallbackChain: ["image"],
     });
 
     await previewServiceInstance.initialize();

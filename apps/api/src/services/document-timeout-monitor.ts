@@ -7,7 +7,7 @@
  * This prevents documents from being stuck indefinitely when:
  * - Extraction services crash or hang
  * - Network requests timeout without proper error handling
- * - External APIs (GitHub, Firecrawl, etc.) fail to respond
+ * - External APIs (MarkItDown, Puppeteer, etc.) fail to respond
  *
  * Usage:
  * ```typescript

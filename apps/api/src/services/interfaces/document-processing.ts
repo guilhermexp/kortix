@@ -296,10 +296,9 @@ export interface RetryOptions {
  * Configuration for DocumentExtractorService
  */
 export interface ExtractorServiceConfig {
-	/** Firecrawl API configuration */
-	firecrawl?: {
+	/** URL extraction configuration (MarkItDown + Puppeteer) */
+	url?: {
 		enabled: boolean
-		apiKey?: string
 		timeout?: number
 	}
 	/** YouTube extraction configuration */

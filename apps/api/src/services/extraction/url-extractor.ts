@@ -16,10 +16,10 @@ import { safeFetch } from '../../security/url-validator'
 import { convertUrlWithMarkItDown } from '../markitdown'
 import puppeteer from 'puppeteer'
 import type {
-	FirecrawlExtractor as IFirecrawlExtractor,
+	URLExtractor as IURLExtractor,
 	ExtractionInput,
 	ExtractionResult,
-	FirecrawlOptions,
+	URLExtractorOptions,
 	RateLimitInfo,
 	MetaTags,
 } from '../interfaces'
@@ -31,8 +31,7 @@ import type {
 /**
  * Extractor for web URLs using MarkItDown
  */
-export class FirecrawlExtractor extends BaseService implements IFirecrawlExtractor {
-	private readonly apiKey: string | undefined
+export class URLExtractor extends BaseService implements IURLExtractor {
 	private rateLimitInfo: RateLimitInfo = {
 		remaining: 999999, // Puppeteer has no rate limits
 		limit: 999999,
@@ -40,9 +39,8 @@ export class FirecrawlExtractor extends BaseService implements IFirecrawlExtract
 		used: 0,
 	}
 
-	constructor(apiKey?: string) {
+	constructor() {
 		super('URLExtractor')
-		this.apiKey = apiKey // Kept for backward compatibility, not used
 	}
 
 	// ========================================================================
@@ -56,7 +54,7 @@ export class FirecrawlExtractor extends BaseService implements IFirecrawlExtract
 		this.assertInitialized()
 
 		if (!input.url) {
-			throw this.createError('MISSING_URL', 'URL is required for Firecrawl extraction')
+			throw this.createError('MISSING_URL', 'URL is required for URL extraction')
 		}
 
 		return await this.extractFromUrl(input.url, {
@@ -69,14 +67,14 @@ export class FirecrawlExtractor extends BaseService implements IFirecrawlExtract
 	 * Check if this extractor can handle the given input
 	 */
 	canHandle(input: ExtractionInput): boolean {
-		// Can handle any URL that's not YouTube, GitHub, or a direct file
+		// Can handle any URL that's not YouTube or a direct file
+		// NOTE: GitHub URLs are now handled by MarkItDown (RepositoryExtractor disabled)
 		if (!input.url) return false
 
 		const url = input.url.toLowerCase()
 
 		// Exclude specific content types
 		if (url.includes('youtube.com') || url.includes('youtu.be')) return false
-		if (url.includes('github.com')) return false
 		if (url.match(/\.(pdf|docx?|xlsx?|pptx?)$/i)) return false
 
 		return true
@@ -86,7 +84,7 @@ export class FirecrawlExtractor extends BaseService implements IFirecrawlExtract
 	 * Get extractor priority (higher = preferred)
 	 */
 	getPriority(): number {
-		return this.apiKey ? 10 : 5 // Higher priority if API key is available
+		return 5 // Standard priority for URL extraction
 	}
 
 	/**
@@ -101,13 +99,13 @@ export class FirecrawlExtractor extends BaseService implements IFirecrawlExtract
 	}
 
 	// ========================================================================
-	// FirecrawlExtractor Interface
+	// URLExtractor Interface
 	// ========================================================================
 
 	/**
 	 * Extract content from a web URL using MarkItDown with Puppeteer fallback for SPAs
 	 */
-	async extractFromUrl(url: string, options?: FirecrawlOptions): Promise<ExtractionResult> {
+	async extractFromUrl(url: string, options?: URLExtractorOptions): Promise<ExtractionResult> {
 		this.assertInitialized()
 
 		const tracker = this.performanceMonitor.startOperation('extractFromUrl')
@@ -183,7 +181,7 @@ export class FirecrawlExtractor extends BaseService implements IFirecrawlExtract
 	 */
 	private async extractWithPuppeteer(
 		url: string,
-		options?: FirecrawlOptions
+		options?: URLExtractorOptions
 	): Promise<ExtractionResult> {
 		this.logger.info('Starting Puppeteer extraction', { url })
 
@@ -318,7 +316,7 @@ export class FirecrawlExtractor extends BaseService implements IFirecrawlExtract
 	 */
 	private async extractWithDirectScraping(
 		url: string,
-		options?: FirecrawlOptions
+		options?: URLExtractorOptions
 	): Promise<ExtractionResult> {
 		this.logger.debug('Extracting with MarkItDown', { url })
 
@@ -617,11 +615,6 @@ export class FirecrawlExtractor extends BaseService implements IFirecrawlExtract
 	// ========================================================================
 
 	protected async onHealthCheck(): Promise<boolean> {
-		if (!this.apiKey) {
-			// Without API key, can still work with fallback
-			return true
-		}
-
 		return await this.checkServiceHealth()
 	}
 }
@@ -632,8 +625,7 @@ export class FirecrawlExtractor extends BaseService implements IFirecrawlExtract
 
 /**
  * Create URL extractor (uses MarkItDown internally)
- * @param apiKey - Kept for backward compatibility but not used
  */
-export function createFirecrawlExtractor(apiKey?: string): FirecrawlExtractor {
-	return new FirecrawlExtractor(apiKey)
+export function createURLExtractor(): URLExtractor {
+	return new URLExtractor()
 }

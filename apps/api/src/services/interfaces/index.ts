@@ -50,8 +50,8 @@ export type {
 // ============================================================================
 export type {
 	DocumentExtractor,
-	FirecrawlExtractor,
-	FirecrawlOptions,
+	URLExtractor,
+	URLExtractorOptions,
 	RateLimitInfo as ExtractionRateLimitInfo,
 	YouTubeExtractor,
 	YouTubeOptions,

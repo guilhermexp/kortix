@@ -14,7 +14,7 @@
 import { BaseService } from '../base/base-service'
 import { CircuitBreaker } from '../orchestration/circuit-breaker'
 import { RetryHandler } from '../orchestration/retry-handler'
-import { FirecrawlExtractor, createFirecrawlExtractor } from './firecrawl-extractor'
+import { URLExtractor, createURLExtractor } from './url-extractor'
 import { YouTubeExtractor, createYouTubeExtractor } from './youtube-extractor'
 import { PDFExtractor, createPDFExtractor } from './pdf-extractor'
 import { FileExtractor, createFileExtractor } from './file-extractor'
@@ -234,7 +234,7 @@ export class DocumentExtractorService
 	 *
 	 * Retrieves a single extractor instance for direct use.
 	 *
-	 * @param name - Name of the extractor (e.g., 'pdf', 'youtube', 'firecrawl')
+	 * @param name - Name of the extractor (e.g., 'pdf', 'youtube', 'url')
 	 * @returns The extractor instance or undefined if not found
 	 *
 	 * @example
@@ -279,12 +279,12 @@ export class DocumentExtractorService
 	 * Register all configured extractors
 	 */
 	private async registerExtractors(): Promise<void> {
-		// URL extractor (uses MarkItDown)
-		if (this.config.firecrawl?.enabled !== false) {
-			const extractor = createFirecrawlExtractor(this.config.firecrawl?.apiKey)
+		// URL extractor (uses MarkItDown and Puppeteer)
+		if (this.config.url?.enabled !== false) {
+			const extractor = createURLExtractor()
 			await extractor.initialize()
-			this.extractors.set('firecrawl', extractor)
-			this.logger.debug('Registered URL extractor (MarkItDown)')
+			this.extractors.set('url', extractor)
+			this.logger.debug('Registered URL extractor (MarkItDown + Puppeteer)')
 		}
 
 		// YouTube extractor
@@ -314,13 +314,13 @@ export class DocumentExtractorService
 			this.logger.debug('Registered File extractor')
 		}
 
-		// Repository extractor
-		if (this.config.repository?.enabled !== false) {
-			const extractor = createRepositoryExtractor(this.config.repository?.githubToken)
-			await extractor.initialize()
-			this.extractors.set('repository', extractor)
-			this.logger.debug('Registered Repository extractor')
-		}
+		// Repository extractor - DISABLED (use MarkItDown for all URLs including GitHub)
+		// if (this.config.repository?.enabled !== false) {
+		// 	const extractor = createRepositoryExtractor(this.config.repository?.githubToken)
+		// 	await extractor.initialize()
+		// 	this.extractors.set('repository', extractor)
+		// 	this.logger.debug('Registered Repository extractor')
+		// }
 	}
 
 	/**
@@ -554,9 +554,8 @@ export function createDocumentExtractorService(
 	config: Partial<ExtractorServiceConfig> = {}
 ): DocumentExtractorService {
 	const defaultConfig: ExtractorServiceConfig = {
-		firecrawl: {
-			enabled: true,  // URL extractor using MarkItDown
-			apiKey: undefined,  // Not used - kept for backward compatibility
+		url: {
+			enabled: true,  // URL extractor using MarkItDown and Puppeteer
 			timeout: 30000,
 		},
 		youtube: {

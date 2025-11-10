@@ -61,12 +61,12 @@ export class PreviewGeneratorService
 
 		this.config = {
 			enableImageExtraction: config?.enableImageExtraction ?? true,
-			enableSvgGeneration: config?.enableSvgGeneration ?? true,
-			enableFaviconExtraction: config?.enableFaviconExtraction ?? true,
+			enableSvgGeneration: config?.enableSvgGeneration ?? false,
+			enableFaviconExtraction: config?.enableFaviconExtraction ?? false,
 			preferHighResolution: config?.preferHighResolution ?? true,
 			timeout: config?.timeout ?? DEFAULT_TIMEOUT,
 			strategyTimeout: config?.strategyTimeout ?? DEFAULT_STRATEGY_TIMEOUT,
-			fallbackChain: config?.fallbackChain ?? ['image', 'svg', 'favicon'],
+			fallbackChain: config?.fallbackChain ?? ['image'],
 			...config,
 		}
 

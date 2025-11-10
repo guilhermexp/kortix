@@ -9,9 +9,9 @@
 // ============================================================================
 
 export {
-	FirecrawlExtractor,
-	createFirecrawlExtractor,
-} from './firecrawl-extractor'
+	URLExtractor,
+	createURLExtractor,
+} from './url-extractor'
 
 export {
 	YouTubeExtractor,
@@ -62,14 +62,14 @@ export type {
 	ExtractorServiceConfig,
 
 	// Specialized extractor types
-	FirecrawlExtractor as IFirecrawlExtractor,
+	URLExtractor as IURLExtractor,
 	YouTubeExtractor as IYouTubeExtractor,
 	PDFExtractor as IPDFExtractor,
 	FileExtractor as IFileExtractor,
 	RepositoryExtractor as IRepositoryExtractor,
 
 	// Options types
-	FirecrawlOptions,
+	URLExtractorOptions,
 	YouTubeOptions,
 	PDFOptions,
 	FileOptions,
