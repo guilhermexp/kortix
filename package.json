@@ -15,7 +15,9 @@
   },
   "packageManager": "bun@1.2.17",
   "workspaces": [
-    "apps/*",
+    "apps/api",
+    "apps/web",
+    "apps/docs",
     "packages/*"
   ],
   "dependencies": {
