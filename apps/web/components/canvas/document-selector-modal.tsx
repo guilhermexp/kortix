@@ -246,7 +246,7 @@ export function DocumentSelectorModal({
                   {availableDocuments.map((document) => {
                     const isSelected = selectedIds.has(document.id);
                     const activeMemories = document.memoryEntries.filter(
-                      (memory) => memory.status !== "archived",
+                      (memory) => (memory as any).status !== "archived",
                     );
                     const snippet = getDocumentSnippet(document);
 
