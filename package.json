@@ -2,7 +2,8 @@
   "name": "supermemory",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
+    "build": "turbo run build --filter='!supermemory-browser-extension'",
+    "build:web": "cd apps/web && bun run build",
     "dev": "turbo run dev --filter='!@repo/docs' --filter='!supermemory-browser-extension'",
     "dev:all": "turbo run dev --filter='!@repo/docs' --filter=!supermemory-browser-extension",
     "test": "turbo run test",
