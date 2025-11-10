@@ -1135,8 +1135,8 @@ export const DocumentsWithMemoriesQuerySchema = z
 			description: "Page number to fetch",
 			example: 1,
 		}),
-		limit: z.number().default(10).meta({
-			description: "Number of items per page",
+		limit: z.number().default(10).max(100).meta({
+			description: "Number of items per page (max 100)",
 			example: 10,
 		}),
 		sort: z.enum(["createdAt", "updatedAt"]).default("createdAt").meta({
