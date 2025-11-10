@@ -861,7 +861,7 @@ export const DocumentCard = memo(
             const show = tags.slice(0, 4);
             return (
               <div className="mb-2 flex flex-wrap gap-1">
-                {show.map((t) => (
+                {show.map((t: string) => (
                   <span
                     key={t}
                     className="px-1.5 py-0.5 text-[10px] rounded border"
