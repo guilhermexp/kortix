@@ -496,6 +496,7 @@ const MemoryGraphPage = () => {
           disableValidation: true,
         });
         if (cancelled) return;
+        // Type guard to check error property exists
         if ("error" in response && response.error) {
           if (process.env.NODE_ENV !== "production") {
             const message =
