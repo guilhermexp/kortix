@@ -288,7 +288,7 @@ const MemoryGraphPage = () => {
       const response = await $fetch("@post/documents/documents", {
         body: {
           page: pageParam as number,
-          limit: (pageParam as number) === 1 ? (IS_DEV ? 500 : 500) : PAGE_SIZE,
+          limit: (pageParam as number) === 1 ? (IS_DEV ? 50 : 50) : PAGE_SIZE,
           sort: "createdAt",
           order: "desc",
           containerTags:
