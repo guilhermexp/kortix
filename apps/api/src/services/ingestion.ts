@@ -162,9 +162,8 @@ async function getOrchestrator() {
         enabled: true,
         preferredLanguages: ["en", "en-US", "pt", "pt-BR"],
       },
-      firecrawl: {
+      url: {
         enabled: true,
-        apiKey: process.env.FIRECRAWL_API_KEY,
       },
       circuitBreaker: {
         enabled: true,

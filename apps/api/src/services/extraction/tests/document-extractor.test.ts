@@ -36,7 +36,7 @@ describe("DocumentExtractorService", () => {
 			maxRetries: 3,
 			timeoutMs: 30000,
 			extractorConfigs: {
-				firecrawl: { priority: 1, enabled: true },
+				url: { priority: 1, enabled: true },
 				youtube: { priority: 2, enabled: true },
 				pdf: { priority: 3, enabled: true },
 				file: { priority: 4, enabled: true },
@@ -49,7 +49,7 @@ describe("DocumentExtractorService", () => {
 
 		// Mock extractors
 		mockExtractors = new Map()
-		mockExtractors.set('firecrawl', {
+		mockExtractors.set('url', {
 			canHandle: vi.fn().mockReturnValue(true),
 			extract: vi.fn(),
 			getSupportedTypes: vi.fn().mockReturnValue(['url', 'web']),
@@ -104,14 +104,14 @@ describe("DocumentExtractorService", () => {
 			}
 
 			// Configure mock to handle URL
-			const firecrawlExtractor = mockExtractors.get('firecrawl')!
-			firecrawlExtractor.canHandle.mockReturnValue(true)
-			firecrawlExtractor.extract.mockResolvedValue(mockResult)
+			const urlExtractor = mockExtractors.get('url')!
+			urlExtractor.canHandle.mockReturnValue(true)
+			urlExtractor.extract.mockResolvedValue(mockResult)
 
 			// Test extraction
 			const result = await service.extract(urlInput)
 			expect(result.success).toBe(true)
-			expect(firecrawlExtractor.extract).toHaveBeenCalledWith(urlInput)
+			expect(urlExtractor.extract).toHaveBeenCalledWith(urlInput)
 		})
 
 		it("should handle YouTube URLs with YouTube extractor", async () => {
@@ -173,9 +173,9 @@ describe("DocumentExtractorService", () => {
 				options: {},
 			}
 
-			const firecrawlExtractor = mockExtractors.get('firecrawl')!
-			firecrawlExtractor.canHandle.mockReturnValue(true)
-			firecrawlExtractor.extract.mockRejectedValue(new Error('Network error'))
+			const urlExtractor = mockExtractors.get('url')!
+			urlExtractor.canHandle.mockReturnValue(true)
+			urlExtractor.extract.mockRejectedValue(new Error('Network error'))
 
 			const pdfExtractor = mockExtractors.get('pdf')!
 			pdfExtractor.canHandle.mockReturnValue(false) // Secondary attempt
@@ -241,9 +241,9 @@ describe("DocumentExtractorService", () => {
 				options: {},
 			}
 
-			const firecrawlExtractor = mockExtractors.get('firecrawl')!
-			firecrawlExtractor.canHandle.mockReturnValue(true)
-			firecrawlExtractor.extract.mockImplementation(
+			const urlExtractor = mockExtractors.get('url')!
+			urlExtractor.canHandle.mockReturnValue(true)
+			urlExtractor.extract.mockImplementation(
 				() => new Promise((resolve) => setTimeout(resolve, 60000))
 			)
 
@@ -271,9 +271,9 @@ describe("DocumentExtractorService", () => {
 				options: {},
 			}
 
-			const firecrawlExtractor = mockExtractors.get('firecrawl')!
-			firecrawlExtractor.canHandle.mockReturnValue(true)
-			firecrawlExtractor.extract.mockRejectedValue(
+			const urlExtractor = mockExtractors.get('url')!
+			urlExtractor.canHandle.mockReturnValue(true)
+			urlExtractor.extract.mockRejectedValue(
 				new Error('ECONNREFUSED')
 			)
 
@@ -337,9 +337,9 @@ describe("DocumentExtractorService", () => {
 				},
 			}
 
-			const firecrawlExtractor = mockExtractors.get('firecrawl')!
-			firecrawlExtractor.canHandle.mockReturnValue(true)
-			firecrawlExtractor.extract.mockResolvedValue(mockResult)
+			const urlExtractor = mockExtractors.get('url')!
+			urlExtractor.canHandle.mockReturnValue(true)
+			urlExtractor.extract.mockResolvedValue(mockResult)
 
 			await service.extract(urlInput)
 
@@ -363,9 +363,9 @@ describe("DocumentExtractorService", () => {
 				data: { content: 'Content', metadata: {}, processingTime: 100 },
 			}
 
-			const firecrawlExtractor = mockExtractors.get('firecrawl')!
-			firecrawlExtractor.canHandle.mockReturnValue(true)
-			firecrawlExtractor.extract.mockResolvedValue(mockResult)
+			const urlExtractor = mockExtractors.get('url')!
+			urlExtractor.canHandle.mockReturnValue(true)
+			urlExtractor.extract.mockResolvedValue(mockResult)
 
 			const results = await Promise.all(
 				inputs.map((input) => service.extract(input))
@@ -398,10 +398,10 @@ describe("DocumentExtractorService", () => {
 				options: {},
 			}
 
-			const firecrawlExtractor = mockExtractors.get('firecrawl')!
-			firecrawlExtractor.canHandle.mockReturnValue(true)
+			const urlExtractor = mockExtractors.get('url')!
+			urlExtractor.canHandle.mockReturnValue(true)
 			// Fail twice, succeed on third attempt
-			firecrawlExtractor.extract
+			urlExtractor.extract
 				.mockRejectedValueOnce(new Error('Temporary error'))
 				.mockRejectedValueOnce(new Error('Temporary error'))
 				.mockResolvedValue({
@@ -411,7 +411,7 @@ describe("DocumentExtractorService", () => {
 
 			const result = await service.extract(urlInput)
 			expect(result.success).toBe(true)
-			expect(firecrawlExtractor.extract).toHaveBeenCalledTimes(3)
+			expect(urlExtractor.extract).toHaveBeenCalledTimes(3)
 		})
 
 		it("should respect max retry limits", async () => {
@@ -421,9 +421,9 @@ describe("DocumentExtractorService", () => {
 				options: {},
 			}
 
-			const firecrawlExtractor = mockExtractors.get('firecrawl')!
-			firecrawlExtractor.canHandle.mockReturnValue(true)
-			firecrawlExtractor.extract.mockRejectedValue(new Error('Always fails'))
+			const urlExtractor = mockExtractors.get('url')!
+			urlExtractor.canHandle.mockReturnValue(true)
+			urlExtractor.extract.mockRejectedValue(new Error('Always fails'))
 
 			const result = await service.extract(urlInput)
 			expect(result.success).toBe(false)
@@ -461,9 +461,9 @@ describe("DocumentExtractorService", () => {
 				},
 			}
 
-			const firecrawlExtractor = mockExtractors.get('firecrawl')!
-			firecrawlExtractor.canHandle.mockReturnValue(true)
-			firecrawlExtractor.extract.mockResolvedValue(largeResult)
+			const urlExtractor = mockExtractors.get('url')!
+			urlExtractor.canHandle.mockReturnValue(true)
+			urlExtractor.extract.mockResolvedValue(largeResult)
 
 			const result = await service.extract(largeInput)
 			expect(result.success).toBe(true)

@@ -6,11 +6,11 @@
  * common base interface.
  *
  * Extractor Types:
- * - FirecrawlExtractor: Web URLs using Firecrawl API
+ * - URLExtractor: Web URLs using MarkItDown and Puppeteer
  * - YouTubeExtractor: YouTube videos with transcript extraction
  * - PDFExtractor: PDF documents with OCR fallback
  * - FileExtractor: Office documents (DOCX, XLSX, etc.)
- * - RepositoryExtractor: GitHub repositories
+ * - RepositoryExtractor: GitHub repositories (DISABLED)
  */
 
 import {
@@ -55,16 +55,16 @@ export interface DocumentExtractor extends BaseService {
 // ============================================================================
 
 /**
- * Firecrawl-based web content extractor
+ * URL-based web content extractor using MarkItDown and Puppeteer
  */
-export interface FirecrawlExtractor extends DocumentExtractor {
+export interface URLExtractor extends DocumentExtractor {
 	/**
-	 * Extract content from a web URL using Firecrawl
+	 * Extract content from a web URL using MarkItDown with Puppeteer fallback
 	 */
-	extractFromUrl(url: string, options?: FirecrawlOptions): Promise<ExtractionResult>
+	extractFromUrl(url: string, options?: URLExtractorOptions): Promise<ExtractionResult>
 
 	/**
-	 * Check Firecrawl service health
+	 * Check service health
 	 */
 	checkServiceHealth(): Promise<boolean>
 
@@ -75,9 +75,9 @@ export interface FirecrawlExtractor extends DocumentExtractor {
 }
 
 /**
- * Firecrawl extraction options
+ * URL extraction options
  */
-export interface FirecrawlOptions {
+export interface URLExtractorOptions {
 	/** Include main content only */
 	onlyMainContent?: boolean
 	/** Include markdown formatting */

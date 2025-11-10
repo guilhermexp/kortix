@@ -83,10 +83,9 @@ export class ConfigLoader {
  */
 export function getDefaultExtractorConfig(): ExtractorServiceConfig {
 	return {
-		firecrawl: {
-			enabled: ConfigLoader.getBoolean('FIRECRAWL_ENABLED', true),
-			apiKey: process.env.FIRECRAWL_API_KEY,
-			timeout: ConfigLoader.getNumber('FIRECRAWL_TIMEOUT', 30000),
+		url: {
+			enabled: ConfigLoader.getBoolean('URL_EXTRACTOR_ENABLED', true),
+			timeout: ConfigLoader.getNumber('URL_EXTRACTOR_TIMEOUT', 30000),
 		},
 		youtube: {
 			enabled: ConfigLoader.getBoolean('YOUTUBE_ENABLED', true),
@@ -257,8 +256,8 @@ export function validateExtractorConfig(config: ExtractorServiceConfig): void {
 		throw new Error('defaultTimeout must be positive')
 	}
 
-	if (config.firecrawl?.timeout !== undefined && config.firecrawl.timeout < 0) {
-		throw new Error('firecrawl.timeout must be positive')
+	if (config.url?.timeout !== undefined && config.url.timeout < 0) {
+		throw new Error('url.timeout must be positive')
 	}
 
 	if (config.youtube?.timeout !== undefined && config.youtube.timeout < 0) {

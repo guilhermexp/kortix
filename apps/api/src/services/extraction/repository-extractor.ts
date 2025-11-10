@@ -101,17 +101,18 @@ export class RepositoryExtractor extends BaseService implements IRepositoryExtra
 
 	/**
 	 * Check if this extractor can handle the given input
+	 * DISABLED: GitHub URLs should be processed by MarkItDown (URLExtractor)
 	 */
 	canHandle(input: ExtractionInput): boolean {
-		if (!input.url) return false
-		return this.isRepositoryUrl(input.url)
+		return false // Completely disabled - use MarkItDown for all URLs including GitHub
 	}
 
 	/**
 	 * Get extractor priority (higher = preferred)
+	 * DISABLED: Set to 0 to ensure URLExtractor (MarkItDown) is always preferred
 	 */
 	getPriority(): number {
-		return 15 // High priority for GitHub URLs
+		return 0 // Disabled - use MarkItDown for all URLs
 	}
 
 	/**
