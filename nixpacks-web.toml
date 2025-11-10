@@ -2,7 +2,11 @@
 nixPkgs = ["nodejs_22"]
 
 [phases.install]
-cmds = ["corepack enable", "corepack prepare bun@latest --activate", "bun install"]
+cmds = [
+  "corepack enable",
+  "corepack prepare bun@latest --activate",
+  "bun install --filter='!supermemory-browser-extension'"
+]
 
 [phases.build]
 cmds = ["cd apps/web && bun run build"]
