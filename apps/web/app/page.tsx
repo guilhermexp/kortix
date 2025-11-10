@@ -491,13 +491,13 @@ const MemoryGraphPage = () => {
         if (parsed.project && parsed.project !== "__all__") {
           body.containerTags = [parsed.project];
         }
-        const response = await $fetch("@post/graph/connections", {
+        const response = (await $fetch("@post/graph/connections", {
           body,
           disableValidation: true,
-        });
+        })) as { error?: unknown; data?: { edges?: unknown[] } };
         if (cancelled) return;
         // Type guard to check error property exists
-        if ("error" in response && response.error) {
+        if (response.error) {
           if (process.env.NODE_ENV !== "production") {
             const message =
               typeof response.error === "object"
@@ -529,7 +529,7 @@ const MemoryGraphPage = () => {
 
   // Handle view mode change
   const handleViewModeChange = useCallback(
-    (mode: "graph" | "graphEmpty" | "list") => {
+    (mode: "graph" | "graphEmpty" | "list" | "infinity") => {
       setViewMode(mode);
     },
     [setViewMode],

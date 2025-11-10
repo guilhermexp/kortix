@@ -284,6 +284,22 @@ const getDocumentPreview = (
     safeHttpUrl(rawFirecrawlMetadata?.ogImage, originalUrl) ??
     safeHttpUrl(rawFirecrawl?.ogImage, originalUrl);
 
+  // Heuristics: avoid badges/svg; prefer GitHub social preview when available
+  const isSvgOrBadge = (u?: string) => {
+    if (!u) return true;
+    const s = u.toLowerCase();
+    return (
+      s.startsWith("data:image/svg+xml") ||
+      s.endsWith(".svg") ||
+      s.includes("badge") ||
+      s.includes("shields") ||
+      s.includes("sprite") ||
+      s.includes("logo") ||
+      s.includes("icon") ||
+      s.includes("topics")
+    );
+  };
+
   // Prefer images extracted from page content before generic OG images
   const extractedImages: string[] = (() => {
     const arr =
@@ -304,22 +320,6 @@ const getDocumentPreview = (
 
   const preferredFromExtracted =
     extractedImages.find((u) => !isLikelyGeneric(u)) || extractedImages[0];
-
-  // Heuristics: avoid badges/svg; prefer GitHub social preview when available
-  const isSvgOrBadge = (u?: string) => {
-    if (!u) return true;
-    const s = u.toLowerCase();
-    return (
-      s.startsWith("data:image/svg+xml") ||
-      s.endsWith(".svg") ||
-      s.includes("badge") ||
-      s.includes("shields") ||
-      s.includes("sprite") ||
-      s.includes("logo") ||
-      s.includes("icon") ||
-      s.includes("topics")
-    );
-  };
 
   const isDisallowedBadgeDomain = (u?: string) => {
     if (!u) return false;
@@ -437,11 +437,11 @@ const getDocumentPreview = (
     safeHttpUrl(rawYoutube?.url) ?? safeHttpUrl(rawYoutube?.embedUrl);
   const youtubeThumbnail = safeHttpUrl(rawYoutube?.thumbnail);
 
-  // IMPORTANT: Check document.preview_image first (from database)
+  // IMPORTANT: Check document.previewImage first (from database)
   // This field is set by the backend during ingestion and should take priority
   // NEVER use SVG placeholders - they provide poor UX
   const documentPreviewImage = (() => {
-    const url = safeHttpUrl(document.preview_image);
+    const url = safeHttpUrl(document.previewImage);
     // Block SVG placeholders - they're generic and provide no value
     if (url && url.includes('data:image/svg+xml')) {
       return undefined;
@@ -515,7 +515,7 @@ export const DocumentCard = memo(
       if (!preview) return null;
       if (preview.src && isInlineSvgDataUrl(preview.src)) {
         if (preview.kind === "video") {
-          const fallback = getYouTubeThumbnail(document.url) ?? undefined;
+          const fallback = getYouTubeThumbnail(document.url ?? undefined) ?? undefined;
           if (fallback) return { ...preview, src: fallback } as PreviewData;
         }
         return null;

@@ -56,7 +56,7 @@ export function CodeBlock({
 }
 
 interface CodeBlockCopyButtonProps
-  extends React.ComponentPropsWithoutRef<typeof Button> {
+  extends Omit<React.ComponentPropsWithoutRef<typeof Button>, "onError"> {
   onCopy?: () => void;
   onError?: (error: Error) => void;
   timeout?: number;

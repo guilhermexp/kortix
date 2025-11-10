@@ -36,7 +36,7 @@ export function Tool({
 }
 
 interface ToolHeaderProps
-  extends React.ComponentPropsWithoutRef<typeof CollapsibleTrigger> {
+  extends Omit<React.ComponentPropsWithoutRef<typeof CollapsibleTrigger>, "type"> {
   type: string;
   state: ToolState;
 }
