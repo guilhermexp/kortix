@@ -687,7 +687,7 @@ export function AddMemoryView({
         const response =
           contentType === "repository"
             ? await fetch(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/v3/documents/repository`,
+                "/v3/documents/repository",
                 {
                   method: "POST",
                   headers: {
@@ -981,7 +981,7 @@ export function AddMemoryView({
       formData.append("containerTags", JSON.stringify([project]));
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/v3/documents/file`,
+        "/v3/documents/file",
         {
           method: "POST",
           body: formData,
