@@ -1154,6 +1154,10 @@ export const DocumentsWithMemoriesQuerySchema = z
 				description: "Optional container tags to filter documents by",
 				example: ["sm_project_default"],
 			}),
+		includeContent: z.boolean().default(false).meta({
+			description: "Whether to include heavy content fields (content, raw, processing_metadata, summary_embedding). Default false for better performance",
+			example: false,
+		}),
 	})
 	.meta({
 		description: "Query parameters for listing documents with memory entries",
