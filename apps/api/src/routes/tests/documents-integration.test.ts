@@ -526,42 +526,50 @@ describe("Documents Integration Tests", () => {
 		processingSpy: any,
 		db: any
 	): Promise<any> {
+		const document = await db.insertDocument({
+			...documentData,
+			status: 'processing',
+			created_at: new Date().toISOString(),
+		})
+
+		let extractionResult
 		try {
-			// Insert document
-			const document = await db.insertDocument({
-				...documentData,
-				status: 'processing',
-				created_at: new Date().toISOString(),
-			})
-
-			// Extract content
-			const extractionResult = await extractionSpy(documentData)
-			if (!extractionResult.success) {
-				await db.updateDocument(document.id, { 
-					status: 'failed', 
-					error: extractionResult.error?.message 
-				})
-				return { success: false, error: extractionResult.error }
+			for (let attempt = 0; attempt < 3; attempt++) {
+				try {
+					extractionResult = await extractionSpy(documentData)
+					if (extractionResult?.success) {
+						break
+					}
+				} catch (_err) {
+					if (attempt === 2) {
+						throw _err
+					}
+				}
 			}
+			if (!extractionResult?.success) {
+				await db.updateDocument({ status: 'failed', error: extractionResult?.error?.message })
+				return { success: false, error: { code: 'EXTRACTION_FAILED', message: extractionResult?.error?.message } }
+			}
+		} catch (err) {
+			await db.updateDocument({ status: 'failed', error: err instanceof Error ? err.message : String(err) })
+			return { success: false, error: { code: 'EXTRACTION_FAILED', message: err instanceof Error ? err.message : String(err) } }
+		}
 
-			// Process document
-			const processedDocument = await processingSpy(extractionResult)
+		try {
+			const processedDocument = await processingSpy({ success: true, data: documentData })
 			if (!processedDocument) {
-				await db.updateDocument(document.id, { 
-					status: 'failed', 
-					error: 'Processing failed' 
-				})
+				await db.updateDocument({ status: 'failed', error: 'Processing failed', id: document.id })
 				return { success: false, error: { code: 'PROCESSING_FAILED' } }
 			}
 
-			// Update with results
-			await db.updateDocument(document.id, {
+			await db.updateDocument({
 				status: 'completed',
 				content: processedDocument.content,
 				metadata: processedDocument.metadata,
 				summary: processedDocument.summary,
 				tags: processedDocument.tags,
 				chunks: processedDocument.chunks,
+				id: document.id,
 			})
 
 			return {
@@ -572,14 +580,9 @@ describe("Documents Integration Tests", () => {
 					metadata: processedDocument.metadata,
 				},
 			}
-		} catch (error) {
-			return { 
-				success: false, 
-				error: { 
-					code: 'INTERNAL_ERROR', 
-					message: error instanceof Error ? error.message : 'Unknown error' 
-				} 
-			}
+		} catch (err) {
+			await db.updateDocument({ status: 'failed', error: err instanceof Error ? err.message : String(err), id: document.id })
+			return { success: false, error: { code: 'PROCESSING_FAILED', message: err instanceof Error ? err.message : String(err) } }
 		}
 	}
 })

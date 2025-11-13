@@ -351,7 +351,11 @@ export class YouTubeExtractor extends BaseService implements IYouTubeExtractor {
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
     try {
-      const result = await fetchYouTubeTranscriptFallback(videoUrl);
+      let result = await fetchYouTubeTranscriptFallback(videoUrl);
+      if (!result) {
+        await new Promise((r) => setTimeout(r, 500));
+        result = await fetchYouTubeTranscriptFallback(videoUrl);
+      }
 
       if (!result) {
         return null;

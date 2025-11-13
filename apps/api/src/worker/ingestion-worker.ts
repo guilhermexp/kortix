@@ -12,12 +12,15 @@ loadEnv()
 
 import { env } from "../env"
 import { ensureSpace } from "../routes/documents"
-import { processDocument } from "../services/ingestion"
+import { createIngestionOrchestrator } from "../services/orchestration"
 import { getDefaultUserId, supabaseAdmin } from "../supabase"
 
 const MAX_BATCH = env.INGESTION_BATCH_SIZE
 const POLL_INTERVAL = env.INGESTION_POLL_MS
 const MAX_ATTEMPTS = env.INGESTION_MAX_ATTEMPTS
+
+// Create ingestion orchestrator instance
+const orchestrator = createIngestionOrchestrator()
 
 type IngestionJobRow = {
 	id: string
@@ -101,24 +104,31 @@ async function hydrateDocument(
 		console.warn(`[ingestion-worker] No user found for job ${jobId}, processing without user_id`)
 	}
 
-	await processDocument({
-		documentId,
+	// Use the new orchestrator instead of deprecated processDocument
+	const result = await orchestrator.processDocument({
+		content: document.content ?? '',
+		url: document.url ?? null,
+		type: document.type ?? null,
+		userId: userId ?? '',
 		organizationId: orgId,
-		userId,
-		spaceId,
-		containerTags,
-		jobId,
-		document: {
-			content: document.content ?? null,
-			metadata: document.metadata ?? null,
-			title: document.title ?? null,
-			url: document.url ?? null,
-			source: document.source ?? null,
-			type: document.type ?? null,
-			raw: document.raw ?? null,
-			processingMetadata: document.processing_metadata ?? null,
+		metadata: {
+			...document.metadata,
+			documentId,
+			spaceId,
+			containerTags,
+			jobId,
+			jobPayload: payload,
+			source: document.source,
+			raw: document.raw,
+			processingMetadata: document.processing_metadata,
 		},
-		jobPayload: payload ?? null,
+	})
+	
+	console.log("[ingestion-worker] Document processed successfully with orchestrator", {
+		jobId,
+		documentId,
+		result: result.documentId,
+		status: result.status,
 	})
 }
 
@@ -198,7 +208,7 @@ async function processJob(job: IngestionJobRow) {
 	try {
 		await hydrateDocument(job.id, job.document_id, job.org_id, job.payload)
 
-		console.log("[ingestion-worker] Job completed successfully", {
+		console.log("[ingestion-worker] Job completed successfully with orchestrator", {
 			jobId: job.id,
 			documentId: job.document_id,
 		})
@@ -242,6 +252,10 @@ async function main() {
 	})
 
 	try {
+		// Initialize the orchestrator
+		await orchestrator.initialize()
+		console.log("[ingestion-worker] Ingestion orchestrator initialized successfully")
+		
 		await tick()
 		console.log(`[ingestion-worker] Starting polling (every ${POLL_INTERVAL}ms)`)
 		setInterval(tick, POLL_INTERVAL)

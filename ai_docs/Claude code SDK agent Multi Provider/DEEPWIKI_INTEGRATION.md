@@ -1,7 +1,9 @@
+Exemplo de uma implementaçao de tool.
+
 # DeepWiki MCP Integration - Repository Analysis
 
-**Date**: 2025-01-XX  
-**Status**: ✅ INTEGRATED  
+**Date**: 2025-01-XX
+**Status**: ✅ INTEGRATED
 **Version**: 1.0.0
 
 ---
@@ -60,8 +62,8 @@ Added section on "Adding External MCP Servers" with:
 Claude now has access to these DeepWiki MCP tools:
 
 ### 1. `read_wiki_structure`
-**Purpose**: Retrieve the curated documentation outline that DeepWiki generated for a GitHub repository.  
-**Use case**: Build a high-level mental model of the project, discover major sections, and decide where to dive deeper.  
+**Purpose**: Retrieve the curated documentation outline that DeepWiki generated for a GitHub repository.
+**Use case**: Build a high-level mental model of the project, discover major sections, and decide where to dive deeper.
 **Input schema**:
 ```json
 {
@@ -79,8 +81,8 @@ Claude now has access to these DeepWiki MCP tools:
 **Example**: `read_wiki_structure({ "repoName": "anthropics/anthropic-sdk-typescript" })`
 
 ### 2. `read_wiki_contents`
-**Purpose**: Fetch the generated documentation content for a repository (entire outline or specific sections, depending on the server response).  
-**Use case**: Read detailed explanations, copy-ready summaries, and guidance extracted by DeepWiki.  
+**Purpose**: Fetch the generated documentation content for a repository (entire outline or specific sections, depending on the server response).
+**Use case**: Read detailed explanations, copy-ready summaries, and guidance extracted by DeepWiki.
 **Input schema**:
 ```json
 {
@@ -98,8 +100,8 @@ Claude now has access to these DeepWiki MCP tools:
 **Example**: `read_wiki_contents({ "repoName": "vercel/next.js" })`
 
 ### 3. `ask_question`
-**Purpose**: Ask targeted questions about the repository using DeepWiki’s synthesized knowledge base.  
-**Use case**: Clarify implementation details, design decisions, or best practices captured in the generated docs.  
+**Purpose**: Ask targeted questions about the repository using DeepWiki’s synthesized knowledge base.
+**Use case**: Clarify implementation details, design decisions, or best practices captured in the generated docs.
 **Input schema**:
 ```json
 {
@@ -378,6 +380,6 @@ Just configuration + system prompt instructions!
 
 ---
 
-**Last Updated**: 2025-01-XX  
-**Integration By**: Supermemory Team  
+**Last Updated**: 2025-01-XX
+**Integration By**: Supermemory Team
 **Maintained By**: DeepWiki (external) + Supermemory (integration)

@@ -12,7 +12,11 @@
  */
 
 import { BaseService } from '../base/base-service'
-import { safeFetch } from '../../security/url-validator'
+import { makeApiRequest } from './repository/api'
+import { buildFileTree, formatFileTree, countFiles, formatFileSize } from './repository/file-tree'
+import { extractImagesFromMarkdown } from './repository/images'
+import { parseRepositoryUrl, isRepositoryUrl } from './repository/parser'
+import { fetchFileContent } from './repository/files'
 import type {
 	RepositoryExtractor as IRepositoryExtractor,
 	ExtractionInput,
@@ -63,9 +67,9 @@ interface GitHubTree {
  */
 export class RepositoryExtractor extends BaseService implements IRepositoryExtractor {
 	private readonly apiKey: string | undefined
-	private readonly baseUrl = 'https://api.github.com'
-	private rateLimitRemaining = 60 // Default for unauthenticated
-	private rateLimitReset = Date.now()
+  private readonly baseUrl = 'https://api.github.com'
+  private rateLimitRemaining = 60
+  private rateLimitReset = Date.now()
 
 	constructor(apiKey?: string) {
 		super('RepositoryExtractor')
@@ -86,7 +90,7 @@ export class RepositoryExtractor extends BaseService implements IRepositoryExtra
 			throw this.createError('MISSING_URL', 'URL is required for repository extraction')
 		}
 
-		const repoInfo = this.parseRepositoryUrl(input.url)
+		const repoInfo = parseRepositoryUrl(input.url)
 		if (!repoInfo) {
 			throw this.createError('INVALID_REPOSITORY_URL', 'Invalid GitHub repository URL')
 		}
@@ -123,7 +127,7 @@ export class RepositoryExtractor extends BaseService implements IRepositoryExtra
 			throw this.createError('VALIDATION_ERROR', 'URL is required')
 		}
 
-		if (!this.isRepositoryUrl(input.url)) {
+		if (!isRepositoryUrl(input.url)) {
 			throw this.createError('VALIDATION_ERROR', 'Not a valid GitHub repository URL')
 		}
 	}
@@ -144,7 +148,7 @@ export class RepositoryExtractor extends BaseService implements IRepositoryExtra
 		const tracker = this.performanceMonitor.startOperation('extractFromRepository')
 
 		try {
-			const repoInfo = this.parseRepositoryUrl(url)
+			const repoInfo = parseRepositoryUrl(url)
 			if (!repoInfo) {
 				throw this.createError('INVALID_URL', 'Invalid repository URL')
 			}
@@ -218,7 +222,7 @@ export class RepositoryExtractor extends BaseService implements IRepositoryExtra
 			const cleanedContent = this.cleanContent(fullContent)
 
 			// Extract images from README markdown
-			const images = this.extractImagesFromMarkdown(readmeContent, repoInfo)
+			const images = extractImagesFromMarkdown(readmeContent, repoInfo)
 
 			this.logger.info('Extracted images from GitHub repository', {
 				owner: repoInfo.owner,
@@ -247,7 +251,7 @@ export class RepositoryExtractor extends BaseService implements IRepositoryExtra
 					owner: repoInfo.owner,
 					repository: repoInfo.name,
 					branch: repoInfo.branch,
-					fileCount: this.countFiles(fileTree),
+				fileCount: countFiles(fileTree),
 				},
 			}
 		} catch (error) {
@@ -260,7 +264,7 @@ export class RepositoryExtractor extends BaseService implements IRepositoryExtra
 	 * Extract README content
 	 */
 	async extractReadme(url: string): Promise<string> {
-		const repoInfo = this.parseRepositoryUrl(url)
+		const repoInfo = parseRepositoryUrl(url)
 		if (!repoInfo) {
 			throw this.createError('INVALID_URL', 'Invalid repository URL')
 		}
@@ -301,7 +305,7 @@ export class RepositoryExtractor extends BaseService implements IRepositoryExtra
 		}
 
 		// Convert to FileTreeNode structure
-		return this.buildFileTree(data.tree)
+		return buildFileTree(data.tree)
 	}
 
 	/**
@@ -374,191 +378,41 @@ export class RepositoryExtractor extends BaseService implements IRepositoryExtra
 	 * Fetch file content from repository
 	 */
 	private async fetchFileContent(repoInfo: RepositoryInfo, filePath: string): Promise<string> {
-		const branch = repoInfo.branch || 'main'
-		const apiUrl = `${this.baseUrl}/repos/${repoInfo.owner}/${repoInfo.name}/contents/${filePath}?ref=${branch}`
-
-		const response = await this.makeApiRequest(apiUrl)
-		const data = (await response.json()) as GitHubFile
-
-		if (data.type !== 'file') {
-			throw this.createError('NOT_A_FILE', `${filePath} is not a file`)
-		}
-
-		if (!data.content || !data.encoding) {
-			// Try download_url as fallback
-			if (data.download_url) {
-				const contentResponse = await safeFetch(data.download_url)
-				return await contentResponse.text()
-			}
-			throw this.createError('NO_CONTENT', `No content available for ${filePath}`)
-		}
-
-		// Decode base64 content
-		if (data.encoding === 'base64') {
-			return Buffer.from(data.content, 'base64').toString('utf-8')
-		}
-
-		return data.content
+		return fetchFileContent(repoInfo, filePath, (u) => this.makeApiRequest(u))
 	}
 
 	/**
 	 * Make authenticated API request
 	 */
 	private async makeApiRequest(url: string): Promise<Response> {
-		// Check rate limit
-		if (this.rateLimitRemaining <= 1 && Date.now() < this.rateLimitReset) {
-			const waitTime = this.rateLimitReset - Date.now()
-			this.logger.warn('Rate limit reached, waiting', { waitTime })
-			await new Promise((resolve) => setTimeout(resolve, waitTime))
-		}
-
-		const headers: Record<string, string> = {
-			Accept: 'application/vnd.github.v3+json',
-			'User-Agent': 'Supermemory-Bot/1.0',
-		}
-
-		if (this.apiKey) {
-			headers.Authorization = `Bearer ${this.apiKey}`
-		}
-
-		const response = await safeFetch(url, { headers })
-
-		// Update rate limit info
-		const remaining = response.headers.get('x-ratelimit-remaining')
-		const reset = response.headers.get('x-ratelimit-reset')
-
-		if (remaining) this.rateLimitRemaining = parseInt(remaining, 10)
-		if (reset) this.rateLimitReset = parseInt(reset, 10) * 1000
-
-		if (!response.ok) {
-			const errorText = await response.text()
-			throw this.createError(
-				'API_REQUEST_FAILED',
-				`GitHub API request failed: ${response.status} ${errorText}`
-			)
-		}
-
+		const response = await makeApiRequest(this.baseUrl, url, this.apiKey, { remaining: this.rateLimitRemaining, reset: this.rateLimitReset })
 		return response
 	}
 
 	/**
 	 * Build file tree from GitHub tree API response
 	 */
-	private buildFileTree(
-		items: GitHubTree['tree']
-	): FileTreeNode[] {
-		const rootNodes: FileTreeNode[] = []
-		const nodeMap = new Map<string, FileTreeNode>()
-
-		// Sort by path depth
-		const sortedItems = [...items].sort((a, b) => {
-			const depthA = a.path.split('/').length
-			const depthB = b.path.split('/').length
-			return depthA - depthB
-		})
-
-		for (const item of sortedItems) {
-			const parts = item.path.split('/')
-			const name = parts[parts.length - 1]
-			const parentPath = parts.slice(0, -1).join('/')
-
-			const node: FileTreeNode = {
-				path: item.path,
-				name,
-				type: item.type === 'tree' ? 'directory' : 'file',
-				size: item.size,
-			}
-
-			if (item.type === 'tree') {
-				node.children = []
-			}
-
-			nodeMap.set(item.path, node)
-
-			// Add to parent or root
-			if (parentPath) {
-				const parent = nodeMap.get(parentPath)
-				if (parent && parent.children) {
-					parent.children.push(node)
-				}
-			} else {
-				rootNodes.push(node)
-			}
-		}
-
-		return rootNodes
-	}
+	private buildFileTree(items: GitHubTree['tree']): FileTreeNode[] { return buildFileTree(items) }
 
 	/**
 	 * Format file tree as readable text
 	 */
-	private formatFileTree(nodes: FileTreeNode[], indent = ''): string {
-		const lines: string[] = []
-
-		for (let i = 0; i < nodes.length; i++) {
-			const node = nodes[i]
-			const isLast = i === nodes.length - 1
-			const prefix = isLast ? '└── ' : '├── '
-			const childIndent = indent + (isLast ? '    ' : '│   ')
-
-			const icon = node.type === 'directory' ? '📁' : '📄'
-			const sizeInfo = node.size ? ` (${this.formatFileSize(node.size)})` : ''
-
-			lines.push(`${indent}${prefix}${icon} ${node.name}${sizeInfo}`)
-
-			if (node.children && node.children.length > 0) {
-				lines.push(this.formatFileTree(node.children, childIndent))
-			}
-		}
-
-		return lines.join('\n')
-	}
+	private formatFileTree(nodes: FileTreeNode[], indent = ''): string { return formatFileTree(nodes, indent) }
 
 	/**
 	 * Format file size
 	 */
-	private formatFileSize(bytes: number): string {
-		if (bytes < 1024) return `${bytes}B`
-		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`
-		return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
-	}
+	private formatFileSize(bytes: number): string { return formatFileSize(bytes) }
 
 	/**
 	 * Count total files in tree
 	 */
-	private countFiles(nodes: FileTreeNode[]): number {
-		let count = 0
-
-		for (const node of nodes) {
-			if (node.type === 'file') {
-				count++
-			}
-			if (node.children) {
-				count += this.countFiles(node.children)
-			}
-		}
-
-		return count
-	}
+	private countFiles(nodes: FileTreeNode[]): number { return countFiles(nodes) }
 
 	/**
 	 * Clean extracted content
 	 */
-	private cleanContent(content: string): string {
-		// Remove null bytes
-		let cleaned = content.replace(/\0/g, '')
-
-		// Normalize line breaks
-		cleaned = cleaned.replace(/\r\n/g, '\n')
-
-		// Remove excessive line breaks
-		cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n')
-
-		// Trim
-		cleaned = cleaned.trim()
-
-		return cleaned
-	}
+	private cleanContent(content: string): string { return content.replace(/\0/g, '').replace(/\r\n/g, '\n').replace(/\n{4,}/g, '\n\n\n').trim() }
 
 	/**
 	 * Count words in text
@@ -572,147 +426,7 @@ export class RepositoryExtractor extends BaseService implements IRepositoryExtra
 	/**
 	 * Extract image URLs from markdown content
 	 */
-	private extractImagesFromMarkdown(markdown: string, repoInfo: RepositoryInfo): string[] {
-		console.log('[RepositoryExtractor] Starting image extraction from markdown', {
-			markdownLength: markdown.length,
-			owner: repoInfo.owner,
-			name: repoInfo.name,
-		})
-
-		const images: string[] = []
-
-		// Match markdown images: ![alt](url)
-		const markdownImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g
-		let match
-		let matchCount = 0
-
-		while ((match = markdownImageRegex.exec(markdown)) !== null) {
-			matchCount++
-			const imageUrl = match[2]
-			console.log('[RepositoryExtractor] Found markdown image', { imageUrl, matchNumber: matchCount })
-
-			// Skip data URLs
-			if (imageUrl.startsWith('data:')) {
-				console.log('[RepositoryExtractor] Skipping data URL')
-				continue
-			}
-
-			// Skip common badges and buttons (shields.io, StackBlitz, etc.)
-			const badgeDomains = [
-				'shields.io',
-				'img.shields.io',
-				'badge.fury.io',
-				'badgen.net',
-				'developer.stackblitz.com',
-				'badge',
-				'travis-ci',
-				'codecov.io',
-				'circleci.com',
-				'star-history.com',
-				'api.star-history.com',
-			]
-
-			const isBadge = badgeDomains.some(domain => imageUrl.includes(domain))
-			if (isBadge) {
-				console.log('[RepositoryExtractor] Skipping badge/button image', { imageUrl })
-				continue
-			}
-
-			try {
-				// Make absolute URL
-				let absoluteUrl: string
-
-				if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-					// Already absolute
-					absoluteUrl = imageUrl
-				} else if (imageUrl.startsWith('/')) {
-					// Root-relative path - convert to raw GitHub URL
-					const branch = repoInfo.branch || 'main'
-					absoluteUrl = `https://raw.githubusercontent.com/${repoInfo.owner}/${repoInfo.name}/${branch}${imageUrl}`
-				} else {
-					// Relative path - convert to raw GitHub URL
-					const branch = repoInfo.branch || 'main'
-					absoluteUrl = `https://raw.githubusercontent.com/${repoInfo.owner}/${repoInfo.name}/${branch}/${imageUrl}`
-				}
-
-				// Avoid duplicates
-				if (!images.includes(absoluteUrl)) {
-					images.push(absoluteUrl)
-				}
-			} catch (error) {
-				// Skip invalid URLs
-				this.logger.warn('Failed to parse image URL from markdown', {
-					url: imageUrl,
-					error: (error as Error).message,
-				})
-			}
-		}
-
-		// Also match HTML img tags in markdown
-		const htmlImageRegex = /<img[^>]+src=["']([^"']+)["']/gi
-
-		while ((match = htmlImageRegex.exec(markdown)) !== null) {
-			const imageUrl = match[1]
-
-			// Skip data URLs
-			if (imageUrl.startsWith('data:')) continue
-
-			// Skip common badges and buttons
-			const badgeDomains = [
-				'shields.io',
-				'img.shields.io',
-				'badge.fury.io',
-				'badgen.net',
-				'developer.stackblitz.com',
-				'badge',
-				'travis-ci',
-				'codecov.io',
-				'circleci.com',
-				'star-history.com',
-				'api.star-history.com',
-			]
-			const isBadge = badgeDomains.some(domain => imageUrl.includes(domain))
-			if (isBadge) continue
-
-			try {
-				// Make absolute URL
-				let absoluteUrl: string
-
-				if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-					// Already absolute
-					absoluteUrl = imageUrl
-				} else if (imageUrl.startsWith('/')) {
-					// Root-relative path - convert to raw GitHub URL
-					const branch = repoInfo.branch || 'main'
-					absoluteUrl = `https://raw.githubusercontent.com/${repoInfo.owner}/${repoInfo.name}/${branch}${imageUrl}`
-				} else {
-					// Relative path - convert to raw GitHub URL
-					const branch = repoInfo.branch || 'main'
-					absoluteUrl = `https://raw.githubusercontent.com/${repoInfo.owner}/${repoInfo.name}/${branch}/${imageUrl}`
-				}
-
-				// Avoid duplicates
-				if (!images.includes(absoluteUrl)) {
-					images.push(absoluteUrl)
-				}
-			} catch (error) {
-				// Skip invalid URLs
-				this.logger.warn('Failed to parse image URL from HTML', {
-					url: imageUrl,
-					error: (error as Error).message,
-				})
-			}
-		}
-
-		console.log('[RepositoryExtractor] Finished image extraction', {
-			totalImages: images.length,
-			markdownMatches: matchCount,
-			owner: repoInfo.owner,
-			name: repoInfo.name,
-		})
-
-		return images
-	}
+	private extractImagesFromMarkdown(markdown: string, repoInfo: RepositoryInfo): string[] { return extractImagesFromMarkdown(markdown, repoInfo) }
 
 	// ========================================================================
 	// Lifecycle Hooks

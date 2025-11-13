@@ -11,7 +11,7 @@ async function applyMigration() {
 	const migrationPath = path.join(
 		__dirname,
 		"migrations",
-		"0001_add_atomic_document_finalization.sql",
+		"0012_optimize_document_queries.sql",
 	)
 	const migrationSQL = fs.readFileSync(migrationPath, "utf8")
 

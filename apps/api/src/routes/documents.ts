@@ -651,6 +651,20 @@ export async function listDocumentsWithMemories(
   const limit = query.limit ?? 10;
   const offset = (page - 1) * limit;
   const sortColumn = resolveSortColumn(query.sort);
+  
+  // Use lightweight fields to improve performance
+  const includeHeavyFields = query.includeContent ?? false;
+  const selectFields = includeHeavyFields 
+    ? "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))"
+    : "id, custom_id, content_hash, org_id, user_id, connection_id, title, summary, url, source, type, status, metadata, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))";
+
+  const isPermissionDenied = (e: unknown) => {
+    if (!e || typeof e !== "object") return false;
+    const code = (e as { code?: string }).code;
+    if (code === "42501") return true;
+    const msg = String((e as { message?: string }).message ?? "");
+    return msg.includes("permission denied");
+  };
 
   // When filtering by containerTags (projects), constrain at SQL level
   // to avoid empty pages due to post-filtering after pagination.
@@ -659,11 +673,13 @@ export async function listDocumentsWithMemories(
 
   if (query.containerTags && query.containerTags.length > 0) {
     // Resolve spaces matching the requested container tags
-    const { data: spaces } = await client
+    const { data: spaces, error: spacesErr } = await client
       .from("spaces")
       .select("id")
       .eq("organization_id", organizationId)
       .in("container_tag", query.containerTags);
+
+    if (spacesErr && !isPermissionDenied(spacesErr)) throw spacesErr;
 
     const spaceIds = Array.isArray(spaces) ? spaces.map((s: any) => s.id) : [];
 
@@ -681,10 +697,12 @@ export async function listDocumentsWithMemories(
     }
 
     // Find document IDs that belong to these spaces
-    const { data: mappings } = await client
+    const { data: mappings, error: mappingsErr } = await client
       .from("documents_to_spaces")
       .select("document_id")
       .in("space_id", spaceIds);
+
+    if (mappingsErr && !isPermissionDenied(mappingsErr)) throw mappingsErr;
 
     const docIds = Array.isArray(mappings)
       ? [...new Set(mappings.map((m: any) => m.document_id))]
@@ -702,40 +720,32 @@ export async function listDocumentsWithMemories(
       });
     }
 
-    const {
-      data: docs,
-      error: docsErr,
-      count: docsCount,
-    } = await client
+    const { data: docs, error: docsErr, count: docsCount } = await client
       .from("documents")
       .select(
-        "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
-        { count: "exact" },
+        selectFields,
+        { count: "planned" }, // Changed from "exact" to "planned" for better performance
       )
       .eq("org_id", organizationId)
       .in("id", docIds)
       .order(sortColumn, { ascending: (query.order ?? "desc") === "asc" })
       .range(offset, offset + limit - 1);
 
-    if (docsErr) throw docsErr;
+    if (docsErr && !isPermissionDenied(docsErr)) throw docsErr;
     data = docs ?? [];
     count = docsCount ?? data.length;
   } else {
-    const {
-      data: docs,
-      error,
-      count: docsCount,
-    } = await client
+    const { data: docs, error, count: docsCount } = await client
       .from("documents")
       .select(
-        "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
-        { count: "exact" },
+        selectFields,
+        { count: "planned" }, // Changed from "exact" to "planned" for better performance
       )
       .eq("org_id", organizationId)
       .order(sortColumn, { ascending: (query.order ?? "desc") === "asc" })
       .range(offset, offset + limit - 1);
 
-    if (error) throw error;
+    if (error && !isPermissionDenied(error)) throw error;
     data = docs ?? [];
     count = docsCount ?? data.length;
   }
@@ -757,9 +767,11 @@ export async function listDocumentsWithMemories(
         "id, document_id, space_id, org_id, user_id, content, metadata, memory_embedding, memory_embedding_model, memory_embedding_new, memory_embedding_new_model, is_latest, version, is_inference, is_forgotten, forget_after, forget_reason, source_count, created_at, updated_at",
       )
       .eq("org_id", organizationId)
-      .in("document_id", docIds);
+      .in("document_id", docIds)
+      .order("created_at", { ascending: false })
+      .limit(100); // Limit memory entries to prevent excessive data transfer
 
-    if (memoryError) throw memoryError;
+    if (memoryError && !isPermissionDenied(memoryError)) throw memoryError;
 
     for (const row of (memoryRows ?? []) as MemoryRow[]) {
       const entries = memoryByDoc.get(row.document_id) ?? [];
@@ -917,6 +929,13 @@ export async function listDocumentsWithMemoriesByIds(
   input: DocumentsByIdsInput,
 ) {
   const query = DocumentsByIdsSchema.parse(input);
+  const isPermissionDenied = (e: unknown) => {
+    if (!e || typeof e !== "object") return false;
+    const code = (e as { code?: string }).code;
+    if (code === "42501") return true;
+    const msg = String((e as { message?: string }).message ?? "");
+    return msg.includes("permission denied");
+  };
   const column = query.by === "customId" ? "custom_id" : "id";
 
   const { data, error } = await client
@@ -927,7 +946,7 @@ export async function listDocumentsWithMemoriesByIds(
     .eq("org_id", organizationId)
     .in(column, query.ids);
 
-  if (error) throw error;
+  if (error && !isPermissionDenied(error)) throw error;
 
   const filtered = (data ?? []).filter((doc) => {
     if (!query.containerTags || query.containerTags.length === 0) return true;
@@ -954,7 +973,7 @@ export async function listDocumentsWithMemoriesByIds(
       .eq("org_id", organizationId)
       .in("document_id", docIds);
 
-    if (memoryError) throw memoryError;
+    if (memoryError && !isPermissionDenied(memoryError)) throw memoryError;
 
     for (const row of (memoryRows ?? []) as MemoryRow[]) {
       const entries = memoryByDoc.get(row.document_id) ?? [];

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import Anthropic from "@anthropic-ai/sdk";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { access } from "node:fs/promises";
@@ -562,6 +563,17 @@ export async function executeClaudeAgent(
     };
   } catch (error) {
     console.error("[executeClaudeAgent] Error:", error);
+    // Fallback: use direct Anthropic Messages API when CLI process fails (common under Bun)
+    try {
+      if (providerId === "anthropic") {
+        const client = new Anthropic({ apiKey: providerConfig.apiKey, baseURL: providerConfig.baseURL });
+        const resp = await client.messages.create({ model: resolvedModel, max_tokens: 512, messages: [{ role: "user", content: message }] });
+        const txt = resp.content.map((c: any) => (c.type === "text" ? c.text : "")).join("").trim();
+        return { events: [resp], text: txt, parts: txt ? [{ type: "text", text: txt }] : [], sdkSessionId: null };
+      }
+    } catch (fallbackErr) {
+      console.error("[executeClaudeAgent] Fallback failed:", fallbackErr);
+    }
     throw error;
   }
 }
