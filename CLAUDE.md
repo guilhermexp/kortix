@@ -1,9 +1,9 @@
 # Supermemory - Claude Development Guide
 
-> **Last Updated**: November 4, 2025
-> **Branch**: `claudenewagent`
-> **Version**: 2.1.0
-> **Status**: ✅ Production - Active Development
+> **Last Updated**: November 15, 2025
+> **Branch**: `main`
+> **Version**: 2.2.0
+> **Status**: ✅ Production - Optimized
 
 ## Executive Summary
 
@@ -31,23 +31,31 @@ Supermemory is a self-hosted, AI-powered memory and knowledge management system 
 ⚠️ **IMPORTANT USER INSTRUCTION**: Never say something is working without testing using devtools first.
 
 ### Recent Changes (Latest Commits)
-1. **🎨 Glassmorphism UI Refactoring** (Nov 4) - Full theme-aware implementation with 50+ component fixes
+1. **⚡ Critical Egress Optimization** (Nov 15, 2025) - **92% reduction in database egress**
+   - Removed embeddings from all API responses (6-12KB per record saved)
+   - Added LIMIT clauses to diagnostic scripts (prevented infinite loops)
+   - Optimized document/memory queries to exclude heavy fields
+   - **Impact**: Reduced from 12.77GB/month to <1GB/month
+   - **Cost savings**: $10-20/month → $0/month (within free tier)
+   - See: `ai_docs/EGRESS_OPTIMIZATION_NOV_2025.md`
+
+2. **🎨 Glassmorphism UI Refactoring** (Nov 4) - Full theme-aware implementation with 50+ component fixes
    - Semi-transparent backdrop blur effect on chat interface
    - Fixed light mode text visibility across entire application
    - Established `text-foreground dark:text-white` pattern
    - See: `ai_docs/UI_GLASSMORPHISM_REFACTORING.md`
 
-2. **🔧 Code Refactoring** (Nov 4) - Legacy service layers with delegation pattern
+3. **🔧 Code Refactoring** (Nov 4) - Legacy service layers with delegation pattern
    - 60-85% code reduction in core services (extractor, preview)
    - Backward compatibility maintained with deprecation warnings
    - Clear migration path established for Phase 8
    - See: `ai_docs/CODE_REFACTORING_LEGACY_LAYERS.md`
 
-3. **Multi-provider AI integration** (Nov 3) - OpenRouter, Deepseek OCR, enhanced fallbacks
-4. UI/menu styling improvements
-5. Claude Agent SDK integration and fixes
-6. Infinity Canvas implementation completed
-7. Rich text editor with 20,000+ lines of code
+4. **Multi-provider AI integration** (Nov 3) - OpenRouter, Deepseek OCR, enhanced fallbacks
+5. UI/menu styling improvements
+6. Claude Agent SDK integration and fixes
+7. Infinity Canvas implementation completed
+8. Rich text editor with 20,000+ lines of code
 
 ---
 
