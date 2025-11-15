@@ -51,6 +51,7 @@ async function checkStatus() {
     .from("ingestion_jobs")
     .select("id, document_id, status, created_at, attempts")
     .eq("status", "queued")
+    .limit(50)
 
   if (queuedError) {
     console.error("Error fetching queued jobs:", queuedError)
@@ -66,6 +67,7 @@ async function checkStatus() {
     .from("documents")
     .select("id, title, status, type, created_at")
     .eq("status", "queued")
+    .limit(50)
 
   if (queuedDocsError) {
     console.error("Error fetching queued documents:", queuedDocsError)

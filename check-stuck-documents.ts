@@ -18,12 +18,13 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 async function checkStuckDocuments() {
   console.log("=== Checking Stuck Documents ===\n")
 
-  // Check all non-done document statuses
+  // Check all non-done document statuses (limit to 50 to prevent excessive egress)
   const { data: docs, error } = await supabase
     .from("documents")
     .select("id, title, status, type, created_at, processing_metadata, error")
     .neq("status", "done")
     .order("created_at", { ascending: false })
+    .limit(50)
 
   if (error) {
     console.error("Error fetching documents:", error)

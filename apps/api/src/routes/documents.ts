@@ -33,6 +33,7 @@ import { z } from "zod";
 // NOTE: Using legacy processDocument for backward compatibility
 // TODO (Phase 6): Replace with IngestionOrchestratorService
 import { processDocument } from "../services/ingestion";
+import { documentListCache, generateCacheKey } from "../services/query-cache";
 
 const defaultContainerTag = "sm_project_default";
 
@@ -651,11 +652,28 @@ export async function listDocumentsWithMemories(
   const limit = query.limit ?? 10;
   const offset = (page - 1) * limit;
   const sortColumn = resolveSortColumn(query.sort);
+
+  // Check cache first (only for non-content requests to keep cache size manageable)
+  if (!query.includeContent) {
+    const cacheKey = generateCacheKey('doclist', {
+      orgId: organizationId,
+      page,
+      limit,
+      sort: query.sort,
+      order: query.order,
+      containerTags: query.containerTags,
+    });
+
+    const cached = documentListCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
   
   // Use lightweight fields to improve performance
   const includeHeavyFields = query.includeContent ?? false;
-  const selectFields = includeHeavyFields 
-    ? "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))"
+  const selectFields = includeHeavyFields
+    ? "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))"
     : "id, custom_id, content_hash, org_id, user_id, connection_id, title, summary, url, source, type, status, metadata, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))";
 
   const isPermissionDenied = (e: unknown) => {
@@ -761,15 +779,17 @@ export async function listDocumentsWithMemories(
   const memoryByDoc = new Map<string, MemoryRow[]>();
 
   if (docIds.length > 0) {
+    // Fetch only essential memory fields to reduce data transfer
+    // Limit to 5 most recent memories per document for list views
     const { data: memoryRows, error: memoryError } = await client
       .from("memories")
       .select(
-        "id, document_id, space_id, org_id, user_id, content, metadata, memory_embedding, memory_embedding_model, memory_embedding_new, memory_embedding_new_model, is_latest, version, is_inference, is_forgotten, forget_after, forget_reason, source_count, created_at, updated_at",
+        "id, document_id, space_id, org_id, user_id, content, metadata, is_latest, version, created_at, updated_at",
       )
       .eq("org_id", organizationId)
       .in("document_id", docIds)
       .order("created_at", { ascending: false })
-      .limit(100); // Limit memory entries to prevent excessive data transfer
+      .limit(Math.min(docIds.length * 5, 250)); // Max 5 memories per doc, cap at 250 total
 
     if (memoryError && !isPermissionDenied(memoryError)) throw memoryError;
 
@@ -784,24 +804,25 @@ export async function listDocumentsWithMemories(
     const memoryRows = memoryByDoc.get(doc.id) ?? [];
 
     // Transform database rows to API format (content → memory)
-    const memoryEntries = memoryRows.map((row) => ({
+    // Only include essential fields for list views to reduce payload size
+    const memoryEntries = memoryRows.slice(0, 5).map((row) => ({
       id: row.id,
-      documentId: row.document_id, // Added: was missing from response
+      documentId: row.document_id,
       memory: row.content ?? "", // API field: transformed from database 'content'
       spaceId: row.space_id ?? spaceIds[0] ?? "",
       orgId: row.org_id,
       userId: row.user_id ?? null,
       version: row.version ?? 1,
       isLatest: row.is_latest ?? true,
-      sourceCount: row.source_count ?? 1,
-      isInference: row.is_inference ?? false,
-      isForgotten: row.is_forgotten ?? false,
-      forgetAfter: row.forget_after ?? null,
-      forgetReason: row.forget_reason ?? null,
-      memoryEmbedding: row.memory_embedding ?? null,
-      memoryEmbeddingModel: row.memory_embedding_model ?? null,
-      memoryEmbeddingNew: row.memory_embedding_new ?? null,
-      memoryEmbeddingNewModel: row.memory_embedding_new_model ?? null,
+      sourceCount: 1, // Simplified for list view
+      isInference: false, // Simplified for list view
+      isForgotten: false, // Simplified for list view
+      forgetAfter: null,
+      forgetReason: null,
+      memoryEmbedding: null, // Omit embeddings in list view for performance
+      memoryEmbeddingModel: null,
+      memoryEmbeddingNew: null,
+      memoryEmbeddingNewModel: null,
       metadata: row.metadata ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -912,7 +933,22 @@ export async function listDocumentsWithMemories(
   };
 
   try {
-    return DocumentsWithMemoriesResponseSchema.parse(response);
+    const validatedResponse = DocumentsWithMemoriesResponseSchema.parse(response);
+
+    // Cache the result if not including heavy content fields
+    if (!query.includeContent) {
+      const cacheKey = generateCacheKey('doclist', {
+        orgId: organizationId,
+        page,
+        limit,
+        sort: query.sort,
+        order: query.order,
+        containerTags: query.containerTags,
+      });
+      documentListCache.set(cacheKey, validatedResponse);
+    }
+
+    return validatedResponse;
   } catch (zodError) {
     console.error(
       "Zod validation failed for DocumentsWithMemoriesResponse:",
@@ -941,7 +977,7 @@ export async function listDocumentsWithMemoriesByIds(
   const { data, error } = await client
     .from("documents")
     .select(
-      "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, og_image, token_count, word_count, chunk_count, average_chunk_size, summary_embedding, summary_embedding_model, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
+      "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, og_image, token_count, word_count, chunk_count, average_chunk_size, created_at, updated_at, documents_to_spaces(space_id, spaces(container_tag))",
     )
     .eq("org_id", organizationId)
     .in(column, query.ids);
@@ -968,7 +1004,7 @@ export async function listDocumentsWithMemoriesByIds(
     const { data: memoryRows, error: memoryError } = await client
       .from("memories")
       .select(
-        "id, document_id, space_id, org_id, user_id, content, metadata, memory_embedding, memory_embedding_model, memory_embedding_new, memory_embedding_new_model, is_latest, version, is_inference, is_forgotten, forget_after, forget_reason, source_count, created_at, updated_at",
+        "id, document_id, space_id, org_id, user_id, content, metadata, is_latest, version, is_inference, is_forgotten, forget_after, forget_reason, source_count, created_at, updated_at",
       )
       .eq("org_id", organizationId)
       .in("document_id", docIds);
@@ -986,24 +1022,25 @@ export async function listDocumentsWithMemoriesByIds(
     const memoryRows = memoryByDoc.get(doc.id) ?? [];
 
     // Transform database rows to API format (content → memory)
-    const memoryEntries = memoryRows.map((row) => ({
+    // Only include essential fields for list views to reduce payload size
+    const memoryEntries = memoryRows.slice(0, 5).map((row) => ({
       id: row.id,
-      documentId: row.document_id, // Added: was missing from response
+      documentId: row.document_id,
       memory: row.content ?? "", // API field: transformed from database 'content'
       spaceId: row.space_id ?? spaceIds[0] ?? "",
       orgId: row.org_id,
       userId: row.user_id ?? null,
       version: row.version ?? 1,
       isLatest: row.is_latest ?? true,
-      sourceCount: row.source_count ?? 1,
-      isInference: row.is_inference ?? false,
-      isForgotten: row.is_forgotten ?? false,
-      forgetAfter: row.forget_after ?? null,
-      forgetReason: row.forget_reason ?? null,
-      memoryEmbedding: row.memory_embedding ?? null,
-      memoryEmbeddingModel: row.memory_embedding_model ?? null,
-      memoryEmbeddingNew: row.memory_embedding_new ?? null,
-      memoryEmbeddingNewModel: row.memory_embedding_new_model ?? null,
+      sourceCount: 1, // Simplified for list view
+      isInference: false, // Simplified for list view
+      isForgotten: false, // Simplified for list view
+      forgetAfter: null,
+      forgetReason: null,
+      memoryEmbedding: null, // Omit embeddings in list view for performance
+      memoryEmbeddingModel: null,
+      memoryEmbeddingNew: null,
+      memoryEmbeddingNewModel: null,
       metadata: row.metadata ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
