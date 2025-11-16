@@ -10,14 +10,14 @@ import type { z } from "zod"
 export type CreateProjectInput = z.infer<typeof CreateProjectSchema>
 export type DeleteProjectInput = z.infer<typeof DeleteProjectSchema>
 
-type SpaceWithRelations = {
+type SpaceWithDocumentCount = {
 	id: string
 	name: string | null
 	container_tag: string
 	created_at: string
 	updated_at: string | null
 	is_experimental: boolean | null
-	documents_to_spaces?: Array<{ document_id: string | null }>
+	document_count?: number
 }
 
 function slugify(name: string) {
@@ -27,7 +27,7 @@ function slugify(name: string) {
 		.replace(/^_+|_+$/g, "")
 }
 
-function mapSpaceToProject(space: SpaceWithRelations) {
+function mapSpaceToProject(space: SpaceWithDocumentCount) {
 	return ProjectSchema.parse({
 		id: space.id,
 		name: space.name ?? "Untitled Project",
@@ -35,7 +35,7 @@ function mapSpaceToProject(space: SpaceWithRelations) {
 		createdAt: space.created_at,
 		updatedAt: space.updated_at,
 		isExperimental: space.is_experimental ?? false,
-		documentCount: space.documents_to_spaces?.length ?? 0,
+		documentCount: space.document_count ?? 0,
 	})
 }
 
@@ -43,17 +43,40 @@ export async function listProjects(
 	client: SupabaseClient,
 	organizationId: string,
 ) {
-	const { data, error } = await client
+	// Get all spaces for the organization
+	const { data: spaces, error } = await client
 		.from("spaces")
-		.select(
-			"id, container_tag, name, is_experimental, created_at, updated_at, documents_to_spaces(document_id)",
-		)
-		.eq("organization_id", organizationId)
+		.select("id, container_tag, name, is_experimental, created_at, updated_at")
+		.eq("org_id", organizationId)
 		.order("created_at", { ascending: false })
 
 	if (error) throw error
-	const spaces = data ?? []
-	return spaces.map(mapSpaceToProject)
+
+	if (!spaces || spaces.length === 0) {
+		return []
+	}
+
+	// Count documents for each space
+	const spacesWithCounts: SpaceWithDocumentCount[] = await Promise.all(
+		spaces.map(async (space) => {
+			const { count, error: countError } = await client
+				.from("documents")
+				.select("id", { count: "exact", head: true })
+				.eq("space_id", space.id)
+				.eq("org_id", organizationId)
+
+			if (countError) {
+				console.error(`Error counting documents for space ${space.id}:`, countError)
+			}
+
+			return {
+				...space,
+				document_count: count ?? 0,
+			}
+		}),
+	)
+
+	return spacesWithCounts.map(mapSpaceToProject)
 }
 
 export async function createProject(
@@ -75,19 +98,19 @@ export async function createProject(
 	const { data, error } = await client
 		.from("spaces")
 		.insert({
-			organization_id: organizationId,
+			org_id: organizationId,
 			container_tag: containerTag,
 			name: parsed.name,
 			is_experimental: false,
 			metadata: {},
 		})
-		.select(
-			"id, container_tag, name, is_experimental, created_at, updated_at, documents_to_spaces(document_id)",
-		)
+		.select("id, container_tag, name, is_experimental, created_at, updated_at")
 		.single()
 
 	if (error) throw error
-	return mapSpaceToProject(data)
+
+	// New space has 0 documents
+	return mapSpaceToProject({ ...data, document_count: 0 })
 }
 
 export async function deleteProject(
@@ -115,9 +138,9 @@ export async function deleteProject(
 		// Security: Verify target project belongs to the same organization
 		const { data: targetProject, error: targetCheckError } = await client
 			.from("spaces")
-			.select("id, organization_id")
+			.select("id, org_id")
 			.eq("id", targetProjectId)
-			.eq("organization_id", organizationId)
+			.eq("org_id", organizationId)
 			.single()
 
 		if (targetCheckError || !targetProject) {
@@ -126,46 +149,40 @@ export async function deleteProject(
 			)
 		}
 
-		const { data: links, error: linksError } = await client
-			.from("documents_to_spaces")
-			.select("document_id")
+		// Count documents before moving
+		const { count, error: countError } = await client
+			.from("documents")
+			.select("id", { count: "exact", head: true })
 			.eq("space_id", projectId)
+			.eq("org_id", organizationId)
 
-		if (linksError) throw linksError
+		if (countError) throw countError
+		documentsAffected = count ?? 0
 
-		documentsAffected = links?.length ?? 0
-
-		if (links && links.length > 0) {
-			const inserts = links.map((link) => ({
-				document_id: link.document_id,
-				space_id: targetProjectId,
-			}))
-
-			const { error: upsertError } = await client
-				.from("documents_to_spaces")
-				.upsert(inserts, { onConflict: "document_id,space_id" })
-
-			if (upsertError) throw upsertError
-
-			const { error: deleteLinksError } = await client
-				.from("documents_to_spaces")
-				.delete()
+		// Move documents to target project
+		if (documentsAffected > 0) {
+			const { error: updateError } = await client
+				.from("documents")
+				.update({ space_id: targetProjectId })
 				.eq("space_id", projectId)
+				.eq("org_id", organizationId)
 
-			if (deleteLinksError) throw deleteLinksError
+			if (updateError) throw updateError
 		}
 	} else {
-		const { data: links, error: linksError } = await client
-			.from("documents_to_spaces")
-			.select("document_id")
+		// Delete action: count and delete documents
+		const { data: docs, error: docsError } = await client
+			.from("documents")
+			.select("id")
 			.eq("space_id", projectId)
+			.eq("org_id", organizationId)
 
-		if (linksError) throw linksError
+		if (docsError) throw docsError
 
-		const documentIds = (links ?? []).map((link) => link.document_id)
-		documentsAffected = documentIds.length
+		documentsAffected = docs?.length ?? 0
 
-		if (documentIds.length > 0) {
+		if (docs && docs.length > 0) {
+			const documentIds = docs.map((doc) => doc.id)
 			const { error: deleteDocsError } = await client
 				.from("documents")
 				.delete()
@@ -174,20 +191,14 @@ export async function deleteProject(
 
 			if (deleteDocsError) throw deleteDocsError
 		}
-
-		const { error: deleteLinksError } = await client
-			.from("documents_to_spaces")
-			.delete()
-			.eq("space_id", projectId)
-
-		if (deleteLinksError) throw deleteLinksError
 	}
 
+	// Delete the space itself
 	const { error } = await client
 		.from("spaces")
 		.delete()
 		.eq("id", projectId)
-		.eq("organization_id", organizationId)
+		.eq("org_id", organizationId)
 
 	if (error) throw error
 
@@ -217,12 +228,22 @@ export async function updateProject(
 		.from("spaces")
 		.update({ name: parsed.name })
 		.eq("id", projectId)
-		.eq("organization_id", organizationId)
-		.select(
-			"id, container_tag, name, is_experimental, created_at, updated_at, documents_to_spaces(document_id)",
-		)
+		.eq("org_id", organizationId)
+		.select("id, container_tag, name, is_experimental, created_at, updated_at")
 		.single()
 
 	if (error) throw error
-	return mapSpaceToProject(data as SpaceWithRelations)
+
+	// Count documents for the updated project
+	const { count, error: countError } = await client
+		.from("documents")
+		.select("id", { count: "exact", head: true })
+		.eq("space_id", projectId)
+		.eq("org_id", organizationId)
+
+	if (countError) {
+		console.error(`Error counting documents for space ${projectId}:`, countError)
+	}
+
+	return mapSpaceToProject({ ...data, document_count: count ?? 0 })
 }
