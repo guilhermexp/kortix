@@ -1,9 +1,9 @@
 # Supermemory - Claude Development Guide
 
-> **Last Updated**: November 16, 2025
+> **Last Updated**: November 16, 2025 (18:47 UTC)
 > **Branch**: `main`
 > **Version**: 2.2.1
-> **Status**: ✅ Production - Performance Optimized
+> **Status**: ✅ Production - Performance Optimized & Schema Verified
 
 ## Executive Summary
 
@@ -31,7 +31,15 @@ Supermemory is a self-hosted, AI-powered memory and knowledge management system 
 ⚠️ **IMPORTANT USER INSTRUCTION**: Never say something is working without testing using devtools first.
 
 ### Recent Changes (Latest Commits)
-1. **⚡ Database Performance Optimization** (Nov 16, 2025) - **80-95% query performance improvement**
+1. **🔐 Authentication Schema Fixed** (Nov 16, 2025 18:47 UTC) - **Complete auth flow verified**
+   - Fixed column name mismatch: `hashed_password` → `password_hash` in auth.ts and password.ts
+   - Created sessions table (migration 0015) for session-based authentication
+   - Added payload column to ingestion_jobs (migration 0014)
+   - **Testing**: User creation ✅ | User login ✅ | App loads ✅
+   - **Impact**: Complete user authentication flow now working end-to-end
+   - Commit: `d381ebf7` - fix(auth): correct column name from hashed_password to password_hash
+
+2. **⚡ Database Performance Optimization** (Nov 16, 2025) - **80-95% query performance improvement**
    - Applied migration 0013_production_performance_optimization_final to Supabase
    - Created 7 new composite indexes for critical query patterns
    - Added materialized view for org statistics (99% faster)
