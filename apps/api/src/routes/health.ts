@@ -40,9 +40,9 @@ export const healthHandler = async (c: Context) => {
 		const tables = [
 			"documents",
 			"spaces",
-			"documents_to_spaces",
 			"memories",
 			"users",
+			"sessions",
 		]
 		const tableChecks: Record<string, TableStatus> = {}
 
