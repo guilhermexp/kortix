@@ -271,7 +271,7 @@ export async function ensureSpace(
 	const { data: existing, error: fetchError } = await client
 		.from("spaces")
 		.select("id, name")
-		.eq("organization_id", organizationId)
+		.eq("org_id", organizationId)
 		.eq("container_tag", containerTag)
 		.maybeSingle()
 
@@ -601,7 +601,7 @@ export async function listDocuments(
 	const { data, error, count } = await client
 		.from("documents")
 		.select(
-			"id, custom_id, connection_id, title, summary, status, type, metadata, preview_image, url, raw, created_at, updated_at, space_id, spaces(container_tag)",
+			"id, title, summary, status, type, metadata, preview_image, url, raw, created_at, updated_at, space_id, spaces(container_tag)",
 			{ count: "exact" },
 		)
 		.eq("org_id", organizationId)
@@ -618,8 +618,8 @@ export async function listDocuments(
 
 	const memories = filtered.map((doc) => ({
 		id: doc.id,
-		customId: doc.custom_id ?? null,
-		connectionId: doc.connection_id ?? null,
+		// customId removed - column does not exist
+		// connectionId removed - column does not exist
 		title: doc.title ?? null,
 		summary: doc.summary ?? null,
 		status: ((): string => {
@@ -685,8 +685,8 @@ export async function listDocumentsWithMemories(
 	// Use lightweight fields to improve performance
 	const includeHeavyFields = query.includeContent ?? false
 	const selectFields = includeHeavyFields
-		? "id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, created_at, updated_at, space_id, spaces(container_tag)"
-		: "id, custom_id, content_hash, org_id, user_id, connection_id, title, summary, url, source, type, status, metadata, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, created_at, updated_at, space_id, spaces(container_tag)"
+		? "id, org_id, user_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, created_at, updated_at, space_id, spaces(container_tag)"
+		: "id, org_id, user_id, title, summary, url, source, type, status, metadata, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, created_at, updated_at, space_id, spaces(container_tag)"
 
 	const isPermissionDenied = (e: unknown) => {
 		if (!e || typeof e !== "object") return false
@@ -706,7 +706,7 @@ export async function listDocumentsWithMemories(
 		const { data: spaces, error: spacesErr } = await client
 			.from("spaces")
 			.select("id")
-			.eq("organization_id", organizationId)
+			.eq("org_id", organizationId)
 			.in("container_tag", query.containerTags)
 
 		if (spacesErr && !isPermissionDenied(spacesErr)) throw spacesErr
@@ -907,11 +907,11 @@ export async function listDocumentsWithMemories(
 
 		return {
 			id: doc.id,
-			customId: doc.custom_id ?? null,
-			contentHash: doc.content_hash ?? null,
+			// customId removed - column does not exist
+			// contentHash removed - column does not exist
 			orgId: doc.org_id,
 			userId: doc.user_id,
-			connectionId: doc.connection_id ?? null,
+			// connectionId removed - column does not exist
 			title: doc.title ?? null,
 			content: doc.content ?? null,
 			summary: doc.summary ?? null,
@@ -996,12 +996,12 @@ export async function listDocumentsWithMemoriesByIds(
 		const msg = String((e as { message?: string }).message ?? "")
 		return msg.includes("permission denied")
 	}
-	const column = query.by === "customId" ? "custom_id" : "id"
+	const column = "id" // customId removed - column does not exist
 
 	const { data, error } = await client
 		.from("documents")
 		.select(
-			"id, custom_id, content_hash, org_id, user_id, connection_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, og_image, token_count, word_count, chunk_count, average_chunk_size, created_at, updated_at, space_id, spaces(container_tag)",
+			"id, org_id, user_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, created_at, updated_at, space_id, spaces(container_tag)",
 		)
 		.eq("org_id", organizationId)
 		.in(column, query.ids)
@@ -1123,11 +1123,11 @@ export async function listDocumentsWithMemoriesByIds(
 
 		return {
 			id: doc.id,
-			customId: doc.custom_id ?? null,
-			contentHash: doc.content_hash ?? null,
+			// customId removed - column does not exist
+			// contentHash removed - column does not exist
 			orgId: doc.org_id,
 			userId: doc.user_id,
-			connectionId: doc.connection_id ?? null,
+			// connectionId removed - column does not exist
 			title: doc.title ?? null,
 			content: doc.content ?? null,
 			summary: doc.summary ?? null,
@@ -1147,7 +1147,7 @@ export async function listDocumentsWithMemoriesByIds(
 				: [],
 			previewImage: doc.preview_image ?? null,
 			error: doc.error ?? null,
-			ogImage: doc.og_image ?? null,
+			// ogImage removed - column does not exist
 			tokenCount: doc.token_count ?? null,
 			wordCount: doc.word_count ?? null,
 			chunkCount: doc.chunk_count ?? 0,

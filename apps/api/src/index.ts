@@ -1,17 +1,17 @@
-import { config as loadEnv } from "dotenv"
 import { existsSync } from "node:fs"
 import { resolve } from "node:path"
+import { config as loadEnv } from "dotenv"
 
 // Load env in this order: local in app → root .env.local → generic .env
 try {
-  loadEnv({ path: ".env.local" })
-  const rootEnvLocal = resolve(process.cwd(), "..", "..", ".env.local")
-  if (existsSync(rootEnvLocal)) {
-    loadEnv({ path: rootEnvLocal })
-  }
-  loadEnv()
+	loadEnv({ path: ".env.local" })
+	const rootEnvLocal = resolve(process.cwd(), "..", "..", ".env.local")
+	if (existsSync(rootEnvLocal)) {
+		loadEnv({ path: rootEnvLocal })
+	}
+	loadEnv()
 } catch {
-  // ignore env load errors
+	// ignore env load errors
 }
 
 import { serve } from "@hono/node-server"
@@ -42,21 +42,22 @@ import {
 import { generateChatTitle, handleChat } from "./routes/chat"
 import { handleChatV2 } from "./routes/chat-v2"
 import {
+// DISABLED: connections table does not exist
+	createConnection,
+// 	createConnectionInputSchema,
+// 	deleteConnection,
+// 	getConnection,
+// 	listConnections,
+} from "./routes/connections"
+import {
 	handleCreateConversation,
+	handleDeleteConversation,
 	handleGetConversation,
 	handleGetConversationEvents,
 	handleGetConversationHistory,
-	handleUpdateConversation,
-	handleDeleteConversation,
 	handleListConversations,
+	handleUpdateConversation,
 } from "./routes/conversations"
-import {
-	createConnection,
-	createConnectionInputSchema,
-	deleteConnection,
-	getConnection,
-	listConnections,
-} from "./routes/connections"
 import {
 	addDocument,
 	cancelDocument,
@@ -82,9 +83,12 @@ import { createProject, deleteProject, listProjects } from "./routes/projects"
 import { searchDocuments } from "./routes/search"
 import { getSettings, updateSettings } from "./routes/settings"
 import { getWaitlistStatus } from "./routes/waitlist"
-import { hybridSearch } from "./services/hybrid-search"
 import { AnalysisService } from "./services/analysis-service"
-import { startDocumentTimeoutMonitor, stopDocumentTimeoutMonitor } from "./services/document-timeout-monitor"
+import {
+	startDocumentTimeoutMonitor,
+	stopDocumentTimeoutMonitor,
+} from "./services/document-timeout-monitor"
+import { hybridSearch } from "./services/hybrid-search"
 import type { SessionContext } from "./session"
 import { createScopedSupabase } from "./supabase"
 
@@ -94,10 +98,12 @@ const allowedOrigins = new Set(env.ALLOWED_ORIGINS)
 
 // Debug: confirm OpenRouter key presence without printing secrets
 try {
-  const hasOpenRouterKey = Boolean(process.env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY)
-  console.log("[Boot] OpenRouter key detected:", hasOpenRouterKey)
+	const hasOpenRouterKey = Boolean(
+		process.env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY,
+	)
+	console.log("[Boot] OpenRouter key detected:", hasOpenRouterKey)
 } catch {
-  // ignore
+	// ignore
 }
 
 app.use(
@@ -225,14 +231,14 @@ app.post("/v3/documents", zValidator("json", MemoryAddSchema), async (c) => {
 	const supabase = createScopedSupabase(organizationId, userId)
 
 	try {
-    const doc = await addDocument({
-      organizationId,
-      userId,
-      payload,
-      client: supabase,
-    })
-    const statusCode = (doc as any)?.alreadyExists ? 200 : 201
-    return c.json(doc, statusCode)
+		const doc = await addDocument({
+			organizationId,
+			userId,
+			payload,
+			client: supabase,
+		})
+		const statusCode = (doc as any)?.alreadyExists ? 200 : 201
+		return c.json(doc, statusCode)
 	} catch (error) {
 		console.error("Failed to add document", error)
 		return c.json(
@@ -281,10 +287,7 @@ app.post("/v3/documents/file", async (c) => {
 		])
 
 		if (file.size > MAX_SIZE_BYTES) {
-			return c.json(
-				{ error: { message: "File too large (max 10MB)" } },
-				413,
-			)
+			return c.json({ error: { message: "File too large (max 10MB)" } }, 413)
 		}
 
 		const arrayBuffer = await file.arrayBuffer()
@@ -356,14 +359,14 @@ app.post("/v3/documents/file", async (c) => {
 		}
 
 		const supabase = createScopedSupabase(organizationId, userId)
-    const doc = await addDocument({
-      organizationId,
-      userId,
-      payload,
-      client: supabase,
-    })
-    const statusCode = (doc as any)?.alreadyExists ? 200 : 201
-    return c.json(doc, statusCode)
+		const doc = await addDocument({
+			organizationId,
+			userId,
+			payload,
+			client: supabase,
+		})
+		const statusCode = (doc as any)?.alreadyExists ? 200 : 201
+		return c.json(doc, statusCode)
 	} catch (error) {
 		console.error("File upload failed", error)
 		return c.json(
@@ -402,10 +405,7 @@ app.post(
 			try {
 				parsed = new URL(url)
 			} catch {
-				return c.json(
-					{ error: { message: "Invalid repository URL" } },
-					400,
-				)
+				return c.json({ error: { message: "Invalid repository URL" } }, 400)
 			}
 			if (parsed.hostname !== "github.com") {
 				return c.json(
@@ -417,7 +417,11 @@ app.post(
 			const segments = path.split("/").filter(Boolean)
 			if (segments.length < 2) {
 				return c.json(
-					{ error: { message: "Provide URL in the form https://github.com/owner/repo" } },
+					{
+						error: {
+							message: "Provide URL in the form https://github.com/owner/repo",
+						},
+					},
 					400,
 				)
 			}
@@ -491,21 +495,23 @@ app.post(
 	"/v3/deep-agent/analyze",
 	zValidator(
 		"json",
-    z.object({
-            url: z.string().url(),
-            mode: z.enum(["auto", "youtube"]).optional().default("auto"),
-            title: z.string().optional(),
-            githubToken: z.string().optional(),
-            useExa: z.boolean().optional(),
-        }),
+		z.object({
+			url: z.string().url(),
+			mode: z.enum(["auto", "youtube"]).optional().default("auto"),
+			title: z.string().optional(),
+			githubToken: z.string().optional(),
+			useExa: z.boolean().optional(),
+		}),
 	),
 	async (c) => {
 		const body = c.req.valid("json")
-        const { url, mode, title, githubToken, useExa } = body
+		const { url, mode, title, githubToken, useExa } = body
 
 		try {
-        const service = new AnalysisService("gemini-2.5-flash", useExa)
-        const result = await service.analyzeAuto(url, title, githubToken, { useExa })
+			const service = new AnalysisService("gemini-2.5-flash", useExa)
+			const result = await service.analyzeAuto(url, title, githubToken, {
+				useExa,
+			})
 			return c.json(result)
 		} catch (error) {
 			console.error("Deep Agent analysis failed", error)
@@ -610,7 +616,8 @@ app.patch(
 					data.content !== undefined ||
 					data.title !== undefined ||
 					data.containerTag !== undefined ||
-					(Array.isArray(data.containerTags) && data.containerTags.length > 0) ||
+					(Array.isArray(data.containerTags) &&
+						data.containerTags.length > 0) ||
 					data.metadata !== undefined,
 				{ message: "At least one field must be provided for update" },
 			),
@@ -829,53 +836,14 @@ app.post(
 	},
 )
 
-app.get("/v3/connections", async (c) => {
-	const { organizationId } = c.var.session
-	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
-	try {
-		const connections = await listConnections(supabase, organizationId)
-		return c.json(connections)
-	} catch (error) {
-		console.error("Failed to fetch connections", error)
-		return c.json({ error: { message: "Failed to fetch connections" } }, 500)
-	}
-})
+// app.get("/v3/connections", ...)
 
-app.get("/v3/connections/:connectionId", async (c) => {
-	const { organizationId } = c.var.session
-	const connectionId = c.req.param("connectionId")
-	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
-	try {
-		const connection = await getConnection(
-			supabase,
-			organizationId,
-			connectionId,
-		)
-		if (!connection) {
-			return c.json({ error: { message: "Connection not found" } }, 404)
-		}
-		return c.json(connection)
-	} catch (error) {
-		console.error("Failed to fetch connection", error)
-		return c.json({ error: { message: "Failed to fetch connection" } }, 500)
-	}
-})
 
-app.delete("/v3/connections/:connectionId", async (c) => {
-	const { organizationId } = c.var.session
-	const connectionId = c.req.param("connectionId")
-	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
-	try {
-		const connection = await getConnection(
-			supabase,
-			organizationId,
-			connectionId,
-		)
-		if (!connection) {
-			return c.json({ error: { message: "Connection not found" } }, 404)
-		}
-		await deleteConnection(supabase, organizationId, connectionId)
-		return c.json({ id: connectionId, provider: connection.provider })
+// app.get("/v3/connections/:connectionId", ...)
+
+
+// app.delete("/v3/connections/:connectionId", ...)
+
 	} catch (error) {
 		console.error("Failed to delete connection", error)
 		return c.json({ error: { message: "Failed to delete connection" } }, 400)
@@ -945,13 +913,22 @@ app.post("/v3/conversations", async (c) => {
 	const { organizationId, userId } = c.var.session
 	const body = await c.req.json()
 	const supabase = createScopedSupabase(organizationId, userId)
-	return handleCreateConversation({ client: supabase, orgId: organizationId, userId, body })
+	return handleCreateConversation({
+		client: supabase,
+		orgId: organizationId,
+		userId,
+		body,
+	})
 })
 
 app.get("/v3/conversations", async (c) => {
 	const { organizationId } = c.var.session
 	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
-	return handleListConversations({ client: supabase, orgId: organizationId, searchParams: new URLSearchParams(c.req.query()) })
+	return handleListConversations({
+		client: supabase,
+		orgId: organizationId,
+		searchParams: new URLSearchParams(c.req.query()),
+	})
 })
 
 app.get("/v3/conversations/:id", async (c) => {
@@ -1005,27 +982,27 @@ app.post("/v3/graph/connections", async (c) => {
 startDocumentTimeoutMonitor()
 
 // Handle uncaught exceptions and unhandled promise rejections
-process.on('uncaughtException', (error) => {
-	console.error('[FATAL] Uncaught Exception:', error)
-	console.error('Stack:', error.stack)
+process.on("uncaughtException", (error) => {
+	console.error("[FATAL] Uncaught Exception:", error)
+	console.error("Stack:", error.stack)
 	// Log but don't exit - let the process recover if possible
 })
 
-process.on('unhandledRejection', (reason, promise) => {
-	console.error('[FATAL] Unhandled Promise Rejection:', reason)
-	console.error('Promise:', promise)
+process.on("unhandledRejection", (reason, promise) => {
+	console.error("[FATAL] Unhandled Promise Rejection:", reason)
+	console.error("Promise:", promise)
 	// Log but don't exit - let the process recover if possible
 })
 
 // Handle graceful shutdown
-process.on('SIGTERM', () => {
-	console.log('SIGTERM received, shutting down gracefully...')
+process.on("SIGTERM", () => {
+	console.log("SIGTERM received, shutting down gracefully...")
 	stopDocumentTimeoutMonitor()
 	process.exit(0)
 })
 
-process.on('SIGINT', () => {
-	console.log('SIGINT received, shutting down gracefully...')
+process.on("SIGINT", () => {
+	console.log("SIGINT received, shutting down gracefully...")
 	stopDocumentTimeoutMonitor()
 	process.exit(0)
 })
