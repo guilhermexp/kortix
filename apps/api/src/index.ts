@@ -41,14 +41,14 @@ import {
 } from "./routes/auth"
 import { generateChatTitle, handleChat } from "./routes/chat"
 import { handleChatV2 } from "./routes/chat-v2"
-import {
 // DISABLED: connections table does not exist
-	createConnection,
+// import {
+// 	createConnection,
 // 	createConnectionInputSchema,
 // 	deleteConnection,
 // 	getConnection,
 // 	listConnections,
-} from "./routes/connections"
+// } from "./routes/connections"
 import {
 	handleCreateConversation,
 	handleDeleteConversation,
@@ -787,54 +787,11 @@ app.post(
 	},
 )
 
-app.post(
-	"/v3/connections/:provider",
-	zValidator("json", createConnectionInputSchema),
-	async (c) => {
-		const { organizationId, userId } = c.var.session
-		const provider = c.req.param("provider")
-		const payload = c.req.valid("json")
-		const supabase = createScopedSupabase(organizationId, userId)
+// DISABLED: connections table does not exist
+// app.post("/v3/connections/:provider", zValidator("json", createConnectionInputSchema), async (c) => {...})
 
-		try {
-			const response = await createConnection(supabase, {
-				organizationId,
-				userId,
-				provider,
-				payload,
-			})
-			return c.json(response, 201)
-		} catch (error) {
-			console.error("Failed to create connection", error)
-			return c.json({ error: { message: "Failed to create connection" } }, 400)
-		}
-	},
-)
-
-app.post(
-	"/v3/connections/list",
-	zValidator(
-		"json",
-		z.object({ containerTags: z.array(z.string()).optional() }).optional(),
-	),
-	async (c) => {
-		const { organizationId } = c.var.session
-		const payload = c.req.valid("json")
-		const supabase = createScopedSupabase(organizationId, c.var.session.userId)
-
-		try {
-			const connections = await listConnections(
-				supabase,
-				organizationId,
-				payload?.containerTags,
-			)
-			return c.json(connections)
-		} catch (error) {
-			console.error("Failed to list connections", error)
-			return c.json({ error: { message: "Failed to list connections" } }, 500)
-		}
-	},
-)
+// DISABLED: connections table does not exist
+// app.post("/v3/connections/list", zValidator("json", z.object({...})), async (c) => {...})
 
 // app.get("/v3/connections", ...)
 
@@ -842,13 +799,8 @@ app.post(
 // app.get("/v3/connections/:connectionId", ...)
 
 
+// DISABLED: connections table does not exist
 // app.delete("/v3/connections/:connectionId", ...)
-
-	} catch (error) {
-		console.error("Failed to delete connection", error)
-		return c.json({ error: { message: "Failed to delete connection" } }, 400)
-	}
-})
 
 app.get("/v3/settings", async (c) => {
 	const { organizationId } = c.var.session
