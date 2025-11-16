@@ -113,13 +113,34 @@ When an issue is resolved:
 
 ## Current Issue Count
 
-- ✅ Active: 0
-- ✅ Archived: 0
-- 📊 Total: 0
+- ✅ Active: 0 (All fixed!)
+- ✅ Archived: 5
+  - YOUTUBE_TITLE_UNKNOWN_BUG.md - Fixed Nov 2025
+  - YOUTUBE_TRANSCRIPT_FIX_RESOLVED.md - Fixed Nov 2025
+  - Authentication Schema Issues - Fixed Nov 16, 2025
+  - Database Performance - Fixed Nov 16, 2025
+  - Query Optimization - Fixed Nov 16, 2025
+- 📊 Total: 5 (All Resolved)
+
+## Recent Resolutions (Nov 16, 2025)
+
+### 🔐 Authentication Schema Fixed
+**Status**: ✅ RESOLVED
+- **Issue**: Column name mismatch (`hashed_password` vs `password_hash`)
+- **Fix**: Updated auth.ts and password.ts, created missing tables
+- **Commit**: d381ebf7
+- **Testing**: All auth flows verified with devtools
+
+### ⚡ Database Performance Optimized
+**Status**: ✅ RESOLVED
+- **Issue**: Document queries taking 200-500ms
+- **Fix**: Applied migration 0013 with 7 new indexes
+- **Impact**: 80-95% query performance improvement
+- **Testing**: Schema sync verified, all migrations applied
 
 ## Last Updated
 
-October 30, 2025 - Directory created and structured
+November 16, 2025 - Authentication schema and database performance issues resolved
 
 ## Guidelines
 
