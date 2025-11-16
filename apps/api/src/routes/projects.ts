@@ -16,7 +16,6 @@ type SpaceWithDocumentCount = {
 	container_tag: string
 	created_at: string
 	updated_at: string | null
-	is_experimental: boolean | null
 	document_count?: number
 }
 
@@ -34,7 +33,7 @@ function mapSpaceToProject(space: SpaceWithDocumentCount) {
 		containerTag: space.container_tag,
 		createdAt: space.created_at,
 		updatedAt: space.updated_at,
-		isExperimental: space.is_experimental ?? false,
+		isExperimental: false, // Note: is_experimental column doesn't exist in schema
 		documentCount: space.document_count ?? 0,
 	})
 }
@@ -46,7 +45,7 @@ export async function listProjects(
 	// Get all spaces for the organization
 	const { data: spaces, error } = await client
 		.from("spaces")
-		.select("id, container_tag, name, is_experimental, created_at, updated_at")
+		.select("id, container_tag, name, created_at, updated_at")
 		.eq("org_id", organizationId)
 		.order("created_at", { ascending: false })
 
@@ -101,10 +100,9 @@ export async function createProject(
 			org_id: organizationId,
 			container_tag: containerTag,
 			name: parsed.name,
-			is_experimental: false,
 			metadata: {},
 		})
-		.select("id, container_tag, name, is_experimental, created_at, updated_at")
+		.select("id, container_tag, name, created_at, updated_at")
 		.single()
 
 	if (error) throw error
@@ -229,7 +227,7 @@ export async function updateProject(
 		.update({ name: parsed.name })
 		.eq("id", projectId)
 		.eq("org_id", organizationId)
-		.select("id, container_tag, name, is_experimental, created_at, updated_at")
+		.select("id, container_tag, name, created_at, updated_at")
 		.single()
 
 	if (error) throw error
