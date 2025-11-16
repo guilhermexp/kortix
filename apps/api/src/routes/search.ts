@@ -335,27 +335,16 @@ export async function searchDocuments(
 					: []
 
 				if (spaceIds.length > 0) {
-					const { data: mappings } = await client
-						.from("documents_to_spaces")
-						.select("document_id")
+					const { data } = await client
+						.from("documents")
+						.select(
+							"id, title, type, content, summary, metadata, created_at, updated_at, status",
+						)
+						.eq("org_id", orgId)
 						.in("space_id", spaceIds)
-
-					const docIds = Array.isArray(mappings)
-						? [...new Set(mappings.map((m: any) => m.document_id))]
-						: []
-
-					if (docIds.length > 0) {
-						const { data } = await client
-							.from("documents")
-							.select(
-								"id, title, type, content, summary, metadata, created_at, updated_at, status",
-							)
-							.eq("org_id", orgId)
-							.in("id", docIds)
-							.order("created_at", { ascending: false })
-							.limit(Math.max(20, payload.limit ?? 10))
-						if (Array.isArray(data)) docsData = data as any
-					}
+						.order("created_at", { ascending: false })
+						.limit(Math.max(20, payload.limit ?? 10))
+					if (Array.isArray(data)) docsData = data as any
 				}
 			}
 
