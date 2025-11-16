@@ -164,7 +164,7 @@ export async function completePasswordReset(c: Context) {
 	const hashedPassword = hashPassword(payload.password)
 	const { error: updateError } = await supabaseAdmin
 		.from("users")
-		.update({ hashed_password: hashedPassword, updated_at: now })
+		.update({ password_hash: hashedPassword, updated_at: now })
 		.eq("id", user.id)
 
 	if (updateError) {
@@ -198,16 +198,16 @@ export async function updatePassword(c: UpdatePasswordContext) {
 
 	const { data: user, error } = await supabaseAdmin
 		.from("users")
-		.select("id, hashed_password")
+		.select("id, password_hash")
 		.eq("id", userId)
 		.maybeSingle()
 
-	if (error || !user?.hashed_password) {
+	if (error || !user?.password_hash) {
 		console.error("updatePassword: failed to fetch user", error)
 		return c.json({ error: { message: "Failed to update password" } }, 500)
 	}
 
-	if (!verifyPassword(payload.currentPassword, user.hashed_password)) {
+	if (!verifyPassword(payload.currentPassword, user.password_hash)) {
 		return c.json({ error: { message: "Invalid current password" } }, 401)
 	}
 
@@ -216,7 +216,7 @@ export async function updatePassword(c: UpdatePasswordContext) {
 
 	const { error: updateError } = await supabaseAdmin
 		.from("users")
-		.update({ hashed_password: newHashedPassword, updated_at: now })
+		.update({ password_hash: newHashedPassword, updated_at: now })
 		.eq("id", userId)
 
 	if (updateError) {
