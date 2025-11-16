@@ -56,7 +56,7 @@ export async function signUp(c: Context) {
 		.insert({
 			email: normalizedEmail,
 			name: name ?? normalizedEmail.split("@")[0],
-			hashed_password: hashedPassword,
+			password_hash: hashedPassword,
 		})
 		.select("id")
 		.single()
@@ -95,7 +95,7 @@ export async function signIn(c: Context) {
 
 	const { data: user, error } = await supabaseAdmin
 		.from("users")
-		.select("id, hashed_password, email, name")
+		.select("id, password_hash, email, name")
 		.eq("email", normalizedEmail)
 		.maybeSingle()
 
@@ -105,8 +105,8 @@ export async function signIn(c: Context) {
 	}
 
 	if (
-		!user?.hashed_password ||
-		!verifyPassword(password, user.hashed_password)
+		!user?.password_hash ||
+		!verifyPassword(password, user.password_hash)
 	) {
 		return c.json({ error: { message: "Invalid email or password" } }, 401)
 	}
