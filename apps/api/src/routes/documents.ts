@@ -727,16 +727,16 @@ export async function listDocumentsWithMemories(
 		}
 
 		// Find document IDs that belong to these spaces (direct relationship via space_id)
-		const { data: docs, error: docsErr } = await client
+		const { data: spaceDocs, error: spaceDocsErr } = await client
 			.from("documents")
 			.select("id")
 			.eq("org_id", organizationId)
 			.in("space_id", spaceIds)
 
-		if (docsErr && !isPermissionDenied(docsErr)) throw docsErr
+		if (spaceDocsErr && !isPermissionDenied(spaceDocsErr)) throw spaceDocsErr
 
-		const docIds = Array.isArray(docs)
-			? docs.map((d: any) => d.id)
+		const docIds = Array.isArray(spaceDocs)
+			? spaceDocs.map((d: any) => d.id)
 			: []
 
 		if (docIds.length === 0) {
