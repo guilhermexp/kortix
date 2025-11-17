@@ -105,9 +105,6 @@ type MemoryRow = {
 	is_latest: boolean | null
 	version: number | null
 	is_inference: boolean | null
-	is_forgotten: boolean | null
-	forget_after: string | null
-	forget_reason: string | null
 	source_count: number | null
 	created_at: string
 	updated_at: string
@@ -1028,7 +1025,7 @@ export async function listDocumentsWithMemoriesByIds(
 		const { data: memoryRows, error: memoryError } = await client
 			.from("memories")
 			.select(
-				"id, document_id, space_id, org_id, user_id, content, metadata, is_latest, version, is_inference, is_forgotten, forget_after, forget_reason, source_count, created_at, updated_at",
+				"id, document_id, space_id, org_id, user_id, content, metadata, is_latest, version, is_inference, source_count, created_at, updated_at",
 			)
 			.eq("org_id", organizationId)
 			.in("document_id", docIds)
