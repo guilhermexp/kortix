@@ -112,8 +112,7 @@ IngestionOrchestratorService (Top Level)
 │   ├── FirecrawlExtractor
 │   ├── YouTubeExtractor
 │   ├── PDFExtractor
-│   ├── FileExtractor
-│   └── RepositoryExtractor
+│   └── FileExtractor
 ├── DocumentProcessorService
 │   ├── ChunkingService
 │   ├── EmbeddingService
@@ -149,7 +148,6 @@ Extracts content from various sources with automatic extractor selection and fal
 | YouTube Videos | YouTubeExtractor | 15 | Transcript, AI summary, metadata |
 | PDF Documents | PDFExtractor | 12 (OCR) / 8 | OCR (Deepseek/Gemini), text extraction |
 | Web URLs | FirecrawlExtractor | 10 | Full page scraping, metadata |
-| GitHub Repos | RepositoryExtractor | 8 | Code structure, file tree |
 | Generic Files | FileExtractor | 5 | MarkItDown, various formats |
 
 ### Basic Usage

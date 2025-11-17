@@ -1,5 +1,5 @@
-import { config as loadEnv } from "dotenv"
 import { performance } from "node:perf_hooks"
+import { config as loadEnv } from "dotenv"
 
 // Load environment variables before importing services that validate env
 loadEnv({ path: ".env.local" })
@@ -23,7 +23,9 @@ const { AnalysisService } = await import("./src/services/analysis-service")
 const { getCacheService } = await import("./src/services/cache")
 
 if (!process.env.GOOGLE_API_KEY) {
-	console.error("GOOGLE_API_KEY deve estar configurada para executar analyzeYouTubeUrl.")
+	console.error(
+		"GOOGLE_API_KEY deve estar configurada para executar analyzeYouTubeUrl.",
+	)
 	process.exit(1)
 }
 
@@ -45,7 +47,9 @@ if (cacheAvailable) {
 	await cache.delete(CACHE_KEY)
 } else {
 	fallbackCache.delete(CACHE_KEY)
-	console.warn("[test-analyzevideo] CacheService indisponível, usando cache em memória.")
+	console.warn(
+		"[test-analyzevideo] CacheService indisponível, usando cache em memória.",
+	)
 }
 
 function validateResult(result: AnalysisResult) {
@@ -91,7 +95,9 @@ async function runAnalysis(attempt: number) {
 	let result = await readFromCache()
 
 	if (!result) {
-		console.log(`[test-analyzevideo] Execução ${attempt}: cache miss, iniciando análise`)
+		console.log(
+			`[test-analyzevideo] Execução ${attempt}: cache miss, iniciando análise`,
+		)
 		result = await service.analyzeYouTubeUrl(YOUTUBE_URL, PROVIDED_TITLE)
 		await writeToCache(result)
 	} else {

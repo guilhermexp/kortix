@@ -76,7 +76,9 @@ export function BillingView() {
 				initial={{ opacity: 0, scale: 0.9 }}
 				transition={{ type: "spring", damping: 20 }}
 			>
-				<p className="text-foreground dark:text-white/70 mb-4">Sign in to unlock premium features</p>
+				<p className="text-foreground dark:text-white/70 mb-4">
+					Sign in to unlock premium features
+				</p>
 				<motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
 					<Button
 						asChild
@@ -111,10 +113,14 @@ export function BillingView() {
 
 				{/* Current Usage */}
 				<div className="space-y-3">
-					<h4 className="text-sm font-medium text-foreground dark:text-white/90">Current Usage</h4>
+					<h4 className="text-sm font-medium text-foreground dark:text-white/90">
+						Current Usage
+					</h4>
 					<div className="space-y-2">
 						<div className="flex justify-between items-center">
-							<span className="text-sm text-foreground dark:text-white/70">Memories</span>
+							<span className="text-sm text-foreground dark:text-white/70">
+								Memories
+							</span>
 							<span className="text-sm text-foreground dark:text-white/90">
 								{memoriesUsed} / {memoriesLimit}
 							</span>
@@ -130,7 +136,9 @@ export function BillingView() {
 					</div>
 					<div className="space-y-2">
 						<div className="flex justify-between items-center">
-							<span className="text-sm text-foreground dark:text-white/70">Connections</span>
+							<span className="text-sm text-foreground dark:text-white/70">
+								Connections
+							</span>
 							<span className="text-sm text-foreground dark:text-white/90">
 								{connectionsUsed} / 10
 							</span>
@@ -160,10 +168,14 @@ export function BillingView() {
 		>
 			{/* Current Usage - Free Plan */}
 			<div className="space-y-3">
-				<HeadingH3Bold className="text-foreground dark:text-white">Current Plan: Free</HeadingH3Bold>
+				<HeadingH3Bold className="text-foreground dark:text-white">
+					Current Plan: Free
+				</HeadingH3Bold>
 				<div className="space-y-2">
 					<div className="flex justify-between items-center">
-						<span className="text-sm text-foreground dark:text-white/70">Memories</span>
+						<span className="text-sm text-foreground dark:text-white/70">
+							Memories
+						</span>
 						<span
 							className={`text-sm ${memoriesUsed >= memoriesLimit ? "text-red-400" : "text-foreground dark:text-white/90"}`}
 						>
@@ -185,12 +197,16 @@ export function BillingView() {
 
 			{/* Comparison */}
 			<div className="space-y-4">
-				<HeadingH3Bold className="text-foreground dark:text-white">Upgrade to Pro</HeadingH3Bold>
+				<HeadingH3Bold className="text-foreground dark:text-white">
+					Upgrade to Pro
+				</HeadingH3Bold>
 
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					{/* Free Plan */}
 					<div className="p-4 bg-white/5 rounded-lg border border-white/10">
-						<h4 className="font-medium text-foreground dark:text-white/90 mb-3">Free Plan</h4>
+						<h4 className="font-medium text-foreground dark:text-white/90 mb-3">
+							Free Plan
+						</h4>
 						<ul className="space-y-2">
 							<li className="flex items-center gap-2 text-sm text-foreground dark:text-white/70">
 								<CheckCircle className="h-4 w-4 text-green-400" />

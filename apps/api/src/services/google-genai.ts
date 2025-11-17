@@ -13,7 +13,7 @@ function normaliseModelId(modelId: string) {
 export function getGoogleClient(): GoogleGenerativeAI | null {
 	if (singletonClient) {
 		return singletonClient
-}
+	}
 	const apiKey = env.GOOGLE_API_KEY
 	if (!apiKey) {
 		return null

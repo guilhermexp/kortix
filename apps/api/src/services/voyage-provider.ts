@@ -62,7 +62,7 @@ export async function generateVoyageEmbedding(
 	options?: {
 		inputType?: "query" | "document"
 		truncation?: boolean
-	}
+	},
 ): Promise<number[]> {
 	const apiKey = env.VOYAGE_API_KEY
 
@@ -93,12 +93,14 @@ export async function generateVoyageEmbedding(
 		})
 
 		if (!response.ok) {
-			const errorData = (await response.json().catch(() => ({}))) as VoyageErrorResponse
+			const errorData = (await response
+				.json()
+				.catch(() => ({}))) as VoyageErrorResponse
 			const errorMessage =
 				errorData.detail || errorData.message || response.statusText
 
 			throw new Error(
-				`Voyage AI API error (${response.status}): ${errorMessage}`
+				`Voyage AI API error (${response.status}): ${errorMessage}`,
 			)
 		}
 
@@ -128,7 +130,7 @@ export async function generateVoyageEmbeddingsBatch(
 	options?: {
 		inputType?: "query" | "document"
 		truncation?: boolean
-	}
+	},
 ): Promise<number[][]> {
 	const apiKey = env.VOYAGE_API_KEY
 
@@ -148,7 +150,7 @@ export async function generateVoyageEmbeddingsBatch(
 		}
 
 		const results = await Promise.all(
-			batches.map((batch) => generateVoyageEmbeddingsBatch(batch, options))
+			batches.map((batch) => generateVoyageEmbeddingsBatch(batch, options)),
 		)
 
 		return results.flat()
@@ -178,12 +180,14 @@ export async function generateVoyageEmbeddingsBatch(
 		})
 
 		if (!response.ok) {
-			const errorData = (await response.json().catch(() => ({}))) as VoyageErrorResponse
+			const errorData = (await response
+				.json()
+				.catch(() => ({}))) as VoyageErrorResponse
 			const errorMessage =
 				errorData.detail || errorData.message || response.statusText
 
 			throw new Error(
-				`Voyage AI API error (${response.status}): ${errorMessage}`
+				`Voyage AI API error (${response.status}): ${errorMessage}`,
 			)
 		}
 
@@ -198,7 +202,7 @@ export async function generateVoyageEmbeddingsBatch(
 
 		// Ensure all embeddings match expected dimension
 		return sortedEmbeddings.map((item) =>
-			ensureVectorSize(item.embedding, VECTOR_SIZE)
+			ensureVectorSize(item.embedding, VECTOR_SIZE),
 		)
 	} catch (error) {
 		if (error instanceof Error) {
@@ -217,7 +221,7 @@ export async function generateVoyageEmbeddingWithRetry(
 		inputType?: "query" | "document"
 		truncation?: boolean
 		maxRetries?: number
-	}
+	},
 ): Promise<number[]> {
 	const maxRetries = options?.maxRetries ?? MAX_RETRIES
 	let lastError: Error | null = null
@@ -230,14 +234,14 @@ export async function generateVoyageEmbeddingWithRetry(
 			const isRateLimit =
 				error instanceof Error &&
 				(error.message.includes("rate") ||
-				 error.message.includes("quota") ||
-				 error.message.includes("429"))
+					error.message.includes("quota") ||
+					error.message.includes("429"))
 
 			if (isRateLimit && attempt < maxRetries - 1) {
 				// Exponential backoff: 1s, 2s, 4s
-				const delayMs = RETRY_DELAY_BASE * Math.pow(2, attempt)
+				const delayMs = RETRY_DELAY_BASE * 2 ** attempt
 				console.warn(
-					`[voyage] Rate limit hit, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`
+					`[voyage] Rate limit hit, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`,
 				)
 				await new Promise((resolve) => setTimeout(resolve, delayMs))
 				continue

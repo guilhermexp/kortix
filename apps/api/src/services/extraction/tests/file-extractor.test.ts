@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
-import { FileExtractor, createFileExtractor } from '../file-extractor'
 import type {
 	ExtractionInput,
 	ExtractionResult,
-	FileOptions,
 	FileMetadata,
+	FileOptions,
 	ProcessingError,
-} from '../../interfaces'
+} from "../../interfaces"
+import { createFileExtractor, FileExtractor } from "../file-extractor"
 
 /**
  * Unit tests for FileExtractor
@@ -31,8 +31,18 @@ describe("FileExtractor", () => {
 			includeMetadata: true,
 			preserveFormatting: true,
 			supportedFormats: [
-				'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
-				'odt', 'ods', 'odp', 'rtf', 'txt', 'csv',
+				"doc",
+				"docx",
+				"xls",
+				"xlsx",
+				"ppt",
+				"pptx",
+				"odt",
+				"ods",
+				"odp",
+				"rtf",
+				"txt",
+				"csv",
 			],
 			extractionOptions: {
 				timeoutMs: 30000,
@@ -49,21 +59,33 @@ describe("FileExtractor", () => {
 
 	describe("Extractor Interface", () => {
 		it("should implement DocumentExtractor interface", () => {
-			expect(extractor).toHaveProperty('canHandle')
-			expect(extractor).toHaveProperty('extract')
-			expect(extractor).toHaveProperty('getSupportedTypes')
+			expect(extractor).toHaveProperty("canHandle")
+			expect(extractor).toHaveProperty("extract")
+			expect(extractor).toHaveProperty("getSupportedTypes")
 		})
 
 		it("should support various file content types", () => {
 			const supportedTypes = extractor.getSupportedTypes()
-			expect(supportedTypes).toContain('file')
+			expect(supportedTypes).toContain("file")
 		})
 
 		it("should be able to handle office document files", () => {
 			const fileInputs = [
-				{ type: 'file', content: 'doc content', options: { filename: 'document.docx' } },
-				{ type: 'file', content: 'xls content', options: { filename: 'spreadsheet.xlsx' } },
-				{ type: 'file', content: 'ppt content', options: { filename: 'presentation.pptx' } },
+				{
+					type: "file",
+					content: "doc content",
+					options: { filename: "document.docx" },
+				},
+				{
+					type: "file",
+					content: "xls content",
+					options: { filename: "spreadsheet.xlsx" },
+				},
+				{
+					type: "file",
+					content: "ppt content",
+					options: { filename: "presentation.pptx" },
+				},
 			]
 
 			fileInputs.forEach((input) => {
@@ -74,8 +96,12 @@ describe("FileExtractor", () => {
 
 		it("should not handle non-supported files", () => {
 			const unsupportedInputs = [
-				{ type: 'file', content: 'pdf content', options: { filename: 'document.pdf' } },
-				{ type: 'url', content: 'https://example.com', options: {} },
+				{
+					type: "file",
+					content: "pdf content",
+					options: { filename: "document.pdf" },
+				},
+				{ type: "url", content: "https://example.com", options: {} },
 			]
 
 			unsupportedInputs.forEach((input) => {
@@ -87,12 +113,12 @@ describe("FileExtractor", () => {
 
 	describe("File Format Detection", () => {
 		it("should detect Microsoft Word documents", () => {
-			const wordFormats = ['.doc', '.docx', '.docm']
-			
+			const wordFormats = [".doc", ".docx", ".docm"]
+
 			wordFormats.forEach((format) => {
 				const fileInput: ExtractionInput = {
-					type: 'file',
-					content: 'Word document content',
+					type: "file",
+					content: "Word document content",
 					options: { filename: `document${format}` },
 				}
 
@@ -102,12 +128,12 @@ describe("FileExtractor", () => {
 		})
 
 		it("should detect Microsoft Excel spreadsheets", () => {
-			const excelFormats = ['.xls', '.xlsx', '.xlsm', '.xlsb']
-			
+			const excelFormats = [".xls", ".xlsx", ".xlsm", ".xlsb"]
+
 			excelFormats.forEach((format) => {
 				const fileInput: ExtractionInput = {
-					type: 'file',
-					content: 'Excel spreadsheet content',
+					type: "file",
+					content: "Excel spreadsheet content",
 					options: { filename: `spreadsheet${format}` },
 				}
 
@@ -117,12 +143,12 @@ describe("FileExtractor", () => {
 		})
 
 		it("should detect Microsoft PowerPoint presentations", () => {
-			const powerpointFormats = ['.ppt', '.pptx', '.pptm', '.pps', '.ppsx']
-			
+			const powerpointFormats = [".ppt", ".pptx", ".pptm", ".pps", ".ppsx"]
+
 			powerpointFormats.forEach((format) => {
 				const fileInput: ExtractionInput = {
-					type: 'file',
-					content: 'PowerPoint content',
+					type: "file",
+					content: "PowerPoint content",
 					options: { filename: `presentation${format}` },
 				}
 
@@ -132,12 +158,12 @@ describe("FileExtractor", () => {
 		})
 
 		it("should detect OpenDocument formats", () => {
-			const odFormats = ['.odt', '.ods', '.odp', '.fodt', '.fods', '.fodp']
-			
+			const odFormats = [".odt", ".ods", ".odp", ".fodt", ".fods", ".fodp"]
+
 			odFormats.forEach((format) => {
 				const fileInput: ExtractionInput = {
-					type: 'file',
-					content: 'OpenDocument content',
+					type: "file",
+					content: "OpenDocument content",
 					options: { filename: `document${format}` },
 				}
 
@@ -147,12 +173,12 @@ describe("FileExtractor", () => {
 		})
 
 		it("should detect plain text and RTF files", () => {
-			const textFormats = ['.txt', '.rtf', '.csv', '.tsv']
-			
+			const textFormats = [".txt", ".rtf", ".csv", ".tsv"]
+
 			textFormats.forEach((format) => {
 				const fileInput: ExtractionInput = {
-					type: 'file',
-					content: 'Text content',
+					type: "file",
+					content: "Text content",
 					options: { filename: `text${format}` },
 				}
 
@@ -162,12 +188,12 @@ describe("FileExtractor", () => {
 		})
 
 		it("should handle files with uppercase extensions", () => {
-			const uppercaseFormats = ['.DOCX', '.XLSX', '.PPTX', '.ODT']
-			
+			const uppercaseFormats = [".DOCX", ".XLSX", ".PPTX", ".ODT"]
+
 			uppercaseFormats.forEach((format) => {
 				const fileInput: ExtractionInput = {
-					type: 'file',
-					content: 'Content',
+					type: "file",
+					content: "Content",
 					options: { filename: `document${format}` },
 				}
 
@@ -180,18 +206,19 @@ describe("FileExtractor", () => {
 	describe("Microsoft Word Document Processing", () => {
 		it("should extract text from DOCX files", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-docx-content',
-				options: { filename: 'document.docx' },
+				type: "file",
+				content: "base64-encoded-docx-content",
+				options: { filename: "document.docx" },
 			}
 
 			const mockResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'This is the extracted text from a Word document.\n\nIt includes multiple paragraphs and proper formatting.',
+					content:
+						"This is the extracted text from a Word document.\n\nIt includes multiple paragraphs and proper formatting.",
 					metadata: {
-						title: 'Sample Word Document',
-						author: 'John Doe',
+						title: "Sample Word Document",
+						author: "John Doe",
 						wordCount: 25,
 						pageCount: 1,
 					},
@@ -199,57 +226,58 @@ describe("FileExtractor", () => {
 				},
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromWordDoc')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromWordDoc")
 			extractSpy.mockResolvedValue(mockResult)
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.content).toContain('Word document')
+			expect(result.data?.content).toContain("Word document")
 			expect(result.data?.metadata.wordCount).toBe(25)
 		})
 
 		it("should extract text from legacy DOC files", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-doc-content',
-				options: { filename: 'legacy.doc' },
+				type: "file",
+				content: "base64-encoded-doc-content",
+				options: { filename: "legacy.doc" },
 			}
 
 			const mockResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'Text from legacy DOC format',
+					content: "Text from legacy DOC format",
 					metadata: {
-						title: 'Legacy Document',
-						format: 'DOC',
+						title: "Legacy Document",
+						format: "DOC",
 					},
 					processingTime: 2000,
 				},
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromWordDoc')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromWordDoc")
 			extractSpy.mockResolvedValue(mockResult)
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.metadata.format).toBe('DOC')
+			expect(result.data?.metadata.format).toBe("DOC")
 		})
 
 		it("should preserve formatting in Word documents", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-docx-content',
-				options: { 
-					filename: 'formatted.docx',
-					preserveFormatting: true 
+				type: "file",
+				content: "base64-encoded-docx-content",
+				options: {
+					filename: "formatted.docx",
+					preserveFormatting: true,
 				},
 			}
 
-			const formattedText = 'This is **bold text** and *italic text* with [link](http://example.com)'
-			
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromWordDoc')
+			const formattedText =
+				"This is **bold text** and *italic text* with [link](http://example.com)"
+
+			const extractSpy = vi.spyOn(extractor as any, "extractFromWordDoc")
 			extractSpy.mockResolvedValue({
 				success: true,
 				data: {
@@ -262,34 +290,34 @@ describe("FileExtractor", () => {
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.content).toContain('**bold text**')
+			expect(result.data?.content).toContain("**bold text**")
 		})
 
 		it("should extract Word document metadata", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-docx-content',
-				options: { filename: 'metadata.docx' },
+				type: "file",
+				content: "base64-encoded-docx-content",
+				options: { filename: "metadata.docx" },
 			}
 
 			const mockMetadata: FileMetadata = {
-				title: 'Document Title',
-				author: 'Jane Smith',
-				subject: 'Document Subject',
-				keywords: 'keyword1, keyword2, keyword3',
-				creationDate: '2023-01-15T10:30:00Z',
-				modificationDate: '2023-01-16T14:22:00Z',
+				title: "Document Title",
+				author: "Jane Smith",
+				subject: "Document Subject",
+				keywords: "keyword1, keyword2, keyword3",
+				creationDate: "2023-01-15T10:30:00Z",
+				modificationDate: "2023-01-16T14:22:00Z",
 				wordCount: 1500,
 				pageCount: 5,
 				characterCount: 8000,
 				paragraphCount: 45,
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromWordDoc')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromWordDoc")
 			extractSpy.mockResolvedValue({
 				success: true,
 				data: {
-					content: 'Document content',
+					content: "Document content",
 					metadata: mockMetadata,
 					processingTime: 1800,
 				},
@@ -298,24 +326,25 @@ describe("FileExtractor", () => {
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.metadata.title).toBe('Document Title')
+			expect(result.data?.metadata.title).toBe("Document Title")
 			expect(result.data?.metadata.wordCount).toBe(1500)
-			expect(result.data?.metadata.creationDate).toBe('2023-01-15T10:30:00Z')
+			expect(result.data?.metadata.creationDate).toBe("2023-01-15T10:30:00Z")
 		})
 	})
 
 	describe("Microsoft Excel Spreadsheet Processing", () => {
 		it("should extract data from XLSX files", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-xlsx-content',
-				options: { filename: 'spreadsheet.xlsx' },
+				type: "file",
+				content: "base64-encoded-xlsx-content",
+				options: { filename: "spreadsheet.xlsx" },
 			}
 
 			const mockResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'Sheet1: John Doe\t25\tEngineer\nJane Smith\t30\tDesigner\nBob Johnson\t35\tManager',
+					content:
+						"Sheet1: John Doe\t25\tEngineer\nJane Smith\t30\tDesigner\nBob Johnson\t35\tManager",
 					metadata: {
 						sheetCount: 3,
 						totalRows: 100,
@@ -325,48 +354,48 @@ describe("FileExtractor", () => {
 				},
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromExcel')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromExcel")
 			extractSpy.mockResolvedValue(mockResult)
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.content).toContain('John Doe')
+			expect(result.data?.content).toContain("John Doe")
 			expect(result.data?.metadata.sheetCount).toBe(3)
 			expect(result.data?.metadata.totalRows).toBe(100)
 		})
 
 		it("should handle multiple worksheets", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-xlsx-content',
-				options: { filename: 'multi-sheet.xlsx' },
+				type: "file",
+				content: "base64-encoded-xlsx-content",
+				options: { filename: "multi-sheet.xlsx" },
 			}
 
 			const sheetData = [
 				{
-					name: 'Sales Data',
-					headers: ['Product', 'Quantity', 'Price', 'Total'],
+					name: "Sales Data",
+					headers: ["Product", "Quantity", "Price", "Total"],
 					rows: [
-						['Product A', 100, 10.99, 1099.00],
-						['Product B', 200, 15.50, 3100.00],
+						["Product A", 100, 10.99, 1099.0],
+						["Product B", 200, 15.5, 3100.0],
 					],
 				},
 				{
-					name: 'Summary',
-					headers: ['Metric', 'Value'],
+					name: "Summary",
+					headers: ["Metric", "Value"],
 					rows: [
-						['Total Sales', '4199.00'],
-						['Average Order', 76.35],
+						["Total Sales", "4199.00"],
+						["Average Order", 76.35],
 					],
 				},
 			]
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromExcel')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromExcel")
 			extractSpy.mockResolvedValue({
 				success: true,
 				data: {
-					content: 'Multi-sheet spreadsheet content',
+					content: "Multi-sheet spreadsheet content",
 					metadata: { sheetCount: 2 },
 					sheets: sheetData,
 					processingTime: 2500,
@@ -377,36 +406,36 @@ describe("FileExtractor", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.sheets).toHaveLength(2)
-			expect(result.data?.sheets![0].name).toBe('Sales Data')
-			expect(result.data?.sheets![1].name).toBe('Summary')
+			expect(result.data?.sheets![0].name).toBe("Sales Data")
+			expect(result.data?.sheets![1].name).toBe("Summary")
 		})
 
 		it("should extract Excel charts and images", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-xlsx-content',
-				options: { filename: 'charts.xlsx', includeImages: true },
+				type: "file",
+				content: "base64-encoded-xlsx-content",
+				options: { filename: "charts.xlsx", includeImages: true },
 			}
 
 			const mockResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'Spreadsheet with embedded charts and images',
+					content: "Spreadsheet with embedded charts and images",
 					metadata: {
 						sheetCount: 2,
 						charts: [
 							{
-								title: 'Sales Chart',
-								type: 'column',
-								sheet: 'Sales Data',
+								title: "Sales Chart",
+								type: "column",
+								sheet: "Sales Data",
 							},
 						],
 						images: [
 							{
-								id: 'img1',
-								sheet: 'Summary',
-								format: 'PNG',
-								data: 'base64image1data',
+								id: "img1",
+								sheet: "Summary",
+								format: "PNG",
+								data: "base64image1data",
 							},
 						],
 					},
@@ -414,7 +443,7 @@ describe("FileExtractor", () => {
 				},
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromExcel')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromExcel")
 			extractSpy.mockResolvedValue(mockResult)
 
 			const result = await extractor.extract(fileInput)
@@ -426,31 +455,33 @@ describe("FileExtractor", () => {
 
 		it("should handle CSV files", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'Name,Age,Department\nJohn Doe,25,Engineering\nJane Smith,30,Design',
-				options: { filename: 'data.csv' },
+				type: "file",
+				content:
+					"Name,Age,Department\nJohn Doe,25,Engineering\nJane Smith,30,Design",
+				options: { filename: "data.csv" },
 			}
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.content).toContain('John Doe')
-			expect(result.data?.content).toContain('Engineering')
+			expect(result.data?.content).toContain("John Doe")
+			expect(result.data?.content).toContain("Engineering")
 		})
 	})
 
 	describe("Microsoft PowerPoint Presentation Processing", () => {
 		it("should extract text from PPTX files", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-pptx-content',
-				options: { filename: 'presentation.pptx' },
+				type: "file",
+				content: "base64-encoded-pptx-content",
+				options: { filename: "presentation.pptx" },
 			}
 
 			const mockResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'Slide 1: Title Slide\nThis is the presentation title\n\nSlide 2: Content Slide\n• Bullet point 1\n• Bullet point 2\n• Bullet point 3',
+					content:
+						"Slide 1: Title Slide\nThis is the presentation title\n\nSlide 2: Content Slide\n• Bullet point 1\n• Bullet point 2\n• Bullet point 3",
 					metadata: {
 						slideCount: 5,
 						slideSize: [1920, 1080],
@@ -459,43 +490,43 @@ describe("FileExtractor", () => {
 				},
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromPowerPoint')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromPowerPoint")
 			extractSpy.mockResolvedValue(mockResult)
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.content).toContain('Title Slide')
+			expect(result.data?.content).toContain("Title Slide")
 			expect(result.data?.metadata.slideCount).toBe(5)
 		})
 
 		it("should handle speaker notes", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-pptx-content',
-				options: { filename: 'presentation.pptx', includeNotes: true },
+				type: "file",
+				content: "base64-encoded-pptx-content",
+				options: { filename: "presentation.pptx", includeNotes: true },
 			}
 
 			const slideData = [
 				{
 					number: 1,
-					title: 'Introduction',
-					content: 'Welcome to our presentation',
-					notes: 'Introduce yourself and the topic',
+					title: "Introduction",
+					content: "Welcome to our presentation",
+					notes: "Introduce yourself and the topic",
 				},
 				{
 					number: 2,
-					title: 'Main Points',
-					content: 'Point 1, Point 2, Point 3',
-					notes: 'Expand on each point with examples',
+					title: "Main Points",
+					content: "Point 1, Point 2, Point 3",
+					notes: "Expand on each point with examples",
 				},
 			]
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromPowerPoint')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromPowerPoint")
 			extractSpy.mockResolvedValue({
 				success: true,
 				data: {
-					content: 'Presentation with speaker notes',
+					content: "Presentation with speaker notes",
 					metadata: { slideCount: 2 },
 					slides: slideData,
 					processingTime: 2000,
@@ -506,39 +537,41 @@ describe("FileExtractor", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.slides).toHaveLength(2)
-			expect(result.data?.slides![0].notes).toBe('Introduce yourself and the topic')
+			expect(result.data?.slides![0].notes).toBe(
+				"Introduce yourself and the topic",
+			)
 		})
 
 		it("should extract images and shapes from slides", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-pptx-content',
-				options: { filename: 'visual.pptx', includeImages: true },
+				type: "file",
+				content: "base64-encoded-pptx-content",
+				options: { filename: "visual.pptx", includeImages: true },
 			}
 
 			const mockResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'Presentation with visual elements',
+					content: "Presentation with visual elements",
 					metadata: {
 						slideCount: 3,
 						images: [
 							{
-								id: 'img1',
+								id: "img1",
 								slide: 1,
-								format: 'PNG',
-								data: 'base64image1data',
+								format: "PNG",
+								data: "base64image1data",
 							},
 							{
-								id: 'img2',
+								id: "img2",
 								slide: 2,
-								format: 'JPEG',
-								data: 'base64image2data',
+								format: "JPEG",
+								data: "base64image2data",
 							},
 						],
 						shapes: [
 							{
-								type: 'rectangle',
+								type: "rectangle",
 								slide: 1,
 								properties: { x: 100, y: 200, width: 300, height: 150 },
 							},
@@ -548,7 +581,7 @@ describe("FileExtractor", () => {
 				},
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromPowerPoint')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromPowerPoint")
 			extractSpy.mockResolvedValue(mockResult)
 
 			const result = await extractor.extract(fileInput)
@@ -562,45 +595,46 @@ describe("FileExtractor", () => {
 	describe("OpenDocument Format Processing", () => {
 		it("should extract text from ODT files", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-odt-content',
-				options: { filename: 'document.odt' },
+				type: "file",
+				content: "base64-encoded-odt-content",
+				options: { filename: "document.odt" },
 			}
 
 			const mockResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'This is an OpenDocument Text file.\n\nIt contains structured content with proper formatting.',
+					content:
+						"This is an OpenDocument Text file.\n\nIt contains structured content with proper formatting.",
 					metadata: {
-						title: 'OpenDocument Document',
+						title: "OpenDocument Document",
 						wordCount: 20,
 					},
 					processingTime: 1500,
 				},
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromOpenDocument')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromOpenDocument")
 			extractSpy.mockResolvedValue(mockResult)
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.content).toContain('OpenDocument')
+			expect(result.data?.content).toContain("OpenDocument")
 			expect(result.data?.metadata.wordCount).toBe(20)
 		})
 
 		it("should handle ODS spreadsheet files", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-ods-content',
-				options: { filename: 'spreadsheet.ods' },
+				type: "file",
+				content: "base64-encoded-ods-content",
+				options: { filename: "spreadsheet.ods" },
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromOpenDocument')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromOpenDocument")
 			extractSpy.mockResolvedValue({
 				success: true,
 				data: {
-					content: 'ODS spreadsheet content',
+					content: "ODS spreadsheet content",
 					metadata: { sheetCount: 1, totalRows: 50 },
 					processingTime: 1200,
 				},
@@ -614,16 +648,16 @@ describe("FileExtractor", () => {
 
 		it("should handle ODP presentation files", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-odp-content',
-				options: { filename: 'presentation.odp' },
+				type: "file",
+				content: "base64-encoded-odp-content",
+				options: { filename: "presentation.odp" },
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromOpenDocument')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromOpenDocument")
 			extractSpy.mockResolvedValue({
 				success: true,
 				data: {
-					content: 'ODP presentation content',
+					content: "ODP presentation content",
 					metadata: { slideCount: 10 },
 					processingTime: 2000,
 				},
@@ -639,30 +673,34 @@ describe("FileExtractor", () => {
 	describe("Plain Text and RTF Processing", () => {
 		it("should handle plain text files", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'This is a plain text document.\n\nIt has multiple lines and paragraphs.',
-				options: { filename: 'text.txt' },
+				type: "file",
+				content:
+					"This is a plain text document.\n\nIt has multiple lines and paragraphs.",
+				options: { filename: "text.txt" },
 			}
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.content).toBe('This is a plain text document.\n\nIt has multiple lines and paragraphs.')
+			expect(result.data?.content).toBe(
+				"This is a plain text document.\n\nIt has multiple lines and paragraphs.",
+			)
 		})
 
 		it("should handle RTF files", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: '{\\rtf1\\ansi This is RTF content with {\\b bold} and {\\i italic} text.}',
-				options: { filename: 'document.rtf' },
+				type: "file",
+				content:
+					"{\\rtf1\\ansi This is RTF content with {\\b bold} and {\\i italic} text.}",
+				options: { filename: "document.rtf" },
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromRTF')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromRTF")
 			extractSpy.mockResolvedValue({
 				success: true,
 				data: {
-					content: 'This is RTF content with bold and italic text.',
-					metadata: { format: 'RTF' },
+					content: "This is RTF content with bold and italic text.",
+					metadata: { format: "RTF" },
 					processingTime: 800,
 				},
 			})
@@ -670,139 +708,141 @@ describe("FileExtractor", () => {
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.content).toContain('bold and italic')
+			expect(result.data?.content).toContain("bold and italic")
 		})
 
 		it("should handle TSV files", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'Name\tAge\tCity\nJohn Doe\t25\tNew York\nJane Smith\t30\tLos Angeles',
-				options: { filename: 'data.tsv' },
+				type: "file",
+				content:
+					"Name\tAge\tCity\nJohn Doe\t25\tNew York\nJane Smith\t30\tLos Angeles",
+				options: { filename: "data.tsv" },
 			}
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.content).toContain('John Doe')
-			expect(result.data?.content).toContain('New York')
+			expect(result.data?.content).toContain("John Doe")
+			expect(result.data?.content).toContain("New York")
 		})
 	})
 
 	describe("Error Handling", () => {
 		it("should handle unsupported file formats", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'unknown format content',
-				options: { filename: 'unknown.xyz' },
+				type: "file",
+				content: "unknown format content",
+				options: { filename: "unknown.xyz" },
 			}
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('UNSUPPORTED_FORMAT')
+			expect(result.error?.code).toBe("UNSUPPORTED_FORMAT")
 		})
 
 		it("should handle corrupted office documents", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'corrupted data',
-				options: { filename: 'corrupted.docx' },
+				type: "file",
+				content: "corrupted data",
+				options: { filename: "corrupted.docx" },
 			}
 
 			const error: ProcessingError = {
-				code: 'FILE_CORRUPTED',
-				message: 'Office document is corrupted or invalid',
-				details: { fileSize: 1024, format: 'DOCX' },
+				code: "FILE_CORRUPTED",
+				message: "Office document is corrupted or invalid",
+				details: { fileSize: 1024, format: "DOCX" },
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromWordDoc')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromWordDoc")
 			extractSpy.mockRejectedValue(error)
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('FILE_CORRUPTED')
+			expect(result.error?.code).toBe("FILE_CORRUPTED")
 		})
 
 		it("should handle password-protected documents", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'encrypted content',
-				options: { filename: 'protected.docx' },
+				type: "file",
+				content: "encrypted content",
+				options: { filename: "protected.docx" },
 			}
 
 			const error: ProcessingError = {
-				code: 'FILE_PASSWORD_PROTECTED',
-				message: 'Document is password protected',
-				details: { format: 'DOCX', requiresPassword: true },
+				code: "FILE_PASSWORD_PROTECTED",
+				message: "Document is password protected",
+				details: { format: "DOCX", requiresPassword: true },
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromWordDoc')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromWordDoc")
 			extractSpy.mockRejectedValue(error)
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('FILE_PASSWORD_PROTECTED')
+			expect(result.error?.code).toBe("FILE_PASSWORD_PROTECTED")
 		})
 
 		it("should handle oversized files", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'x'.repeat(50 * 1024 * 1024), // 50MB
-				options: { filename: 'large.xlsx' },
+				type: "file",
+				content: "x".repeat(50 * 1024 * 1024), // 50MB
+				options: { filename: "large.xlsx" },
 			}
 
 			const error: ProcessingError = {
-				code: 'FILE_TOO_LARGE',
-				message: 'File exceeds maximum size limit',
+				code: "FILE_TOO_LARGE",
+				message: "File exceeds maximum size limit",
 				details: { size: 50 * 1024 * 1024, maxSize: 25 * 1024 * 1024 },
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromExcel')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromExcel")
 			extractSpy.mockRejectedValue(error)
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('FILE_TOO_LARGE')
+			expect(result.error?.code).toBe("FILE_TOO_LARGE")
 		})
 
 		it("should handle extraction timeouts", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'complex document content',
-				options: { 
-					filename: 'complex.pptx',
-					extractionOptions: { timeoutMs: 1000 }
+				type: "file",
+				content: "complex document content",
+				options: {
+					filename: "complex.pptx",
+					extractionOptions: { timeoutMs: 1000 },
 				},
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromPowerPoint')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromPowerPoint")
 			extractSpy.mockImplementation(
-				() => new Promise((_, reject) => 
-					setTimeout(() => reject(new Error('Extraction timeout')), 2000)
-				)
+				() =>
+					new Promise((_, reject) =>
+						setTimeout(() => reject(new Error("Extraction timeout")), 2000),
+					),
 			)
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('EXTRACTION_TIMEOUT')
+			expect(result.error?.code).toBe("EXTRACTION_TIMEOUT")
 		})
 	})
 
 	describe("Performance Optimization", () => {
 		it("should process large documents efficiently", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-large-docx',
-				options: { filename: 'large.docx' },
+				type: "file",
+				content: "base64-encoded-large-docx",
+				options: { filename: "large.docx" },
 			}
 
-			const largeContent = 'x'.repeat(500000) // 500KB of content
-			
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromWordDoc')
+			const largeContent = "x".repeat(500000) // 500KB of content
+
+			const extractSpy = vi.spyOn(extractor as any, "extractFromWordDoc")
 			extractSpy.mockResolvedValue({
 				success: true,
 				data: {
@@ -820,16 +860,16 @@ describe("FileExtractor", () => {
 
 		it("should implement streaming for very large files", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'base64-encoded-huge-xlsx',
-				options: { filename: 'huge.xlsx', streaming: true },
+				type: "file",
+				content: "base64-encoded-huge-xlsx",
+				options: { filename: "huge.xlsx", streaming: true },
 			}
 
-			const streamSpy = vi.spyOn(extractor as any, 'processWithStreaming')
+			const streamSpy = vi.spyOn(extractor as any, "processWithStreaming")
 			streamSpy.mockResolvedValue({
 				success: true,
 				data: {
-					content: 'Streaming extracted content',
+					content: "Streaming extracted content",
 					metadata: { sheetCount: 10, streaming: true },
 					processingTime: 15000,
 				},
@@ -843,25 +883,37 @@ describe("FileExtractor", () => {
 
 		it("should handle concurrent file processing", async () => {
 			const fileInputs = [
-				{ type: 'file', content: 'doc content 1', options: { filename: 'doc1.docx' } },
-				{ type: 'file', content: 'xls content 2', options: { filename: 'xls2.xlsx' } },
-				{ type: 'file', content: 'ppt content 3', options: { filename: 'ppt3.pptx' } },
+				{
+					type: "file",
+					content: "doc content 1",
+					options: { filename: "doc1.docx" },
+				},
+				{
+					type: "file",
+					content: "xls content 2",
+					options: { filename: "xls2.xlsx" },
+				},
+				{
+					type: "file",
+					content: "ppt content 3",
+					options: { filename: "ppt3.pptx" },
+				},
 			]
 
 			const mockResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'File content',
+					content: "File content",
 					metadata: { pageCount: 1 },
 					processingTime: 1000,
 				},
 			}
 
-			const extractSpy = vi.spyOn(extractor as any, 'extractFromWordDoc')
+			const extractSpy = vi.spyOn(extractor as any, "extractFromWordDoc")
 			extractSpy.mockResolvedValue(mockResult)
 
 			const results = await Promise.all(
-				fileInputs.map((input) => extractor.extract(input))
+				fileInputs.map((input) => extractor.extract(input)),
 			)
 
 			expect(results).toHaveLength(3)
@@ -873,7 +925,7 @@ describe("FileExtractor", () => {
 		it("should respect supported formats configuration", () => {
 			const customOptions: FileOptions = {
 				...mockOptions,
-				supportedFormats: ['docx', 'xlsx', 'pptx'],
+				supportedFormats: ["docx", "xlsx", "pptx"],
 			}
 
 			const customExtractor = new FileExtractor(customOptions)
@@ -909,12 +961,12 @@ describe("FileExtractor", () => {
 		it("should create extractor with default options", () => {
 			const extractor = createFileExtractor()
 			expect(extractor).toBeDefined()
-			expect(extractor.getSupportedTypes()).toContain('file')
+			expect(extractor.getSupportedTypes()).toContain("file")
 		})
 
 		it("should create extractor with custom options", () => {
 			const customOptions: FileOptions = {
-				supportedFormats: ['docx', 'txt'],
+				supportedFormats: ["docx", "txt"],
 				includeTables: false,
 			}
 
@@ -923,25 +975,25 @@ describe("FileExtractor", () => {
 		})
 	})
 
-	describe("Edge Cases", ()	 => {
+	describe("Edge Cases", () => {
 		it("should handle empty files", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: '',
-				options: { filename: 'empty.txt' },
+				type: "file",
+				content: "",
+				options: { filename: "empty.txt" },
 			}
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.content).toBe('')
+			expect(result.data?.content).toBe("")
 		})
 
 		it("should handle files with unusual extensions", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'Content',
-				options: { filename: 'document.doc.bak' },
+				type: "file",
+				content: "Content",
+				options: { filename: "document.doc.bak" },
 			}
 
 			const canHandle = extractor.canHandle(fileInput)
@@ -950,9 +1002,9 @@ describe("FileExtractor", () => {
 
 		it("should handle files with special characters in names", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'Content',
-				options: { filename: 'document with spaces & symbols!@#.docx' },
+				type: "file",
+				content: "Content",
+				options: { filename: "document with spaces & symbols!@#.docx" },
 			}
 
 			const canHandle = extractor.canHandle(fileInput)
@@ -961,23 +1013,23 @@ describe("FileExtractor", () => {
 
 		it("should handle files with non-ASCII content", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'Content with émojis 🎯 and spëciäl chårs',
-				options: { filename: 'unicode.txt' },
+				type: "file",
+				content: "Content with émojis 🎯 and spëciäl chårs",
+				options: { filename: "unicode.txt" },
 			}
 
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.content).toContain('émojis')
-			expect(result.data?.content).toContain('spëciäl chårs')
+			expect(result.data?.content).toContain("émojis")
+			expect(result.data?.content).toContain("spëciäl chårs")
 		})
 
 		it("should detect file types without extensions", async () => {
 			const fileInput: ExtractionInput = {
-				type: 'file',
-				content: 'PK\x03\x04', // ZIP signature (DOCX is ZIP)
-				options: { filename: 'noextension' },
+				type: "file",
+				content: "PK\x03\x04", // ZIP signature (DOCX is ZIP)
+				options: { filename: "noextension" },
 			}
 
 			const canHandle = extractor.canHandle(fileInput)

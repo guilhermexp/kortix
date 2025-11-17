@@ -8,25 +8,24 @@ import { ErrorTrackingProvider } from "@lib/error-tracking"
 import { QueryProvider } from "@lib/query-client"
 import { Suspense } from "react"
 import { Toaster } from "sonner"
+import { ErrorBoundary } from "@/components/error-boundary"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { TourProvider } from "@/components/tour"
 // Chat dock disabled (reverted to page-level chat)
 import { MobilePanelProvider } from "@/lib/mobile-panel-context"
-
 import { ViewModeProvider } from "@/lib/view-mode-context"
-import { ErrorBoundary } from "@/components/error-boundary"
 
 const sans = Inter({
 	subsets: ["latin"],
 	variable: "--font-sans",
-	display: 'swap', // Prevent font preload warnings
+	display: "swap", // Prevent font preload warnings
 	preload: true,
 })
 
 const mono = JetBrains_Mono({
 	subsets: ["latin"],
 	variable: "--font-mono",
-	display: 'swap', // Prevent font preload warnings
+	display: "swap", // Prevent font preload warnings
 	preload: false, // Only preload primary font
 })
 
@@ -58,9 +57,7 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<body
-				className={`${sans.variable} ${mono.variable} antialiased`}
-			>
+			<body className={`${sans.variable} ${mono.variable} antialiased`}>
 				<ThemeProvider
 					attribute="class"
 					defaultTheme="dark"
@@ -73,9 +70,9 @@ export default function RootLayout({
 								<MobilePanelProvider>
 									<ErrorTrackingProvider>
 										<TourProvider>
-                                            <ErrorBoundary>
-                                                <Suspense>{children}</Suspense>
-                                            </ErrorBoundary>
+											<ErrorBoundary>
+												<Suspense>{children}</Suspense>
+											</ErrorBoundary>
 											<Toaster richColors />
 										</TourProvider>
 									</ErrorTrackingProvider>

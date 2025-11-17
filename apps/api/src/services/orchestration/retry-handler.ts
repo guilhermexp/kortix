@@ -13,15 +13,15 @@
  * - Statistics collection
  */
 
-import { BaseService } from '../base/base-service'
+import { BaseService } from "../base/base-service"
 import type {
-	RetryHandler as IRetryHandler,
-	RetryOptions,
 	ExtendedRetryOptions,
-	RetryStatistics,
+	RetryHandler as IRetryHandler,
 	RetryAttempt,
 	RetryExecutionContext,
-} from '../interfaces'
+	RetryOptions,
+	RetryStatistics,
+} from "../interfaces"
 
 // ============================================================================
 // Retry Handler Implementation
@@ -41,11 +41,12 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 		retrySuccessRate: 0,
 	}
 
-	private readonly executionContexts: Map<string, RetryExecutionContext> = new Map()
+	private readonly executionContexts: Map<string, RetryExecutionContext> =
+		new Map()
 	private contextCounter = 0
 
 	constructor() {
-		super('RetryHandler')
+		super("RetryHandler")
 	}
 
 	// ========================================================================
@@ -57,7 +58,7 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 	 */
 	async execute<T>(
 		operation: () => Promise<T>,
-		options?: RetryOptions | ExtendedRetryOptions
+		options?: RetryOptions | ExtendedRetryOptions,
 	): Promise<T> {
 		const effectiveOptions = this.mergeOptions(options)
 		const context = this.createExecutionContext()
@@ -65,7 +66,11 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 		this.statistics.totalOperations++
 
 		try {
-			const result = await this.executeWithRetry(operation, effectiveOptions, context)
+			const result = await this.executeWithRetry(
+				operation,
+				effectiveOptions,
+				context,
+			)
 
 			// Update statistics
 			if (context.attempts.length === 1) {
@@ -103,7 +108,7 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 		const jitter = options.jitter ?? true
 
 		// Calculate exponential delay
-		let delay = baseDelay * Math.pow(backoffMultiplier, attempt - 1)
+		let delay = baseDelay * backoffMultiplier ** (attempt - 1)
 
 		// Cap at maximum delay
 		delay = Math.min(delay, maxDelay)
@@ -123,18 +128,18 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 	isRetryable(error: Error): boolean {
 		// Network and timeout errors are typically retryable
 		const retryablePatterns = [
-			'ECONNREFUSED',
-			'ETIMEDOUT',
-			'ENOTFOUND',
-			'ECONNRESET',
-			'EPIPE',
-			'timeout',
-			'network',
-			'socket hang up',
-			'rate limit',
-			'503',
-			'502',
-			'504',
+			"ECONNREFUSED",
+			"ETIMEDOUT",
+			"ENOTFOUND",
+			"ECONNRESET",
+			"EPIPE",
+			"timeout",
+			"network",
+			"socket hang up",
+			"rate limit",
+			"503",
+			"502",
+			"504",
 		]
 
 		const errorMessage = error.message.toLowerCase()
@@ -143,7 +148,7 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 		return retryablePatterns.some(
 			(pattern) =>
 				errorMessage.includes(pattern.toLowerCase()) ||
-				errorName.includes(pattern.toLowerCase())
+				errorName.includes(pattern.toLowerCase()),
 		)
 	}
 
@@ -179,7 +184,7 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 	private async executeWithRetry<T>(
 		operation: () => Promise<T>,
 		options: Required<RetryOptions> & Partial<ExtendedRetryOptions>,
-		context: RetryExecutionContext
+		context: RetryExecutionContext,
 	): Promise<T> {
 		let lastError: Error | undefined
 
@@ -196,10 +201,13 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 					await options.onRetry(attempt, lastError!)
 				}
 
-				this.logger.debug(`Executing operation (attempt ${attempt}/${options.maxAttempts})`, {
-					operationId: context.operationId,
-					attempt,
-				})
+				this.logger.debug(
+					`Executing operation (attempt ${attempt}/${options.maxAttempts})`,
+					{
+						operationId: context.operationId,
+						attempt,
+					},
+				)
 
 				// Execute with timeout if configured
 				const result = options.timeout
@@ -210,7 +218,8 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 				attemptInfo.successful = true
 				context.attempts.push(attemptInfo)
 				context.endTime = new Date()
-				context.duration = context.endTime.getTime() - context.startTime.getTime()
+				context.duration =
+					context.endTime.getTime() - context.startTime.getTime()
 				context.result = result
 
 				this.logger.debug(`Operation succeeded on attempt ${attempt}`, {
@@ -233,7 +242,7 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 					{
 						operationId: context.operationId,
 						error: lastError.message,
-					}
+					},
 				)
 
 				// Check if should retry
@@ -242,7 +251,8 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 				if (!shouldRetry || attempt === options.maxAttempts) {
 					// No more retries
 					context.endTime = new Date()
-					context.duration = context.endTime.getTime() - context.startTime.getTime()
+					context.duration =
+						context.endTime.getTime() - context.startTime.getTime()
 					context.error = lastError
 					throw lastError
 				}
@@ -265,7 +275,7 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 		}
 
 		// Should never reach here, but satisfy TypeScript
-		throw lastError || new Error('Max retry attempts reached')
+		throw lastError || new Error("Max retry attempts reached")
 	}
 
 	/**
@@ -273,12 +283,15 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 	 */
 	private async executeWithTimeout<T>(
 		operation: () => Promise<T>,
-		timeout: number
+		timeout: number,
 	): Promise<T> {
 		return Promise.race([
 			operation(),
 			new Promise<never>((_, reject) =>
-				setTimeout(() => reject(new Error(`Operation timed out after ${timeout}ms`)), timeout)
+				setTimeout(
+					() => reject(new Error(`Operation timed out after ${timeout}ms`)),
+					timeout,
+				),
 			),
 		])
 	}
@@ -289,7 +302,7 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 	private shouldRetry(
 		error: Error,
 		attempt: number,
-		options: Required<RetryOptions> & Partial<ExtendedRetryOptions>
+		options: Required<RetryOptions> & Partial<ExtendedRetryOptions>,
 	): boolean {
 		// Check custom retry condition if provided
 		if (options.isRetryableError) {
@@ -304,7 +317,7 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 	 * Merge options with defaults
 	 */
 	private mergeOptions(
-		options?: RetryOptions | ExtendedRetryOptions
+		options?: RetryOptions | ExtendedRetryOptions,
 	): Required<RetryOptions> & Partial<ExtendedRetryOptions> {
 		return {
 			maxAttempts: options?.maxAttempts ?? 3,
@@ -336,7 +349,8 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 	 * Update statistics
 	 */
 	private updateStatistics(): void {
-		const totalRetries = this.statistics.successfulAfterRetry + this.statistics.failed
+		const totalRetries =
+			this.statistics.successfulAfterRetry + this.statistics.failed
 		const totalSuccess =
 			this.statistics.successfulFirstTry + this.statistics.successfulAfterRetry
 
@@ -356,12 +370,13 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 		const contexts = Array.from(this.executionContexts.values())
 		this.statistics.maxRetryCount = Math.max(
 			...contexts.map((ctx) => ctx.attempts.length),
-			0
+			0,
 		)
 
 		// Calculate retry success rate
 		if (totalRetries > 0) {
-			this.statistics.retrySuccessRate = this.statistics.successfulAfterRetry / totalRetries
+			this.statistics.retrySuccessRate =
+				this.statistics.successfulAfterRetry / totalRetries
 		}
 	}
 
@@ -372,7 +387,7 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 		// Keep only last 100 contexts
 		if (this.executionContexts.size > 100) {
 			const sortedContexts = Array.from(this.executionContexts.entries()).sort(
-				(a, b) => a[1].startTime.getTime() - b[1].startTime.getTime()
+				(a, b) => a[1].startTime.getTime() - b[1].startTime.getTime(),
 			)
 
 			// Remove oldest contexts
@@ -422,7 +437,7 @@ export function getRetryHandler(): RetryHandler {
  */
 export async function withRetry<T>(
 	operation: () => Promise<T>,
-	options?: RetryOptions
+	options?: RetryOptions,
 ): Promise<T> {
 	const handler = getRetryHandler()
 	return handler.execute(operation, options)
@@ -431,7 +446,9 @@ export async function withRetry<T>(
 /**
  * Execute operation with aggressive retry (short delays, more attempts)
  */
-export async function withAggressiveRetry<T>(operation: () => Promise<T>): Promise<T> {
+export async function withAggressiveRetry<T>(
+	operation: () => Promise<T>,
+): Promise<T> {
 	return withRetry(operation, {
 		maxAttempts: 5,
 		baseDelay: 500,
@@ -444,7 +461,9 @@ export async function withAggressiveRetry<T>(operation: () => Promise<T>): Promi
 /**
  * Execute operation with conservative retry (long delays, fewer attempts)
  */
-export async function withConservativeRetry<T>(operation: () => Promise<T>): Promise<T> {
+export async function withConservativeRetry<T>(
+	operation: () => Promise<T>,
+): Promise<T> {
 	return withRetry(operation, {
 		maxAttempts: 2,
 		baseDelay: 2000,
@@ -460,7 +479,7 @@ export async function withConservativeRetry<T>(operation: () => Promise<T>): Pro
 export async function withLinearRetry<T>(
 	operation: () => Promise<T>,
 	delay = 1000,
-	maxAttempts = 3
+	maxAttempts = 3,
 ): Promise<T> {
 	return withRetry(operation, {
 		maxAttempts,

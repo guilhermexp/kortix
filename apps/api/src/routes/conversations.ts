@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { z } from "zod"
-import { EventStorageService } from "../services/event-storage"
 import { ErrorHandler } from "../services/error-handler"
+import { EventStorageService } from "../services/event-storage"
 import { supabaseAdmin } from "../supabase"
 
 // Validation schemas
@@ -56,10 +56,9 @@ export async function handleCreateConversation({
 		})
 	} catch (error) {
 		if (error instanceof z.ZodError) {
-			return ErrorHandler.validation(
-				"Invalid conversation data",
-				{ errors: error.errors }
-			).toResponse()
+			return ErrorHandler.validation("Invalid conversation data", {
+				errors: error.errors,
+			}).toResponse()
 		}
 		return ErrorHandler.handleError(error)
 	}
@@ -116,7 +115,7 @@ export async function handleGetConversationEvents({
 		}
 
 		const eventStorage = new EventStorageService(client)
-		
+
 		// Verify conversation exists
 		const conversation = await eventStorage.getConversation(conversationId)
 		if (!conversation) {
@@ -153,7 +152,7 @@ export async function handleGetConversationHistory({
 		}
 
 		const eventStorage = new EventStorageService(client)
-		
+
 		// Verify conversation exists
 		const conversation = await eventStorage.getConversation(conversationId)
 		if (!conversation) {
@@ -208,10 +207,9 @@ export async function handleUpdateConversation({
 		})
 	} catch (error) {
 		if (error instanceof z.ZodError) {
-			return ErrorHandler.validation(
-				"Invalid conversation data",
-				{ errors: error.errors }
-			).toResponse()
+			return ErrorHandler.validation("Invalid conversation data", {
+				errors: error.errors,
+			}).toResponse()
 		}
 		return ErrorHandler.handleError(error)
 	}
@@ -244,7 +242,7 @@ export async function handleDeleteConversation({
 				headers: {
 					"Content-Type": "application/json",
 				},
-			}
+			},
 		)
 	} catch (error) {
 		return ErrorHandler.handleError(error)
@@ -296,14 +294,13 @@ export async function handleListConversations({
 				headers: {
 					"Content-Type": "application/json",
 				},
-			}
+			},
 		)
 	} catch (error) {
 		if (error instanceof z.ZodError) {
-			return ErrorHandler.validation(
-				"Invalid query parameters",
-				{ errors: error.errors }
-			).toResponse()
+			return ErrorHandler.validation("Invalid query parameters", {
+				errors: error.errors,
+			}).toResponse()
 		}
 		return ErrorHandler.handleError(error)
 	}

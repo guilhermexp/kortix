@@ -130,8 +130,12 @@ export function ProfileView() {
 						<User className="w-5 h-5 text-foreground dark:text-foreground dark:text-white/80" />
 					</div>
 					<div className="flex-1">
-						<p className="text-foreground dark:text-foreground dark:text-white font-medium text-sm">{session?.email}</p>
-						<p className="text-foreground dark:text-foreground dark:text-white/60 text-xs">Logged in</p>
+						<p className="text-foreground dark:text-foreground dark:text-white font-medium text-sm">
+							{session?.email}
+						</p>
+						<p className="text-foreground dark:text-foreground dark:text-white/60 text-xs">
+							Logged in
+						</p>
 					</div>
 				</div>
 			</div>
@@ -169,7 +173,9 @@ export function ProfileView() {
 						{/* Usage Stats */}
 						<div className="space-y-2">
 							<div className="flex justify-between items-center">
-								<span className="text-sm text-foreground dark:text-foreground dark:text-white/70">Memories</span>
+								<span className="text-sm text-foreground dark:text-foreground dark:text-white/70">
+									Memories
+								</span>
 								<span
 									className={`text-sm ${billingData.memoriesUsed >= billingData.memoriesLimit ? "text-red-400" : "text-foreground dark:text-foreground dark:text-white/90"}`}
 								>
@@ -186,9 +192,10 @@ export function ProfileView() {
 												: "bg-blue-500"
 									}`}
 									style={{
-										width: billingData.memoriesLimit > 0
-											? `${Math.min((billingData.memoriesUsed / billingData.memoriesLimit) * 100, 100)}%`
-											: "0%",
+										width:
+											billingData.memoriesLimit > 0
+												? `${Math.min((billingData.memoriesUsed / billingData.memoriesLimit) * 100, 100)}%`
+												: "0%",
 									}}
 								/>
 							</div>
@@ -196,7 +203,9 @@ export function ProfileView() {
 
 						{billingData.isPro && (
 							<div className="flex justify-between items-center">
-								<span className="text-sm text-foreground dark:text-foreground dark:text-white/70">Connections</span>
+								<span className="text-sm text-foreground dark:text-foreground dark:text-white/70">
+									Connections
+								</span>
 								<span className="text-sm text-foreground dark:text-foreground dark:text-white/90">
 									{billingData.connectionsUsed} / 10
 								</span>
@@ -312,11 +321,11 @@ export function ProfileView() {
 			)}
 
 			<Button
+				aria-label="Sign Out"
 				className="w-full bg-transparent hover:bg-red-500/10 text-muted-foreground hover:text-red-500 border-0 shadow-none"
 				onClick={handleLogout}
-				variant="ghost"
 				size="sm"
-				aria-label="Sign Out"
+				variant="ghost"
 			>
 				<LogOut className="w-4 h-4" />
 			</Button>

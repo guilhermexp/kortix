@@ -23,7 +23,10 @@ export class CacheService {
 	 * Connect to Redis with retry logic
 	 */
 	private async connect(): Promise<void> {
-		if (!this.redisUrl || this.connectionAttempts >= this.maxConnectionAttempts) {
+		if (
+			!this.redisUrl ||
+			this.connectionAttempts >= this.maxConnectionAttempts
+		) {
 			return
 		}
 
@@ -35,7 +38,9 @@ export class CacheService {
 				socket: {
 					reconnectStrategy: (retries) => {
 						if (retries > 10) {
-							console.error("[CacheService] Max Redis reconnection attempts reached")
+							console.error(
+								"[CacheService] Max Redis reconnection attempts reached",
+							)
 							return new Error("Max reconnection attempts reached")
 						}
 						// Exponential backoff: 100ms, 200ms, 400ms, etc.
@@ -62,7 +67,10 @@ export class CacheService {
 
 			await this.client.connect()
 		} catch (error) {
-			console.error(`[CacheService] Failed to connect to Redis (attempt ${this.connectionAttempts}):`, error)
+			console.error(
+				`[CacheService] Failed to connect to Redis (attempt ${this.connectionAttempts}):`,
+				error,
+			)
 			this.client = null
 			this.isConnected = false
 
@@ -104,7 +112,11 @@ export class CacheService {
 	/**
 	 * Set a value in cache
 	 */
-	async set(key: string, value: unknown, options?: CacheOptions): Promise<boolean> {
+	async set(
+		key: string,
+		value: unknown,
+		options?: CacheOptions,
+	): Promise<boolean> {
 		if (!this.isAvailable()) {
 			return false
 		}
@@ -159,7 +171,10 @@ export class CacheService {
 			await this.client!.del(keys)
 			return keys.length
 		} catch (error) {
-			console.error(`[CacheService] Error deleting pattern "${pattern}":`, error)
+			console.error(
+				`[CacheService] Error deleting pattern "${pattern}":`,
+				error,
+			)
 			return 0
 		}
 	}
@@ -176,7 +191,10 @@ export class CacheService {
 			const result = await this.client!.exists(key)
 			return result === 1
 		} catch (error) {
-			console.error(`[CacheService] Error checking existence of key "${key}":`, error)
+			console.error(
+				`[CacheService] Error checking existence of key "${key}":`,
+				error,
+			)
 			return false
 		}
 	}
@@ -193,7 +211,10 @@ export class CacheService {
 			await this.client!.expire(key, seconds)
 			return true
 		} catch (error) {
-			console.error(`[CacheService] Error setting expiration for key "${key}":`, error)
+			console.error(
+				`[CacheService] Error setting expiration for key "${key}":`,
+				error,
+			)
 			return false
 		}
 	}
@@ -208,7 +229,7 @@ export class CacheService {
 
 		try {
 			const values = await this.client!.mGet(keys)
-			return values.map(value => {
+			return values.map((value) => {
 				if (!value) return null
 				try {
 					return JSON.parse(value) as T
@@ -225,14 +246,16 @@ export class CacheService {
 	/**
 	 * Set multiple values at once
 	 */
-	async mset(entries: Array<{ key: string; value: unknown; ttl?: number }>): Promise<boolean> {
+	async mset(
+		entries: Array<{ key: string; value: unknown; ttl?: number }>,
+	): Promise<boolean> {
 		if (!this.isAvailable() || entries.length === 0) {
 			return false
 		}
 
 		try {
 			// Set values without TTL first
-			const simpleEntries = entries.filter(e => !e.ttl)
+			const simpleEntries = entries.filter((e) => !e.ttl)
 			if (simpleEntries.length > 0) {
 				const pairs: string[] = []
 				for (const entry of simpleEntries) {
@@ -242,7 +265,7 @@ export class CacheService {
 			}
 
 			// Set values with TTL individually
-			const ttlEntries = entries.filter(e => e.ttl)
+			const ttlEntries = entries.filter((e) => e.ttl)
 			for (const entry of ttlEntries) {
 				await this.set(entry.key, entry.value, { ttl: entry.ttl })
 			}
@@ -274,7 +297,11 @@ export class CacheService {
 	/**
 	 * Get cache statistics
 	 */
-	async getStats(): Promise<{ isAvailable: boolean; isConnected: boolean; connectionAttempts: number } | null> {
+	async getStats(): Promise<{
+		isAvailable: boolean
+		isConnected: boolean
+		connectionAttempts: number
+	} | null> {
 		return {
 			isAvailable: this.isAvailable(),
 			isConnected: this.isConnected,

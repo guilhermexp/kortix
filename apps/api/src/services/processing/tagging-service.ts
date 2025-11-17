@@ -11,14 +11,14 @@
  * - Domain-specific tagging support
  */
 
-import { BaseService } from '../base/base-service'
-import { generateCategoryTags as generateCategoryTagsProvider } from '../summarizer'
+import { BaseService } from "../base/base-service"
 import type {
+	ExtractionResult,
 	TaggingService as ITaggingService,
 	TaggingOptions,
 	TaggingResult,
-	ExtractionResult,
-} from '../interfaces'
+} from "../interfaces"
+import { generateCategoryTags as generateCategoryTagsProvider } from "../summarizer"
 
 // ============================================================================
 // Constants
@@ -33,48 +33,48 @@ const MIN_TAG_LENGTH = 3
 // Common stop words to exclude
 const STOP_WORDS = new Set([
 	// English
-	'the',
-	'and',
-	'for',
-	'with',
-	'from',
-	'this',
-	'that',
-	'have',
-	'been',
-	'were',
-	'about',
-	'http',
-	'https',
-	'www',
+	"the",
+	"and",
+	"for",
+	"with",
+	"from",
+	"this",
+	"that",
+	"have",
+	"been",
+	"were",
+	"about",
+	"http",
+	"https",
+	"www",
 	// Portuguese
-	'para',
-	'como',
-	'onde',
-	'quando',
-	'porque',
-	'sobre',
-	'entre',
-	'mais',
-	'menos',
-	'uma',
-	'dos',
-	'das',
-	'nos',
-	'nas',
-	'com',
-	'não',
+	"para",
+	"como",
+	"onde",
+	"quando",
+	"porque",
+	"sobre",
+	"entre",
+	"mais",
+	"menos",
+	"uma",
+	"dos",
+	"das",
+	"nos",
+	"nas",
+	"com",
+	"não",
 	// Generic
-	'document',
-	'summary',
-	'resumo',
-	'overview',
-	'introduction',
-	'video',
-	'image',
-	'file',
-	'page',
-	'website',
+	"document",
+	"summary",
+	"resumo",
+	"overview",
+	"introduction",
+	"video",
+	"image",
+	"file",
+	"page",
+	"website",
 ])
 
 // ============================================================================
@@ -86,15 +86,18 @@ const STOP_WORDS = new Set([
  */
 export class TaggingService extends BaseService implements ITaggingService {
 	private readonly maxTags: number
-	private readonly locale: 'pt-BR' | 'en-US'
-	private readonly provider: 'openrouter' | 'heuristic'
+	private readonly locale: "pt-BR" | "en-US"
+	private readonly provider: "openrouter" | "heuristic"
 
 	constructor(options?: TaggingOptions) {
-		super('TaggingService')
+		super("TaggingService")
 
-		this.maxTags = Math.max(MIN_TAGS, Math.min(options?.maxTags ?? DEFAULT_MAX_TAGS, MAX_TAGS))
-		this.locale = options?.locale ?? 'en-US'
-		this.provider = options?.provider ?? 'openrouter'
+		this.maxTags = Math.max(
+			MIN_TAGS,
+			Math.min(options?.maxTags ?? DEFAULT_MAX_TAGS, MAX_TAGS),
+		)
+		this.locale = options?.locale ?? "en-US"
+		this.provider = options?.provider ?? "openrouter"
 	}
 
 	// ========================================================================
@@ -104,10 +107,13 @@ export class TaggingService extends BaseService implements ITaggingService {
 	/**
 	 * Generate tags for content
 	 */
-	async generateTags(content: string, options?: TaggingOptions): Promise<TaggingResult> {
+	async generateTags(
+		content: string,
+		options?: TaggingOptions,
+	): Promise<TaggingResult> {
 		this.assertInitialized()
 
-		const tracker = this.performanceMonitor.startOperation('generateTags')
+		const tracker = this.performanceMonitor.startOperation("generateTags")
 
 		try {
 			const config = {
@@ -118,7 +124,7 @@ export class TaggingService extends BaseService implements ITaggingService {
 				provider: options?.provider ?? this.provider,
 			}
 
-			this.logger.info('Generating tags', {
+			this.logger.info("Generating tags", {
 				contentLength: content.length,
 				maxTags: config.maxTags,
 				locale: config.locale,
@@ -141,7 +147,7 @@ export class TaggingService extends BaseService implements ITaggingService {
 
 			tracker.end(true)
 
-			this.logger.info('Tags generated', {
+			this.logger.info("Tags generated", {
 				tagCount: cleanedTags.length,
 				tags: cleanedTags,
 			})
@@ -158,14 +164,16 @@ export class TaggingService extends BaseService implements ITaggingService {
 			}
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'generateTags')
+			throw this.handleError(error, "generateTags")
 		}
 	}
 
 	/**
 	 * Generate tags from extraction result
 	 */
-	async generateTagsFromExtraction(extraction: ExtractionResult): Promise<TaggingResult> {
+	async generateTagsFromExtraction(
+		extraction: ExtractionResult,
+	): Promise<TaggingResult> {
 		const context = {
 			title: extraction.title,
 			url: extraction.url,
@@ -182,19 +190,25 @@ export class TaggingService extends BaseService implements ITaggingService {
 	validateTaggingOptions(options: TaggingOptions): void {
 		if (options.maxTags !== undefined) {
 			if (options.maxTags < MIN_TAGS) {
-				throw this.createError('INVALID_MAX_TAGS', `Max tags must be at least ${MIN_TAGS}`)
+				throw this.createError(
+					"INVALID_MAX_TAGS",
+					`Max tags must be at least ${MIN_TAGS}`,
+				)
 			}
 			if (options.maxTags > MAX_TAGS) {
-				throw this.createError('INVALID_MAX_TAGS', `Max tags cannot exceed ${MAX_TAGS}`)
+				throw this.createError(
+					"INVALID_MAX_TAGS",
+					`Max tags cannot exceed ${MAX_TAGS}`,
+				)
 			}
 		}
 
 		if (options.locale !== undefined) {
-			const validLocales = ['pt-BR', 'en-US']
+			const validLocales = ["pt-BR", "en-US"]
 			if (!validLocales.includes(options.locale)) {
 				throw this.createError(
-					'INVALID_LOCALE',
-					`Locale must be one of: ${validLocales.join(', ')}`
+					"INVALID_LOCALE",
+					`Locale must be one of: ${validLocales.join(", ")}`,
 				)
 			}
 		}
@@ -209,24 +223,24 @@ export class TaggingService extends BaseService implements ITaggingService {
 	 */
 	private async generateTagsWithFallback(
 		content: string,
-		config: Required<TaggingOptions>
+		config: Required<TaggingOptions>,
 	): Promise<string[]> {
 		// Try AI provider first
-		if (config.provider === 'openrouter') {
+		if (config.provider === "openrouter") {
 			try {
 				const tags = await this.generateWithAI(content, config)
 				if (tags && tags.length >= MIN_TAGS) {
 					return tags
 				}
 			} catch (error) {
-				this.logger.warn('AI tag generation failed', {
+				this.logger.warn("AI tag generation failed", {
 					error: (error as Error).message,
 				})
 			}
 		}
 
 		// Fallback to heuristic extraction
-		this.logger.info('Using heuristic tag extraction')
+		this.logger.info("Using heuristic tag extraction")
 		return this.generateHeuristicTags(content, config)
 	}
 
@@ -235,7 +249,7 @@ export class TaggingService extends BaseService implements ITaggingService {
 	 */
 	private async generateWithAI(
 		content: string,
-		config: Required<TaggingOptions>
+		config: Required<TaggingOptions>,
 	): Promise<string[]> {
 		const context = config.context || {}
 
@@ -248,7 +262,7 @@ export class TaggingService extends BaseService implements ITaggingService {
 			{
 				maxTags: config.maxTags,
 				locale: config.locale,
-			}
+			},
 		)
 
 		return tags
@@ -257,15 +271,18 @@ export class TaggingService extends BaseService implements ITaggingService {
 	/**
 	 * Generate tags using heuristic keyword extraction
 	 */
-	private generateHeuristicTags(content: string, config: Required<TaggingOptions>): string[] {
+	private generateHeuristicTags(
+		content: string,
+		config: Required<TaggingOptions>,
+	): string[] {
 		// Combine title and content
 		const context = config.context || {}
-		const source = (context.title ? `${context.title}. ` : '') + content
+		const source = (context.title ? `${context.title}. ` : "") + content
 
 		// Extract words
 		const words = source
 			.toLowerCase()
-			.replace(/[^a-zà-ú0-9\s_-]/gi, ' ')
+			.replace(/[^a-zà-ú0-9\s_-]/gi, " ")
 			.split(/\s+/)
 			.filter((w) => w.length >= MIN_TAG_LENGTH && w.length <= MAX_TAG_LENGTH)
 			.filter((w) => !STOP_WORDS.has(w))
@@ -304,15 +321,18 @@ export class TaggingService extends BaseService implements ITaggingService {
 
 		for (const tag of tags) {
 			// Clean tag
-			let cleanTag = tag
+			const cleanTag = tag
 				.toLowerCase()
 				.trim()
-				.replace(/^#+/, '') // Remove leading #
-				.replace(/\s{2,}/g, ' ') // Normalize spaces
-				.replace(/[^a-zà-ú0-9\s_-]/gi, '') // Remove special chars
+				.replace(/^#+/, "") // Remove leading #
+				.replace(/\s{2,}/g, " ") // Normalize spaces
+				.replace(/[^a-zà-ú0-9\s_-]/gi, "") // Remove special chars
 
 			// Skip if too short or too long
-			if (cleanTag.length < MIN_TAG_LENGTH || cleanTag.length > MAX_TAG_LENGTH) {
+			if (
+				cleanTag.length < MIN_TAG_LENGTH ||
+				cleanTag.length > MAX_TAG_LENGTH
+			) {
 				continue
 			}
 
@@ -342,7 +362,7 @@ export class TaggingService extends BaseService implements ITaggingService {
 	 */
 	private categorizeTags(
 		tags: string[],
-		categories: string[]
+		categories: string[],
 	): Record<string, string[]> {
 		const categorized: Record<string, string[]> = {}
 
@@ -393,7 +413,7 @@ export class TaggingService extends BaseService implements ITaggingService {
 		let appearances = 0
 
 		for (const tag of tags) {
-			const regex = new RegExp(`\\b${tag}\\b`, 'gi')
+			const regex = new RegExp(`\\b${tag}\\b`, "gi")
 			const matches = lowerContent.match(regex)
 			if (matches) {
 				appearances += matches.length
@@ -414,11 +434,14 @@ export class TaggingService extends BaseService implements ITaggingService {
 	 */
 	private validateInput(content: string): void {
 		if (!content || content.trim().length === 0) {
-			throw this.createError('EMPTY_CONTENT', 'Content cannot be empty')
+			throw this.createError("EMPTY_CONTENT", "Content cannot be empty")
 		}
 
 		if (content.length < 50) {
-			throw this.createError('CONTENT_TOO_SHORT', 'Content must be at least 50 characters')
+			throw this.createError(
+				"CONTENT_TOO_SHORT",
+				"Content must be at least 50 characters",
+			)
 		}
 	}
 
@@ -436,7 +459,7 @@ export class TaggingService extends BaseService implements ITaggingService {
 			`
 			const result = await this.generateTags(sampleText, {
 				maxTags: 5,
-				context: { title: 'AI and Machine Learning' },
+				context: { title: "AI and Machine Learning" },
 			})
 			return result.tags.length > 0
 		} catch {

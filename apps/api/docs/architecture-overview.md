@@ -268,8 +268,7 @@ DocumentExtractorService
 ├── FirecrawlExtractor      → Web scraping
 ├── YouTubeExtractor        → Video transcripts
 ├── PDFExtractor            → PDF processing + OCR
-├── FileExtractor           → Generic files (MarkItDown)
-└── RepositoryExtractor     → GitHub repositories
+└── FileExtractor           → Generic files (MarkItDown)
 ```
 
 #### Processing Services

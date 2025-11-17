@@ -246,7 +246,9 @@ export function ConnectionsTabContent() {
 					initial={{ opacity: 0, scale: 0.9 }}
 					transition={{ type: "spring", damping: 20 }}
 				>
-					<p className="text-foreground dark:text-white/50 mb-2">No connections yet</p>
+					<p className="text-foreground dark:text-white/50 mb-2">
+						No connections yet
+					</p>
 					<p className="text-xs text-foreground dark:text-white/40">
 						Choose a service below to connect
 					</p>

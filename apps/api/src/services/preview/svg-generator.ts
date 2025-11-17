@@ -11,15 +11,15 @@
  * - Responsive generation with configurable dimensions
  */
 
-import { BaseService } from '../base/base-service'
+import { BaseService } from "../base/base-service"
 import type {
+	ExtractionResult,
+	IconSVGOptions,
 	SVGGenerator as ISVGGenerator,
 	SVGGenerationOptions,
-	TextSVGOptions,
-	IconSVGOptions,
 	SVGTemplate,
-	ExtractionResult,
-} from '../interfaces'
+	TextSVGOptions,
+} from "../interfaces"
 
 // ============================================================================
 // Constants
@@ -28,44 +28,45 @@ import type {
 const DEFAULT_WIDTH = 640
 const DEFAULT_HEIGHT = 400
 const DEFAULT_FONT_SIZE = 28
-const DEFAULT_FONT_FAMILY = 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif'
+const DEFAULT_FONT_FAMILY =
+	"system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
 
 // Theme color schemes
 const THEMES = {
 	pdf: {
-		gradient: ['#7f1d1d', '#ef4444'],
-		label: 'PDF',
-		icon: 'pdf',
+		gradient: ["#7f1d1d", "#ef4444"],
+		label: "PDF",
+		icon: "pdf",
 	},
 	xlsx: {
-		gradient: ['#064e3b', '#10b981'],
-		label: 'EXCEL',
-		icon: 'spreadsheet',
+		gradient: ["#064e3b", "#10b981"],
+		label: "EXCEL",
+		icon: "spreadsheet",
 	},
 	doc: {
-		gradient: ['#1e3a8a', '#3b82f6'],
-		label: 'DOCUMENT',
-		icon: 'document',
+		gradient: ["#1e3a8a", "#3b82f6"],
+		label: "DOCUMENT",
+		icon: "document",
 	},
 	code: {
-		gradient: ['#1f2937', '#6b7280'],
-		label: 'CODE',
-		icon: 'code',
+		gradient: ["#1f2937", "#6b7280"],
+		label: "CODE",
+		icon: "code",
 	},
 	url: {
-		gradient: ['#581c87', '#a855f7'],
-		label: 'WEB',
-		icon: 'globe',
+		gradient: ["#581c87", "#a855f7"],
+		label: "WEB",
+		icon: "globe",
 	},
 	video: {
-		gradient: ['#7c2d12', '#ea580c'],
-		label: 'VIDEO',
-		icon: 'video',
+		gradient: ["#7c2d12", "#ea580c"],
+		label: "VIDEO",
+		icon: "video",
 	},
 	default: {
-		gradient: ['#1f2937', '#4b5563'],
-		label: 'DOCUMENT',
-		icon: 'document',
+		gradient: ["#1f2937", "#4b5563"],
+		label: "DOCUMENT",
+		icon: "document",
 	},
 } as const
 
@@ -80,7 +81,7 @@ type ThemeName = keyof typeof THEMES
  */
 export class SVGGenerator extends BaseService implements ISVGGenerator {
 	constructor() {
-		super('SVGGenerator')
+		super("SVGGenerator")
 	}
 
 	// ========================================================================
@@ -92,14 +93,14 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	 */
 	async generate(
 		extraction: ExtractionResult,
-		options?: SVGGenerationOptions
+		options?: SVGGenerationOptions,
 	): Promise<string> {
 		this.assertInitialized()
 
-		const tracker = this.performanceMonitor.startOperation('generate')
+		const tracker = this.performanceMonitor.startOperation("generate")
 
 		try {
-			this.logger.info('Generating SVG preview', {
+			this.logger.info("Generating SVG preview", {
 				title: extraction.title,
 				source: extraction.source,
 			})
@@ -108,9 +109,9 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 			const theme = this.determineTheme(extraction)
 
 			// Prepare content
-			const heading = this.truncateText(extraction.title || 'Untitled', 60)
+			const heading = this.truncateText(extraction.title || "Untitled", 60)
 			const subheading = this.generateSubheading(extraction)
-			const body = this.truncateText(extraction.text || '', 600)
+			const body = this.truncateText(extraction.text || "", 600)
 
 			// Generate SVG
 			const svg = this.buildDocumentSVG({
@@ -130,7 +131,7 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 
 			tracker.end(true)
 
-			this.logger.info('SVG preview generated', {
+			this.logger.info("SVG preview generated", {
 				theme,
 				size: optimized.length,
 			})
@@ -138,7 +139,7 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 			return optimized
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'generate')
+			throw this.handleError(error, "generate")
 		}
 	}
 
@@ -150,8 +151,8 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 
 		if (gradientColors.length < 2) {
 			throw this.createError(
-				'INVALID_COLORS',
-				'At least 2 colors required for gradient'
+				"INVALID_COLORS",
+				"At least 2 colors required for gradient",
 			)
 		}
 
@@ -171,16 +172,16 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	 */
 	generateTextSVG(text: string, options?: TextSVGOptions): string {
 		const fontSize = options?.fontSize ?? 20
-		const color = options?.color ?? '#ffffff'
-		const fontWeight = options?.fontWeight ?? 'normal'
-		const alignment = options?.alignment ?? 'left'
+		const color = options?.color ?? "#ffffff"
+		const fontWeight = options?.fontWeight ?? "normal"
+		const alignment = options?.alignment ?? "left"
 		const maxLines = options?.maxLines ?? 3
 		const lineHeight = options?.lineHeight ?? 1.4
 
 		// Split text into lines
 		const words = text.split(/\s+/)
 		const lines: string[] = []
-		let currentLine = ''
+		let currentLine = ""
 
 		for (const word of words) {
 			if (lines.length >= maxLines) break
@@ -204,9 +205,9 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 		const textElements = lines
 			.map((line, index) => {
 				const y = fontSize + index * fontSize * lineHeight
-				return `<text x='0' y='${y}' font-size='${fontSize}' font-weight='${fontWeight}' fill='${color}' text-anchor='${alignment === 'center' ? 'middle' : alignment === 'right' ? 'end' : 'start'}'>${this.escapeXml(line)}</text>`
+				return `<text x='0' y='${y}' font-size='${fontSize}' font-weight='${fontWeight}' fill='${color}' text-anchor='${alignment === "center" ? "middle" : alignment === "right" ? "end" : "start"}'>${this.escapeXml(line)}</text>`
 			})
-			.join('\n')
+			.join("\n")
 
 		return textElements
 	}
@@ -216,19 +217,19 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	 */
 	generateIconSVG(iconType: string, options?: IconSVGOptions): string {
 		const size = options?.size ?? 48
-		const color = options?.color ?? '#ffffff'
-		const style = options?.style ?? 'outline'
+		const color = options?.color ?? "#ffffff"
+		const style = options?.style ?? "outline"
 
 		// Use custom path if provided
 		if (options?.pathData) {
-			return `<path d='${options.pathData}' fill='${style === 'filled' ? color : 'none'}' stroke='${color}' stroke-width='2'/>`
+			return `<path d='${options.pathData}' fill='${style === "filled" ? color : "none"}' stroke='${color}' stroke-width='2'/>`
 		}
 
 		// Get icon path from type
 		const iconPath = this.getIconPath(iconType)
 
 		return `
-		<svg width='${size}' height='${size}' viewBox='0 0 24 24' fill='${style === 'filled' ? color : 'none'}' stroke='${color}' stroke-width='2'>
+		<svg width='${size}' height='${size}' viewBox='0 0 24 24' fill='${style === "filled" ? color : "none"}' stroke='${color}' stroke-width='2'>
 			${iconPath}
 		</svg>
 		`
@@ -237,14 +238,17 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	/**
 	 * Generate custom SVG from template
 	 */
-	generateFromTemplate(template: string, data: Record<string, unknown>): string {
+	generateFromTemplate(
+		template: string,
+		data: Record<string, unknown>,
+	): string {
 		let result = template
 
 		// Replace placeholders with data
 		for (const [key, value] of Object.entries(data)) {
 			const placeholder = `{{${key}}}`
 			const escapedValue = this.escapeXml(String(value))
-			result = result.replace(new RegExp(placeholder, 'g'), escapedValue)
+			result = result.replace(new RegExp(placeholder, "g"), escapedValue)
 		}
 
 		return result
@@ -255,13 +259,13 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	 */
 	optimizeSVG(svg: string): string {
 		// Remove unnecessary whitespace
-		let optimized = svg.replace(/\s+/g, ' ').trim()
+		let optimized = svg.replace(/\s+/g, " ").trim()
 
 		// Remove comments
-		optimized = optimized.replace(/<!--.*?-->/g, '')
+		optimized = optimized.replace(/<!--.*?-->/g, "")
 
 		// Remove empty attributes
-		optimized = optimized.replace(/\s+[a-z-]+=""\s*/gi, ' ')
+		optimized = optimized.replace(/\s+[a-z-]+=""\s*/gi, " ")
 
 		return optimized
 	}
@@ -291,7 +295,7 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 				? [params.backgroundColor, params.backgroundColor]
 				: themeConfig.gradient
 
-		const textColor = params.textColor ?? '#ffffff'
+		const textColor = params.textColor ?? "#ffffff"
 		const fontFamily = params.fontFamily ?? DEFAULT_FONT_FAMILY
 
 		const svg = `
@@ -317,10 +321,10 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	<text class='text' x='32' y='96' font-size='28' font-weight='600' opacity='0.98'>${this.escapeXml(params.heading)}</text>
 
 	<!-- Subheading -->
-	${params.subheading ? `<text class='text' x='32' y='130' font-size='16' opacity='0.85'>${this.escapeXml(params.subheading)}</text>` : ''}
+	${params.subheading ? `<text class='text' x='32' y='130' font-size='16' opacity='0.85'>${this.escapeXml(params.subheading)}</text>` : ""}
 
 	<!-- Body text -->
-	${params.body ? this.generateBodyText(params.body, 32, params.subheading ? 160 : 140, params.width - 64, params.height - (params.subheading ? 192 : 172), textColor, fontFamily) : ''}
+	${params.body ? this.generateBodyText(params.body, 32, params.subheading ? 160 : 140, params.width - 64, params.height - (params.subheading ? 192 : 172), textColor, fontFamily) : ""}
 </svg>`
 
 		return svg
@@ -336,7 +340,7 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 		width: number,
 		height: number,
 		color: string,
-		fontFamily: string
+		fontFamily: string,
 	): string {
 		return `
 	<foreignObject x='${x}' y='${y}' width='${width}' height='${height}'>
@@ -355,54 +359,54 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	 * Determine theme from extraction
 	 */
 	private determineTheme(extraction: ExtractionResult): ThemeName {
-		const contentType = (extraction.contentType || '').toLowerCase()
-		const source = (extraction.source || '').toLowerCase()
+		const contentType = (extraction.contentType || "").toLowerCase()
+		const source = (extraction.source || "").toLowerCase()
 
 		// PDF
-		if (contentType.includes('pdf')) {
-			return 'pdf'
+		if (contentType.includes("pdf")) {
+			return "pdf"
 		}
 
 		// Spreadsheet
 		if (
-			contentType.includes('spreadsheet') ||
-			contentType.includes('excel') ||
-			source.includes('xlsx') ||
-			source.includes('xls')
+			contentType.includes("spreadsheet") ||
+			contentType.includes("excel") ||
+			source.includes("xlsx") ||
+			source.includes("xls")
 		) {
-			return 'xlsx'
+			return "xlsx"
 		}
 
 		// Document
 		if (
-			contentType.includes('document') ||
-			contentType.includes('word') ||
-			source.includes('docx') ||
-			source.includes('doc')
+			contentType.includes("document") ||
+			contentType.includes("word") ||
+			source.includes("docx") ||
+			source.includes("doc")
 		) {
-			return 'doc'
+			return "doc"
 		}
 
 		// Code
 		if (
-			source === 'code' ||
-			contentType.includes('code') ||
-			contentType.includes('text/plain')
+			source === "code" ||
+			contentType.includes("code") ||
+			contentType.includes("text/plain")
 		) {
-			return 'code'
+			return "code"
 		}
 
 		// Video
-		if (source === 'youtube' || contentType.includes('video')) {
-			return 'video'
+		if (source === "youtube" || contentType.includes("video")) {
+			return "video"
 		}
 
 		// Web
-		if (source === 'web' || contentType.includes('html')) {
-			return 'url'
+		if (source === "web" || contentType.includes("html")) {
+			return "url"
 		}
 
-		return 'default'
+		return "default"
 	}
 
 	/**
@@ -415,10 +419,10 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 		}
 
 		// For PDFs, show page count if available
-		if (extraction.contentType?.includes('pdf')) {
+		if (extraction.contentType?.includes("pdf")) {
 			const pageCount = extraction.metadata?.pageCount
-			if (pageCount && typeof pageCount === 'number') {
-				return `${pageCount} page${pageCount === 1 ? '' : 's'}`
+			if (pageCount && typeof pageCount === "number") {
+				return `${pageCount} page${pageCount === 1 ? "" : "s"}`
 			}
 		}
 
@@ -435,10 +439,10 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 		// For other types, show source
 		if (extraction.source) {
 			const sourceLabels: Record<string, string> = {
-				youtube: 'YouTube Video',
-				web: 'Web Page',
-				file: 'File Upload',
-				code: 'Code Repository',
+				youtube: "YouTube Video",
+				web: "Web Page",
+				file: "File Upload",
+				code: "Code Repository",
 			}
 			return sourceLabels[extraction.source] || extraction.source
 		}
@@ -450,13 +454,13 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	 * Truncate text to maximum length
 	 */
 	private truncateText(text: string, maxLength: number): string {
-		const cleaned = text.replace(/\s+/g, ' ').trim()
+		const cleaned = text.replace(/\s+/g, " ").trim()
 
 		if (cleaned.length <= maxLength) {
 			return cleaned
 		}
 
-		return cleaned.slice(0, maxLength - 1) + '…'
+		return cleaned.slice(0, maxLength - 1) + "…"
 	}
 
 	/**
@@ -464,11 +468,11 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	 */
 	private escapeXml(text: string): string {
 		return text
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/"/g, '&quot;')
-			.replace(/'/g, '&apos;')
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&apos;")
 	}
 
 	/**
@@ -495,14 +499,14 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 		// Test SVG generation
 		try {
 			const testExtraction = {
-				title: 'Test Document',
-				text: 'This is a test document for health checking.',
-				source: 'test',
-				contentType: 'text/plain',
+				title: "Test Document",
+				text: "This is a test document for health checking.",
+				source: "test",
+				contentType: "text/plain",
 			} as ExtractionResult
 
 			const svg = await this.generate(testExtraction)
-			return svg.length > 0 && svg.includes('<svg')
+			return svg.length > 0 && svg.includes("<svg")
 		} catch {
 			return false
 		}

@@ -12,7 +12,7 @@
  * - PreviewCache: Cache preview results
  */
 
-import { ExtractionResult, BaseService } from './document-processing'
+import type { BaseService, ExtractionResult } from "./document-processing"
 
 // ============================================================================
 // Core Preview Types
@@ -37,7 +37,7 @@ export interface PreviewInput {
  */
 export interface PreviewOptions {
 	/** Preferred preview type */
-	preferredType?: 'image' | 'svg' | 'favicon'
+	preferredType?: "image" | "svg" | "favicon"
 	/** Target dimensions */
 	targetDimensions?: {
 		width: number
@@ -46,7 +46,7 @@ export interface PreviewOptions {
 	/** Image quality (0-1) */
 	quality?: number
 	/** Format for image previews */
-	format?: 'png' | 'jpeg' | 'webp'
+	format?: "png" | "jpeg" | "webp"
 	/** Enable fallback chain */
 	enableFallback?: boolean
 	/** Timeout in milliseconds */
@@ -62,7 +62,7 @@ export interface PreviewResult {
 	/** Preview source/method */
 	source: string
 	/** Preview type */
-	type: 'image' | 'svg' | 'favicon' | 'generated'
+	type: "image" | "svg" | "favicon" | "generated"
 	/** Width in pixels (if applicable) */
 	width?: number
 	/** Height in pixels (if applicable) */
@@ -106,12 +106,18 @@ export interface ImageExtractor extends BaseService {
 	/**
 	 * Extract image from document
 	 */
-	extract(extraction: ExtractionResult, options?: ImageExtractionOptions): Promise<string | null>
+	extract(
+		extraction: ExtractionResult,
+		options?: ImageExtractionOptions,
+	): Promise<string | null>
 
 	/**
 	 * Extract images from URL
 	 */
-	extractFromUrl(url: string, options?: ImageExtractionOptions): Promise<ImageExtractionResult>
+	extractFromUrl(
+		url: string,
+		options?: ImageExtractionOptions,
+	): Promise<ImageExtractionResult>
 
 	/**
 	 * Extract images from HTML content
@@ -213,7 +219,10 @@ export interface SVGGenerator extends BaseService {
 	/**
 	 * Generate SVG preview for document
 	 */
-	generate(extraction: ExtractionResult, options?: SVGGenerationOptions): Promise<string>
+	generate(
+		extraction: ExtractionResult,
+		options?: SVGGenerationOptions,
+	): Promise<string>
 
 	/**
 	 * Generate gradient background
@@ -262,7 +271,7 @@ export interface SVGGenerationOptions {
 	/** Include icon */
 	includeIcon?: boolean
 	/** Icon type */
-	iconType?: 'document' | 'url' | 'youtube' | 'pdf' | 'code'
+	iconType?: "document" | "url" | "youtube" | "pdf" | "code"
 	/** Template to use */
 	template?: SVGTemplate
 }
@@ -280,7 +289,7 @@ export interface TextSVGOptions {
 	/** Text color */
 	color?: string
 	/** Text alignment */
-	alignment?: 'left' | 'center' | 'right'
+	alignment?: "left" | "center" | "right"
 	/** Max lines */
 	maxLines?: number
 	/** Line height */
@@ -296,7 +305,7 @@ export interface IconSVGOptions {
 	/** Icon color */
 	color?: string
 	/** Icon style */
-	style?: 'outline' | 'filled'
+	style?: "outline" | "filled"
 	/** Custom path data */
 	pathData?: string
 }
@@ -326,7 +335,10 @@ export interface FaviconExtractor extends BaseService {
 	/**
 	 * Extract favicon from URL
 	 */
-	extract(url: string, options?: FaviconExtractionOptions): Promise<string | null>
+	extract(
+		url: string,
+		options?: FaviconExtractionOptions,
+	): Promise<string | null>
 
 	/**
 	 * Get all available favicon URLs
@@ -454,7 +466,7 @@ export interface CacheConfig {
 	/** Maximum number of entries */
 	maxEntries?: number
 	/** Cache strategy */
-	strategy?: 'lru' | 'lfu' | 'fifo'
+	strategy?: "lru" | "lfu" | "fifo"
 	/** Enable cache compression */
 	compress?: boolean
 }
@@ -584,7 +596,7 @@ export interface PreviewStorage extends BaseService {
  */
 export interface StorageConfig {
 	/** Storage provider */
-	provider: 'supabase' | 's3' | 'local'
+	provider: "supabase" | "s3" | "local"
 	/** Bucket/container name */
 	bucket: string
 	/** Base path */
@@ -630,7 +642,7 @@ export interface PreviewOptimizer extends BaseService {
 	/**
 	 * Convert format
 	 */
-	convert(image: Buffer, format: 'png' | 'jpeg' | 'webp'): Promise<Buffer>
+	convert(image: Buffer, format: "png" | "jpeg" | "webp"): Promise<Buffer>
 
 	/**
 	 * Compress image
@@ -648,7 +660,7 @@ export interface PreviewOptimizer extends BaseService {
  */
 export interface OptimizationOptions {
 	/** Target format */
-	format?: 'png' | 'jpeg' | 'webp'
+	format?: "png" | "jpeg" | "webp"
 	/** Quality (0-1) */
 	quality?: number
 	/** Target dimensions */
@@ -739,13 +751,13 @@ export interface ValidationError {
 export interface PreviewGenerationEvent {
 	/** Event type */
 	type:
-		| 'started'
-		| 'completed'
-		| 'failed'
-		| 'cached'
-		| 'uploaded'
-		| 'fallback_used'
-		| 'optimized'
+		| "started"
+		| "completed"
+		| "failed"
+		| "cached"
+		| "uploaded"
+		| "fallback_used"
+		| "optimized"
 	/** Timestamp */
 	timestamp: Date
 	/** Document ID */

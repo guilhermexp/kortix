@@ -10,33 +10,42 @@
  * - File metadata extraction
  */
 
-import { BaseService } from '../base/base-service'
-import { convertWithMarkItDown } from '../markitdown'
+import { BaseService } from "../base/base-service"
 import type {
-	FileExtractor as IFileExtractor,
 	ExtractionInput,
 	ExtractionResult,
-	FileOptions,
 	FileMetadata,
-} from '../interfaces'
+	FileOptions,
+	FileExtractor as IFileExtractor,
+} from "../interfaces"
+import { convertWithMarkItDown } from "../markitdown"
 
 // ============================================================================
 // Supported File Types
 // ============================================================================
 
 const OFFICE_FORMATS = [
-	'docx',
-	'doc',
-	'xlsx',
-	'xls',
-	'pptx',
-	'ppt',
-	'odt',
-	'ods',
-	'odp',
+	"docx",
+	"doc",
+	"xlsx",
+	"xls",
+	"pptx",
+	"ppt",
+	"odt",
+	"ods",
+	"odp",
 ] as const
 
-const TEXT_FORMATS = ['txt', 'md', 'markdown', 'json', 'xml', 'yaml', 'yml', 'csv'] as const
+const TEXT_FORMATS = [
+	"txt",
+	"md",
+	"markdown",
+	"json",
+	"xml",
+	"yaml",
+	"yml",
+	"csv",
+] as const
 
 const SUPPORTED_FORMATS = [...OFFICE_FORMATS, ...TEXT_FORMATS] as const
 
@@ -51,7 +60,7 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	private readonly markitdownEnabled: boolean
 
 	constructor(markitdownEnabled = true) {
-		super('FileExtractor')
+		super("FileExtractor")
 		this.markitdownEnabled = markitdownEnabled
 	}
 
@@ -66,7 +75,10 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 		this.assertInitialized()
 
 		if (!input.fileBuffer) {
-			throw this.createError('MISSING_FILE', 'File buffer is required for file extraction')
+			throw this.createError(
+				"MISSING_FILE",
+				"File buffer is required for file extraction",
+			)
 		}
 
 		const fileType = this.detectFileType(input)
@@ -116,25 +128,31 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	 */
 	async validateInput(input: ExtractionInput): Promise<void> {
 		if (!input.fileBuffer) {
-			throw this.createError('VALIDATION_ERROR', 'File buffer is required')
+			throw this.createError("VALIDATION_ERROR", "File buffer is required")
 		}
 
 		// Validate file size
 		const maxSize = 50 * 1024 * 1024 // 50MB
 		if (input.fileBuffer.length > maxSize) {
-			throw this.createError('FILE_TOO_LARGE', `File exceeds maximum size of 50MB`)
+			throw this.createError(
+				"FILE_TOO_LARGE",
+				"File exceeds maximum size of 50MB",
+			)
 		}
 
 		// Validate file type
 		const fileType = this.detectFileType(input)
 		if (!fileType) {
-			throw this.createError('UNKNOWN_FILE_TYPE', 'Unable to determine file type')
+			throw this.createError(
+				"UNKNOWN_FILE_TYPE",
+				"Unable to determine file type",
+			)
 		}
 
 		if (!this.isSupportedFormat(fileType)) {
 			throw this.createError(
-				'UNSUPPORTED_FILE_TYPE',
-				`File type '${fileType}' is not supported`
+				"UNSUPPORTED_FILE_TYPE",
+				`File type '${fileType}' is not supported`,
 			)
 		}
 	}
@@ -146,16 +164,20 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	/**
 	 * Extract content from a file
 	 */
-	async extractFromFile(buffer: Buffer, options?: FileOptions): Promise<ExtractionResult> {
+	async extractFromFile(
+		buffer: Buffer,
+		options?: FileOptions,
+	): Promise<ExtractionResult> {
 		this.assertInitialized()
 
-		const tracker = this.performanceMonitor.startOperation('extractFromFile')
+		const tracker = this.performanceMonitor.startOperation("extractFromFile")
 
 		try {
-			const fileType = options?.fileType || this.detectFileTypeFromBuffer(buffer)
-			const fileName = options?.fileName || 'document'
+			const fileType =
+				options?.fileType || this.detectFileTypeFromBuffer(buffer)
+			const fileName = options?.fileName || "document"
 
-			this.logger.info('Extracting file content', {
+			this.logger.info("Extracting file content", {
 				fileType,
 				fileName,
 				size: buffer.length,
@@ -166,19 +188,19 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 
 			// Determine extraction strategy
 			let text: string | null = null
-			let extractionMethod = 'unknown'
+			let extractionMethod = "unknown"
 
 			// Try MarkItDown for Office formats
 			if (this.isOfficeFormat(fileType) && this.markitdownEnabled) {
 				try {
 					const result = await convertWithMarkItDown(buffer, fileName)
 					text = result.markdown
-					extractionMethod = 'markitdown'
-					this.logger.debug('MarkItDown extraction successful', {
+					extractionMethod = "markitdown"
+					this.logger.debug("MarkItDown extraction successful", {
 						length: text.length,
 					})
 				} catch (error) {
-					this.logger.warn('MarkItDown extraction failed, trying fallback', {
+					this.logger.warn("MarkItDown extraction failed, trying fallback", {
 						error: (error as Error).message,
 					})
 					// Fall through to fallback
@@ -189,9 +211,9 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 			if (!text && this.isTextFormat(fileType)) {
 				try {
 					text = await this.extractTextFromBuffer(buffer, fileType)
-					extractionMethod = 'direct-text'
+					extractionMethod = "direct-text"
 				} catch (error) {
-					this.logger.warn('Direct text extraction failed', {
+					this.logger.warn("Direct text extraction failed", {
 						error: (error as Error).message,
 					})
 				}
@@ -202,9 +224,9 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 				try {
 					const result = await convertWithMarkItDown(buffer, fileName)
 					text = result.markdown
-					extractionMethod = 'markitdown-fallback'
+					extractionMethod = "markitdown-fallback"
 				} catch (error) {
-					this.logger.warn('MarkItDown fallback failed', {
+					this.logger.warn("MarkItDown fallback failed", {
 						error: (error as Error).message,
 					})
 				}
@@ -213,8 +235,8 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 			// If still no text, throw error
 			if (!text) {
 				throw this.createError(
-					'EXTRACTION_FAILED',
-					`Failed to extract content from ${fileType} file`
+					"EXTRACTION_FAILED",
+					`Failed to extract content from ${fileType} file`,
 				)
 			}
 
@@ -225,16 +247,17 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 			return {
 				text: cleanedText,
 				title: metadata.title || this.extractTitleFromContent(cleanedText),
-				source: 'file',
+				source: "file",
 				url: null,
-				contentType: options?.mimeType || this.getMimeTypeForExtension(fileType),
+				contentType:
+					options?.mimeType || this.getMimeTypeForExtension(fileType),
 				raw: {
 					metadata,
 					fileType,
 					extractionMethod,
 				},
 				wordCount: this.countWords(cleanedText),
-				extractorUsed: 'FileExtractor',
+				extractorUsed: "FileExtractor",
 				extractionMetadata: {
 					fileName: metadata.fileName,
 					fileSize: metadata.fileSize,
@@ -246,16 +269,19 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 			}
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'extractFromFile')
+			throw this.handleError(error, "extractFromFile")
 		}
 	}
 
 	/**
 	 * Extract metadata from file
 	 */
-	async extractMetadata(buffer: Buffer, options?: FileOptions): Promise<FileMetadata> {
-		const fileName = options?.fileName || 'document'
-		const mimeType = options?.mimeType || 'application/octet-stream'
+	async extractMetadata(
+		buffer: Buffer,
+		options?: FileOptions,
+	): Promise<FileMetadata> {
+		const fileName = options?.fileName || "document"
+		const mimeType = options?.mimeType || "application/octet-stream"
 
 		// Basic metadata that we can always provide
 		const metadata: FileMetadata = {
@@ -307,14 +333,17 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	/**
 	 * Extract text directly from buffer for text formats
 	 */
-	private async extractTextFromBuffer(buffer: Buffer, fileType: string): Promise<string> {
+	private async extractTextFromBuffer(
+		buffer: Buffer,
+		fileType: string,
+	): Promise<string> {
 		try {
 			// Decode buffer to string
-			let text = buffer.toString('utf-8')
+			let text = buffer.toString("utf-8")
 
 			// Format-specific processing
 			switch (fileType) {
-				case 'json':
+				case "json":
 					// Pretty-print JSON
 					try {
 						const json = JSON.parse(text)
@@ -324,17 +353,17 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 					}
 					break
 
-				case 'xml':
+				case "xml":
 					// Add some formatting for readability
-					text = text.replace(/></g, '>\n<')
+					text = text.replace(/></g, ">\n<")
 					break
 
-				case 'yaml':
-				case 'yml':
+				case "yaml":
+				case "yml":
 					// YAML is already well-formatted
 					break
 
-				case 'csv':
+				case "csv":
 					// Convert CSV to readable format
 					text = this.formatCsv(text)
 					break
@@ -347,8 +376,8 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 			return text
 		} catch (error) {
 			throw this.createError(
-				'TEXT_EXTRACTION_FAILED',
-				`Failed to extract text from ${fileType}: ${(error as Error).message}`
+				"TEXT_EXTRACTION_FAILED",
+				`Failed to extract text from ${fileType}: ${(error as Error).message}`,
 			)
 		}
 	}
@@ -358,30 +387,30 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	 */
 	private formatCsv(csv: string): string {
 		try {
-			const lines = csv.split('\n').filter((line) => line.trim())
+			const lines = csv.split("\n").filter((line) => line.trim())
 			if (lines.length === 0) return csv
 
 			// Get headers
-			const headers = lines[0].split(',').map((h) => h.trim())
+			const headers = lines[0].split(",").map((h) => h.trim())
 
 			// Format as markdown table
 			const formattedLines = [
-				'| ' + headers.join(' | ') + ' |',
-				'| ' + headers.map(() => '---').join(' | ') + ' |',
+				"| " + headers.join(" | ") + " |",
+				"| " + headers.map(() => "---").join(" | ") + " |",
 			]
 
 			// Add data rows
 			for (let i = 1; i < Math.min(lines.length, 100); i++) {
 				// Limit to 100 rows
-				const cells = lines[i].split(',').map((c) => c.trim())
-				formattedLines.push('| ' + cells.join(' | ') + ' |')
+				const cells = lines[i].split(",").map((c) => c.trim())
+				formattedLines.push("| " + cells.join(" | ") + " |")
 			}
 
 			if (lines.length > 100) {
 				formattedLines.push(`\n... (${lines.length - 100} more rows)`)
 			}
 
-			return formattedLines.join('\n')
+			return formattedLines.join("\n")
 		} catch {
 			// If formatting fails, return original
 			return csv
@@ -404,27 +433,35 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 		) {
 			// This is a ZIP file, could be Office document
 			// Check for specific Office signatures in the ZIP
-			const content = buffer.toString('utf-8', 0, Math.min(1000, buffer.length))
+			const content = buffer.toString("utf-8", 0, Math.min(1000, buffer.length))
 
-			if (content.includes('word/')) return 'docx'
-			if (content.includes('xl/')) return 'xlsx'
-			if (content.includes('ppt/')) return 'pptx'
+			if (content.includes("word/")) return "docx"
+			if (content.includes("xl/")) return "xlsx"
+			if (content.includes("ppt/")) return "pptx"
 
 			// Default to docx if Office-like
-			if (content.includes('_rels/') || content.includes('[Content_Types].xml')) {
-				return 'docx'
+			if (
+				content.includes("_rels/") ||
+				content.includes("[Content_Types].xml")
+			) {
+				return "docx"
 			}
 		}
 
 		// Check if it's valid UTF-8 text
 		try {
-			const text = buffer.toString('utf-8', 0, Math.min(1000, buffer.length))
+			const text = buffer.toString("utf-8", 0, Math.min(1000, buffer.length))
 			if (this.isValidUtf8Text(text)) {
 				// Try to determine text format
-				if (text.trim().startsWith('{') || text.trim().startsWith('[')) return 'json'
-				if (text.trim().startsWith('<?xml') || text.includes('<') && text.includes('>')) return 'xml'
-				if (/^[a-z_]+:\s/im.test(text)) return 'yaml'
-				return 'txt'
+				if (text.trim().startsWith("{") || text.trim().startsWith("["))
+					return "json"
+				if (
+					text.trim().startsWith("<?xml") ||
+					(text.includes("<") && text.includes(">"))
+				)
+					return "xml"
+				if (/^[a-z_]+:\s/im.test(text)) return "yaml"
+				return "txt"
 			}
 		} catch {
 			// Not valid text
@@ -438,7 +475,9 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	 */
 	private isValidUtf8Text(text: string): boolean {
 		// Check for common non-printable characters that shouldn't be in text
-		const nonPrintableCount = (text.match(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g) || []).length
+		const nonPrintableCount = (
+			text.match(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g) || []
+		).length
 		const ratio = nonPrintableCount / text.length
 
 		// If less than 5% non-printable, consider it text
@@ -458,23 +497,26 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	 */
 	private getExtensionFromMimeType(mimeType: string): string | null {
 		const mimeMap: Record<string, string> = {
-			'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
-			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
-			'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
-			'application/msword': 'doc',
-			'application/vnd.ms-excel': 'xls',
-			'application/vnd.ms-powerpoint': 'ppt',
-			'application/vnd.oasis.opendocument.text': 'odt',
-			'application/vnd.oasis.opendocument.spreadsheet': 'ods',
-			'application/vnd.oasis.opendocument.presentation': 'odp',
-			'text/plain': 'txt',
-			'text/markdown': 'md',
-			'application/json': 'json',
-			'application/xml': 'xml',
-			'text/xml': 'xml',
-			'application/x-yaml': 'yaml',
-			'text/yaml': 'yaml',
-			'text/csv': 'csv',
+			"application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+				"docx",
+			"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+				"xlsx",
+			"application/vnd.openxmlformats-officedocument.presentationml.presentation":
+				"pptx",
+			"application/msword": "doc",
+			"application/vnd.ms-excel": "xls",
+			"application/vnd.ms-powerpoint": "ppt",
+			"application/vnd.oasis.opendocument.text": "odt",
+			"application/vnd.oasis.opendocument.spreadsheet": "ods",
+			"application/vnd.oasis.opendocument.presentation": "odp",
+			"text/plain": "txt",
+			"text/markdown": "md",
+			"application/json": "json",
+			"application/xml": "xml",
+			"text/xml": "xml",
+			"application/x-yaml": "yaml",
+			"text/yaml": "yaml",
+			"text/csv": "csv",
 		}
 
 		return mimeMap[mimeType.toLowerCase()] || null
@@ -485,33 +527,35 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	 */
 	private getMimeTypeForExtension(extension: string): string {
 		const extMap: Record<string, string> = {
-			docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-			xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-			pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-			doc: 'application/msword',
-			xls: 'application/vnd.ms-excel',
-			ppt: 'application/vnd.ms-powerpoint',
-			odt: 'application/vnd.oasis.opendocument.text',
-			ods: 'application/vnd.oasis.opendocument.spreadsheet',
-			odp: 'application/vnd.oasis.opendocument.presentation',
-			txt: 'text/plain',
-			md: 'text/markdown',
-			markdown: 'text/markdown',
-			json: 'application/json',
-			xml: 'application/xml',
-			yaml: 'application/x-yaml',
-			yml: 'application/x-yaml',
-			csv: 'text/csv',
+			docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+			xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+			pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+			doc: "application/msword",
+			xls: "application/vnd.ms-excel",
+			ppt: "application/vnd.ms-powerpoint",
+			odt: "application/vnd.oasis.opendocument.text",
+			ods: "application/vnd.oasis.opendocument.spreadsheet",
+			odp: "application/vnd.oasis.opendocument.presentation",
+			txt: "text/plain",
+			md: "text/markdown",
+			markdown: "text/markdown",
+			json: "application/json",
+			xml: "application/xml",
+			yaml: "application/x-yaml",
+			yml: "application/x-yaml",
+			csv: "text/csv",
 		}
 
-		return extMap[extension.toLowerCase()] || 'application/octet-stream'
+		return extMap[extension.toLowerCase()] || "application/octet-stream"
 	}
 
 	/**
 	 * Check if format is supported
 	 */
 	private isSupportedFormat(format: string): boolean {
-		return (SUPPORTED_FORMATS as readonly string[]).includes(format.toLowerCase())
+		return (SUPPORTED_FORMATS as readonly string[]).includes(
+			format.toLowerCase(),
+		)
 	}
 
 	/**
@@ -541,13 +585,13 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	 */
 	private extractTitleFromContent(content: string): string | null {
 		// Get first line or first 100 characters
-		const firstLine = content.split('\n')[0].trim()
+		const firstLine = content.split("\n")[0].trim()
 		if (firstLine.length > 0 && firstLine.length <= 200) {
 			return firstLine
 		}
 
 		const truncated = content.substring(0, 100).trim()
-		return truncated.length > 0 ? truncated + '...' : null
+		return truncated.length > 0 ? truncated + "..." : null
 	}
 
 	/**
@@ -555,13 +599,13 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	 */
 	private cleanContent(content: string): string {
 		// Remove null bytes
-		let cleaned = content.replace(/\0/g, '')
+		let cleaned = content.replace(/\0/g, "")
 
 		// Normalize whitespace (but preserve formatting for code/structured text)
-		cleaned = cleaned.replace(/[ \t]+/g, ' ')
+		cleaned = cleaned.replace(/[ \t]+/g, " ")
 
 		// Remove excessive line breaks (more than 3)
-		cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n')
+		cleaned = cleaned.replace(/\n{4,}/g, "\n\n\n")
 
 		// Trim
 		cleaned = cleaned.trim()

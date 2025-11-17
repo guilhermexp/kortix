@@ -88,9 +88,12 @@ const envSchema = z.object({
 		.string()
 		.optional()
 		.transform((v) => (v != null ? Number(v) : undefined))
-		.refine((v) => v === undefined || (typeof v === "number" && v >= 0 && v <= 2), {
-			message: "OPENROUTER_TEMPERATURE must be between 0 and 2",
-		}),
+		.refine(
+			(v) => v === undefined || (typeof v === "number" && v >= 0 && v <= 2),
+			{
+				message: "OPENROUTER_TEMPERATURE must be between 0 and 2",
+			},
+		),
 	OPENROUTER_MAX_TOKENS: z
 		.string()
 		.optional()

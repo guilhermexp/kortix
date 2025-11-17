@@ -23,7 +23,7 @@
  * ```
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from "@supabase/supabase-js"
 
 const SUPABASE_URL = process.env.SUPABASE_URL!
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -39,34 +39,37 @@ let isRunning = false
  * Calls the database function created in migration 0009
  */
 async function checkStuckDocuments(): Promise<void> {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.error('[DocumentTimeoutMonitor] Missing Supabase credentials')
-    return
-  }
+	if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+		console.error("[DocumentTimeoutMonitor] Missing Supabase credentials")
+		return
+	}
 
-  try {
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+	try {
+		const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Call the database function to mark stuck documents as failed
-    const { data, error } = await supabase.rpc('mark_stuck_documents_as_failed')
+		// Call the database function to mark stuck documents as failed
+		const { data, error } = await supabase.rpc("mark_stuck_documents_as_failed")
 
-    if (error) {
-      console.error('[DocumentTimeoutMonitor] Error checking stuck documents:', error)
-      return
-    }
+		if (error) {
+			console.error(
+				"[DocumentTimeoutMonitor] Error checking stuck documents:",
+				error,
+			)
+			return
+		}
 
-    const affectedCount = data as number
+		const affectedCount = data as number
 
-    if (affectedCount > 0) {
-      console.warn(
-        `[DocumentTimeoutMonitor] Marked ${affectedCount} stuck document(s) as failed`
-      )
-    } else {
-      console.log('[DocumentTimeoutMonitor] No stuck documents found')
-    }
-  } catch (error) {
-    console.error('[DocumentTimeoutMonitor] Unexpected error:', error)
-  }
+		if (affectedCount > 0) {
+			console.warn(
+				`[DocumentTimeoutMonitor] Marked ${affectedCount} stuck document(s) as failed`,
+			)
+		} else {
+			console.log("[DocumentTimeoutMonitor] No stuck documents found")
+		}
+	} catch (error) {
+		console.error("[DocumentTimeoutMonitor] Unexpected error:", error)
+	}
 }
 
 /**
@@ -74,27 +77,32 @@ async function checkStuckDocuments(): Promise<void> {
  * Runs the check every 60 seconds
  */
 export function startDocumentTimeoutMonitor(): void {
-  if (isRunning) {
-    console.warn('[DocumentTimeoutMonitor] Already running, skipping start')
-    return
-  }
+	if (isRunning) {
+		console.warn("[DocumentTimeoutMonitor] Already running, skipping start")
+		return
+	}
 
-  console.log('[DocumentTimeoutMonitor] Starting document timeout monitor')
-  console.log(`[DocumentTimeoutMonitor] Check interval: ${CHECK_INTERVAL_MS / 1000}s`)
+	console.log("[DocumentTimeoutMonitor] Starting document timeout monitor")
+	console.log(
+		`[DocumentTimeoutMonitor] Check interval: ${CHECK_INTERVAL_MS / 1000}s`,
+	)
 
-  // Run immediately on start
-  checkStuckDocuments().catch((error) => {
-    console.error('[DocumentTimeoutMonitor] Error during initial check:', error)
-  })
+	// Run immediately on start
+	checkStuckDocuments().catch((error) => {
+		console.error("[DocumentTimeoutMonitor] Error during initial check:", error)
+	})
 
-  // Then run every CHECK_INTERVAL_MS
-  monitorInterval = setInterval(() => {
-    checkStuckDocuments().catch((error) => {
-      console.error('[DocumentTimeoutMonitor] Error during scheduled check:', error)
-    })
-  }, CHECK_INTERVAL_MS)
+	// Then run every CHECK_INTERVAL_MS
+	monitorInterval = setInterval(() => {
+		checkStuckDocuments().catch((error) => {
+			console.error(
+				"[DocumentTimeoutMonitor] Error during scheduled check:",
+				error,
+			)
+		})
+	}, CHECK_INTERVAL_MS)
 
-  isRunning = true
+	isRunning = true
 }
 
 /**
@@ -102,26 +110,26 @@ export function startDocumentTimeoutMonitor(): void {
  * Call this when shutting down the server
  */
 export function stopDocumentTimeoutMonitor(): void {
-  if (!isRunning) {
-    console.warn('[DocumentTimeoutMonitor] Not running, skipping stop')
-    return
-  }
+	if (!isRunning) {
+		console.warn("[DocumentTimeoutMonitor] Not running, skipping stop")
+		return
+	}
 
-  console.log('[DocumentTimeoutMonitor] Stopping document timeout monitor')
+	console.log("[DocumentTimeoutMonitor] Stopping document timeout monitor")
 
-  if (monitorInterval) {
-    clearInterval(monitorInterval)
-    monitorInterval = null
-  }
+	if (monitorInterval) {
+		clearInterval(monitorInterval)
+		monitorInterval = null
+	}
 
-  isRunning = false
+	isRunning = false
 }
 
 /**
  * Get the current status of the monitor
  */
 export function isDocumentTimeoutMonitorRunning(): boolean {
-  return isRunning
+	return isRunning
 }
 
 /**
@@ -129,12 +137,12 @@ export function isDocumentTimeoutMonitorRunning(): boolean {
  * Useful for testing or manual intervention
  */
 export async function manualCheckStuckDocuments(): Promise<number> {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-  const { data, error } = await supabase.rpc('mark_stuck_documents_as_failed')
+	const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+	const { data, error } = await supabase.rpc("mark_stuck_documents_as_failed")
 
-  if (error) {
-    throw new Error(`Failed to check stuck documents: ${error.message}`)
-  }
+	if (error) {
+		throw new Error(`Failed to check stuck documents: ${error.message}`)
+	}
 
-  return data as number
+	return data as number
 }

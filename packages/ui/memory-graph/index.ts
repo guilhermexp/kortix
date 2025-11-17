@@ -8,13 +8,13 @@ export {
 	POSITIONING,
 } from "./constants";
 export { GraphWebGLCanvas as GraphCanvas } from "./graph-webgl-canvas";
-export { NavigationControls } from "./navigation-controls";
 // Hooks
 export { useGraphData } from "./hooks/use-graph-data";
 export { useGraphInteractions } from "./hooks/use-graph-interactions";
 export { Legend } from "./legend";
 export { LoadingIndicator } from "./loading-indicator";
 export { MemoryGraph } from "./memory-graph";
+export { NavigationControls } from "./navigation-controls";
 export { NodeDetailPanel } from "./node-detail-panel";
 export { SpacesDropdown } from "./spaces-dropdown";
 export * from "./types";

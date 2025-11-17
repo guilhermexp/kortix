@@ -52,20 +52,20 @@ const GraphConnectionsResponseSchema = z.object({
 })
 
 export const apiSchema = createSchema({
-    "@post/deep-agent/analyze": {
-        input: z.object({
-            url: z.string().url(),
-            mode: z.enum(["auto", "youtube"]).optional(),
-            title: z.string().optional(),
-            githubToken: z.string().optional(),
-            useExa: z.boolean().optional(),
-        }),
-        output: z.object({
-            summary: z.string(),
-            mode: z.string(),
-            title: z.string().nullable().optional(),
-        }),
-    },
+	"@post/deep-agent/analyze": {
+		input: z.object({
+			url: z.string().url(),
+			mode: z.enum(["auto", "youtube"]).optional(),
+			title: z.string().optional(),
+			githubToken: z.string().optional(),
+			useExa: z.boolean().optional(),
+		}),
+		output: z.object({
+			summary: z.string(),
+			mode: z.string(),
+			title: z.string().nullable().optional(),
+		}),
+	},
 	// Connection operations - Add missing endpoints
 	"@post/connections/:provider": {
 		input: z.object({
@@ -169,6 +169,30 @@ export const apiSchema = createSchema({
 			})
 			.optional(),
 		output: GraphConnectionsResponseSchema,
+	},
+
+	// Get document by ID
+	"@get/documents/:id": {
+		output: z.object({
+			id: z.string(),
+			status: z.string(),
+			content: z.string().nullable().optional(),
+			summary: z.string().nullable().optional(),
+			metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+			containerTags: z.array(z.string()),
+			createdAt: z.string(),
+			updatedAt: z.string(),
+			memoryEntries: z.array(
+				z.object({
+					id: z.string(),
+					content: z.string().nullable().optional(),
+					metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+					createdAt: z.string(),
+					updatedAt: z.string(),
+				}),
+			),
+		}),
+		params: z.object({ id: z.string() }),
 	},
 
 	// Update document content

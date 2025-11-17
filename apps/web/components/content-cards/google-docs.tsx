@@ -1,165 +1,165 @@
-"use client";
+"use client"
 
-import { cn } from "@lib/utils";
-import { Badge } from "@repo/ui/components/badge";
-import { Card, CardContent } from "@repo/ui/components/card";
-import { getColors } from "@repo/ui/memory-graph/constants";
-import { Brain, ExternalLink, FileText } from "lucide-react";
-import { useState } from "react";
-import { getPastelBackgroundColor } from "../memories-utils";
+import { cn } from "@lib/utils"
+import { Badge } from "@repo/ui/components/badge"
+import { Card, CardContent } from "@repo/ui/components/card"
+import { getColors } from "@repo/ui/memory-graph/constants"
+import { Brain, ExternalLink, FileText } from "lucide-react"
+import { useState } from "react"
+import { getPastelBackgroundColor } from "../memories-utils"
 
 interface GoogleDocsCardProps {
-  title: string;
-  url: string | null | undefined;
-  description?: string | null;
-  className?: string;
-  onClick?: () => void;
-  showExternalLink?: boolean;
-  activeMemories?: Array<{ id: string; isForgotten?: boolean }>;
-  lastModified?: string | Date;
+	title: string
+	url: string | null | undefined
+	description?: string | null
+	className?: string
+	onClick?: () => void
+	showExternalLink?: boolean
+	activeMemories?: Array<{ id: string; isForgotten?: boolean }>
+	lastModified?: string | Date
 }
 
 export const GoogleDocsCard = ({
-  title,
-  url,
-  description,
-  className,
-  onClick,
-  showExternalLink = true,
-  activeMemories,
-  lastModified,
+	title,
+	url,
+	description,
+	className,
+	onClick,
+	showExternalLink = true,
+	activeMemories,
+	lastModified,
 }: GoogleDocsCardProps) => {
-  const colors = getColors();
-  const [imageError, setImageError] = useState(false);
+	const colors = getColors()
+	const [imageError, setImageError] = useState(false)
 
-  const handleCardClick = () => {
-    if (onClick) {
-      onClick();
-    } else if (url) {
-      window.open(url, "_blank", "noopener,noreferrer");
-    }
-  };
+	const handleCardClick = () => {
+		if (onClick) {
+			onClick()
+		} else if (url) {
+			window.open(url, "_blank", "noopener,noreferrer")
+		}
+	}
 
-  const handleExternalLinkClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (url) {
-      window.open(url, "_blank", "noopener,noreferrer");
-    }
-  };
+	const handleExternalLinkClick = (e: React.MouseEvent) => {
+		e.stopPropagation()
+		if (url) {
+			window.open(url, "_blank", "noopener,noreferrer")
+		}
+	}
 
-  return (
-    <Card
-      className={cn(
-        "cursor-pointer transition-all hover:shadow-md group overflow-hidden relative py-4",
-        className,
-      )}
-      onClick={handleCardClick}
-      style={{
-        backgroundColor: getPastelBackgroundColor(url || title || "googledocs"),
-      }}
-    >
-      <CardContent className="p-0">
-        <div className="px-4 border-b border-white/10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <svg
-                aria-label="Google Docs"
-                className="w-4 h-4"
-                viewBox="0 0 87.3 78"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <title>Google Docs</title>
-                <path
-                  d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z"
-                  fill="#0066da"
-                />
-                <path
-                  d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"
-                  fill="#00ac47"
-                />
-                <path
-                  d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.798l5.852 11.5z"
-                  fill="#ea4335"
-                />
-                <path
-                  d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"
-                  fill="#00832d"
-                />
-                <path
-                  d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"
-                  fill="#2684fc"
-                />
-                <path
-                  d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"
-                  fill="#ffba00"
-                />
-              </svg>
-              <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground">
-                  Google Docs
-                </span>
-              </div>
-            </div>
-            {showExternalLink && (
-              <button
-                aria-label="Open in Google Docs"
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/10 flex-shrink-0"
-                onClick={handleExternalLinkClick}
-                type="button"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </div>
+	return (
+		<Card
+			className={cn(
+				"cursor-pointer transition-all hover:shadow-md group overflow-hidden relative py-4",
+				className,
+			)}
+			onClick={handleCardClick}
+			style={{
+				backgroundColor: getPastelBackgroundColor(url || title || "googledocs"),
+			}}
+		>
+			<CardContent className="p-0">
+				<div className="px-4 border-b border-white/10">
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-2">
+							<svg
+								aria-label="Google Docs"
+								className="w-4 h-4"
+								viewBox="0 0 87.3 78"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<title>Google Docs</title>
+								<path
+									d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z"
+									fill="#0066da"
+								/>
+								<path
+									d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"
+									fill="#00ac47"
+								/>
+								<path
+									d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.798l5.852 11.5z"
+									fill="#ea4335"
+								/>
+								<path
+									d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"
+									fill="#00832d"
+								/>
+								<path
+									d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"
+									fill="#2684fc"
+								/>
+								<path
+									d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"
+									fill="#ffba00"
+								/>
+							</svg>
+							<div className="flex flex-col">
+								<span className="text-xs text-muted-foreground">
+									Google Docs
+								</span>
+							</div>
+						</div>
+						{showExternalLink && (
+							<button
+								aria-label="Open in Google Docs"
+								className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/10 flex-shrink-0"
+								onClick={handleExternalLinkClick}
+								type="button"
+							>
+								<ExternalLink className="w-4 h-4" />
+							</button>
+						)}
+					</div>
+				</div>
 
-        <div className="px-4 space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-sm line-clamp-2 leading-tight flex-1">
-              {title || "Untitled Document"}
-            </h3>
-          </div>
+				<div className="px-4 space-y-2">
+					<div className="flex items-start justify-between gap-2">
+						<h3 className="font-semibold text-sm line-clamp-2 leading-tight flex-1">
+							{title || "Untitled Document"}
+						</h3>
+					</div>
 
-          {description && (
-            <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-              {description}
-            </p>
-          )}
+					{description && (
+						<p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+							{description}
+						</p>
+					)}
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <FileText className="w-3 h-3" />
-              <span>Google Workspace</span>
-            </div>
-            {lastModified && (
-              <span className="truncate">
-                Modified{" "}
-                {lastModified instanceof Date
-                  ? lastModified.toLocaleDateString()
-                  : new Date(lastModified).toLocaleDateString()}
-              </span>
-            )}
-          </div>
+					<div className="flex items-center justify-between text-xs text-muted-foreground">
+						<div className="flex items-center gap-1">
+							<FileText className="w-3 h-3" />
+							<span>Google Workspace</span>
+						</div>
+						{lastModified && (
+							<span className="truncate">
+								Modified{" "}
+								{lastModified instanceof Date
+									? lastModified.toLocaleDateString()
+									: new Date(lastModified).toLocaleDateString()}
+							</span>
+						)}
+					</div>
 
-          {activeMemories && activeMemories.length > 0 && (
-            <div>
-              <Badge
-                className="text-xs text-accent-foreground"
-                style={{
-                  backgroundColor: colors.memory.secondary,
-                }}
-                variant="secondary"
-              >
-                <Brain className="w-3 h-3 mr-1" />
-                {activeMemories.length}{" "}
-                {activeMemories.length === 1 ? "memory" : "memories"}
-              </Badge>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+					{activeMemories && activeMemories.length > 0 && (
+						<div>
+							<Badge
+								className="text-xs text-accent-foreground"
+								style={{
+									backgroundColor: colors.memory.secondary,
+								}}
+								variant="secondary"
+							>
+								<Brain className="w-3 h-3 mr-1" />
+								{activeMemories.length}{" "}
+								{activeMemories.length === 1 ? "memory" : "memories"}
+							</Badge>
+						</div>
+					)}
+				</div>
+			</CardContent>
+		</Card>
+	)
+}
 
-GoogleDocsCard.displayName = "GoogleDocsCard";
+GoogleDocsCard.displayName = "GoogleDocsCard"

@@ -11,18 +11,18 @@
  * - Meta tag extraction (og:image, twitter:image, etc.)
  */
 
-import { BaseService } from '../base/base-service'
-import { safeFetch } from '../../security/url-validator'
-import { convertUrlWithMarkItDown } from '../markitdown'
-import puppeteer from 'puppeteer'
+import puppeteer from "puppeteer"
+import { safeFetch } from "../../security/url-validator"
+import { BaseService } from "../base/base-service"
 import type {
-	URLExtractor as IURLExtractor,
 	ExtractionInput,
 	ExtractionResult,
-	URLExtractorOptions,
-	RateLimitInfo,
+	URLExtractor as IURLExtractor,
 	MetaTags,
-} from '../interfaces'
+	RateLimitInfo,
+	URLExtractorOptions,
+} from "../interfaces"
+import { convertUrlWithMarkItDown } from "../markitdown"
 
 // ============================================================================
 // URL Extractor Implementation
@@ -40,7 +40,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	}
 
 	constructor() {
-		super('URLExtractor')
+		super("URLExtractor")
 	}
 
 	// ========================================================================
@@ -54,7 +54,10 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		this.assertInitialized()
 
 		if (!input.url) {
-			throw this.createError('MISSING_URL', 'URL is required for URL extraction')
+			throw this.createError(
+				"MISSING_URL",
+				"URL is required for URL extraction",
+			)
 		}
 
 		return await this.extractFromUrl(input.url, {
@@ -74,7 +77,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		const url = input.url.toLowerCase()
 
 		// Exclude specific content types
-		if (url.includes('youtube.com') || url.includes('youtu.be')) return false
+		if (url.includes("youtube.com") || url.includes("youtu.be")) return false
 		if (url.match(/\.(pdf|docx?|xlsx?|pptx?)$/i)) return false
 
 		return true
@@ -92,10 +95,10 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 */
 	async validateInput(input: ExtractionInput): Promise<void> {
 		if (!input.url) {
-			throw this.createError('VALIDATION_ERROR', 'URL is required')
+			throw this.createError("VALIDATION_ERROR", "URL is required")
 		}
 
-		this.validateUrl(input.url, 'url')
+		this.validateUrl(input.url, "url")
 	}
 
 	// ========================================================================
@@ -105,20 +108,26 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	/**
 	 * Extract content from a web URL using MarkItDown with Puppeteer fallback for SPAs
 	 */
-	async extractFromUrl(url: string, options?: URLExtractorOptions): Promise<ExtractionResult> {
+	async extractFromUrl(
+		url: string,
+		options?: URLExtractorOptions,
+	): Promise<ExtractionResult> {
 		this.assertInitialized()
 
-		const tracker = this.performanceMonitor.startOperation('extractFromUrl')
+		const tracker = this.performanceMonitor.startOperation("extractFromUrl")
 
 		try {
-			this.logger.info('Extracting URL with MarkItDown', { url })
+			this.logger.info("Extracting URL with MarkItDown", { url })
 
 			// Try MarkItDown first (fast and free)
-			const markitdownResult = await this.extractWithDirectScraping(url, options)
+			const markitdownResult = await this.extractWithDirectScraping(
+				url,
+				options,
+			)
 
 			// Check if MarkItDown returned sufficient content
 			if (markitdownResult.text.length >= 100) {
-				this.logger.debug('MarkItDown extraction successful', {
+				this.logger.debug("MarkItDown extraction successful", {
 					url,
 					chars: markitdownResult.text.length,
 				})
@@ -128,23 +137,29 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 
 			// MarkItDown returned insufficient content (likely a SPA)
 			// Try Puppeteer for full JavaScript rendering
-			this.logger.info('MarkItDown returned insufficient content, trying Puppeteer', {
-				url,
-				markitdownChars: markitdownResult.text.length,
-			})
+			this.logger.info(
+				"MarkItDown returned insufficient content, trying Puppeteer",
+				{
+					url,
+					markitdownChars: markitdownResult.text.length,
+				},
+			)
 
 			try {
 				const puppeteerResult = await this.extractWithPuppeteer(url, options)
-				this.logger.info('Puppeteer extraction successful', {
+				this.logger.info("Puppeteer extraction successful", {
 					url,
 					chars: puppeteerResult.text.length,
 				})
 				tracker.end(true)
 				return puppeteerResult
 			} catch (puppeteerError) {
-				this.logger.warn('Puppeteer extraction failed, using MarkItDown result', {
-					error: (puppeteerError as Error).message,
-				})
+				this.logger.warn(
+					"Puppeteer extraction failed, using MarkItDown result",
+					{
+						error: (puppeteerError as Error).message,
+					},
+				)
 				// Fall through to return MarkItDown result
 			}
 
@@ -153,7 +168,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			return markitdownResult
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'extractFromUrl')
+			throw this.handleError(error, "extractFromUrl")
 		}
 	}
 
@@ -181,9 +196,9 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 */
 	private async extractWithPuppeteer(
 		url: string,
-		options?: URLExtractorOptions
+		options?: URLExtractorOptions,
 	): Promise<ExtractionResult> {
-		this.logger.info('Starting Puppeteer extraction', { url })
+		this.logger.info("Starting Puppeteer extraction", { url })
 
 		let browser = null
 		try {
@@ -191,10 +206,10 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			browser = await puppeteer.launch({
 				headless: true,
 				args: [
-					'--no-sandbox',
-					'--disable-setuid-sandbox',
-					'--disable-dev-shm-usage',
-					'--disable-gpu',
+					"--no-sandbox",
+					"--disable-setuid-sandbox",
+					"--disable-dev-shm-usage",
+					"--disable-gpu",
 				],
 			})
 
@@ -203,13 +218,13 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			// Set viewport and user agent
 			await page.setViewport({ width: 1920, height: 1080 })
 			await page.setUserAgent(
-				'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+				"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 			)
 
 			// Navigate to page with timeout
-			this.logger.debug('Navigating to URL', { url })
+			this.logger.debug("Navigating to URL", { url })
 			await page.goto(url, {
-				waitUntil: 'networkidle0', // Wait until network is idle
+				waitUntil: "networkidle0", // Wait until network is idle
 				timeout: options?.timeout ?? 30000,
 			})
 
@@ -217,10 +232,10 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			await new Promise((resolve) => setTimeout(resolve, 2000))
 
 			// Extract content
-			this.logger.debug('Extracting content from rendered page')
+			this.logger.debug("Extracting content from rendered page")
 			const content = await page.evaluate(() => {
 				// Remove script and style tags
-				const scripts = document.querySelectorAll('script, style')
+				const scripts = document.querySelectorAll("script, style")
 				scripts.forEach((el) => el.remove())
 
 				// Get text content
@@ -233,15 +248,15 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 					const meta =
 						document.querySelector(`meta[property="${name}"]`) ||
 						document.querySelector(`meta[name="${name}"]`)
-					return meta?.getAttribute('content') || undefined
+					return meta?.getAttribute("content") || undefined
 				}
 
 				// Extract all images from the page
 				const images: string[] = []
-				const imgElements = document.querySelectorAll('img[src]')
+				const imgElements = document.querySelectorAll("img[src]")
 				imgElements.forEach((img) => {
-					const src = img.getAttribute('src')
-					if (src && src.startsWith('http')) {
+					const src = img.getAttribute("src")
+					if (src && src.startsWith("http")) {
 						// Only include absolute URLs
 						if (!images.includes(src)) {
 							images.push(src)
@@ -251,9 +266,10 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 
 				return {
 					title: document.title,
-					description: getMetaContent('description') || getMetaContent('og:description'),
-					ogImage: getMetaContent('og:image'),
-					twitterImage: getMetaContent('twitter:image'),
+					description:
+						getMetaContent("description") || getMetaContent("og:description"),
+					ogImage: getMetaContent("og:image"),
+					twitterImage: getMetaContent("twitter:image"),
 					language: document.documentElement.lang || undefined,
 					images, // Array of image URLs
 				}
@@ -264,7 +280,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 
 			const cleanedContent = this.cleanContent(content)
 
-			this.logger.info('Puppeteer extraction complete', {
+			this.logger.info("Puppeteer extraction complete", {
 				url,
 				contentLength: cleanedContent.length,
 				title: metadata.title,
@@ -281,7 +297,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			// Use ogImage or twitterImage as preview image
 			const previewImage = metadata.ogImage || metadata.twitterImage
 
-			this.logger.info('Extracted images from page', {
+			this.logger.info("Extracted images from page", {
 				url,
 				imageCount: metadata.images.length,
 			})
@@ -289,13 +305,13 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			return {
 				text: cleanedContent,
 				title: metadata.title || this.extractTitleFromContent(cleanedContent),
-				source: 'puppeteer',
+				source: "puppeteer",
 				url,
-				contentType: 'text/html',
+				contentType: "text/html",
 				raw: { content: cleanedContent, images: metadata.images },
 				images: metadata.images, // Array of image URLs for frontend gallery
 				wordCount: this.countWords(cleanedContent),
-				extractorUsed: 'URLExtractor (Puppeteer)',
+				extractorUsed: "URLExtractor (Puppeteer)",
 				metadata: previewImage ? { image: previewImage } : undefined,
 				extractionMetadata: { metaTags },
 			}
@@ -303,11 +319,14 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			if (browser) {
 				await browser.close().catch(() => {})
 			}
-			this.logger.error('Puppeteer extraction failed', {
+			this.logger.error("Puppeteer extraction failed", {
 				error: (error as Error).message,
 				url,
 			})
-			throw this.createError('PUPPETEER_FAILED', `Puppeteer extraction failed: ${(error as Error).message}`)
+			throw this.createError(
+				"PUPPETEER_FAILED",
+				`Puppeteer extraction failed: ${(error as Error).message}`,
+			)
 		}
 	}
 
@@ -316,16 +335,20 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 */
 	private async extractWithDirectScraping(
 		url: string,
-		options?: URLExtractorOptions
+		options?: URLExtractorOptions,
 	): Promise<ExtractionResult> {
-		this.logger.debug('Extracting with MarkItDown', { url })
+		this.logger.debug("Extracting with MarkItDown", { url })
 
 		try {
 			// Use MarkItDown for URL conversion (supports YouTube, PDFs, etc.)
 			const markitdownResult = await convertUrlWithMarkItDown(url)
 
-			if (markitdownResult && markitdownResult.text && markitdownResult.text.length > 100) {
-				this.logger.debug('MarkItDown extraction successful', {
+			if (
+				markitdownResult &&
+				markitdownResult.text &&
+				markitdownResult.text.length > 100
+			) {
+				this.logger.debug("MarkItDown extraction successful", {
 					url,
 					chars: markitdownResult.text.length,
 				})
@@ -339,8 +362,8 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 				try {
 					const response = await safeFetch(url, {
 						headers: {
-							'User-Agent':
-								'Mozilla/5.0 (compatible; SupermemoryBot/1.0; +https://supermemory.ai)',
+							"User-Agent":
+								"Mozilla/5.0 (compatible; SupermemoryBot/1.0; +https://supermemory.ai)",
 						},
 						signal: AbortSignal.timeout(options?.timeout ?? 30000),
 					})
@@ -350,10 +373,14 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 
 						// Extract meta tags for preview image
 						metaTags = {
-							title: this.extractMetaTag(html, 'og:title') || this.extractMetaTag(html, 'title'),
-							description: this.extractMetaTag(html, 'og:description') || this.extractMetaTag(html, 'description'),
-							ogImage: this.extractMetaTag(html, 'og:image'),
-							twitterImage: this.extractMetaTag(html, 'twitter:image'),
+							title:
+								this.extractMetaTag(html, "og:title") ||
+								this.extractMetaTag(html, "title"),
+							description:
+								this.extractMetaTag(html, "og:description") ||
+								this.extractMetaTag(html, "description"),
+							ogImage: this.extractMetaTag(html, "og:image"),
+							twitterImage: this.extractMetaTag(html, "twitter:image"),
 							favicon: this.extractFavicon(html, url),
 						}
 
@@ -363,34 +390,40 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 						// Use ogImage or twitterImage as preview image
 						previewImage = metaTags.ogImage || metaTags.twitterImage
 
-						this.logger.debug('Extracted metadata and images for MarkItDown result', {
-							url,
-							imageCount: images.length,
-							hasPreviewImage: !!previewImage,
-						})
+						this.logger.debug(
+							"Extracted metadata and images for MarkItDown result",
+							{
+								url,
+								imageCount: images.length,
+								hasPreviewImage: !!previewImage,
+							},
+						)
 					}
 				} catch (htmlError) {
-					this.logger.warn('Failed to extract HTML metadata for MarkItDown result', {
-						error: (htmlError as Error).message,
-					})
+					this.logger.warn(
+						"Failed to extract HTML metadata for MarkItDown result",
+						{
+							error: (htmlError as Error).message,
+						},
+					)
 				}
 
 				return {
 					text: markitdownResult.text,
-					title: markitdownResult.title || metaTags?.title || 'Untitled',
-					source: 'markitdown',
+					title: markitdownResult.title || metaTags?.title || "Untitled",
+					source: "markitdown",
 					url,
-					contentType: 'text/markdown',
+					contentType: "text/markdown",
 					raw: { markdown: markitdownResult.text, images },
 					images, // Array of image URLs for frontend gallery
 					wordCount: this.countWords(markitdownResult.text),
-					extractorUsed: 'URLExtractor (MarkItDown)',
+					extractorUsed: "URLExtractor (MarkItDown)",
 					metadata: previewImage ? { image: previewImage } : undefined,
 					extractionMetadata: metaTags ? { metaTags } : {},
 				}
 			}
 		} catch (error) {
-			this.logger.warn('MarkItDown extraction failed, trying basic scraping', {
+			this.logger.warn("MarkItDown extraction failed, trying basic scraping", {
 				error: (error as Error).message,
 			})
 		}
@@ -398,16 +431,16 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		// Fallback to basic HTML scraping if MarkItDown fails
 		const response = await safeFetch(url, {
 			headers: {
-				'User-Agent':
-					'Mozilla/5.0 (compatible; SupermemoryBot/1.0; +https://supermemory.ai)',
+				"User-Agent":
+					"Mozilla/5.0 (compatible; SupermemoryBot/1.0; +https://supermemory.ai)",
 			},
 			signal: AbortSignal.timeout(options?.timeout ?? 30000),
 		})
 
 		if (!response.ok) {
 			throw this.createError(
-				'FETCH_FAILED',
-				`Failed to fetch URL: ${response.status} ${response.statusText}`
+				"FETCH_FAILED",
+				`Failed to fetch URL: ${response.status} ${response.statusText}`,
 			)
 		}
 
@@ -416,15 +449,17 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		const cleanedContent = this.cleanContent(textContent)
 
 		const title =
-			this.extractMetaTag(html, 'og:title') ||
-			this.extractMetaTag(html, 'title') ||
+			this.extractMetaTag(html, "og:title") ||
+			this.extractMetaTag(html, "title") ||
 			this.extractTitleFromContent(cleanedContent)
 
 		const metaTags: MetaTags = {
 			title,
-			description: this.extractMetaTag(html, 'og:description') || this.extractMetaTag(html, 'description'),
-			ogImage: this.extractMetaTag(html, 'og:image'),
-			twitterImage: this.extractMetaTag(html, 'twitter:image'),
+			description:
+				this.extractMetaTag(html, "og:description") ||
+				this.extractMetaTag(html, "description"),
+			ogImage: this.extractMetaTag(html, "og:image"),
+			twitterImage: this.extractMetaTag(html, "twitter:image"),
 			favicon: this.extractFavicon(html, url),
 		}
 
@@ -434,7 +469,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		// Use ogImage or twitterImage as preview image
 		const previewImage = metaTags.ogImage || metaTags.twitterImage
 
-		this.logger.debug('Extracted images from HTML', {
+		this.logger.debug("Extracted images from HTML", {
 			url,
 			imageCount: images.length,
 		})
@@ -442,13 +477,13 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		return {
 			text: cleanedContent,
 			title,
-			source: 'direct-scraping',
+			source: "direct-scraping",
 			url,
-			contentType: 'text/html',
+			contentType: "text/html",
 			raw: { html, images },
 			images, // Array of image URLs for frontend gallery
 			wordCount: this.countWords(cleanedContent),
-			extractorUsed: 'URLExtractor (HTML scraping)',
+			extractorUsed: "URLExtractor (HTML scraping)",
 			metadata: previewImage ? { image: previewImage } : undefined,
 			extractionMetadata: { metaTags },
 		}
@@ -468,15 +503,15 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			const src = match[1]
 
 			// Skip data URLs, SVGs, and very small images (likely icons)
-			if (src.startsWith('data:')) continue
-			if (src.endsWith('.svg')) continue
-			if (src.includes('1x1')) continue
-			if (src.includes('icon')) continue
+			if (src.startsWith("data:")) continue
+			if (src.endsWith(".svg")) continue
+			if (src.includes("1x1")) continue
+			if (src.includes("icon")) continue
 
 			try {
 				// Make absolute URL
 				let absoluteUrl: string
-				if (src.startsWith('http://') || src.startsWith('https://')) {
+				if (src.startsWith("http://") || src.startsWith("https://")) {
 					absoluteUrl = src
 				} else {
 					const base = new URL(baseUrl)
@@ -487,10 +522,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 				if (!images.includes(absoluteUrl)) {
 					images.push(absoluteUrl)
 				}
-			} catch (error) {
-				// Skip invalid URLs
-				continue
-			}
+			} catch (error) {}
 		}
 
 		return images
@@ -501,18 +533,21 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 */
 	private extractTextFromHtml(html: string): string {
 		// Remove scripts and styles
-		let text = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-		text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+		let text = html.replace(
+			/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+			"",
+		)
+		text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
 
 		// Remove HTML tags
-		text = text.replace(/<[^>]+>/g, ' ')
+		text = text.replace(/<[^>]+>/g, " ")
 
 		// Decode HTML entities
 		text = text
-			.replace(/&nbsp;/g, ' ')
-			.replace(/&amp;/g, '&')
-			.replace(/&lt;/g, '<')
-			.replace(/&gt;/g, '>')
+			.replace(/&nbsp;/g, " ")
+			.replace(/&amp;/g, "&")
+			.replace(/&lt;/g, "<")
+			.replace(/&gt;/g, ">")
 			.replace(/&quot;/g, '"')
 			.replace(/&#39;/g, "'")
 
@@ -524,10 +559,22 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 */
 	private extractMetaTag(html: string, property: string): string | undefined {
 		const patterns = [
-			new RegExp(`<meta\\s+property=["']${property}["']\\s+content=["']([^"']+)["']`, 'i'),
-			new RegExp(`<meta\\s+name=["']${property}["']\\s+content=["']([^"']+)["']`, 'i'),
-			new RegExp(`<meta\\s+content=["']([^"']+)["']\\s+property=["']${property}["']`, 'i'),
-			new RegExp(`<meta\\s+content=["']([^"']+)["']\\s+name=["']${property}["']`, 'i'),
+			new RegExp(
+				`<meta\\s+property=["']${property}["']\\s+content=["']([^"']+)["']`,
+				"i",
+			),
+			new RegExp(
+				`<meta\\s+name=["']${property}["']\\s+content=["']([^"']+)["']`,
+				"i",
+			),
+			new RegExp(
+				`<meta\\s+content=["']([^"']+)["']\\s+property=["']${property}["']`,
+				"i",
+			),
+			new RegExp(
+				`<meta\\s+content=["']([^"']+)["']\\s+name=["']${property}["']`,
+				"i",
+			),
 		]
 
 		for (const pattern of patterns) {
@@ -536,7 +583,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		}
 
 		// Special handling for title tag
-		if (property === 'title') {
+		if (property === "title") {
 			const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
 			if (titleMatch) return titleMatch[1]
 		}
@@ -548,12 +595,14 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 * Extract favicon URL
 	 */
 	private extractFavicon(html: string, baseUrl: string): string | undefined {
-		const iconMatch = html.match(/<link[^>]+rel=["'](?:icon|shortcut icon)["'][^>]+href=["']([^"']+)["']/i)
+		const iconMatch = html.match(
+			/<link[^>]+rel=["'](?:icon|shortcut icon)["'][^>]+href=["']([^"']+)["']/i,
+		)
 
 		if (iconMatch) {
 			const iconUrl = iconMatch[1]
 			// Make absolute URL
-			if (iconUrl.startsWith('http')) {
+			if (iconUrl.startsWith("http")) {
 				return iconUrl
 			}
 			try {
@@ -572,13 +621,13 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 */
 	private extractTitleFromContent(content: string): string | null {
 		// Get first line or first 100 characters
-		const firstLine = content.split('\n')[0].trim()
+		const firstLine = content.split("\n")[0].trim()
 		if (firstLine.length > 0 && firstLine.length <= 200) {
 			return firstLine
 		}
 
 		const truncated = content.substring(0, 100).trim()
-		return truncated.length > 0 ? truncated + '...' : null
+		return truncated.length > 0 ? truncated + "..." : null
 	}
 
 	/**
@@ -586,13 +635,13 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 */
 	private cleanContent(content: string): string {
 		// Remove null bytes
-		let cleaned = content.replace(/\0/g, '')
+		let cleaned = content.replace(/\0/g, "")
 
 		// Normalize whitespace
-		cleaned = cleaned.replace(/\s+/g, ' ')
+		cleaned = cleaned.replace(/\s+/g, " ")
 
 		// Remove excessive line breaks
-		cleaned = cleaned.replace(/\n{3,}/g, '\n\n')
+		cleaned = cleaned.replace(/\n{3,}/g, "\n\n")
 
 		// Trim
 		cleaned = cleaned.trim()
@@ -608,7 +657,6 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		if (!normalized) return 0
 		return normalized.split(/\s+/).length
 	}
-
 
 	// ========================================================================
 	// Lifecycle Hooks

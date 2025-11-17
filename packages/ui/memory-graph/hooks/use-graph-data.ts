@@ -8,9 +8,9 @@ import {
 import { useMemo } from "react";
 import { colors, LAYOUT_CONSTANTS } from "../constants";
 import type {
+	DocumentConnectionEdge,
 	DocumentsResponse,
 	DocumentWithMemories,
-	DocumentConnectionEdge,
 	GraphEdge,
 	GraphNode,
 	MemoryEntry,

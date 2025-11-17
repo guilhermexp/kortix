@@ -1,15 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
-import {
-	ChunkingService,
-	createChunkingService,
-} from '../chunking-service'
 import type {
+	Chunk,
+	ChunkBoundary,
 	ChunkingOptions,
 	ChunkingStatistics,
-	ChunkBoundary,
-	Chunk,
 	ProcessingError,
-} from '../../interfaces'
+} from "../../interfaces"
+import { ChunkingService, createChunkingService } from "../chunking-service"
 
 /**
  * Unit tests for ChunkingService
@@ -31,11 +28,11 @@ describe("ChunkingService", () => {
 		mockOptions = {
 			maxTokensPerChunk: 800,
 			overlapTokens: 50,
-			strategy: 'semantic', // semantic, fixed-size, sentence-based
+			strategy: "semantic", // semantic, fixed-size, sentence-based
 			preserveFormatting: true,
 			includeBoundaries: true,
 			tokenizerOptions: {
-				model: 'cl100k_base', // or 'gpt2', 'p50k_base', etc.
+				model: "cl100k_base", // or 'gpt2', 'p50k_base', etc.
 				returnOffsets: true,
 			},
 		}
@@ -49,27 +46,28 @@ describe("ChunkingService", () => {
 
 	describe("Service Interface", () => {
 		it("should implement ChunkingService interface", () => {
-			expect(service).toHaveProperty('chunkDocument')
-			expect(service).toHaveProperty('chunkText')
-			expect(service).toHaveProperty('getStatistics')
-			expect(service).toHaveProperty('updateConfiguration')
+			expect(service).toHaveProperty("chunkDocument")
+			expect(service).toHaveProperty("chunkText")
+			expect(service).toHaveProperty("getStatistics")
+			expect(service).toHaveProperty("updateConfiguration")
 		})
 
 		it("should have proper service metadata", () => {
-			expect(service.getName()).toBe('ChunkingService')
+			expect(service.getName()).toBe("ChunkingService")
 		})
 	})
 
 	describe("Basic Chunking Operations", () => {
 		it("should chunk simple text document", async () => {
-			const text = "This is the first sentence. This is the second sentence. This is the third sentence with more content. Here is another sentence that should be in a separate chunk."
+			const text =
+				"This is the first sentence. This is the second sentence. This is the third sentence with more content. Here is another sentence that should be in a separate chunk."
 
 			const result = await service.chunkText(text)
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toBeDefined()
 			expect(result.data?.chunks!.length).toBeGreaterThan(0)
-			
+
 			const firstChunk = result.data!.chunks![0]
 			expect(firstChunk.content).toBeTruthy()
 			expect(firstChunk.embeddings).toEqual([]) // No embeddings in chunking service
@@ -79,20 +77,23 @@ describe("ChunkingService", () => {
 
 		it("should respect maximum token limit per chunk", async () => {
 			const longText = "Sentence. ".repeat(100) // Very long text
-			
+
 			const result = await service.chunkText(longText)
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toBeDefined()
-			
+
 			// Verify no chunk exceeds the token limit
 			result.data!.chunks!.forEach((chunk) => {
-				expect(chunk.metadata.tokenCount).toBeLessThanOrEqual(mockOptions.maxTokensPerChunk + 50) // Small tolerance
+				expect(chunk.metadata.tokenCount).toBeLessThanOrEqual(
+					mockOptions.maxTokensPerChunk + 50,
+				) // Small tolerance
 			})
 		})
 
 		it("should handle overlap between chunks", async () => {
-			const text = "This is a long sentence that spans multiple potential chunk boundaries. This next sentence should overlap with the previous one to maintain context. Another sentence continues the flow of information."
+			const text =
+				"This is a long sentence that spans multiple potential chunk boundaries. This next sentence should overlap with the previous one to maintain context. Another sentence continues the flow of information."
 
 			const result = await service.chunkText(text)
 
@@ -104,7 +105,7 @@ describe("ChunkingService", () => {
 			if (result.data!.chunks!.length > 1) {
 				const chunk1 = result.data!.chunks![0]
 				const chunk2 = result.data!.chunks![1]
-				
+
 				// Chunks should share some context (sentence boundary + overlap)
 				expect(chunk1.content).not.toBe(chunk2.content)
 			}
@@ -130,11 +131,12 @@ describe("ChunkingService", () => {
 		it("should use semantic chunking strategy", async () => {
 			const options: ChunkingOptions = {
 				...mockOptions,
-				strategy: 'semantic',
+				strategy: "semantic",
 			}
 
 			const semanticService = new ChunkingService(options)
-			const text = "Semantic chunking attempts to keep related content together. It considers meaning and context when breaking text into chunks. This makes the chunks more coherent and useful for retrieval."
+			const text =
+				"Semantic chunking attempts to keep related content together. It considers meaning and context when breaking text into chunks. This makes the chunks more coherent and useful for retrieval."
 
 			const result = await semanticService.chunkText(text)
 
@@ -146,23 +148,29 @@ describe("ChunkingService", () => {
 		it("should use fixed-size chunking strategy", async () => {
 			const options: ChunkingOptions = {
 				...mockOptions,
-				strategy: 'fixed-size',
+				strategy: "fixed-size",
 				maxTokensPerChunk: 200,
 			}
 
 			const fixedService = new ChunkingService(options)
-			const text = "This is a longer sentence that will be chunked based on token count rather than semantic boundaries. ".repeat(5)
+			const text =
+				"This is a longer sentence that will be chunked based on token count rather than semantic boundaries. ".repeat(
+					5,
+				)
 
 			const result = await fixedService.chunkText(text)
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toBeDefined()
-			
+
 			// All chunks should be approximately the same size
-			const chunkSizes = result.data!.chunks!.map(c => c.metadata.tokenCount)
+			const chunkSizes = result.data!.chunks!.map((c) => c.metadata.tokenCount)
 			const avgSize = chunkSizes.reduce((a, b) => a + b, 0) / chunkSizes.length
-			const variance = chunkSizes.map(size => Math.pow(size - avgSize, 2)).reduce((a, b) => a + b, 0) / chunkSizes.length
-			
+			const variance =
+				chunkSizes
+					.map((size) => (size - avgSize) ** 2)
+					.reduce((a, b) => a + b, 0) / chunkSizes.length
+
 			// Fixed-size should have low variance
 			expect(variance).toBeLessThan(1000)
 		})
@@ -170,11 +178,12 @@ describe("ChunkingService", () => {
 		it("should use sentence-based chunking strategy", async () => {
 			const options: ChunkingOptions = {
 				...mockOptions,
-				strategy: 'sentence-based',
+				strategy: "sentence-based",
 			}
 
 			const sentenceService = new ChunkingService(options)
-			const text = "First sentence. Second sentence! Third sentence? Fourth sentence... Fifth sentence; Sixth sentence: seventh sentence. Eighth sentence - ninth sentence."
+			const text =
+				"First sentence. Second sentence! Third sentence? Fourth sentence... Fifth sentence; Sixth sentence: seventh sentence. Eighth sentence - ninth sentence."
 
 			const result = await sentenceService.chunkText(text)
 
@@ -240,34 +249,39 @@ if (sum > 10) {
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toBeDefined()
 			// Should preserve code structure
-			const codeChunks = result.data!.chunks!.filter(c => 
-				c.content.includes('function') || 
-				c.content.includes('const') || 
-				c.content.includes('if')
+			const codeChunks = result.data!.chunks!.filter(
+				(c) =>
+					c.content.includes("function") ||
+					c.content.includes("const") ||
+					c.content.includes("if"),
 			)
 			expect(codeChunks.length).toBeGreaterThan(0)
 		})
 
 		it("should handle JSON content", async () => {
-			const json = JSON.stringify({
-				name: "Test Document",
-				content: "This is the main content of the document",
-				metadata: {
-					author: "Test Author",
-					created: "2023-01-01T00:00:00Z",
-					tags: ["test", "document", "json"]
-				},
-				sections: [
-					{
-						title: "Introduction",
-						content: "This is the introduction section"
+			const json = JSON.stringify(
+				{
+					name: "Test Document",
+					content: "This is the main content of the document",
+					metadata: {
+						author: "Test Author",
+						created: "2023-01-01T00:00:00Z",
+						tags: ["test", "document", "json"],
 					},
-					{
-						title: "Main Content", 
-						content: "This is the main content section with more details"
-					}
-				]
-			}, null, 2)
+					sections: [
+						{
+							title: "Introduction",
+							content: "This is the introduction section",
+						},
+						{
+							title: "Main Content",
+							content: "This is the main content section with more details",
+						},
+					],
+				},
+				null,
+				2,
+			)
 
 			const result = await service.chunkText(json)
 
@@ -295,7 +309,8 @@ This table shows information about people from different cities.`
 
 	describe("Tokenization", () => {
 		it("should use correct tokenizer for token counting", async () => {
-			const text = "Hello, world! This is a test sentence with various punctuation and symbols: @#$%^&*()"
+			const text =
+				"Hello, world! This is a test sentence with various punctuation and symbols: @#$%^&*()"
 
 			const result = await service.chunkText(text)
 
@@ -305,8 +320,8 @@ This table shows information about people from different cities.`
 		})
 
 		it("should handle different tokenization models", async () => {
-			const models = ['cl100k_base', 'p50k_base', 'gpt2']
-			
+			const models = ["cl100k_base", "p50k_base", "gpt2"]
+
 			for (const model of models) {
 				const options: ChunkingOptions = {
 					...mockOptions,
@@ -317,7 +332,9 @@ This table shows information about people from different cities.`
 				}
 
 				const modelService = new ChunkingService(options)
-				const result = await modelService.chunkText("Test sentence for tokenization.")
+				const result = await modelService.chunkText(
+					"Test sentence for tokenization.",
+				)
 
 				expect(result.success).toBe(true)
 				expect(result.data?.chunks![0].metadata.tokenCount).toBeGreaterThan(0)
@@ -328,7 +345,7 @@ This table shows information about people from different cities.`
 			const options: ChunkingOptions = {
 				...mockOptions,
 				tokenizerOptions: {
-					model: 'cl100k_base',
+					model: "cl100k_base",
 					returnOffsets: true,
 				},
 			}
@@ -346,13 +363,14 @@ This table shows information about people from different cities.`
 
 	describe("Chunk Boundaries", () => {
 		it("should detect natural chunk boundaries", async () => {
-			const text = "Paragraph one discusses the introduction to the topic. It provides background information and context. The next paragraph moves to the main analysis section. This section examines the data in detail. Finally, the conclusion summarizes the key findings and implications."
+			const text =
+				"Paragraph one discusses the introduction to the topic. It provides background information and context. The next paragraph moves to the main analysis section. This section examines the data in detail. Finally, the conclusion summarizes the key findings and implications."
 
 			const result = await service.chunkText(text)
 
 			expect(result.success).toBe(true)
 			expect(result.data?.boundaries).toBeDefined()
-			
+
 			const boundaries = result.data!.boundaries!
 			expect(boundaries.length).toBeGreaterThan(0)
 			expect(boundaries[0].type).toMatch(/paragraph|sentence|semantic/)
@@ -372,7 +390,8 @@ Third paragraph continues the discussion from the second paragraph.`
 		})
 
 		it("should handle sentence boundary detection", async () => {
-			const text = "First sentence. Second sentence! Third sentence? Fourth sentence... Fifth sentence; Sixth sentence: seventh sentence. Eighth sentence - ninth sentence. Tenth sentence (with parentheses)."
+			const text =
+				"First sentence. Second sentence! Third sentence? Fourth sentence... Fifth sentence; Sixth sentence: seventh sentence. Eighth sentence - ninth sentence. Tenth sentence (with parentheses)."
 
 			const result = await service.chunkText(text)
 
@@ -384,7 +403,7 @@ Third paragraph continues the discussion from the second paragraph.`
 	describe("Performance Optimization", () => {
 		it("should handle large documents efficiently", async () => {
 			const largeText = "This is a sentence. ".repeat(10000) // Very large document
-			
+
 			const startTime = Date.now()
 			const result = await service.chunkText(largeText)
 			const endTime = Date.now()
@@ -403,11 +422,21 @@ Third paragraph continues the discussion from the second paragraph.`
 			const streamService = new ChunkingService(options)
 			const hugeText = "Large text chunk. ".repeat(50000) // 1M+ characters
 
-			const streamSpy = vi.spyOn(streamService as any, 'streamChunkText')
+			const streamSpy = vi.spyOn(streamService as any, "streamChunkText")
 			streamSpy.mockResolvedValue({
 				chunks: [
-					{ id: 'chunk-1', content: 'Streamed chunk 1', embeddings: [], metadata: { tokenCount: 10 } },
-					{ id: 'chunk-2', content: 'Streamed chunk 2', embeddings: [], metadata: { tokenCount: 12 } },
+					{
+						id: "chunk-1",
+						content: "Streamed chunk 1",
+						embeddings: [],
+						metadata: { tokenCount: 10 },
+					},
+					{
+						id: "chunk-2",
+						content: "Streamed chunk 2",
+						embeddings: [],
+						metadata: { tokenCount: 12 },
+					},
 				],
 				boundaries: [],
 				statistics: { totalChunks: 2, totalTokens: 22 },
@@ -421,7 +450,7 @@ Third paragraph continues the discussion from the second paragraph.`
 
 		it("should implement memory-efficient processing", async () => {
 			// Mock memory constraint check
-			const memorySpy = vi.spyOn(service as any, 'checkMemoryUsage')
+			const memorySpy = vi.spyOn(service as any, "checkMemoryUsage")
 			memorySpy.mockReturnValue(false) // No memory constraints
 
 			const text = "Memory efficient chunking. ".repeat(1000)
@@ -436,13 +465,13 @@ Third paragraph continues the discussion from the second paragraph.`
 	describe("Error Handling", () => {
 		it("should handle tokenization errors", async () => {
 			// Mock tokenizer failure
-			const tokenizeSpy = vi.spyOn(service as any, 'tokenizeText')
-			tokenizeSpy.mockRejectedValue(new Error('Tokenization failed'))
+			const tokenizeSpy = vi.spyOn(service as any, "tokenizeText")
+			tokenizeSpy.mockRejectedValue(new Error("Tokenization failed"))
 
 			const result = await service.chunkText("Test text")
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('TOKENIZATION_FAILED')
+			expect(result.error?.code).toBe("TOKENIZATION_FAILED")
 		})
 
 		it("should handle invalid chunking options", async () => {
@@ -456,18 +485,18 @@ Third paragraph continues the discussion from the second paragraph.`
 			const result = await invalidService.chunkText("Test text")
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('INVALID_OPTIONS')
+			expect(result.error?.code).toBe("INVALID_OPTIONS")
 		})
 
 		it("should handle memory constraints", async () => {
 			// Mock memory constraint exceeded
-			const memorySpy = vi.spyOn(service as any, 'checkMemoryUsage')
+			const memorySpy = vi.spyOn(service as any, "checkMemoryUsage")
 			memorySpy.mockReturnValue(true)
 
 			const result = await service.chunkText("Test text")
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('MEMORY_CONSTRAINT')
+			expect(result.error?.code).toBe("MEMORY_CONSTRAINT")
 		})
 
 		it("should handle malformed text", async () => {
@@ -475,7 +504,7 @@ Third paragraph continues the discussion from the second paragraph.`
 				null as any,
 				undefined as any,
 				123 as any,
-				{ invalid: 'text' } as any,
+				{ invalid: "text" } as any,
 			]
 
 			for (const malformed of malformedTexts) {
@@ -487,7 +516,8 @@ Third paragraph continues the discussion from the second paragraph.`
 
 	describe("Statistics and Metrics", () => {
 		it("should provide chunking statistics", async () => {
-			const text = "This is a test sentence. This is another sentence for chunking. And this is a third sentence."
+			const text =
+				"This is a test sentence. This is another sentence for chunking. And this is a third sentence."
 
 			const result = await service.chunkText(text)
 
@@ -507,23 +537,28 @@ Third paragraph continues the discussion from the second paragraph.`
 
 			expect(result.success).toBe(true)
 			expect(result.data?.statistics?.processingTime).toBeGreaterThan(0)
-			expect(result.data?.statistics?.processingTime).toBeLessThanOrEqual(endTime - startTime + 100) // Small tolerance
+			expect(result.data?.statistics?.processingTime).toBeLessThanOrEqual(
+				endTime - startTime + 100,
+			) // Small tolerance
 		})
 
 		it("should provide detailed chunk metadata", async () => {
-			const text = "First chunk content. Second chunk content. Third chunk content."
+			const text =
+				"First chunk content. Second chunk content. Third chunk content."
 
 			const result = await service.chunkText(text)
 
 			expect(result.success).toBe(true)
-			
+
 			result.data!.chunks!.forEach((chunk, index) => {
 				expect(chunk.id).toBe(`chunk-${index}`)
 				expect(chunk.content).toBeTruthy()
 				expect(chunk.metadata.tokenCount).toBeGreaterThan(0)
 				expect(chunk.metadata.position).toBe(index)
 				expect(chunk.metadata.startOffset).toBeGreaterThanOrEqual(0)
-				expect(chunk.metadata.endOffset).toBeGreaterThan(chunk.metadata.startOffset)
+				expect(chunk.metadata.endOffset).toBeGreaterThan(
+					chunk.metadata.startOffset,
+				)
 			})
 		})
 	})
@@ -537,7 +572,7 @@ Third paragraph continues the discussion from the second paragraph.`
 			}
 
 			service.updateConfiguration(newOptions)
-			
+
 			// Verify configuration was updated
 			// This would depend on the actual implementation
 		})
@@ -564,14 +599,14 @@ Third paragraph continues the discussion from the second paragraph.`
 		it("should create service with default options", () => {
 			const service = createChunkingService()
 			expect(service).toBeDefined()
-			expect(service.getName()).toBe('ChunkingService')
+			expect(service.getName()).toBe("ChunkingService")
 		})
 
 		it("should create service with custom options", () => {
 			const customOptions: ChunkingOptions = {
 				maxTokensPerChunk: 500,
 				overlapTokens: 25,
-				strategy: 'fixed-size',
+				strategy: "fixed-size",
 			}
 
 			const service = createChunkingService(customOptions)
@@ -581,12 +616,7 @@ Third paragraph continues the discussion from the second paragraph.`
 
 	describe("Edge Cases", () => {
 		it("should handle text with only whitespace", async () => {
-			const whitespaceTexts = [
-				"   ",
-				"\n\n\n",
-				"\t\t\t",
-				" \n \t \n ",
-			]
+			const whitespaceTexts = ["   ", "\n\n\n", "\t\t\t", " \n \t \n "]
 
 			for (const text of whitespaceTexts) {
 				const result = await service.chunkText(text)
@@ -605,17 +635,19 @@ Third paragraph continues the discussion from the second paragraph.`
 		})
 
 		it("should handle text with emojis and unicode", async () => {
-			const unicodeText = "Text with émojis 🎯🔍 and spëciäl chårs ünïcödé and 数学 📊📈"
+			const unicodeText =
+				"Text with émojis 🎯🔍 and spëciäl chårs ünïcödé and 数学 📊📈"
 
 			const result = await service.chunkText(unicodeText)
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toBeDefined()
-			expect(result.data?.chunks![0].content).toContain('émojis')
+			expect(result.data?.chunks![0].content).toContain("émojis")
 		})
 
 		it("should handle very long words", async () => {
-			const longWordText = "Supercalifragilisticexpialidocious is a very long word. " + 
+			const longWordText =
+				"Supercalifragilisticexpialidocious is a very long word. " +
 				"Pneumonoultramicroscopicsilicovolcanoconiosis is another extremely long word."
 
 			const result = await service.chunkText(longWordText)
@@ -662,13 +694,14 @@ Final paragraph.`
 			}
 
 			const formatService = new ChunkingService(options)
-			const formattedText = "Text with **bold** and *italic* formatting. [Link](http://example.com) and `code`."
+			const formattedText =
+				"Text with **bold** and *italic* formatting. [Link](http://example.com) and `code`."
 
 			const result = await formatService.chunkText(formattedText)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.chunks![0].content).toContain('**bold**')
-			expect(result.data?.chunks![0].content).toContain('*italic*')
+			expect(result.data?.chunks![0].content).toContain("**bold**")
+			expect(result.data?.chunks![0].content).toContain("*italic*")
 		})
 
 		it("should strip formatting when disabled", async () => {

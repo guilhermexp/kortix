@@ -11,19 +11,19 @@
  * - Comprehensive error handling and retry logic
  */
 
-import { BaseService } from '../base/base-service'
-import { generateEmbedding as generateEmbeddingProvider } from '../embedding-provider'
+import { BaseService } from "../base/base-service"
 import {
 	ensureVectorSize,
 	generateDeterministicEmbedding,
 	VECTOR_SIZE,
-} from '../embedding'
+} from "../embedding"
+import { generateEmbedding as generateEmbeddingProvider } from "../embedding-provider"
 import type {
-	EmbeddingService as IEmbeddingService,
 	Chunk,
 	EmbeddingOptions,
 	EmbeddingProviderInfo,
-} from '../interfaces'
+	EmbeddingService as IEmbeddingService,
+} from "../interfaces"
 
 // ============================================================================
 // Constants
@@ -53,15 +53,15 @@ interface CacheEntry {
  * Service for generating vector embeddings
  */
 export class EmbeddingService extends BaseService implements IEmbeddingService {
-	private readonly provider: 'gemini' | 'openai' | 'hybrid' | 'deterministic'
+	private readonly provider: "gemini" | "openai" | "hybrid" | "deterministic"
 	private readonly batchSize: number
 	private readonly useCache: boolean
 	private readonly embeddingCache: Map<string, CacheEntry> = new Map()
 
 	constructor(options?: EmbeddingOptions) {
-		super('EmbeddingService')
+		super("EmbeddingService")
 
-		this.provider = options?.provider ?? 'hybrid'
+		this.provider = options?.provider ?? "hybrid"
 		this.batchSize = options?.batchSize ?? DEFAULT_BATCH_SIZE
 		this.useCache = options?.useCache ?? true
 
@@ -81,10 +81,10 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 	async generateEmbeddings(chunks: Chunk[]): Promise<Chunk[]> {
 		this.assertInitialized()
 
-		const tracker = this.performanceMonitor.startOperation('generateEmbeddings')
+		const tracker = this.performanceMonitor.startOperation("generateEmbeddings")
 
 		try {
-			this.logger.info('Generating embeddings for chunks', {
+			this.logger.info("Generating embeddings for chunks", {
 				chunkCount: chunks.length,
 				batchSize: this.batchSize,
 				provider: this.provider,
@@ -97,7 +97,7 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 				const batch = chunks.slice(i, i + this.batchSize)
 				const batchTexts = batch.map((c) => c.text)
 
-				this.logger.debug('Processing batch', {
+				this.logger.debug("Processing batch", {
 					batchIndex: Math.floor(i / this.batchSize),
 					batchSize: batch.length,
 				})
@@ -121,14 +121,14 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 
 			tracker.end(true)
 
-			this.logger.info('Embeddings generated successfully', {
+			this.logger.info("Embeddings generated successfully", {
 				totalChunks: result.length,
 			})
 
 			return result
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'generateEmbeddings')
+			throw this.handleError(error, "generateEmbeddings")
 		}
 	}
 
@@ -138,14 +138,14 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 	async generateEmbedding(text: string): Promise<number[]> {
 		this.assertInitialized()
 
-		const tracker = this.performanceMonitor.startOperation('generateEmbedding')
+		const tracker = this.performanceMonitor.startOperation("generateEmbedding")
 
 		try {
 			// Check cache first
 			if (this.useCache) {
 				const cached = await this.getCachedEmbedding(text)
 				if (cached) {
-					this.logger.debug('Using cached embedding')
+					this.logger.debug("Using cached embedding")
 					tracker.end(true)
 					return cached
 				}
@@ -155,21 +155,21 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 			let embedding: number[]
 
 			switch (this.provider) {
-				case 'gemini':
+				case "gemini":
 					embedding = await this.generateWithGemini(text)
 					break
 
-				case 'deterministic':
+				case "deterministic":
 					embedding = this.generateDeterministic(text)
 					break
 
-				case 'hybrid':
+				case "hybrid":
 				default:
 					// Try Gemini first, fall back to deterministic
 					try {
 						embedding = await this.generateWithGemini(text)
 					} catch (error) {
-						this.logger.warn('Gemini failed, using deterministic fallback', {
+						this.logger.warn("Gemini failed, using deterministic fallback", {
 							error: (error as Error).message,
 						})
 						embedding = this.generateDeterministic(text)
@@ -186,7 +186,7 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 			return embedding
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'generateEmbedding')
+			throw this.handleError(error, "generateEmbedding")
 		}
 	}
 
@@ -220,7 +220,8 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 	getProviderInfo(): EmbeddingProviderInfo {
 		return {
 			name: this.provider,
-			model: this.provider === 'gemini' ? 'text-embedding-004' : 'deterministic',
+			model:
+				this.provider === "gemini" ? "text-embedding-004" : "deterministic",
 			dimensions: VECTOR_SIZE,
 			maxInputLength: MAX_TEXT_LENGTH,
 			rateLimits: {
@@ -295,7 +296,7 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 	 * Truncate text to byte limit
 	 */
 	private truncateText(text: string, maxBytes: number): string {
-		const textBytes = Buffer.byteLength(text, 'utf8')
+		const textBytes = Buffer.byteLength(text, "utf8")
 
 		if (textBytes <= maxBytes) {
 			return text
@@ -306,9 +307,9 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 		const truncateAt = Math.floor(text.length * ratio)
 		const truncated = text.slice(0, truncateAt)
 
-		this.logger.warn('Text truncated for embedding', {
+		this.logger.warn("Text truncated for embedding", {
 			originalBytes: textBytes,
-			truncatedBytes: Buffer.byteLength(truncated, 'utf8'),
+			truncatedBytes: Buffer.byteLength(truncated, "utf8"),
 			ratio,
 		})
 
@@ -353,7 +354,7 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 		}
 
 		if (removed > 0) {
-			this.logger.debug('Cache cleanup completed', {
+			this.logger.debug("Cache cleanup completed", {
 				removed,
 				remaining: this.embeddingCache.size,
 			})
@@ -367,7 +368,10 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 	/**
 	 * Execute function with retry logic
 	 */
-	private async withRetry<T>(fn: () => Promise<T>, maxRetries = MAX_RETRIES): Promise<T> {
+	private async withRetry<T>(
+		fn: () => Promise<T>,
+		maxRetries = MAX_RETRIES,
+	): Promise<T> {
 		let lastError: Error | null = null
 
 		for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -379,14 +383,14 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 				// Check if it's a rate limit error
 				const isRateLimit =
 					error instanceof Error &&
-					(error.message.includes('rate') ||
-						error.message.includes('quota') ||
-						error.message.includes('429'))
+					(error.message.includes("rate") ||
+						error.message.includes("quota") ||
+						error.message.includes("429"))
 
 				if (isRateLimit && attempt < maxRetries - 1) {
 					// Exponential backoff
-					const delayMs = RETRY_DELAY_MS * Math.pow(2, attempt)
-					this.logger.warn('Rate limit hit, retrying', {
+					const delayMs = RETRY_DELAY_MS * 2 ** attempt
+					this.logger.warn("Rate limit hit, retrying", {
 						attempt: attempt + 1,
 						maxRetries,
 						delayMs,
@@ -405,7 +409,7 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 			}
 		}
 
-		throw lastError || new Error('Retry failed with unknown error')
+		throw lastError || new Error("Retry failed with unknown error")
 	}
 
 	/**
@@ -422,7 +426,7 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 	protected async onHealthCheck(): Promise<boolean> {
 		// Test embedding generation
 		try {
-			const testText = 'This is a health check test.'
+			const testText = "This is a health check test."
 			const embedding = await this.generateEmbedding(testText)
 			return embedding.length === VECTOR_SIZE
 		} catch {
@@ -443,6 +447,8 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 /**
  * Create embedding service with optional configuration
  */
-export function createEmbeddingService(options?: EmbeddingOptions): EmbeddingService {
+export function createEmbeddingService(
+	options?: EmbeddingOptions,
+): EmbeddingService {
 	return new EmbeddingService(options)
 }

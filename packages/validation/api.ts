@@ -1155,7 +1155,8 @@ export const DocumentsWithMemoriesQuerySchema = z
 				example: ["sm_project_default"],
 			}),
 		includeContent: z.boolean().default(false).meta({
-			description: "Whether to include heavy content fields (content, raw, processing_metadata, summary_embedding). Default false for better performance",
+			description:
+				"Whether to include heavy content fields (content, raw, processing_metadata, summary_embedding). Default false for better performance",
 			example: false,
 		}),
 	})

@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
-import {
-	SummarizationService,
-	createSummarizationService,
-} from '../summarization-service'
 import type {
-	SummarizationOptions,
 	MultiLevelSummary,
-	SummarizationStatistics,
 	ProcessingError,
-} from '../../interfaces'
+	SummarizationOptions,
+	SummarizationStatistics,
+} from "../../interfaces"
+import {
+	createSummarizationService,
+	SummarizationService,
+} from "../summarization-service"
 
 describe("SummarizationService", () => {
 	let service: SummarizationService
@@ -16,12 +16,12 @@ describe("SummarizationService", () => {
 
 	beforeEach(() => {
 		mockOptions = {
-			provider: 'gemini',
+			provider: "gemini",
 			includeBullets: true,
 			maxSummaryLength: 200,
-			summaryTypes: ['concise', 'detailed', 'key_points'],
+			summaryTypes: ["concise", "detailed", "key_points"],
 			enableMultiLevel: true,
-			language: 'en',
+			language: "en",
 		}
 		service = new SummarizationService(mockOptions)
 	})
@@ -30,11 +30,13 @@ describe("SummarizationService", () => {
 
 	describe("Basic Summarization", () => {
 		it("should generate concise summary", async () => {
-			const text = "This is a long document with multiple paragraphs. It discusses various topics including technology, science, and society. The document provides detailed analysis of current trends and future predictions."
+			const text =
+				"This is a long document with multiple paragraphs. It discusses various topics including technology, science, and society. The document provides detailed analysis of current trends and future predictions."
 
-			const mockSummary = "Document analyzing technology, science, and society trends with future predictions."
-			
-			const summarySpy = vi.spyOn(service as any, 'callSummarizationAPI')
+			const mockSummary =
+				"Document analyzing technology, science, and society trends with future predictions."
+
+			const summarySpy = vi.spyOn(service as any, "callSummarizationAPI")
 			summarySpy.mockResolvedValue({
 				summary: mockSummary,
 				confidence: 0.9,
@@ -44,7 +46,7 @@ describe("SummarizationService", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.summary).toBe(mockSummary)
-			expect(result.data?.type).toBe('concise')
+			expect(result.data?.type).toBe("concise")
 			expect(result.data?.confidence).toBe(0.9)
 		})
 
@@ -55,7 +57,7 @@ describe("SummarizationService", () => {
 				"Very long text that continues for many paragraphs. ".repeat(50),
 			]
 
-			const summarySpy = vi.spyOn(service as any, 'callSummarizationAPI')
+			const summarySpy = vi.spyOn(service as any, "callSummarizationAPI")
 			summarySpy.mockResolvedValue({
 				summary: "Test summary",
 				confidence: 0.8,
@@ -69,8 +71,8 @@ describe("SummarizationService", () => {
 
 		it("should respect maximum summary length", async () => {
 			const longText = "Very long document content. ".repeat(100)
-			
-			const summarySpy = vi.spyOn(service as any, 'callSummarizationAPI')
+
+			const summarySpy = vi.spyOn(service as any, "callSummarizationAPI")
 			summarySpy.mockResolvedValue({
 				summary: "Summary that might be too long for the specified limit",
 				confidence: 0.7,
@@ -81,14 +83,17 @@ describe("SummarizationService", () => {
 			expect(result.success).toBe(true)
 			if (result.data?.summary.length > mockOptions.maxSummaryLength!) {
 				// Should truncate if needed
-				expect(result.data?.summary.length).toBeLessThanOrEqual(mockOptions.maxSummaryLength! + 10)
+				expect(result.data?.summary.length).toBeLessThanOrEqual(
+					mockOptions.maxSummaryLength! + 10,
+				)
 			}
 		})
 	})
 
 	describe("Multi-level Summarization", () => {
 		it("should generate multi-level summaries", async () => {
-			const text = "Document with multiple sections covering different topics in depth."
+			const text =
+				"Document with multiple sections covering different topics in depth."
 
 			const mockMultiLevel: MultiLevelSummary = {
 				concise: "Brief overview of document",
@@ -96,21 +101,23 @@ describe("SummarizationService", () => {
 				keyPoints: ["Point 1", "Point 2", "Point 3"],
 			}
 
-			const multiSpy = vi.spyOn(service as any, 'generateMultiLevel')
+			const multiSpy = vi.spyOn(service as any, "generateMultiLevel")
 			multiSpy.mockResolvedValue(mockMultiLevel)
 
 			const result = await service.generateMultiLevelSummary(text)
 
 			expect(result.success).toBe(true)
 			expect(result.data?.concise).toBe("Brief overview of document")
-			expect(result.data?.detailed).toBe("Detailed summary with key points and analysis")
+			expect(result.data?.detailed).toBe(
+				"Detailed summary with key points and analysis",
+			)
 			expect(result.data?.keyPoints).toEqual(["Point 1", "Point 2", "Point 3"])
 		})
 
 		it("should handle bullet point generation", async () => {
 			const text = "Document discussing important concepts and methodologies."
 
-			const summarySpy = vi.spyOn(service as any, 'callSummarizationAPI')
+			const summarySpy = vi.spyOn(service as any, "callSummarizationAPI")
 			summarySpy.mockResolvedValue({
 				summary: "Key concepts and methodologies discussed in the document",
 				bullets: [
@@ -137,7 +144,7 @@ describe("SummarizationService", () => {
 			const singleService = new SummarizationService(options)
 			const text = "Single level summary test"
 
-			const summarySpy = vi.spyOn(singleService as any, 'callSummarizationAPI')
+			const summarySpy = vi.spyOn(singleService as any, "callSummarizationAPI")
 			summarySpy.mockResolvedValue({
 				summary: "Single level summary",
 				confidence: 0.8,
@@ -160,7 +167,7 @@ describe("SummarizationService", () => {
 				"Table data with rows and columns",
 			]
 
-			const summarySpy = vi.spyOn(service as any, 'callSummarizationAPI')
+			const summarySpy = vi.spyOn(service as any, "callSummarizationAPI")
 			summarySpy.mockResolvedValue({
 				summary: "Summarized content",
 				confidence: 0.8,
@@ -185,7 +192,7 @@ More detailed information.
 ## Conclusion
 Final thoughts and summary.`
 
-			const summarySpy = vi.spyOn(service as any, 'callSummarizationAPI')
+			const summarySpy = vi.spyOn(service as any, "callSummarizationAPI")
 			summarySpy.mockResolvedValue({
 				summary: "Document covering introduction, main content, and conclusion",
 				confidence: 0.9,
@@ -202,27 +209,27 @@ Final thoughts and summary.`
 	describe("Error Handling", () => {
 		it("should handle API failures", async () => {
 			const text = "Test text for error handling"
-			
-			const summarySpy = vi.spyOn(service as any, 'callSummarizationAPI')
-			summarySpy.mockRejectedValue(new Error('API rate limit exceeded'))
+
+			const summarySpy = vi.spyOn(service as any, "callSummarizationAPI")
+			summarySpy.mockRejectedValue(new Error("API rate limit exceeded"))
 
 			const result = await service.generateSummary(text)
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('SUMMARIZATION_FAILED')
+			expect(result.error?.code).toBe("SUMMARIZATION_FAILED")
 		})
 
 		it("should handle empty text", async () => {
 			const result = await service.generateSummary("")
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('EMPTY_TEXT')
+			expect(result.error?.code).toBe("EMPTY_TEXT")
 		})
 
 		it("should handle very long text gracefully", async () => {
 			const hugeText = "Content. ".repeat(10000)
-			
-			const summarySpy = vi.spyOn(service as any, 'callSummarizationAPI')
+
+			const summarySpy = vi.spyOn(service as any, "callSummarizationAPI")
 			summarySpy.mockImplementation((text) => {
 				// Simulate processing large text
 				return Promise.resolve({
@@ -250,8 +257,8 @@ Final thoughts and summary.`
 		})
 
 		it("should support different summary types", async () => {
-			const summaryTypes = ['concise', 'detailed', 'key_points', 'executive']
-			
+			const summaryTypes = ["concise", "detailed", "key_points", "executive"]
+
 			for (const type of summaryTypes) {
 				const options: SummarizationOptions = {
 					...mockOptions,
@@ -260,8 +267,8 @@ Final thoughts and summary.`
 
 				const typeService = new SummarizationService(options)
 				const text = `Test text for ${type} summary`
-				
-				const summarySpy = vi.spyOn(typeService as any, 'callSummarizationAPI')
+
+				const summarySpy = vi.spyOn(typeService as any, "callSummarizationAPI")
 				summarySpy.mockResolvedValue({
 					summary: `${type} summary`,
 					confidence: 0.8,
@@ -275,33 +282,35 @@ Final thoughts and summary.`
 
 	describe("Performance", () => {
 		it("should handle concurrent summarization", async () => {
-			const texts = Array(5).fill(null).map((_, i) => `Text ${i} for summarization`)
-			
-			const summarySpy = vi.spyOn(service as any, 'callSummarizationAPI')
+			const texts = Array(5)
+				.fill(null)
+				.map((_, i) => `Text ${i} for summarization`)
+
+			const summarySpy = vi.spyOn(service as any, "callSummarizationAPI")
 			summarySpy.mockResolvedValue({
 				summary: "Concurrent summary",
 				confidence: 0.8,
 			})
 
 			const results = await Promise.all(
-				texts.map(text => service.generateSummary(text))
+				texts.map((text) => service.generateSummary(text)),
 			)
 
 			expect(results).toHaveLength(5)
-			expect(results.every(r => r.success)).toBe(true)
+			expect(results.every((r) => r.success)).toBe(true)
 		})
 
 		it("should provide processing statistics", async () => {
 			const text = "Statistics test text"
-			
-			const summarySpy = vi.spyOn(service as any, 'callSummarizationAPI')
+
+			const summarySpy = vi.spyOn(service as any, "callSummarizationAPI")
 			summarySpy.mockResolvedValue({
 				summary: "Summary with statistics",
 				confidence: 0.8,
 			})
 
 			await service.generateSummary(text)
-			
+
 			const stats = service.getStatistics()
 			expect(stats.totalSummaries).toBeGreaterThan(0)
 			expect(stats.averageLatency).toBeGreaterThan(0)
@@ -316,7 +325,7 @@ Final thoughts and summary.`
 
 		it("should create service with custom options", () => {
 			const customOptions: SummarizationOptions = {
-				provider: 'openai',
+				provider: "openai",
 				maxSummaryLength: 150,
 			}
 
@@ -328,8 +337,8 @@ Final thoughts and summary.`
 	describe("Edge Cases", () => {
 		it("should handle texts with special characters", async () => {
 			const specialText = "Text with émojis 🎯 and spëciäl chårs & symbols @#$%"
-			
-			const summarySpy = vi.spyOn(service as any, 'callSummarizationAPI')
+
+			const summarySpy = vi.spyOn(service as any, "callSummarizationAPI")
 			summarySpy.mockResolvedValue({
 				summary: "Summary of special character text",
 				confidence: 0.7,
@@ -342,7 +351,7 @@ Final thoughts and summary.`
 
 		it("should handle single word documents", async () => {
 			const singleWord = "Word"
-			
+
 			const result = await service.generateSummary(singleWord)
 
 			expect(result.success).toBe(true)

@@ -21,10 +21,7 @@ export async function updateDocumentContent(
 	}
 }
 
-export async function moveDocumentToProject(
-	id: string,
-	containerTag: string,
-) {
+export async function moveDocumentToProject(id: string, containerTag: string) {
 	try {
 		const response = await $fetch("@patch/documents/:id", {
 			params: { id },

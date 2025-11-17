@@ -1,9 +1,9 @@
 "use client"
 
+import { Button } from "@repo/ui/components/button"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
-import { Button } from "@repo/ui/components/button"
 
 interface ThemeToggleProps {
 	className?: string
@@ -22,7 +22,10 @@ interface ThemeToggleProps {
  * @param className - Optional className for styling
  * @param showLabel - Whether to show the theme label text (default: false)
  */
-export function ThemeToggle({ className, showLabel = false }: ThemeToggleProps) {
+export function ThemeToggle({
+	className,
+	showLabel = false,
+}: ThemeToggleProps) {
 	const { theme, setTheme } = useTheme()
 	const [mounted, setMounted] = useState(false)
 
@@ -35,10 +38,10 @@ export function ThemeToggle({ className, showLabel = false }: ThemeToggleProps) 
 	if (!mounted) {
 		return (
 			<Button
-				variant="ghost"
-				size={showLabel ? "default" : "icon"}
 				className={className}
 				disabled
+				size={showLabel ? "default" : "icon"}
+				variant="ghost"
 			/>
 		)
 	}
@@ -49,19 +52,17 @@ export function ThemeToggle({ className, showLabel = false }: ThemeToggleProps) 
 
 	return (
 		<Button
-			variant="ghost"
-			size={showLabel ? "default" : "icon"}
-			onClick={toggleTheme}
-			className={className}
 			aria-label="Toggle theme"
+			className={className}
+			onClick={toggleTheme}
+			size={showLabel ? "default" : "icon"}
 			type="button"
+			variant="ghost"
 		>
 			<Sun className="h-[1rem] w-[1rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
 			<Moon className="absolute h-[1rem] w-[1rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
 			{showLabel && (
-				<span className="ml-2">
-					{theme === "dark" ? "Light" : "Dark"} Mode
-				</span>
+				<span className="ml-2">{theme === "dark" ? "Light" : "Dark"} Mode</span>
 			)}
 			<span className="sr-only">Toggle theme</span>
 		</Button>

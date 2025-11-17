@@ -223,11 +223,15 @@ export function ConnectAIModal({
 					<div className="space-y-4">
 						<div className="flex items-center gap-3">
 							<div
-								className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-muted text-muted-foreground`}
+								className={
+									"w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-muted text-muted-foreground"
+								}
 							>
 								1
 							</div>
-							<h3 className="text-sm font-medium text-foreground">Select Your AI Client</h3>
+							<h3 className="text-sm font-medium text-foreground">
+								Select Your AI Client
+							</h3>
 						</div>
 
 						<div className="space-x-2 space-y-2">
@@ -536,7 +540,9 @@ export function ConnectAIModal({
 								<div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-sm font-medium">
 									3
 								</div>
-								<h3 className="text-sm font-medium text-foreground">Installation Command</h3>
+								<h3 className="text-sm font-medium text-foreground">
+									Installation Command
+								</h3>
 							</div>
 
 							<div className="relative">

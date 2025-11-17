@@ -130,18 +130,18 @@ export function useGraphInteractions(
 	}, []);
 
 	// Pan handlers
-    const handlePanStart = useCallback(
-        (e: React.MouseEvent) => {
-            // Ignore pan start if the mousedown is on a DnD handle (e.g., canvas document drag handle)
-            const target = e.target as HTMLElement | null
-            if (target && target.closest('[data-dnd-handle="true"]')) {
-                return
-            }
-            setIsPanning(true);
-            setPanStart({ x: e.clientX - panX, y: e.clientY - panY });
-        },
-        [panX, panY],
-    );
+	const handlePanStart = useCallback(
+		(e: React.MouseEvent) => {
+			// Ignore pan start if the mousedown is on a DnD handle (e.g., canvas document drag handle)
+			const target = e.target as HTMLElement | null;
+			if (target && target.closest('[data-dnd-handle="true"]')) {
+				return;
+			}
+			setIsPanning(true);
+			setPanStart({ x: e.clientX - panX, y: e.clientY - panY });
+		},
+		[panX, panY],
+	);
 
 	const handlePanMove = useCallback(
 		(e: React.MouseEvent) => {

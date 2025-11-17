@@ -1,9 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk"
 import type { SupabaseClient } from "@supabase/supabase-js"
+import {
+	getDefaultProvider,
+	getProviderConfig,
+	type ProviderId,
+} from "../config/providers"
 import { env } from "../env"
 import { ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
 import { searchDocuments } from "../routes/search"
-import { getProviderConfig, getDefaultProvider, type ProviderId } from "../config/providers"
 
 export type AgentMessage = {
 	role: "user" | "assistant"
@@ -33,7 +37,7 @@ async function handleSearchDatabase(
 	client: SupabaseClient,
 	orgId: string,
 	query: string,
-	context?: AgentContextOptions
+	context?: AgentContextOptions,
 ): Promise<string> {
 	try {
 		const results = await searchDocuments(client, orgId, {
@@ -85,7 +89,11 @@ export async function executeClaudeDirect({
 	const providerId = provider || getDefaultProvider()
 	const providerConfig = getProviderConfig(providerId)
 
-	console.log("[executeClaudeDirect] Using provider:", providerConfig.name, `(${providerId})`)
+	console.log(
+		"[executeClaudeDirect] Using provider:",
+		providerConfig.name,
+		`(${providerId})`,
+	)
 	console.log("[executeClaudeDirect] Base URL:", providerConfig.baseURL)
 
 	const anthropic = new Anthropic({
@@ -118,7 +126,7 @@ export async function executeClaudeDirect({
 		content: msg.content,
 	}))
 
-	let currentMessages = [...anthropicMessages]
+	const currentMessages = [...anthropicMessages]
 	let toolCallCount = 0
 	let turn = 0
 
@@ -145,7 +153,7 @@ export async function executeClaudeDirect({
 
 		// Processar tool calls
 		const toolUseBlocks = response.content.filter(
-			(block) => block.type === "tool_use"
+			(block) => block.type === "tool_use",
 		) as Anthropic.ToolUseBlock[]
 
 		if (toolUseBlocks.length === 0) {
@@ -175,7 +183,7 @@ export async function executeClaudeDirect({
 					client,
 					orgId,
 					input.query,
-					context
+					context,
 				)
 
 				toolResults.push({

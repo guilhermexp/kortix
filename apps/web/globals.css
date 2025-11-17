@@ -5,452 +5,462 @@
 
 /* Global Font Scale - Increased by ~20% for better readability across entire app */
 :root {
-  /* Base font sizes - increased by 20% */
-  --font-size-xs: 0.75rem;      /* 12px */
-  --font-size-sm: 0.875rem;     /* 14px */
-  --font-size-base: 1rem;       /* 16px */
-  --font-size-lg: 1.125rem;     /* 18px */
-  --font-size-xl: 1.25rem;      /* 20px */
-  --font-size-2xl: 1.5rem;      /* 24px */
-  --font-size-3xl: 1.875rem;    /* 30px */
-  --font-size-4xl: 2.25rem;     /* 36px */
-  --font-size-5xl: 3rem;        /* 48px */
-  --font-size-6xl: 3.75rem;     /* 60px */
+	/* Base font sizes - increased by 20% */
+	--font-size-xs: 0.75rem; /* 12px */
+	--font-size-sm: 0.875rem; /* 14px */
+	--font-size-base: 1rem; /* 16px */
+	--font-size-lg: 1.125rem; /* 18px */
+	--font-size-xl: 1.25rem; /* 20px */
+	--font-size-2xl: 1.5rem; /* 24px */
+	--font-size-3xl: 1.875rem; /* 30px */
+	--font-size-4xl: 2.25rem; /* 36px */
+	--font-size-5xl: 3rem; /* 48px */
+	--font-size-6xl: 3.75rem; /* 60px */
 
-  /* Line height scale */
-  --line-height-none: 1;
-  --line-height-tight: 1.25;
-  --line-height-snug: 1.375;
-  --line-height-normal: 1.5;
-  --line-height-relaxed: 1.625;
-  --line-height-loose: 2;
+	/* Line height scale */
+	--line-height-none: 1;
+	--line-height-tight: 1.25;
+	--line-height-snug: 1.375;
+	--line-height-normal: 1.5;
+	--line-height-relaxed: 1.625;
+	--line-height-loose: 2;
 }
 
 /* Apply typography scale to global elements - 20% increase */
 html {
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-relaxed);
+	font-size: var(--font-size-base);
+	line-height: var(--line-height-relaxed);
 }
 
 body {
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-relaxed);
+	font-size: var(--font-size-base);
+	line-height: var(--line-height-relaxed);
 }
 
 /* Apply to common text elements */
-p, div, span, li, td, th {
-  font-size: var(--font-size-base);
+p,
+div,
+span,
+li,
+td,
+th {
+	font-size: var(--font-size-base);
 }
 
 h1 {
-  font-size: var(--font-size-4xl);
-  line-height: var(--line-height-tight);
+	font-size: var(--font-size-4xl);
+	line-height: var(--line-height-tight);
 }
 
 h2 {
-  font-size: var(--font-size-3xl);
-  line-height: var(--line-height-tight);
+	font-size: var(--font-size-3xl);
+	line-height: var(--line-height-tight);
 }
 
 h3 {
-  font-size: var(--font-size-2xl);
-  line-height: var(--line-height-snug);
+	font-size: var(--font-size-2xl);
+	line-height: var(--line-height-snug);
 }
 
 h4 {
-  font-size: var(--font-size-xl);
-  line-height: var(--line-height-snug);
+	font-size: var(--font-size-xl);
+	line-height: var(--line-height-snug);
 }
 
 h5 {
-  font-size: var(--font-size-lg);
-  line-height: var(--line-height-normal);
+	font-size: var(--font-size-lg);
+	line-height: var(--line-height-normal);
 }
 
 h6 {
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-normal);
-  font-weight: 600;
+	font-size: var(--font-size-base);
+	line-height: var(--line-height-normal);
+	font-weight: 600;
 }
 
-small, .text-small {
-  font-size: var(--font-size-sm);
+small,
+.text-small {
+	font-size: var(--font-size-sm);
 }
 
 .text-xs {
-  font-size: var(--font-size-xs);
+	font-size: var(--font-size-xs);
 }
 
 .text-sm {
-  font-size: var(--font-size-sm);
+	font-size: var(--font-size-sm);
 }
 
 .text-base {
-  font-size: var(--font-size-base);
+	font-size: var(--font-size-base);
 }
 
 .text-lg {
-  font-size: var(--font-size-lg);
+	font-size: var(--font-size-lg);
 }
 
 .text-xl {
-  font-size: var(--font-size-xl);
+	font-size: var(--font-size-xl);
 }
 
 .text-2xl {
-  font-size: var(--font-size-2xl);
+	font-size: var(--font-size-2xl);
 }
 
 .text-3xl {
-  font-size: var(--font-size-3xl);
+	font-size: var(--font-size-3xl);
 }
 
 .text-4xl {
-  font-size: var(--font-size-4xl);
+	font-size: var(--font-size-4xl);
 }
 
 .text-5xl {
-  font-size: var(--font-size-5xl);
+	font-size: var(--font-size-5xl);
 }
 
 .text-6xl {
-  font-size: var(--font-size-6xl);
+	font-size: var(--font-size-6xl);
 }
 
 @keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
+	}
 }
 
 /* Estilos para markdown do chat */
 .chat-markdown h1 {
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
-  color: hsl(var(--foreground));
-  margin-top: 1rem;
-  margin-bottom: 0.75rem;
-  line-height: var(--line-height-tight);
+	font-size: var(--font-size-2xl);
+	font-weight: 700;
+	color: hsl(var(--foreground));
+	margin-top: 1rem;
+	margin-bottom: 0.75rem;
+	line-height: var(--line-height-tight);
 }
 
 .chat-markdown h2 {
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  margin-top: 0.875rem;
-  margin-bottom: 0.625rem;
-  line-height: var(--line-height-snug);
+	font-size: var(--font-size-xl);
+	font-weight: 600;
+	color: hsl(var(--foreground));
+	margin-top: 0.875rem;
+	margin-bottom: 0.625rem;
+	line-height: var(--line-height-snug);
 }
 
 .chat-markdown h3 {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  margin-top: 0.75rem;
-  margin-bottom: 0.5rem;
-  line-height: var(--line-height-normal);
+	font-size: var(--font-size-lg);
+	font-weight: 600;
+	color: hsl(var(--foreground));
+	margin-top: 0.75rem;
+	margin-bottom: 0.5rem;
+	line-height: var(--line-height-normal);
 }
 
 .chat-markdown h4 {
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  margin-top: 0.625rem;
-  margin-bottom: 0.5rem;
-  line-height: var(--line-height-normal);
+	font-size: var(--font-size-base);
+	font-weight: 600;
+	color: hsl(var(--foreground));
+	margin-top: 0.625rem;
+	margin-bottom: 0.5rem;
+	line-height: var(--line-height-normal);
 }
 
 .chat-markdown p {
-  color: hsl(var(--foreground) / 0.9);
-  margin-bottom: 0.75rem;
-  line-height: var(--line-height-relaxed);
-  font-size: var(--font-size-base);
+	color: hsl(var(--foreground) / 0.9);
+	margin-bottom: 0.75rem;
+	line-height: var(--line-height-relaxed);
+	font-size: var(--font-size-base);
 }
 
 .chat-markdown ul,
 .chat-markdown ol {
-  margin-left: 1.5rem;
-  margin-bottom: 0.75rem;
-  color: hsl(var(--foreground) / 0.85);
+	margin-left: 1.5rem;
+	margin-bottom: 0.75rem;
+	color: hsl(var(--foreground) / 0.85);
 }
 
 .chat-markdown ul {
-  list-style-type: disc;
+	list-style-type: disc;
 }
 
 .chat-markdown ol {
-  list-style-type: decimal;
+	list-style-type: decimal;
 }
 
 .chat-markdown li {
-  margin-bottom: 0.375rem;
-  line-height: var(--line-height-relaxed);
-  color: hsl(var(--foreground) / 0.85);
-  font-size: var(--font-size-base);
+	margin-bottom: 0.375rem;
+	line-height: var(--line-height-relaxed);
+	color: hsl(var(--foreground) / 0.85);
+	font-size: var(--font-size-base);
 }
 
 .chat-markdown li::marker {
-  color: hsl(var(--muted-foreground));
+	color: hsl(var(--muted-foreground));
 }
 
 .chat-markdown strong,
 .chat-markdown b {
-  font-weight: 600;
-  color: hsl(var(--foreground));
+	font-weight: 600;
+	color: hsl(var(--foreground));
 }
 
 .chat-markdown em,
 .chat-markdown i {
-  font-style: italic;
-  color: hsl(var(--foreground) / 0.95);
+	font-style: italic;
+	color: hsl(var(--foreground) / 0.95);
 }
 
 .chat-markdown code {
-  background-color: transparent;
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  font-family: "Monaco", "Courier New", monospace;
-  font-size: var(--font-size-sm);
-  color: var(--foreground);
-  border: none;
+	background-color: transparent;
+	padding: 0.125rem 0.375rem;
+	border-radius: 0.25rem;
+	font-family: "Monaco", "Courier New", monospace;
+	font-size: var(--font-size-sm);
+	color: var(--foreground);
+	border: none;
 }
 
 .dark .chat-markdown code {
-  background-color: transparent !important;
-  color: color-mix(in oklch, var(--foreground) 92%, white 8%);
-  border: none;
+	background-color: transparent !important;
+	color: color-mix(in oklch, var(--foreground) 92%, white 8%);
+	border: none;
 }
 
 .chat-markdown pre {
-  background-color: var(--muted);
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  overflow-x: auto;
-  margin-bottom: 0.75rem;
-  border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+	background-color: var(--muted);
+	padding: 0.75rem;
+	border-radius: 0.5rem;
+	overflow-x: auto;
+	margin-bottom: 0.75rem;
+	border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
 }
 
 .dark .chat-markdown pre {
-  background-color: color-mix(in oklch, var(--background) 94%, var(--foreground) 6%) !important;
-  border-color: color-mix(in oklch, var(--border) 65%, transparent);
-  box-shadow: 0 12px 28px color-mix(in srgb, black 24%, transparent);
+	background-color: color-mix(
+		in oklch,
+		var(--background) 94%,
+		var(--foreground) 6%
+	) !important;
+	border-color: color-mix(in oklch, var(--border) 65%, transparent);
+	box-shadow: 0 12px 28px color-mix(in srgb, black 24%, transparent);
 }
 
 .chat-markdown pre code {
-  background-color: transparent;
-  padding: 0;
-  border: none;
-  color: inherit;
+	background-color: transparent;
+	padding: 0;
+	border: none;
+	color: inherit;
 }
 
 /* Estilos adicionais para garantir que o Streamdown respeite o tema */
 .chat-markdown pre[class*="language-"],
 .chat-markdown code[class*="language-"] {
-  background-color: transparent;
-  color: inherit;
+	background-color: transparent;
+	color: inherit;
 }
 
 /* Force theme background for any code blocks that might bypass the .chat-markdown class */
 .chat-markdown div pre,
 .chat-markdown div code {
-  background-color: transparent;
+	background-color: transparent;
 }
 
 .dark .chat-markdown div pre,
 .dark .chat-markdown div code {
-  background-color: transparent !important;
+	background-color: transparent !important;
 }
 
 .chat-markdown div pre code {
-  background-color: transparent !important;
+	background-color: transparent !important;
 }
 
 .dark .chat-markdown pre[class*="language-"],
 .dark .chat-markdown code[class*="language-"] {
-  background-color: transparent !important;
+	background-color: transparent !important;
 }
 
 .dark .chat-markdown pre code span {
-  filter: brightness(1.6) saturate(1.35);
+	filter: brightness(1.6) saturate(1.35);
 }
 
 .chat-markdown a {
-  color: #38bdf8;
-  text-decoration: underline;
-  text-decoration-color: rgba(56, 189, 248, 0.3);
-  transition: all 0.2s;
+	color: #38bdf8;
+	text-decoration: underline;
+	text-decoration-color: rgba(56, 189, 248, 0.3);
+	transition: all 0.2s;
 }
 
 .chat-markdown a:hover {
-  color: #7dd3fc;
-  text-decoration-color: rgba(125, 211, 252, 0.6);
+	color: #7dd3fc;
+	text-decoration-color: rgba(125, 211, 252, 0.6);
 }
 
 .chat-markdown blockquote {
-  border-left: 3px solid hsl(var(--border));
-  padding-left: 1rem;
-  margin-left: 0;
-  margin-bottom: 0.75rem;
-  color: hsl(var(--muted-foreground));
-  font-style: italic;
+	border-left: 3px solid hsl(var(--border));
+	padding-left: 1rem;
+	margin-left: 0;
+	margin-bottom: 0.75rem;
+	color: hsl(var(--muted-foreground));
+	font-style: italic;
 }
 
 .chat-markdown hr {
-  border: none;
-  border-top: 1px solid hsl(var(--border));
-  margin: 1rem 0;
+	border: none;
+	border-top: 1px solid hsl(var(--border));
+	margin: 1rem 0;
 }
 
 .chat-markdown table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 0.75rem;
+	width: 100%;
+	border-collapse: collapse;
+	margin-bottom: 0.75rem;
 }
 
 .chat-markdown th {
-  background-color: hsl(var(--muted));
-  color: hsl(var(--foreground));
-  font-weight: 600;
-  padding: 0.5rem;
-  border: 1px solid hsl(var(--border));
-  font-size: var(--font-size-base);
+	background-color: hsl(var(--muted));
+	color: hsl(var(--foreground));
+	font-weight: 600;
+	padding: 0.5rem;
+	border: 1px solid hsl(var(--border));
+	font-size: var(--font-size-base);
 }
 
 .chat-markdown td {
-  padding: 0.5rem;
-  border: 1px solid hsl(var(--border));
-  color: hsl(var(--foreground) / 0.85);
-  font-size: var(--font-size-base);
+	padding: 0.5rem;
+	border: 1px solid hsl(var(--border));
+	color: hsl(var(--foreground) / 0.85);
+	font-size: var(--font-size-base);
 }
 
 /* Estilos para referências/citações [1], [2], etc. */
 .chat-markdown sup {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  background-color: hsl(var(--muted));
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  margin-left: 0.125rem;
-  border: 1px solid hsl(var(--border));
-  vertical-align: super;
-  line-height: 0;
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: hsl(var(--foreground));
+	background-color: hsl(var(--muted));
+	padding: 0.125rem 0.375rem;
+	border-radius: 0.25rem;
+	margin-left: 0.125rem;
+	border: 1px solid hsl(var(--border));
+	vertical-align: super;
+	line-height: 0;
 }
 
 .chat-markdown sup a {
-  color: inherit;
-  text-decoration: none;
+	color: inherit;
+	text-decoration: none;
 }
 
 .chat-markdown sup a:hover {
-  color: hsl(var(--foreground));
+	color: hsl(var(--foreground));
 }
 
 /* Estilos para a seção "Sources:" */
 .chat-markdown h2:has(+ ol),
 .chat-markdown h3:has(+ ol),
 .chat-markdown h4:has(+ ol) {
-  color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
-  font-weight: 500;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-  opacity: 0.9;
+	color: hsl(var(--muted-foreground));
+	font-size: 0.8125rem;
+	font-weight: 500;
+	margin-top: 1rem;
+	margin-bottom: 0.5rem;
+	opacity: 0.9;
 }
 
 /* Lista de sources */
 .chat-markdown ol[start] {
-  margin-left: 1rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+	margin-left: 1rem;
+	color: hsl(var(--muted-foreground));
+	font-size: 0.8125rem;
 }
 
 .chat-markdown ol[start] li {
-  color: hsl(var(--muted-foreground));
-  margin-bottom: 0.25rem;
+	color: hsl(var(--muted-foreground));
+	margin-bottom: 0.25rem;
 }
 
 .chat-markdown ol[start] li::marker {
-  color: hsl(var(--muted-foreground));
-  font-weight: 500;
+	color: hsl(var(--muted-foreground));
+	font-weight: 500;
 }
 
 /* Mobile optimizations for editor */
 @media (max-width: 768px) {
-  /* Improve touch targets on mobile */
-  button,
-  a,
-  [role="button"] {
-    min-height: 44px;
-    min-width: 44px;
-  }
+	/* Improve touch targets on mobile */
+	button,
+	a,
+	[role="button"] {
+		min-height: 44px;
+		min-width: 44px;
+	}
 
-  /* Better text input on mobile */
-  input[type="text"],
-  textarea,
-  [contenteditable] {
-    font-size: 16px; /* Prevents zoom on iOS */
-  }
+	/* Better text input on mobile */
+	input[type="text"],
+	textarea,
+	[contenteditable] {
+		font-size: 16px; /* Prevents zoom on iOS */
+	}
 
-  /* Prevent text selection issues on mobile */
-  .editor-content {
-    -webkit-user-select: text;
-    user-select: text;
-    -webkit-touch-callout: default;
-  }
+	/* Prevent text selection issues on mobile */
+	.editor-content {
+		-webkit-user-select: text;
+		user-select: text;
+		-webkit-touch-callout: default;
+	}
 
-  /* Better scrolling on mobile */
-  .overflow-auto,
-  .overflow-scroll {
-    -webkit-overflow-scrolling: touch;
-  }
+	/* Better scrolling on mobile */
+	.overflow-auto,
+	.overflow-scroll {
+		-webkit-overflow-scrolling: touch;
+	}
 
-  /* Reduce padding on mobile for more content space */
-  .editor-wrapper {
-    padding: 0.75rem;
-  }
+	/* Reduce padding on mobile for more content space */
+	.editor-wrapper {
+		padding: 0.75rem;
+	}
 }
 
 /* Tablet optimizations */
 @media (min-width: 768px) and (max-width: 1024px) {
-  /* Slightly larger touch targets for tablets */
-  button,
-  a,
-  [role="button"] {
-    min-height: 40px;
-    min-width: 40px;
-  }
+	/* Slightly larger touch targets for tablets */
+	button,
+	a,
+	[role="button"] {
+		min-height: 40px;
+		min-width: 40px;
+	}
 }
 
 @layer utilities {
-  .bg-chat-surface {
-    background: rgba(255, 255, 255, 0.65) !important;
-    backdrop-filter: blur(32px) saturate(120%) !important;
-    -webkit-backdrop-filter: blur(32px) saturate(120%) !important;
-  }
+	.bg-chat-surface {
+		background: rgba(255, 255, 255, 0.65) !important;
+		backdrop-filter: blur(32px) saturate(120%) !important;
+		-webkit-backdrop-filter: blur(32px) saturate(120%) !important;
+	}
 
-  /* Only apply text colors to direct chat content, not buttons/controls */
-  .bg-chat-surface > div:not([class*="sticky"]) *:not(button):not(svg) {
-    color: rgb(30, 30, 30) !important;
-  }
+	/* Only apply text colors to direct chat content, not buttons/controls */
+	.bg-chat-surface > div:not([class*="sticky"]) *:not(button):not(svg) {
+		color: rgb(30, 30, 30) !important;
+	}
 
-  .bg-chat-surface code {
-    background-color: transparent !important;
-  }
+	.bg-chat-surface code {
+		background-color: transparent !important;
+	}
 
-  .dark .bg-chat-surface {
-    background: rgba(10, 10, 10, 0.45) !important;
-  }
+	.dark .bg-chat-surface {
+		background: rgba(10, 10, 10, 0.45) !important;
+	}
 
-  /* Only apply text colors to direct chat content, not buttons/controls */
-  .dark .bg-chat-surface > div:not([class*="sticky"]) *:not(button):not(svg) {
-    color: rgb(240, 240, 240) !important;
-  }
+	/* Only apply text colors to direct chat content, not buttons/controls */
+	.dark .bg-chat-surface > div:not([class*="sticky"]) *:not(button):not(svg) {
+		color: rgb(240, 240, 240) !important;
+	}
 
-  .dark .bg-chat-surface code {
-    background-color: transparent !important;
-  }
+	.dark .bg-chat-surface code {
+		background-color: transparent !important;
+	}
 }

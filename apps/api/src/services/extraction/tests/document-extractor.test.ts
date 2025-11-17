@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
-import {
-	DocumentExtractorService,
-	createDocumentExtractorService,
-} from '../document-extractor-service'
 import type {
+	DocumentExtractor,
 	ExtractionInput,
 	ExtractionResult,
 	ExtractorServiceConfig,
-	DocumentExtractor,
 	ProcessingError,
-} from '../../interfaces'
+} from "../../interfaces"
+import {
+	createDocumentExtractorService,
+	DocumentExtractorService,
+} from "../document-extractor-service"
 
 /**
  * Unit tests for DocumentExtractorService
@@ -40,7 +40,6 @@ describe("DocumentExtractorService", () => {
 				youtube: { priority: 2, enabled: true },
 				pdf: { priority: 3, enabled: true },
 				file: { priority: 4, enabled: true },
-				repository: { priority: 5, enabled: true },
 			},
 		}
 
@@ -49,20 +48,20 @@ describe("DocumentExtractorService", () => {
 
 		// Mock extractors
 		mockExtractors = new Map()
-		mockExtractors.set('url', {
+		mockExtractors.set("url", {
 			canHandle: vi.fn().mockReturnValue(true),
 			extract: vi.fn(),
-			getSupportedTypes: vi.fn().mockReturnValue(['url', 'web']),
+			getSupportedTypes: vi.fn().mockReturnValue(["url", "web"]),
 		})
-		mockExtractors.set('youtube', {
+		mockExtractors.set("youtube", {
 			canHandle: vi.fn().mockReturnValue(true),
 			extract: vi.fn(),
-			getSupportedTypes: vi.fn().mockReturnValue(['youtube', 'video']),
+			getSupportedTypes: vi.fn().mockReturnValue(["youtube", "video"]),
 		})
-		mockExtractors.set('pdf', {
+		mockExtractors.set("pdf", {
 			canHandle: vi.fn().mockReturnValue(true),
 			extract: vi.fn(),
-			getSupportedTypes: vi.fn().mockReturnValue(['pdf']),
+			getSupportedTypes: vi.fn().mockReturnValue(["pdf"]),
 		})
 	})
 
@@ -73,7 +72,7 @@ describe("DocumentExtractorService", () => {
 	describe("Service Initialization", () => {
 		it("should initialize with correct configuration", () => {
 			expect(service).toBeDefined()
-			expect(service.getName()).toBe('DocumentExtractorService')
+			expect(service.getName()).toBe("DocumentExtractorService")
 		})
 
 		it("should register all configured extractors", () => {
@@ -89,22 +88,22 @@ describe("DocumentExtractorService", () => {
 	describe("Extractor Selection", () => {
 		it("should select appropriate extractor based on input type", async () => {
 			const urlInput: ExtractionInput = {
-				type: 'url',
-				content: 'https://example.com',
+				type: "url",
+				content: "https://example.com",
 				options: {},
 			}
 
 			const mockResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'Extracted content',
-					metadata: { title: 'Example' },
+					content: "Extracted content",
+					metadata: { title: "Example" },
 					processingTime: 100,
 				},
 			}
 
 			// Configure mock to handle URL
-			const urlExtractor = mockExtractors.get('url')!
+			const urlExtractor = mockExtractors.get("url")!
 			urlExtractor.canHandle.mockReturnValue(true)
 			urlExtractor.extract.mockResolvedValue(mockResult)
 
@@ -116,21 +115,21 @@ describe("DocumentExtractorService", () => {
 
 		it("should handle YouTube URLs with YouTube extractor", async () => {
 			const youtubeInput: ExtractionInput = {
-				type: 'url',
-				content: 'https://youtube.com/watch?v=dQw4w9WgXcQ',
+				type: "url",
+				content: "https://youtube.com/watch?v=dQw4w9WgXcQ",
 				options: {},
 			}
 
 			const mockResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'Video transcript',
-					metadata: { title: 'Never Gonna Give You Up' },
+					content: "Video transcript",
+					metadata: { title: "Never Gonna Give You Up" },
 					processingTime: 2000,
 				},
 			}
 
-			const youtubeExtractor = mockExtractors.get('youtube')!
+			const youtubeExtractor = mockExtractors.get("youtube")!
 			youtubeExtractor.canHandle.mockReturnValue(true)
 			youtubeExtractor.extract.mockResolvedValue(mockResult)
 
@@ -141,21 +140,21 @@ describe("DocumentExtractorService", () => {
 
 		it("should handle PDF files with PDF extractor", async () => {
 			const pdfInput: ExtractionInput = {
-				type: 'file',
-				content: 'data:application/pdf;base64,JVBERi0xLjQK...',
-				options: { filename: 'document.pdf' },
+				type: "file",
+				content: "data:application/pdf;base64,JVBERi0xLjQK...",
+				options: { filename: "document.pdf" },
 			}
 
 			const mockResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'PDF text content',
-					metadata: { pageCount: 5, title: 'Document' },
+					content: "PDF text content",
+					metadata: { pageCount: 5, title: "Document" },
 					processingTime: 1500,
 				},
 			}
 
-			const pdfExtractor = mockExtractors.get('pdf')!
+			const pdfExtractor = mockExtractors.get("pdf")!
 			pdfExtractor.canHandle.mockReturnValue(true)
 			pdfExtractor.extract.mockResolvedValue(mockResult)
 
@@ -168,29 +167,29 @@ describe("DocumentExtractorService", () => {
 	describe("Fallback Chain", () => {
 		it("should try fallback extractors when primary fails", async () => {
 			const urlInput: ExtractionInput = {
-				type: 'url',
-				content: 'https://example.com',
+				type: "url",
+				content: "https://example.com",
 				options: {},
 			}
 
-			const urlExtractor = mockExtractors.get('url')!
+			const urlExtractor = mockExtractors.get("url")!
 			urlExtractor.canHandle.mockReturnValue(true)
-			urlExtractor.extract.mockRejectedValue(new Error('Network error'))
+			urlExtractor.extract.mockRejectedValue(new Error("Network error"))
 
-			const pdfExtractor = mockExtractors.get('pdf')!
+			const pdfExtractor = mockExtractors.get("pdf")!
 			pdfExtractor.canHandle.mockReturnValue(false) // Secondary attempt
 
 			const fallbackResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'Fallback content',
-					metadata: { source: 'fallback' },
+					content: "Fallback content",
+					metadata: { source: "fallback" },
 					processingTime: 500,
 				},
 			}
 
 			// Mock a hypothetical third extractor
-			const fileExtractor = mockExtractors.get('file')!
+			const fileExtractor = mockExtractors.get("file")!
 			fileExtractor.canHandle.mockReturnValue(true)
 			fileExtractor.extract.mockResolvedValue(fallbackResult)
 
@@ -201,15 +200,15 @@ describe("DocumentExtractorService", () => {
 
 		it("should return error when all extractors fail", async () => {
 			const urlInput: ExtractionInput = {
-				type: 'url',
-				content: 'https://example.com',
+				type: "url",
+				content: "https://example.com",
 				options: {},
 			}
 
 			// All extractors fail
 			mockExtractors.forEach((extractor) => {
 				extractor.canHandle.mockReturnValue(true)
-				extractor.extract.mockRejectedValue(new Error('Extraction failed'))
+				extractor.extract.mockRejectedValue(new Error("Extraction failed"))
 			})
 
 			const result = await service.extract(urlInput)
@@ -236,69 +235,67 @@ describe("DocumentExtractorService", () => {
 	describe("Error Handling", () => {
 		it("should handle timeout errors gracefully", async () => {
 			const urlInput: ExtractionInput = {
-				type: 'url',
-				content: 'https://slow-site.com',
+				type: "url",
+				content: "https://slow-site.com",
 				options: {},
 			}
 
-			const urlExtractor = mockExtractors.get('url')!
+			const urlExtractor = mockExtractors.get("url")!
 			urlExtractor.canHandle.mockReturnValue(true)
 			urlExtractor.extract.mockImplementation(
-				() => new Promise((resolve) => setTimeout(resolve, 60000))
+				() => new Promise((resolve) => setTimeout(resolve, 60000)),
 			)
 
 			const result = await service.extract(urlInput)
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('TIMEOUT')
+			expect(result.error?.code).toBe("TIMEOUT")
 		})
 
 		it("should handle invalid input gracefully", async () => {
 			const invalidInput: ExtractionInput = {
-				type: 'invalid',
-				content: '',
+				type: "invalid",
+				content: "",
 				options: {},
 			}
 
 			const result = await service.extract(invalidInput)
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('INVALID_INPUT')
+			expect(result.error?.code).toBe("INVALID_INPUT")
 		})
 
 		it("should handle network connectivity issues", async () => {
 			const urlInput: ExtractionInput = {
-				type: 'url',
-				content: 'https://unreachable-site.com',
+				type: "url",
+				content: "https://unreachable-site.com",
 				options: {},
 			}
 
-			const urlExtractor = mockExtractors.get('url')!
+			const urlExtractor = mockExtractors.get("url")!
 			urlExtractor.canHandle.mockReturnValue(true)
-			urlExtractor.extract.mockRejectedValue(
-				new Error('ECONNREFUSED')
-			)
+			urlExtractor.extract.mockRejectedValue(new Error("ECONNREFUSED"))
 
 			const result = await service.extract(urlInput)
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('NETWORK_ERROR')
+			expect(result.error?.code).toBe("NETWORK_ERROR")
 		})
 	})
 
 	describe("Input Validation", () => {
 		it("should validate required input fields", async () => {
 			const invalidInput = {
-				type: 'url',
+				type: "url",
 				// missing content
 				options: {},
 			} as ExtractionInput
 
 			const result = await service.extract(invalidInput)
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('VALIDATION_ERROR')
+			expect(result.error?.code).toBe("VALIDATION_ERROR")
 		})
 
 		it("should sanitize input content", async () => {
 			const maliciousInput: ExtractionInput = {
-				type: 'url',
+				type: "url",
 				content: 'https://example.com<script>alert("xss")</script>',
 				options: {},
 			}
@@ -309,35 +306,35 @@ describe("DocumentExtractorService", () => {
 
 		it("should validate URL format", async () => {
 			const invalidUrlInput: ExtractionInput = {
-				type: 'url',
-				content: 'not-a-valid-url',
+				type: "url",
+				content: "not-a-valid-url",
 				options: {},
 			}
 
 			const result = await service.extract(invalidUrlInput)
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('VALIDATION_ERROR')
+			expect(result.error?.code).toBe("VALIDATION_ERROR")
 		})
 	})
 
 	describe("Performance Monitoring", () => {
 		it("should track extraction performance", async () => {
 			const urlInput: ExtractionInput = {
-				type: 'url',
-				content: 'https://example.com',
+				type: "url",
+				content: "https://example.com",
 				options: {},
 			}
 
 			const mockResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'Content',
+					content: "Content",
 					metadata: {},
 					processingTime: 1500,
 				},
 			}
 
-			const urlExtractor = mockExtractors.get('url')!
+			const urlExtractor = mockExtractors.get("url")!
 			urlExtractor.canHandle.mockReturnValue(true)
 			urlExtractor.extract.mockResolvedValue(mockResult)
 
@@ -353,22 +350,22 @@ describe("DocumentExtractorService", () => {
 
 		it("should handle concurrent extractions", async () => {
 			const inputs: ExtractionInput[] = [
-				{ type: 'url', content: 'https://site1.com', options: {} },
-				{ type: 'url', content: 'https://site2.com', options: {} },
-				{ type: 'url', content: 'https://site3.com', options: {} },
+				{ type: "url", content: "https://site1.com", options: {} },
+				{ type: "url", content: "https://site2.com", options: {} },
+				{ type: "url", content: "https://site3.com", options: {} },
 			]
 
 			const mockResult: ExtractionResult = {
 				success: true,
-				data: { content: 'Content', metadata: {}, processingTime: 100 },
+				data: { content: "Content", metadata: {}, processingTime: 100 },
 			}
 
-			const urlExtractor = mockExtractors.get('url')!
+			const urlExtractor = mockExtractors.get("url")!
 			urlExtractor.canHandle.mockReturnValue(true)
 			urlExtractor.extract.mockResolvedValue(mockResult)
 
 			const results = await Promise.all(
-				inputs.map((input) => service.extract(input))
+				inputs.map((input) => service.extract(input)),
 			)
 
 			expect(results).toHaveLength(3)
@@ -393,20 +390,20 @@ describe("DocumentExtractorService", () => {
 	describe("Retry Logic", () => {
 		it("should retry failed extractions with exponential backoff", async () => {
 			const urlInput: ExtractionInput = {
-				type: 'url',
-				content: 'https://flaky-site.com',
+				type: "url",
+				content: "https://flaky-site.com",
 				options: {},
 			}
 
-			const urlExtractor = mockExtractors.get('url')!
+			const urlExtractor = mockExtractors.get("url")!
 			urlExtractor.canHandle.mockReturnValue(true)
 			// Fail twice, succeed on third attempt
 			urlExtractor.extract
-				.mockRejectedValueOnce(new Error('Temporary error'))
-				.mockRejectedValueOnce(new Error('Temporary error'))
+				.mockRejectedValueOnce(new Error("Temporary error"))
+				.mockRejectedValueOnce(new Error("Temporary error"))
 				.mockResolvedValue({
 					success: true,
-					data: { content: 'Success', metadata: {}, processingTime: 100 },
+					data: { content: "Success", metadata: {}, processingTime: 100 },
 				})
 
 			const result = await service.extract(urlInput)
@@ -416,38 +413,38 @@ describe("DocumentExtractorService", () => {
 
 		it("should respect max retry limits", async () => {
 			const urlInput: ExtractionInput = {
-				type: 'url',
-				content: 'https://always-fail.com',
+				type: "url",
+				content: "https://always-fail.com",
 				options: {},
 			}
 
-			const urlExtractor = mockExtractors.get('url')!
+			const urlExtractor = mockExtractors.get("url")!
 			urlExtractor.canHandle.mockReturnValue(true)
-			urlExtractor.extract.mockRejectedValue(new Error('Always fails'))
+			urlExtractor.extract.mockRejectedValue(new Error("Always fails"))
 
 			const result = await service.extract(urlInput)
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('MAX_RETRIES_EXCEEDED')
+			expect(result.error?.code).toBe("MAX_RETRIES_EXCEEDED")
 		})
 	})
 
 	describe("Edge Cases", () => {
 		it("should handle empty content", async () => {
 			const emptyInput: ExtractionInput = {
-				type: 'url',
-				content: '',
+				type: "url",
+				content: "",
 				options: {},
 			}
 
 			const result = await service.extract(emptyInput)
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('VALIDATION_ERROR')
+			expect(result.error?.code).toBe("VALIDATION_ERROR")
 		})
 
 		it("should handle extremely large content", async () => {
 			const largeInput: ExtractionInput = {
-				type: 'url',
-				content: 'https://example.com',
+				type: "url",
+				content: "https://example.com",
 				options: {},
 			}
 
@@ -455,13 +452,13 @@ describe("DocumentExtractorService", () => {
 			const largeResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'x'.repeat(10 * 1024 * 1024), // 10MB
+					content: "x".repeat(10 * 1024 * 1024), // 10MB
 					metadata: {},
 					processingTime: 5000,
 				},
 			}
 
-			const urlExtractor = mockExtractors.get('url')!
+			const urlExtractor = mockExtractors.get("url")!
 			urlExtractor.canHandle.mockReturnValue(true)
 			urlExtractor.extract.mockResolvedValue(largeResult)
 
@@ -478,7 +475,7 @@ describe("DocumentExtractorService", () => {
 		it("should create service with default configuration", () => {
 			const service = createDocumentExtractorService()
 			expect(service).toBeDefined()
-			expect(service.getName()).toBe('DocumentExtractorService')
+			expect(service.getName()).toBe("DocumentExtractorService")
 		})
 
 		it("should create service with custom configuration", () => {

@@ -56,7 +56,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
 	addPlacedDocuments: (ids: string[]) => {
 		set((state) => ({
-			placedDocumentIds: Array.from(new Set([...state.placedDocumentIds, ...ids])),
+			placedDocumentIds: Array.from(
+				new Set([...state.placedDocumentIds, ...ids]),
+			),
 		}))
 	},
 
@@ -202,7 +204,7 @@ export function useCanvasState() {
 	)
 	const placedCount = useCanvasStore((s) => s.placedDocumentIds.length)
 	const scopedCount = useCanvasStore((s) => s.scopedDocumentIds.length)
-    const selectedCount = useCanvasStore((s) => s.selectedDocumentIds.length)
+	const selectedCount = useCanvasStore((s) => s.selectedDocumentIds.length)
 
 	return {
 		hasPlacedDocuments,

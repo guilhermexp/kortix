@@ -11,13 +11,13 @@
  * - Caching for improved performance
  */
 
-import { BaseService } from '../base/base-service'
+import { BaseService } from "../base/base-service"
 import type {
-	FaviconExtractor as IFaviconExtractor,
-	FaviconExtractionOptions,
 	FaviconCollection,
+	FaviconExtractionOptions,
 	FaviconMetadata,
-} from '../interfaces'
+	FaviconExtractor as IFaviconExtractor,
+} from "../interfaces"
 
 // ============================================================================
 // Constants
@@ -25,21 +25,21 @@ import type {
 
 const DEFAULT_TIMEOUT = 5000 // 5 seconds
 const DEFAULT_MIN_SIZE = 16
-const DEFAULT_ALLOWED_FORMATS = ['ico', 'png', 'svg', 'jpg', 'jpeg', 'gif']
+const DEFAULT_ALLOWED_FORMATS = ["ico", "png", "svg", "jpg", "jpeg", "gif"]
 
 // Common favicon paths to check
 const STANDARD_FAVICON_PATHS = [
-	'/favicon.ico',
-	'/favicon.png',
-	'/favicon.svg',
-	'/apple-touch-icon.png',
-	'/apple-touch-icon-precomposed.png',
+	"/favicon.ico",
+	"/favicon.png",
+	"/favicon.svg",
+	"/apple-touch-icon.png",
+	"/apple-touch-icon-precomposed.png",
 ]
 
 // External favicon services (fallback)
 const EXTERNAL_SERVICES = [
-	'https://www.google.com/s2/favicons?domain={{domain}}&sz=128',
-	'https://icons.duckduckgo.com/ip3/{{domain}}.ico',
+	"https://www.google.com/s2/favicons?domain={{domain}}&sz=128",
+	"https://icons.duckduckgo.com/ip3/{{domain}}.ico",
 ]
 
 // ============================================================================
@@ -54,7 +54,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	private readonly cache: Map<string, FaviconCollection>
 
 	constructor(options?: Partial<FaviconExtractionOptions>) {
-		super('FaviconExtractor')
+		super("FaviconExtractor")
 
 		this.defaultOptions = {
 			preferHighRes: options?.preferHighRes ?? true,
@@ -76,25 +76,25 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	 */
 	async extract(
 		url: string,
-		options?: FaviconExtractionOptions
+		options?: FaviconExtractionOptions,
 	): Promise<string | null> {
 		this.assertInitialized()
 
-		const tracker = this.performanceMonitor.startOperation('extract')
+		const tracker = this.performanceMonitor.startOperation("extract")
 		const config = { ...this.defaultOptions, ...options }
 
 		try {
-			this.logger.info('Extracting favicon', { url })
+			this.logger.info("Extracting favicon", { url })
 
 			// Validate URL
 			if (!this.isValidUrl(url)) {
-				throw this.createError('INVALID_URL', `Invalid URL: ${url}`)
+				throw this.createError("INVALID_URL", `Invalid URL: ${url}`)
 			}
 
 			// Try to get from cache
 			const cached = this.cache.get(url)
 			if (cached) {
-				this.logger.debug('Favicon found in cache', { url })
+				this.logger.debug("Favicon found in cache", { url })
 				return cached.primary
 			}
 
@@ -109,7 +109,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 			return collection.primary
 		} catch (error) {
 			tracker.end(false)
-			this.logger.error('Failed to extract favicon', {
+			this.logger.error("Failed to extract favicon", {
 				error: (error as Error).message,
 				url,
 			})
@@ -123,10 +123,10 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	async getAllFavicons(url: string): Promise<FaviconCollection> {
 		this.assertInitialized()
 
-		const tracker = this.performanceMonitor.startOperation('getAllFavicons')
+		const tracker = this.performanceMonitor.startOperation("getAllFavicons")
 
 		try {
-			this.logger.debug('Getting all favicons', { url })
+			this.logger.debug("Getting all favicons", { url })
 
 			const baseUrl = this.getBaseUrl(url)
 			const collection: FaviconCollection = {
@@ -145,7 +145,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 					await this.addToCollection(collection, icon)
 				}
 			} catch (error) {
-				this.logger.warn('Failed to parse HTML for favicons', {
+				this.logger.warn("Failed to parse HTML for favicons", {
 					error: (error as Error).message,
 					url,
 				})
@@ -168,7 +168,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 			) {
 				const domain = this.getDomain(baseUrl)
 				for (const serviceTemplate of EXTERNAL_SERVICES) {
-					const serviceUrl = serviceTemplate.replace('{{domain}}', domain)
+					const serviceUrl = serviceTemplate.replace("{{domain}}", domain)
 					if (await this.exists(serviceUrl)) {
 						await this.addToCollection(collection, serviceUrl)
 						break // Use first working service
@@ -181,7 +181,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 
 			tracker.end(true)
 
-			this.logger.debug('Favicons collected', {
+			this.logger.debug("Favicons collected", {
 				primary: !!collection.primary,
 				highRes: collection.highRes.length,
 				standard: collection.standard.length,
@@ -190,7 +190,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 			return collection
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'getAllFavicons')
+			throw this.handleError(error, "getAllFavicons")
 		}
 	}
 
@@ -218,7 +218,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 
 			return null
 		} catch (error) {
-			this.logger.error('Failed to get best favicon', {
+			this.logger.error("Failed to get best favicon", {
 				error: (error as Error).message,
 				url,
 			})
@@ -234,7 +234,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 
 		try {
 			const response = await fetch(url, {
-				method: 'HEAD',
+				method: "HEAD",
 				signal: AbortSignal.timeout(this.defaultOptions.timeout),
 			})
 
@@ -243,16 +243,16 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 			}
 
 			// Check content type
-			const contentType = response.headers.get('content-type')
+			const contentType = response.headers.get("content-type")
 			if (!contentType) {
 				return true // Assume it exists if no content type
 			}
 
 			// Check if it's an image or icon
 			return (
-				contentType.startsWith('image/') ||
-				contentType.includes('icon') ||
-				contentType.includes('octet-stream')
+				contentType.startsWith("image/") ||
+				contentType.includes("icon") ||
+				contentType.includes("octet-stream")
 			)
 		} catch {
 			return false
@@ -265,30 +265,30 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	async getMetadata(url: string): Promise<FaviconMetadata> {
 		this.assertInitialized()
 
-		const tracker = this.performanceMonitor.startOperation('getMetadata')
+		const tracker = this.performanceMonitor.startOperation("getMetadata")
 
 		try {
-			this.logger.debug('Getting favicon metadata', { url })
+			this.logger.debug("Getting favicon metadata", { url })
 
 			const response = await fetch(url, {
-				method: 'HEAD',
+				method: "HEAD",
 				signal: AbortSignal.timeout(this.defaultOptions.timeout),
 			})
 
 			if (!response.ok) {
 				throw this.createError(
-					'FAVICON_NOT_ACCESSIBLE',
-					`Favicon not accessible: ${response.status}`
+					"FAVICON_NOT_ACCESSIBLE",
+					`Favicon not accessible: ${response.status}`,
 				)
 			}
 
-			const contentType = response.headers.get('content-type') || 'image/x-icon'
-			const contentLength = response.headers.get('content-length')
+			const contentType = response.headers.get("content-type") || "image/x-icon"
+			const contentLength = response.headers.get("content-length")
 
 			// Try to determine size from URL or filename
 			const sizeMatch = url.match(/(\d+)x(\d+)/)
-			const width = sizeMatch ? parseInt(sizeMatch[1], 10) : undefined
-			const height = sizeMatch ? parseInt(sizeMatch[2], 10) : undefined
+			const width = sizeMatch ? Number.parseInt(sizeMatch[1], 10) : undefined
+			const height = sizeMatch ? Number.parseInt(sizeMatch[2], 10) : undefined
 
 			const metadata: FaviconMetadata = {
 				url,
@@ -304,7 +304,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 			return metadata
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'getMetadata')
+			throw this.handleError(error, "getMetadata")
 		}
 	}
 
@@ -342,7 +342,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	 */
 	private async addToCollection(
 		collection: FaviconCollection,
-		iconUrl: string
+		iconUrl: string,
 	): Promise<void> {
 		// Get metadata
 		try {
@@ -354,14 +354,14 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 				collection.highRes.push(iconUrl)
 
 				// Store Apple touch icon separately
-				if (iconUrl.includes('apple-touch-icon')) {
+				if (iconUrl.includes("apple-touch-icon")) {
 					collection.appleTouchIcon = iconUrl
 				}
 			} else {
 				collection.standard.push(iconUrl)
 			}
 		} catch (error) {
-			this.logger.debug('Failed to get metadata for icon', {
+			this.logger.debug("Failed to get metadata for icon", {
 				error: (error as Error).message,
 				iconUrl,
 			})
@@ -373,11 +373,11 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	 */
 	private isHighResIcon(url: string, metadata: FaviconMetadata): boolean {
 		// Check URL for size indicators
-		if (url.includes('apple-touch-icon')) return true
+		if (url.includes("apple-touch-icon")) return true
 		if (url.match(/(\d+)x(\d+)/)) {
 			const match = url.match(/(\d+)x(\d+)/)
 			if (match) {
-				const size = parseInt(match[1], 10)
+				const size = Number.parseInt(match[1], 10)
 				return size >= 128
 			}
 		}
@@ -387,7 +387,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 		if (metadata.size) {
 			const sizeMatch = metadata.size.match(/(\d+)/)
 			if (sizeMatch) {
-				const size = parseInt(sizeMatch[1], 10)
+				const size = Number.parseInt(sizeMatch[1], 10)
 				return size >= 128
 			}
 		}
@@ -404,7 +404,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 		for (const icon of icons) {
 			// Try to extract size from URL
 			const sizeMatch = icon.match(/(\d+)x(\d+)/)
-			const size = sizeMatch ? parseInt(sizeMatch[1], 10) : 0
+			const size = sizeMatch ? Number.parseInt(sizeMatch[1], 10) : 0
 
 			withSizes.push({ url: icon, size })
 		}
@@ -426,13 +426,16 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 		const response = await fetch(url, {
 			signal: AbortSignal.timeout(timeout),
 			headers: {
-				'User-Agent':
-					'Mozilla/5.0 (compatible; SupermemoryBot/1.0; +https://supermemory.ai)',
+				"User-Agent":
+					"Mozilla/5.0 (compatible; SupermemoryBot/1.0; +https://supermemory.ai)",
 			},
 		})
 
 		if (!response.ok) {
-			throw this.createError('FETCH_FAILED', `Failed to fetch URL: ${response.status}`)
+			throw this.createError(
+				"FETCH_FAILED",
+				`Failed to fetch URL: ${response.status}`,
+			)
 		}
 
 		return await response.text()
@@ -485,7 +488,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	private isValidUrl(url: string): boolean {
 		try {
 			const parsed = new URL(url)
-			return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+			return parsed.protocol === "http:" || parsed.protocol === "https:"
 		} catch {
 			return false
 		}
@@ -495,15 +498,15 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	 * Determine rel attribute from URL
 	 */
 	private determineRel(url: string): string {
-		if (url.includes('apple-touch-icon')) {
-			return 'apple-touch-icon'
+		if (url.includes("apple-touch-icon")) {
+			return "apple-touch-icon"
 		}
 
-		if (url.includes('shortcut')) {
-			return 'shortcut icon'
+		if (url.includes("shortcut")) {
+			return "shortcut icon"
 		}
 
-		return 'icon'
+		return "icon"
 	}
 
 	// ========================================================================
@@ -513,7 +516,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	protected async onHealthCheck(): Promise<boolean> {
 		// Test favicon extraction with a reliable URL
 		try {
-			const testUrl = 'https://www.github.com'
+			const testUrl = "https://www.github.com"
 			const favicon = await this.extract(testUrl, {
 				timeout: 5000,
 			})
@@ -526,7 +529,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	protected async onCleanup(): Promise<void> {
 		// Clear cache
 		this.cache.clear()
-		this.logger.info('Favicon cache cleared')
+		this.logger.info("Favicon cache cleared")
 	}
 }
 
@@ -538,7 +541,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
  * Create favicon extractor service with optional configuration
  */
 export function createFaviconExtractor(
-	options?: Partial<FaviconExtractionOptions>
+	options?: Partial<FaviconExtractionOptions>,
 ): FaviconExtractor {
 	return new FaviconExtractor(options)
 }
