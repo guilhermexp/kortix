@@ -11,14 +11,14 @@
  * - Boundary detection and validation
  */
 
-import { BaseService } from '../base/base-service'
+import { BaseService } from "../base/base-service"
 import type {
-	ChunkingService as IChunkingService,
 	Chunk,
+	ChunkBoundary,
 	ChunkingOptions,
 	ChunkingStatistics,
-	ChunkBoundary,
-} from '../interfaces'
+	ChunkingService as IChunkingService,
+} from "../interfaces"
 
 // ============================================================================
 // Constants
@@ -31,7 +31,7 @@ const MAX_CHUNK_SIZE = 2000 // tokens
 const TOKENS_PER_CHAR = 0.25 // Approximate ratio for English text
 
 // Sentence boundary markers
-const SENTENCE_ENDINGS = ['.', '!', '?', '。', '！', '？']
+const SENTENCE_ENDINGS = [".", "!", "?", "。", "！", "？"]
 const SENTENCE_REGEX = /[.!?。！？]+[\s\n]+/g
 
 // Paragraph markers
@@ -48,7 +48,7 @@ export class ChunkingService extends BaseService implements IChunkingService {
 	private readonly defaultOptions: Required<ChunkingOptions>
 
 	constructor(options?: Partial<ChunkingOptions>) {
-		super('ChunkingService')
+		super("ChunkingService")
 
 		this.defaultOptions = {
 			chunkSize: options?.chunkSize ?? DEFAULT_CHUNK_SIZE,
@@ -57,7 +57,7 @@ export class ChunkingService extends BaseService implements IChunkingService {
 			maxChunkSize: options?.maxChunkSize ?? MAX_CHUNK_SIZE,
 			respectSentences: options?.respectSentences ?? true,
 			respectParagraphs: options?.respectParagraphs ?? true,
-			separator: options?.separator ?? '\n\n',
+			separator: options?.separator ?? "\n\n",
 			includeMetadata: options?.includeMetadata ?? true,
 		}
 	}
@@ -72,13 +72,13 @@ export class ChunkingService extends BaseService implements IChunkingService {
 	async chunk(content: string, options?: ChunkingOptions): Promise<Chunk[]> {
 		this.assertInitialized()
 
-		const tracker = this.performanceMonitor.startOperation('chunk')
+		const tracker = this.performanceMonitor.startOperation("chunk")
 
 		try {
 			const config = { ...this.defaultOptions, ...options }
 			this.validateChunkConfig(config)
 
-			this.logger.info('Chunking content', {
+			this.logger.info("Chunking content", {
 				contentLength: content.length,
 				chunkSize: config.chunkSize,
 				overlap: config.chunkOverlap,
@@ -102,22 +102,26 @@ export class ChunkingService extends BaseService implements IChunkingService {
 
 			tracker.end(true)
 
-			this.logger.info('Chunking completed', {
+			this.logger.info("Chunking completed", {
 				chunkCount: chunks.length,
-				avgSize: chunks.reduce((sum, c) => sum + c.tokenCount, 0) / chunks.length,
+				avgSize:
+					chunks.reduce((sum, c) => sum + c.tokenCount, 0) / chunks.length,
 			})
 
 			return chunks
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'chunk')
+			throw this.handleError(error, "chunk")
 		}
 	}
 
 	/**
 	 * Chunk with semantic boundaries (sentences, paragraphs)
 	 */
-	async chunkSemantic(content: string, options?: ChunkingOptions): Promise<Chunk[]> {
+	async chunkSemantic(
+		content: string,
+		options?: ChunkingOptions,
+	): Promise<Chunk[]> {
 		this.assertInitialized()
 
 		const config = { ...this.defaultOptions, ...options }
@@ -137,19 +141,26 @@ export class ChunkingService extends BaseService implements IChunkingService {
 			const unitTokens = this.countTokens(unit)
 
 			// Check if adding this unit would exceed chunk size
-			if (currentTokens + unitTokens > config.chunkSize && currentChunk.length > 0) {
+			if (
+				currentTokens + unitTokens > config.chunkSize &&
+				currentChunk.length > 0
+			) {
 				// Create chunk from accumulated units
-				const chunkText = currentChunk.join(config.respectParagraphs ? '\n\n' : ' ')
+				const chunkText = currentChunk.join(
+					config.respectParagraphs ? "\n\n" : " ",
+				)
 				chunks.push(this.createChunk(chunkText, chunkIndex++))
 
 				// Start new chunk with overlap
 				const overlapUnits = this.getOverlapUnits(
 					currentChunk,
 					config.chunkOverlap,
-					config.respectParagraphs ? '\n\n' : ' '
+					config.respectParagraphs ? "\n\n" : " ",
 				)
 				currentChunk = overlapUnits
-				currentTokens = this.countTokens(currentChunk.join(config.respectParagraphs ? '\n\n' : ' '))
+				currentTokens = this.countTokens(
+					currentChunk.join(config.respectParagraphs ? "\n\n" : " "),
+				)
 			}
 
 			// Add current unit to chunk
@@ -159,7 +170,9 @@ export class ChunkingService extends BaseService implements IChunkingService {
 
 		// Add final chunk if not empty
 		if (currentChunk.length > 0) {
-			const chunkText = currentChunk.join(config.respectParagraphs ? '\n\n' : ' ')
+			const chunkText = currentChunk.join(
+				config.respectParagraphs ? "\n\n" : " ",
+			)
 			chunks.push(this.createChunk(chunkText, chunkIndex))
 		}
 
@@ -197,14 +210,14 @@ export class ChunkingService extends BaseService implements IChunkingService {
 		if (options.chunkSize !== undefined) {
 			if (options.chunkSize < MIN_CHUNK_SIZE) {
 				throw this.createError(
-					'INVALID_CHUNK_SIZE',
-					`Chunk size ${options.chunkSize} is below minimum ${MIN_CHUNK_SIZE}`
+					"INVALID_CHUNK_SIZE",
+					`Chunk size ${options.chunkSize} is below minimum ${MIN_CHUNK_SIZE}`,
 				)
 			}
 			if (options.chunkSize > MAX_CHUNK_SIZE) {
 				throw this.createError(
-					'INVALID_CHUNK_SIZE',
-					`Chunk size ${options.chunkSize} exceeds maximum ${MAX_CHUNK_SIZE}`
+					"INVALID_CHUNK_SIZE",
+					`Chunk size ${options.chunkSize} exceeds maximum ${MAX_CHUNK_SIZE}`,
 				)
 			}
 		}
@@ -212,12 +225,12 @@ export class ChunkingService extends BaseService implements IChunkingService {
 		if (options.chunkOverlap !== undefined && options.chunkSize !== undefined) {
 			if (options.chunkOverlap >= options.chunkSize) {
 				throw this.createError(
-					'INVALID_OVERLAP',
-					`Overlap ${options.chunkOverlap} must be less than chunk size ${options.chunkSize}`
+					"INVALID_OVERLAP",
+					`Overlap ${options.chunkOverlap} must be less than chunk size ${options.chunkSize}`,
 				)
 			}
 			if (options.chunkOverlap < 0) {
-				throw this.createError('INVALID_OVERLAP', 'Overlap cannot be negative')
+				throw this.createError("INVALID_OVERLAP", "Overlap cannot be negative")
 			}
 		}
 	}
@@ -257,7 +270,10 @@ export class ChunkingService extends BaseService implements IChunkingService {
 	/**
 	 * Simple chunking without semantic boundaries
 	 */
-	private async chunkSimple(content: string, config: Required<ChunkingOptions>): Promise<Chunk[]> {
+	private async chunkSimple(
+		content: string,
+		config: Required<ChunkingOptions>,
+	): Promise<Chunk[]> {
 		const chunks: Chunk[] = []
 		const words = content.split(/\s+/)
 
@@ -268,14 +284,21 @@ export class ChunkingService extends BaseService implements IChunkingService {
 		for (const word of words) {
 			const wordTokens = this.countTokens(word)
 
-			if (currentTokens + wordTokens > config.chunkSize && currentChunk.length > 0) {
+			if (
+				currentTokens + wordTokens > config.chunkSize &&
+				currentChunk.length > 0
+			) {
 				// Create chunk
-				chunks.push(this.createChunk(currentChunk.join(' '), chunkIndex++))
+				chunks.push(this.createChunk(currentChunk.join(" "), chunkIndex++))
 
 				// Start new chunk with overlap
-				const overlapWords = this.getOverlapUnits(currentChunk, config.chunkOverlap, ' ')
+				const overlapWords = this.getOverlapUnits(
+					currentChunk,
+					config.chunkOverlap,
+					" ",
+				)
 				currentChunk = overlapWords
-				currentTokens = this.countTokens(currentChunk.join(' '))
+				currentTokens = this.countTokens(currentChunk.join(" "))
 			}
 
 			currentChunk.push(word)
@@ -284,7 +307,7 @@ export class ChunkingService extends BaseService implements IChunkingService {
 
 		// Add final chunk
 		if (currentChunk.length > 0) {
-			chunks.push(this.createChunk(currentChunk.join(' '), chunkIndex))
+			chunks.push(this.createChunk(currentChunk.join(" "), chunkIndex))
 		}
 
 		return chunks
@@ -298,9 +321,7 @@ export class ChunkingService extends BaseService implements IChunkingService {
 		const paragraphs = content.split(PARAGRAPH_REGEX)
 
 		// Filter out empty paragraphs and trim
-		return paragraphs
-			.map((p) => p.trim())
-			.filter((p) => p.length > 0)
+		return paragraphs.map((p) => p.trim()).filter((p) => p.length > 0)
 	}
 
 	/**
@@ -309,7 +330,7 @@ export class ChunkingService extends BaseService implements IChunkingService {
 	private splitIntoSentences(content: string): string[] {
 		// Split on sentence boundaries
 		const sentences: string[] = []
-		let currentSentence = ''
+		let currentSentence = ""
 
 		for (let i = 0; i < content.length; i++) {
 			const char = content[i]
@@ -320,7 +341,7 @@ export class ChunkingService extends BaseService implements IChunkingService {
 				// Look ahead to see if there's whitespace
 				if (i + 1 < content.length && /\s/.test(content[i + 1])) {
 					sentences.push(currentSentence.trim())
-					currentSentence = ''
+					currentSentence = ""
 				}
 			}
 		}
@@ -336,7 +357,11 @@ export class ChunkingService extends BaseService implements IChunkingService {
 	/**
 	 * Get overlap units from previous chunk
 	 */
-	private getOverlapUnits(units: string[], overlapTokens: number, separator: string): string[] {
+	private getOverlapUnits(
+		units: string[],
+		overlapTokens: number,
+		separator: string,
+	): string[] {
 		const overlapUnits: string[] = []
 		let tokenCount = 0
 
@@ -386,13 +411,16 @@ export class ChunkingService extends BaseService implements IChunkingService {
 	/**
 	 * Detect content type
 	 */
-	private detectContentType(content: string): 'code' | 'prose' | 'list' | 'mixed' {
+	private detectContentType(
+		content: string,
+	): "code" | "prose" | "list" | "mixed" {
 		// Check for code indicators
-		const codeIndicators = /```|{|}|function|class|const|let|var|import|export/gi
+		const codeIndicators =
+			/```|{|}|function|class|const|let|var|import|export/gi
 		const codeMatches = content.match(codeIndicators)?.length || 0
 
 		if (codeMatches > 10) {
-			return 'code'
+			return "code"
 		}
 
 		// Check for list indicators
@@ -400,15 +428,15 @@ export class ChunkingService extends BaseService implements IChunkingService {
 		const listMatches = content.match(listIndicators)?.length || 0
 
 		if (listMatches > 5) {
-			return 'list'
+			return "list"
 		}
 
 		// Check for mixed content
 		if (codeMatches > 3 && listMatches > 3) {
-			return 'mixed'
+			return "mixed"
 		}
 
-		return 'prose'
+		return "prose"
 	}
 
 	/**
@@ -417,7 +445,7 @@ export class ChunkingService extends BaseService implements IChunkingService {
 	private enrichChunksWithMetadata(
 		chunks: Chunk[],
 		originalContent: string,
-		contentType: string
+		contentType: string,
 	): Chunk[] {
 		return chunks.map((chunk, index) => ({
 			...chunk,
@@ -470,7 +498,7 @@ export class ChunkingService extends BaseService implements IChunkingService {
 			}
 		}
 
-		return ''
+		return ""
 	}
 
 	// ========================================================================
@@ -480,7 +508,8 @@ export class ChunkingService extends BaseService implements IChunkingService {
 	protected async onHealthCheck(): Promise<boolean> {
 		// Test chunking with sample text
 		try {
-			const sampleText = 'This is a test. This is only a test. Testing chunking service.'
+			const sampleText =
+				"This is a test. This is only a test. Testing chunking service."
 			const chunks = await this.chunk(sampleText, { chunkSize: 50 })
 			return chunks.length > 0
 		} catch {
@@ -496,6 +525,8 @@ export class ChunkingService extends BaseService implements IChunkingService {
 /**
  * Create chunking service with optional configuration
  */
-export function createChunkingService(options?: Partial<ChunkingOptions>): ChunkingService {
+export function createChunkingService(
+	options?: Partial<ChunkingOptions>,
+): ChunkingService {
 	return new ChunkingService(options)
 }

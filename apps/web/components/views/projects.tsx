@@ -165,7 +165,9 @@ export function ProjectsView() {
 			</div>
 
 			<div className="flex justify-between items-center mb-4">
-				<p className="text-sm text-foreground dark:text-white/50">Current project:</p>
+				<p className="text-sm text-foreground dark:text-white/50">
+					Current project:
+				</p>
 				<motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
 					<Button
 						className="bg-white/10 hover:bg-white/20 text-foreground dark:text-white border-white/20"
@@ -199,7 +201,9 @@ export function ProjectsView() {
 					initial={{ opacity: 0, scale: 0.9 }}
 					transition={{ type: "spring", damping: 20 }}
 				>
-					<p className="text-foreground dark:text-white/50 mb-4">No projects yet</p>
+					<p className="text-foreground dark:text-white/50 mb-4">
+						No projects yet
+					</p>
 					<motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
 						<Button
 							className="bg-white/10 hover:bg-white/20 text-foreground dark:text-white border-white/20"
@@ -237,7 +241,9 @@ export function ProjectsView() {
 									<FolderIcon className="h-5 w-5 text-foreground dark:text-white/80" />
 								</motion.div>
 								<div>
-									<p className="font-medium text-foreground dark:text-white">All Projects</p>
+									<p className="font-medium text-foreground dark:text-white">
+										All Projects
+									</p>
 									<p className="text-sm text-foreground dark:text-white/60">
 										Global view across all projects
 									</p>
@@ -281,7 +287,9 @@ export function ProjectsView() {
 											<FolderIcon className="h-5 w-5 text-foreground dark:text-white/80" />
 										</motion.div>
 										<div>
-											<p className="font-medium text-foreground dark:text-white">{project.name}</p>
+											<p className="font-medium text-foreground dark:text-white">
+												{project.name}
+											</p>
 											<p className="text-sm text-foreground dark:text-white/60">
 												Created{" "}
 												{new Date(project.createdAt).toLocaleDateString()}

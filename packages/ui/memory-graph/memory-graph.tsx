@@ -329,9 +329,7 @@ export const MemoryGraph = ({
 
 	if (error) {
 		return (
-			<div
-				className="h-full flex items-center justify-center bg-background"
-			>
+			<div className="h-full flex items-center justify-center bg-background">
 				<div className="rounded-xl overflow-hidden">
 					{/* Glass effect background */}
 					<GlassMenuEffect rounded="rounded-xl" />
@@ -346,9 +344,7 @@ export const MemoryGraph = ({
 	}
 
 	return (
-		<div
-			className="h-full rounded-xl overflow-hidden bg-background"
-		>
+		<div className="h-full rounded-xl overflow-hidden bg-background">
 			{/* Spaces selector - only shown for console */}
 			{showSpacesSelector && availableSpaces.length > 0 && (
 				<div className="absolute top-4 left-4 z-10">

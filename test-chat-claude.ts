@@ -2,7 +2,7 @@
 
 /**
  * Script de teste do chat com Claude Agent SDK
- * 
+ *
  * Testa se o endpoint /chat/v2 está funcionando corretamente
  * e se o Claude Agent responde usando as tools MCP
  */
@@ -51,7 +51,7 @@ async function testChat(testCase: TestCase) {
 		const headers: Record<string, string> = {
 			"Content-Type": "application/json",
 		}
-		
+
 		if (sessionCookie) {
 			headers["Cookie"] = sessionCookie
 		}
@@ -74,7 +74,7 @@ async function testChat(testCase: TestCase) {
 		if (!response.ok) {
 			console.error(`❌ Erro HTTP: ${response.status} ${response.statusText}`)
 			const errorText = await response.text()
-			console.error(`📄 Resposta:`, errorText.slice(0, 500))
+			console.error("📄 Resposta:", errorText.slice(0, 500))
 			return false
 		}
 
@@ -90,19 +90,21 @@ async function testChat(testCase: TestCase) {
 
 			// Exibir resposta
 			if (data.message?.content) {
-				console.log(`🤖 Claude respondeu:`)
-				console.log(`─────────────────────────────────────────────────`)
+				console.log("🤖 Claude respondeu:")
+				console.log("─────────────────────────────────────────────────")
 				console.log(data.message.content.slice(0, 300))
 				if (data.message.content.length > 300) {
-					console.log(`... (${data.message.content.length} caracteres no total)`)
+					console.log(
+						`... (${data.message.content.length} caracteres no total)`,
+					)
 				}
-				console.log(`─────────────────────────────────────────────────`)
+				console.log("─────────────────────────────────────────────────")
 			}
 
 			// Verificar se usou tools
 			if (data.events && Array.isArray(data.events)) {
 				const toolEvents = data.events.filter(
-					(e: any) => e.type === "tool_use" || e.tool_name
+					(e: any) => e.type === "tool_use" || e.tool_name,
 				)
 				console.log()
 				console.log(`🔧 Tools usadas: ${toolEvents.length}`)
@@ -113,45 +115,47 @@ async function testChat(testCase: TestCase) {
 				}
 
 				if (testCase.shouldUseTool && toolEvents.length === 0) {
-					console.warn(`⚠️  AVISO: Esperava usar tool, mas nenhuma foi usada`)
+					console.warn("⚠️  AVISO: Esperava usar tool, mas nenhuma foi usada")
 				} else if (!testCase.shouldUseTool && toolEvents.length > 0) {
-					console.warn(`⚠️  AVISO: Não esperava usar tool, mas ${toolEvents.length} foram usadas`)
+					console.warn(
+						`⚠️  AVISO: Não esperava usar tool, mas ${toolEvents.length} foram usadas`,
+					)
 				}
 			}
 
 			console.log()
 			console.log(`✅ TESTE PASSOU (${duration}ms)`)
 			return true
-		} else if (contentType?.includes("text/plain")) {
+		}
+		if (contentType?.includes("text/plain")) {
 			// Streaming response
 			const text = await response.text()
 			console.log(`✅ Resposta texto/streaming recebida (${duration}ms)`)
 			console.log()
-			console.log(`🤖 Claude respondeu:`)
-			console.log(`─────────────────────────────────────────────────`)
+			console.log("🤖 Claude respondeu:")
+			console.log("─────────────────────────────────────────────────")
 			console.log(text.slice(0, 300))
 			if (text.length > 300) {
 				console.log(`... (${text.length} caracteres no total)`)
 			}
-			console.log(`─────────────────────────────────────────────────`)
+			console.log("─────────────────────────────────────────────────")
 			console.log()
 			console.log(`✅ TESTE PASSOU (${duration}ms)`)
 			return true
-		} else {
-			console.error(`❌ Content-Type inesperado: ${contentType}`)
-			return false
 		}
+		console.error(`❌ Content-Type inesperado: ${contentType}`)
+		return false
 	} catch (error) {
-		console.error(`❌ ERRO:`, error instanceof Error ? error.message : error)
+		console.error("❌ ERRO:", error instanceof Error ? error.message : error)
 		if (error instanceof Error && error.stack) {
-			console.error(`📚 Stack:`, error.stack.split("\n").slice(0, 3).join("\n"))
+			console.error("📚 Stack:", error.stack.split("\n").slice(0, 3).join("\n"))
 		}
 		return false
 	}
 }
 
 async function signUp() {
-	console.log(`👤 Criando usuário de teste...`)
+	console.log("👤 Criando usuário de teste...")
 	console.log(`📧 Email: ${TEST_EMAIL}`)
 
 	try {
@@ -167,23 +171,23 @@ async function signUp() {
 		})
 
 		if (response.ok) {
-			console.log(`✅ Usuário criado com sucesso!`)
+			console.log("✅ Usuário criado com sucesso!")
 			return true
-		} else if (response.status === 400) {
-			console.log(`ℹ️  Usuário já existe, tentando login...`)
-			return true
-		} else {
-			console.warn(`⚠️  Erro ao criar usuário: ${response.status}`)
-			return true // Continua tentando login
 		}
+		if (response.status === 400) {
+			console.log("ℹ️  Usuário já existe, tentando login...")
+			return true
+		}
+		console.warn(`⚠️  Erro ao criar usuário: ${response.status}`)
+		return true // Continua tentando login
 	} catch (error) {
-		console.warn(`⚠️  Erro no sign-up:`, error)
+		console.warn("⚠️  Erro no sign-up:", error)
 		return true // Continua tentando login
 	}
 }
 
 async function login() {
-	console.log(`🔐 Fazendo login...`)
+	console.log("🔐 Fazendo login...")
 	console.log(`📧 Email: ${TEST_EMAIL}`)
 
 	try {
@@ -201,10 +205,12 @@ async function login() {
 		if (!response.ok) {
 			console.error(`❌ Login falhou: ${response.status}`)
 			const error = await response.text()
-			console.error(`📄 Resposta:`, error.slice(0, 200))
+			console.error("📄 Resposta:", error.slice(0, 200))
 			console.error()
-			console.error(`💡 Use suas credenciais:`)
-			console.error(`   TEST_EMAIL=seu@email TEST_PASSWORD=senha bun test-chat-claude.ts`)
+			console.error("💡 Use suas credenciais:")
+			console.error(
+				"   TEST_EMAIL=seu@email TEST_PASSWORD=senha bun test-chat-claude.ts",
+			)
 			return false
 		}
 
@@ -212,21 +218,20 @@ async function login() {
 		const setCookie = response.headers.get("set-cookie")
 		if (setCookie) {
 			sessionCookie = setCookie.split(";")[0]
-			console.log(`✅ Login realizado com sucesso!`)
+			console.log("✅ Login realizado com sucesso!")
 			console.log(`🍪 Cookie: ${sessionCookie.slice(0, 40)}...`)
 			return true
-		} else {
-			console.warn(`⚠️  Login OK mas sem cookie de sessão`)
-			return true
 		}
+		console.warn("⚠️  Login OK mas sem cookie de sessão")
+		return true
 	} catch (error) {
-		console.error(`❌ Erro no login:`, error)
+		console.error("❌ Erro no login:", error)
 		return false
 	}
 }
 
 async function checkHealth() {
-	console.log(`🏥 Verificando saúde do servidor...`)
+	console.log("🏥 Verificando saúde do servidor...")
 	console.log(`🌐 URL: ${BACKEND_URL}`)
 
 	try {
@@ -235,17 +240,16 @@ async function checkHealth() {
 		})
 
 		if (response.ok) {
-			console.log(`✅ Servidor está rodando!`)
+			console.log("✅ Servidor está rodando!")
 			return true
-		} else {
-			console.log(`⚠️  Servidor respondeu com status: ${response.status}`)
-			console.log(`💡 Tentando mesmo assim...`)
-			return true // Continua mesmo se não tiver endpoint /health
 		}
+		console.log(`⚠️  Servidor respondeu com status: ${response.status}`)
+		console.log("💡 Tentando mesmo assim...")
+		return true // Continua mesmo se não tiver endpoint /health
 	} catch (error) {
 		console.error(`❌ Não foi possível conectar ao servidor em ${BACKEND_URL}`)
-		console.error(`💡 Certifique-se de que o servidor está rodando:`)
-		console.error(`   cd apps/api && bun run dev`)
+		console.error("💡 Certifique-se de que o servidor está rodando:")
+		console.error("   cd apps/api && bun run dev")
 		return false
 	}
 }
@@ -299,19 +303,19 @@ async function main() {
 	// 5. Resumo
 	console.log()
 	console.log(`${"=".repeat(60)}`)
-	console.log(`📊 RESUMO DOS TESTES`)
+	console.log("📊 RESUMO DOS TESTES")
 	console.log(`${"=".repeat(60)}`)
 	console.log(`✅ Passou: ${passed}/${testCases.length}`)
 	console.log(`❌ Falhou: ${failed}/${testCases.length}`)
 	console.log()
 
 	if (failed === 0) {
-		console.log(`🎉 TODOS OS TESTES PASSARAM!`)
-		console.log(`✨ O chat com Claude Agent SDK está funcionando!`)
+		console.log("🎉 TODOS OS TESTES PASSARAM!")
+		console.log("✨ O chat com Claude Agent SDK está funcionando!")
 		process.exit(0)
 	} else {
-		console.log(`⚠️  ALGUNS TESTES FALHARAM`)
-		console.log(`💡 Verifique os logs acima para mais detalhes`)
+		console.log("⚠️  ALGUNS TESTES FALHARAM")
+		console.log("💡 Verifique os logs acima para mais detalhes")
 		process.exit(1)
 	}
 }

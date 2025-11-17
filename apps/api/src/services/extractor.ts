@@ -24,8 +24,11 @@
  * See: docs/migration-guide.md for migration instructions
  */
 
-import { createDocumentExtractorService } from './extraction'
-import type { ExtractionInput as NewExtractionInput, ExtractionResult as NewExtractionResult } from './interfaces'
+import { createDocumentExtractorService } from "./extraction"
+import type {
+	ExtractionInput as NewExtractionInput,
+	ExtractionResult as NewExtractionResult,
+} from "./interfaces"
 
 // ============================================================================
 // Legacy Type Definitions (for backward compatibility)
@@ -52,7 +55,9 @@ export type ExtractionResult = {
 // Service Instance (singleton)
 // ============================================================================
 
-let extractorServiceInstance: Awaited<ReturnType<typeof createDocumentExtractorService>> | null = null
+let extractorServiceInstance: Awaited<
+	ReturnType<typeof createDocumentExtractorService>
+> | null = null
 
 async function getExtractorService() {
 	if (!extractorServiceInstance) {
@@ -60,39 +65,35 @@ async function getExtractorService() {
 			pdf: {
 				enabled: true,
 				ocrEnabled: true,
-				ocrProvider: 'replicate'
+				ocrProvider: "replicate",
 			},
 			youtube: {
 				enabled: true,
-				preferredLanguages: ['en', 'en-US', 'pt', 'pt-BR']
+				preferredLanguages: ["en", "en-US", "pt", "pt-BR"],
 			},
 			url: {
-				enabled: true
+				enabled: true,
 			},
 			file: {
 				enabled: true,
-				markitdownEnabled: true
-			},
-			repository: {
-				enabled: true,
-				githubToken: process.env.GITHUB_TOKEN || process.env.GITHUB_API_KEY
+				markitdownEnabled: true,
 			},
 			circuitBreaker: {
 				enabled: true,
 				failureThreshold: 5,
-				resetTimeout: 60000
+				resetTimeout: 60000,
 			},
 			retry: {
 				maxAttempts: 3,
 				baseDelay: 1000,
 				maxDelay: 30000,
 				backoffMultiplier: 2,
-				jitter: true
-			}
+				jitter: true,
+			},
 		})
 
 		await extractorServiceInstance.initialize()
-		console.log('[extractor.ts] DocumentExtractorService initialized')
+		console.log("[extractor.ts] DocumentExtractorService initialized")
 	}
 
 	return extractorServiceInstance
@@ -104,19 +105,20 @@ async function getExtractorService() {
 
 function convertLegacyInput(legacyInput: ExtractionInput): NewExtractionInput {
 	// Determine type based on input
-	let type: 'url' | 'pdf' | 'text' | 'file' | 'repository' = 'text'
+	let type: "url" | "pdf" | "text" | "file" = "text"
 
 	const metadataType = legacyInput.metadata?.type as string | undefined
-	if (metadataType === 'repository' || legacyInput.type === 'repository') {
-		type = 'repository'
+	if (metadataType === "repository" || legacyInput.type === "repository") {
+		// Repository inputs now flow through the URL extractor (MarkItDown)
+		type = "url"
 	} else if (legacyInput.url) {
-		type = 'url'
+		type = "url"
 	} else if (legacyInput.originalContent) {
 		// Check for data URL
-		if (legacyInput.originalContent.startsWith('data:')) {
+		if (legacyInput.originalContent.startsWith("data:")) {
 			const mimeMatch = legacyInput.originalContent.match(/^data:([^;]+);/)
-			if (mimeMatch?.[1]?.includes('pdf')) {
-				type = 'pdf'
+			if (mimeMatch?.[1]?.includes("pdf")) {
+				type = "pdf"
 			}
 		}
 	}
@@ -125,11 +127,13 @@ function convertLegacyInput(legacyInput: ExtractionInput): NewExtractionInput {
 		type,
 		url: legacyInput.url || null,
 		originalContent: legacyInput.originalContent || null,
-		metadata: legacyInput.metadata || undefined
+		metadata: legacyInput.metadata || undefined,
 	}
 }
 
-function convertToLegacyResult(newResult: NewExtractionResult): ExtractionResult {
+function convertToLegacyResult(
+	newResult: NewExtractionResult,
+): ExtractionResult {
 	return {
 		text: newResult.text,
 		title: newResult.title || null,
@@ -137,7 +141,7 @@ function convertToLegacyResult(newResult: NewExtractionResult): ExtractionResult
 		url: newResult.url || null,
 		contentType: newResult.contentType || null,
 		raw: newResult.raw || null,
-		wordCount: newResult.wordCount
+		wordCount: newResult.wordCount,
 	}
 }
 
@@ -173,9 +177,9 @@ export async function extractDocumentContent(
 	input: ExtractionInput,
 ): Promise<ExtractionResult> {
 	console.warn(
-		'[DEPRECATED] extractDocumentContent() is deprecated. ' +
-		'Use DocumentExtractorService from services/extraction/ instead. ' +
-		'See docs/migration-guide.md for migration instructions.'
+		"[DEPRECATED] extractDocumentContent() is deprecated. " +
+			"Use DocumentExtractorService from services/extraction/ instead. " +
+			"See docs/migration-guide.md for migration instructions.",
 	)
 
 	try {
@@ -191,7 +195,7 @@ export async function extractDocumentContent(
 		// Convert new result back to legacy format
 		return convertToLegacyResult(newResult)
 	} catch (error) {
-		console.error('[extractor.ts] Extraction failed:', error)
+		console.error("[extractor.ts] Extraction failed:", error)
 		throw error
 	}
 }
@@ -200,4 +204,4 @@ export async function extractDocumentContent(
 // Re-exports for compatibility
 // ============================================================================
 
-export { createDocumentExtractorService } from './extraction'
+export { createDocumentExtractorService } from "./extraction"

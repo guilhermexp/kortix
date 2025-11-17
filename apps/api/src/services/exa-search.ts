@@ -1,215 +1,215 @@
-import { randomUUID } from "node:crypto";
-import { env } from "../env";
+import { randomUUID } from "node:crypto"
+import { env } from "../env"
 
 export type ExaWebResult = {
-  id: string;
-  title: string | null;
-  url: string | null;
-  snippet: string | null;
-  score: number | null;
-  publishedAt?: string | null;
-};
+	id: string
+	title: string | null
+	url: string | null
+	snippet: string | null
+	score: number | null
+	publishedAt?: string | null
+}
 
 export type ExaSearchOptions = {
-  limit?: number;
-  query?: string;
-  boostRecency?: boolean;
-  includeDomains?: string[];
-};
+	limit?: number
+	query?: string
+	boostRecency?: boolean
+	includeDomains?: string[]
+}
 
 export async function searchWebWithExa(
-  query: string,
-  options: ExaSearchOptions = {},
+	query: string,
+	options: ExaSearchOptions = {},
 ): Promise<ExaWebResult[]> {
-  if (!env.EXA_API_KEY) {
-    return [];
-  }
+	if (!env.EXA_API_KEY) {
+		return []
+	}
 
-  const limit = Math.max(1, Math.min(options.limit ?? 5, 20));
+	const limit = Math.max(1, Math.min(options.limit ?? 5, 20))
 
-  const payload: Record<string, unknown> = {
-    query,
-    numResults: limit,
-    type: "neural",
-    useAutoprompt: true,
-  };
+	const payload: Record<string, unknown> = {
+		query,
+		numResults: limit,
+		type: "neural",
+		useAutoprompt: true,
+	}
 
-  if (
-    Array.isArray(options.includeDomains) &&
-    options.includeDomains.length > 0
-  ) {
-    payload.includeDomains = options.includeDomains;
-  }
+	if (
+		Array.isArray(options.includeDomains) &&
+		options.includeDomains.length > 0
+	) {
+		payload.includeDomains = options.includeDomains
+	}
 
-  if (options.boostRecency) {
-    payload.useAutoprompt = false;
-    payload.dateRange = "past_year";
-  }
+	if (options.boostRecency) {
+		payload.useAutoprompt = false
+		payload.dateRange = "past_year"
+	}
 
-  try {
-    const response = await fetch("https://api.exa.ai/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": env.EXA_API_KEY,
-      },
-      body: JSON.stringify(payload),
-    });
+	try {
+		const response = await fetch("https://api.exa.ai/search", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"x-api-key": env.EXA_API_KEY,
+			},
+			body: JSON.stringify(payload),
+		})
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error(
-        "[searchWebWithExa] API request failed:",
-        response.status,
-        response.statusText,
-      );
-      console.error("[searchWebWithExa] Error details:", errorBody);
-      console.error(
-        "[searchWebWithExa] Request payload:",
-        JSON.stringify(payload, null, 2),
-      );
-      return [];
-    }
+		if (!response.ok) {
+			const errorBody = await response.text()
+			console.error(
+				"[searchWebWithExa] API request failed:",
+				response.status,
+				response.statusText,
+			)
+			console.error("[searchWebWithExa] Error details:", errorBody)
+			console.error(
+				"[searchWebWithExa] Request payload:",
+				JSON.stringify(payload, null, 2),
+			)
+			return []
+		}
 
-    const data = (await response.json()) as Record<string, unknown>;
-    const rawResults: Record<string, unknown>[] = Array.isArray(data.results)
-      ? (data.results as Record<string, unknown>[])
-      : Array.isArray(data.data)
-        ? (data.data as Record<string, unknown>[])
-        : [];
+		const data = (await response.json()) as Record<string, unknown>
+		const rawResults: Record<string, unknown>[] = Array.isArray(data.results)
+			? (data.results as Record<string, unknown>[])
+			: Array.isArray(data.data)
+				? (data.data as Record<string, unknown>[])
+				: []
 
-    return rawResults.map((item) => {
-      const summary = extractSummary(item);
-      const scoreCandidate =
-        typeof item.score === "number"
-          ? (item.score as number)
-          : typeof item.relevanceScore === "number"
-            ? (item.relevanceScore as number)
-            : undefined;
+		return rawResults.map((item) => {
+			const summary = extractSummary(item)
+			const scoreCandidate =
+				typeof item.score === "number"
+					? (item.score as number)
+					: typeof item.relevanceScore === "number"
+						? (item.relevanceScore as number)
+						: undefined
 
-      return {
-        id:
-          typeof item.id === "string"
-            ? (item.id as string)
-            : typeof item.url === "string"
-              ? (item.url as string)
-              : randomUUID(),
-        title: typeof item.title === "string" ? (item.title as string) : null,
-        url: typeof item.url === "string" ? (item.url as string) : null,
-        snippet: summary,
-        score: normalizeScore(scoreCandidate),
-        publishedAt:
-          typeof item.publishedDate === "string"
-            ? (item.publishedDate as string)
-            : typeof item.published_at === "string"
-              ? (item.published_at as string)
-              : null,
-      };
-    });
-  } catch (error) {
-    console.warn("searchWebWithExa error", error);
-    return [];
-  }
+			return {
+				id:
+					typeof item.id === "string"
+						? (item.id as string)
+						: typeof item.url === "string"
+							? (item.url as string)
+							: randomUUID(),
+				title: typeof item.title === "string" ? (item.title as string) : null,
+				url: typeof item.url === "string" ? (item.url as string) : null,
+				snippet: summary,
+				score: normalizeScore(scoreCandidate),
+				publishedAt:
+					typeof item.publishedDate === "string"
+						? (item.publishedDate as string)
+						: typeof item.published_at === "string"
+							? (item.published_at as string)
+							: null,
+			}
+		})
+	} catch (error) {
+		console.warn("searchWebWithExa error", error)
+		return []
+	}
 }
 
 // Fetch full page contents (markdown text) for URLs via Exa
 export async function getContentsWithExa(
-  urls: string[],
-  opts?: { livecrawl?: "always" | "never" | "preferred" },
+	urls: string[],
+	opts?: { livecrawl?: "always" | "never" | "preferred" },
 ) {
-  if (!env.EXA_API_KEY)
-    return [] as Array<{ url: string; text?: string | null }>;
-  if (!Array.isArray(urls) || urls.length === 0) return [];
-  try {
-    const response = await fetch("https://api.exa.ai/contents", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": env.EXA_API_KEY,
-      },
-      body: JSON.stringify({
-        urls,
-        text: true, // return markdown text
-        livecrawl: opts?.livecrawl ?? "preferred",
-      }),
-    });
-    if (!response.ok) return [];
-    const data = (await response.json()) as {
-      results?: Array<{ url?: string; text?: string }>;
-    };
-    return (data.results || []).map((r) => ({
-      url: r.url || "",
-      text: r.text || null,
-    }));
-  } catch {
-    return [];
-  }
+	if (!env.EXA_API_KEY)
+		return [] as Array<{ url: string; text?: string | null }>
+	if (!Array.isArray(urls) || urls.length === 0) return []
+	try {
+		const response = await fetch("https://api.exa.ai/contents", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"x-api-key": env.EXA_API_KEY,
+			},
+			body: JSON.stringify({
+				urls,
+				text: true, // return markdown text
+				livecrawl: opts?.livecrawl ?? "preferred",
+			}),
+		})
+		if (!response.ok) return []
+		const data = (await response.json()) as {
+			results?: Array<{ url?: string; text?: string }>
+		}
+		return (data.results || []).map((r) => ({
+			url: r.url || "",
+			text: r.text || null,
+		}))
+	} catch {
+		return []
+	}
 }
 
 // Exa Context (Exa Code): get code snippets/examples from OSS repos
 export async function getCodeContextWithExa(query: string, limit = 5) {
-  if (!env.EXA_API_KEY)
-    return [] as Array<{
-      title?: string | null;
-      url?: string | null;
-      text?: string | null;
-    }>;
-  try {
-    const response = await fetch("https://api.exa.ai/context", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": env.EXA_API_KEY,
-      },
-      body: JSON.stringify({
-        query,
-        numResults: Math.max(1, Math.min(limit, 20)),
-      }),
-    });
-    if (!response.ok) return [];
-    const data = (await response.json()) as {
-      results?: Array<{ title?: string; url?: string; text?: string }>;
-    };
-    return data.results || [];
-  } catch {
-    return [];
-  }
+	if (!env.EXA_API_KEY)
+		return [] as Array<{
+			title?: string | null
+			url?: string | null
+			text?: string | null
+		}>
+	try {
+		const response = await fetch("https://api.exa.ai/context", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"x-api-key": env.EXA_API_KEY,
+			},
+			body: JSON.stringify({
+				query,
+				numResults: Math.max(1, Math.min(limit, 20)),
+			}),
+		})
+		if (!response.ok) return []
+		const data = (await response.json()) as {
+			results?: Array<{ title?: string; url?: string; text?: string }>
+		}
+		return data.results || []
+	} catch {
+		return []
+	}
 }
 
 function extractSummary(
-  item: Record<string, unknown> | null | undefined,
+	item: Record<string, unknown> | null | undefined,
 ): string | null {
-  if (!item) return null;
+	if (!item) return null
 
-  if (typeof item.summary === "string") {
-    return item.summary as string;
-  }
-  const summaryObject = item.summary as Record<string, unknown> | undefined;
-  if (summaryObject && typeof summaryObject.text === "string") {
-    return summaryObject.text as string;
-  }
-  const highlights = item.highlights;
-  if (Array.isArray(highlights) && highlights.length > 0) {
-    return highlights
-      .map((highlight) =>
-        typeof highlight === "string"
-          ? highlight
-          : highlight &&
-              typeof highlight === "object" &&
-              typeof (highlight as Record<string, unknown>).text === "string"
-            ? ((highlight as Record<string, unknown>).text as string)
-            : "",
-      )
-      .filter((text) => text.length > 0)
-      .join(" ");
-  }
-  if (typeof item.snippet === "string") return item.snippet as string;
-  return null;
+	if (typeof item.summary === "string") {
+		return item.summary as string
+	}
+	const summaryObject = item.summary as Record<string, unknown> | undefined
+	if (summaryObject && typeof summaryObject.text === "string") {
+		return summaryObject.text as string
+	}
+	const highlights = item.highlights
+	if (Array.isArray(highlights) && highlights.length > 0) {
+		return highlights
+			.map((highlight) =>
+				typeof highlight === "string"
+					? highlight
+					: highlight &&
+							typeof highlight === "object" &&
+							typeof (highlight as Record<string, unknown>).text === "string"
+						? ((highlight as Record<string, unknown>).text as string)
+						: "",
+			)
+			.filter((text) => text.length > 0)
+			.join(" ")
+	}
+	if (typeof item.snippet === "string") return item.snippet as string
+	return null
 }
 
 function normalizeScore(rawScore: unknown): number | null {
-  if (typeof rawScore === "number" && Number.isFinite(rawScore)) {
-    return Math.max(0, Math.min(1, rawScore));
-  }
-  return null;
+	if (typeof rawScore === "number" && Number.isFinite(rawScore)) {
+		return Math.max(0, Math.min(1, rawScore))
+	}
+	return null
 }

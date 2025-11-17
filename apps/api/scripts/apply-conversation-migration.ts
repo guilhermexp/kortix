@@ -5,11 +5,11 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
+// Load environment variables
+import { config as loadEnv } from "dotenv"
 import { readFileSync } from "fs"
 import { join } from "path"
 
-// Load environment variables
-import { config as loadEnv } from "dotenv"
 loadEnv({ path: join(process.cwd(), ".env.local") })
 loadEnv()
 
@@ -33,7 +33,7 @@ async function applyMigration() {
 	const migrationPath = join(
 		process.cwd(),
 		"migrations",
-		"0002_add_conversation_tables.sql"
+		"0002_add_conversation_tables.sql",
 	)
 
 	try {
@@ -69,7 +69,7 @@ async function applyMigration() {
 						console.log(`   ℹ️  Statement result: ${result.error.message}`)
 					}
 				} catch (err) {
-					console.error(`   ⚠️  Statement error:`, err)
+					console.error("   ⚠️  Statement error:", err)
 				}
 			}
 
@@ -109,7 +109,6 @@ async function applyMigration() {
 				console.log("   ✅ tool_results table exists")
 			}
 		}
-
 	} catch (error) {
 		console.error("❌ Failed to read or apply migration:")
 		console.error(error)
@@ -117,11 +116,13 @@ async function applyMigration() {
 	}
 }
 
-applyMigration().then(() => {
-	console.log("\n✅ Migration complete!")
-	process.exit(0)
-}).catch((error) => {
-	console.error("\n❌ Migration failed:")
-	console.error(error)
-	process.exit(1)
-})
+applyMigration()
+	.then(() => {
+		console.log("\n✅ Migration complete!")
+		process.exit(0)
+	})
+	.catch((error) => {
+		console.error("\n❌ Migration failed:")
+		console.error(error)
+		process.exit(1)
+	})

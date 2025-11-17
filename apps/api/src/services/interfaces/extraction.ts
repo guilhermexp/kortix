@@ -10,16 +10,15 @@
  * - YouTubeExtractor: YouTube videos with transcript extraction
  * - PDFExtractor: PDF documents with OCR fallback
  * - FileExtractor: Office documents (DOCX, XLSX, etc.)
- * - RepositoryExtractor: GitHub repositories (DISABLED)
  */
 
-import {
+import type {
+	BaseService,
 	ExtractionInput,
 	ExtractionResult,
 	ProcessingError,
 	RetryOptions,
-	BaseService,
-} from './document-processing'
+} from "./document-processing"
 
 // ============================================================================
 // Base Extractor Interface
@@ -61,7 +60,10 @@ export interface URLExtractor extends DocumentExtractor {
 	/**
 	 * Extract content from a web URL using MarkItDown with Puppeteer fallback
 	 */
-	extractFromUrl(url: string, options?: URLExtractorOptions): Promise<ExtractionResult>
+	extractFromUrl(
+		url: string,
+		options?: URLExtractorOptions,
+	): Promise<ExtractionResult>
 
 	/**
 	 * Check service health
@@ -115,7 +117,10 @@ export interface YouTubeExtractor extends DocumentExtractor {
 	/**
 	 * Extract transcript from YouTube video
 	 */
-	extractTranscript(videoId: string, options?: YouTubeOptions): Promise<ExtractionResult>
+	extractTranscript(
+		videoId: string,
+		options?: YouTubeOptions,
+	): Promise<ExtractionResult>
 
 	/**
 	 * Extract metadata from YouTube video
@@ -180,12 +185,18 @@ export interface PDFExtractor extends DocumentExtractor {
 	/**
 	 * Extract text from PDF
 	 */
-	extractFromPDF(buffer: Buffer, options?: PDFOptions): Promise<ExtractionResult>
+	extractFromPDF(
+		buffer: Buffer,
+		options?: PDFOptions,
+	): Promise<ExtractionResult>
 
 	/**
 	 * Extract text using OCR
 	 */
-	extractWithOCR(buffer: Buffer, options?: OCROptions): Promise<ExtractionResult>
+	extractWithOCR(
+		buffer: Buffer,
+		options?: OCROptions,
+	): Promise<ExtractionResult>
 
 	/**
 	 * Check if PDF is scanned (needs OCR)
@@ -205,7 +216,7 @@ export interface PDFOptions {
 	/** Use OCR for text extraction */
 	useOCR?: boolean
 	/** OCR provider */
-	ocrProvider?: 'replicate' | 'gemini'
+	ocrProvider?: "replicate" | "gemini"
 	/** Extract images */
 	extractImages?: boolean
 	/** Maximum pages to process */
@@ -221,7 +232,7 @@ export interface PDFOptions {
  */
 export interface OCROptions {
 	/** OCR provider */
-	provider: 'replicate' | 'gemini'
+	provider: "replicate" | "gemini"
 	/** Language hint */
 	language?: string
 	/** Image preprocessing */
@@ -271,7 +282,7 @@ export interface FileExtractor extends DocumentExtractor {
 		buffer: Buffer,
 		fileName: string,
 		mimeType: string,
-		options?: FileOptions
+		options?: FileOptions,
 	): Promise<ExtractionResult>
 
 	/**
@@ -319,90 +330,6 @@ export interface FileMetadata {
 	title?: string
 	/** Additional properties */
 	properties?: Record<string, unknown>
-}
-
-/**
- * GitHub repository extractor
- */
-export interface RepositoryExtractor extends DocumentExtractor {
-	/**
-	 * Extract content from GitHub repository
-	 */
-	extractFromRepository(url: string, options?: RepositoryOptions): Promise<ExtractionResult>
-
-	/**
-	 * Extract README content
-	 */
-	extractReadme(url: string): Promise<string>
-
-	/**
-	 * Extract file tree
-	 */
-	extractFileTree(url: string): Promise<FileTreeNode[]>
-
-	/**
-	 * Parse repository URL
-	 */
-	parseRepositoryUrl(url: string): RepositoryInfo | null
-
-	/**
-	 * Check if URL is a valid repository URL
-	 */
-	isRepositoryUrl(url: string): boolean
-}
-
-/**
- * Repository extraction options
- */
-export interface RepositoryOptions {
-	/** Include README */
-	includeReadme?: boolean
-	/** Include file tree */
-	includeFileTree?: boolean
-	/** Include specific files */
-	includeFiles?: string[]
-	/** Maximum file size per file */
-	maxFileSize?: number
-	/** Maximum total size */
-	maxTotalSize?: number
-	/** Branch to extract from */
-	branch?: string
-	/** Timeout in milliseconds */
-	timeout?: number
-}
-
-/**
- * Repository information
- */
-export interface RepositoryInfo {
-	/** Repository owner */
-	owner: string
-	/** Repository name */
-	name: string
-	/** Branch */
-	branch?: string
-	/** File path (if applicable) */
-	filePath?: string
-	/** Full URL */
-	url: string
-}
-
-/**
- * File tree node
- */
-export interface FileTreeNode {
-	/** File path */
-	path: string
-	/** File name */
-	name: string
-	/** File type */
-	type: 'file' | 'directory'
-	/** File size in bytes (if file) */
-	size?: number
-	/** Children nodes (if directory) */
-	children?: FileTreeNode[]
-	/** File content (if small file) */
-	content?: string
 }
 
 // ============================================================================
@@ -514,7 +441,10 @@ export interface ExtractionValidator {
 	/**
 	 * Sanitize extraction result
 	 */
-	sanitize(result: ExtractionResult, options?: SanitizationOptions): ExtractionResult
+	sanitize(
+		result: ExtractionResult,
+		options?: SanitizationOptions,
+	): ExtractionResult
 
 	/**
 	 * Check if URL is safe

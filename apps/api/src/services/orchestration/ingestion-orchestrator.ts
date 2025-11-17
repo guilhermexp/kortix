@@ -16,25 +16,25 @@
  * - Performance monitoring
  */
 
-import { BaseService } from '../base/base-service'
-import { CircuitBreaker } from './circuit-breaker'
-import { RetryHandler } from './retry-handler'
+import { BaseService } from "../base/base-service"
 import type {
-	IngestionOrchestratorService as IIngestionOrchestratorService,
-	ProcessDocumentInput,
-	ProcessingResult,
-	QueueDocumentInput,
-	JobResult,
-	ProcessingError,
-	OrchestratorServiceConfig,
 	CircuitBreakerState,
 	DocumentExtractorService,
 	DocumentProcessorService,
-	PreviewGeneratorService,
 	ExtractionResult,
-	ProcessedDocument,
+	IngestionOrchestratorService as IIngestionOrchestratorService,
+	JobResult,
+	OrchestratorServiceConfig,
+	PreviewGeneratorService,
 	PreviewResult,
-} from '../interfaces'
+	ProcessDocumentInput,
+	ProcessedDocument,
+	ProcessingError,
+	ProcessingResult,
+	QueueDocumentInput,
+} from "../interfaces"
+import { CircuitBreaker } from "./circuit-breaker"
+import { RetryHandler } from "./retry-handler"
 
 // ============================================================================
 // Processing State Types
@@ -42,8 +42,12 @@ import type {
 
 interface ProcessingState {
 	documentId: string
-	status: 'queued' | 'processing' | 'done' | 'failed'
-	internalStatus?: 'extracting' | 'processing' | 'generating_preview' | 'storing'
+	status: "queued" | "processing" | "done" | "failed"
+	internalStatus?:
+		| "extracting"
+		| "processing"
+		| "generating_preview"
+		| "storing"
 	startTime: Date
 	extraction?: ExtractionResult
 	processed?: ProcessedDocument
@@ -74,7 +78,7 @@ export class IngestionOrchestratorService
 	private previewService?: PreviewGeneratorService
 
 	constructor(config: OrchestratorServiceConfig) {
-		super('IngestionOrchestrator')
+		super("IngestionOrchestrator")
 		this.config = config
 		this.retryHandler = new RetryHandler()
 
@@ -93,7 +97,7 @@ export class IngestionOrchestratorService
 	 */
 	setExtractorService(service: DocumentExtractorService): void {
 		this.extractorService = service
-		this.logger.info('Extractor service registered')
+		this.logger.info("Extractor service registered")
 	}
 
 	/**
@@ -101,7 +105,7 @@ export class IngestionOrchestratorService
 	 */
 	setProcessorService(service: DocumentProcessorService): void {
 		this.processorService = service
-		this.logger.info('Processor service registered')
+		this.logger.info("Processor service registered")
 	}
 
 	/**
@@ -109,7 +113,7 @@ export class IngestionOrchestratorService
 	 */
 	setPreviewService(service: PreviewGeneratorService): void {
 		this.previewService = service
-		this.logger.info('Preview service registered')
+		this.logger.info("Preview service registered")
 	}
 
 	// ========================================================================
@@ -167,7 +171,9 @@ export class IngestionOrchestratorService
 	 * });
 	 * ```
 	 */
-	async processDocument(input: ProcessDocumentInput): Promise<ProcessingResult> {
+	async processDocument(
+		input: ProcessDocumentInput,
+	): Promise<ProcessingResult> {
 		this.assertInitialized()
 		this.assertServicesRegistered()
 
@@ -177,49 +183,49 @@ export class IngestionOrchestratorService
 		// Initialize processing state
 		const state: ProcessingState = {
 			documentId,
-			status: 'processing',
-			internalStatus: 'extracting',
+			status: "processing",
+			internalStatus: "extracting",
 			startTime: new Date(),
 			retryCount: 0,
 		}
 		this.processingStates.set(documentId, state)
 
-		const tracker = this.performanceMonitor.startOperation('processDocument')
+		const tracker = this.performanceMonitor.startOperation("processDocument")
 
 		try {
-			this.logger.info('Starting document processing', {
+			this.logger.info("Starting document processing", {
 				documentId,
 				type: input.type,
 				url: input.url,
 			})
 
 			// Step 1: Extract content
-			state.status = 'processing'
-			state.internalStatus = 'extracting'
+			state.status = "processing"
+			state.internalStatus = "extracting"
 			const extraction = await this.executeExtraction(input)
 			state.extraction = extraction
 
 			// Step 2: Process content
-			state.internalStatus = 'processing'
+			state.internalStatus = "processing"
 			const processed = await this.executeProcessing(extraction, input.options)
 			state.processed = processed
 
 			// Step 3: Generate preview (optional)
 			if (!input.options?.skipPreview) {
-				state.internalStatus = 'generating_preview'
+				state.internalStatus = "generating_preview"
 				const preview = await this.executePreviewGeneration(extraction)
 				state.preview = preview
 			}
 
 			// Step 4: Store in database
-			state.internalStatus = 'storing'
+			state.internalStatus = "storing"
 			await this.storeDocument(documentId, input, processed, state.preview)
 
 			// Success!
-			state.status = 'done'
+			state.status = "done"
 			tracker.end(true)
 
-			this.logger.info('Document processing completed', {
+			this.logger.info("Document processing completed", {
 				documentId,
 				duration: Date.now() - state.startTime.getTime(),
 			})
@@ -227,7 +233,7 @@ export class IngestionOrchestratorService
 			return {
 				success: true,
 				documentId,
-				status: 'done',
+				status: "done",
 				metadata: {
 					extraction,
 					processed,
@@ -235,11 +241,11 @@ export class IngestionOrchestratorService
 				},
 			}
 		} catch (error) {
-			state.status = 'failed'
+			state.status = "failed"
 			state.error = this.createProcessingError(error)
 			tracker.end(false)
 
-			this.logger.error('Document processing failed', error as Error, {
+			this.logger.error("Document processing failed", error as Error, {
 				documentId,
 				status: state.status,
 			})
@@ -247,7 +253,7 @@ export class IngestionOrchestratorService
 			return {
 				success: false,
 				documentId,
-				status: 'failed',
+				status: "failed",
 				error: state.error,
 			}
 		} finally {
@@ -268,14 +274,14 @@ export class IngestionOrchestratorService
 		// TODO: Implement actual job queue
 		const documentId = this.generateDocumentId()
 
-		this.logger.info('Queueing document for processing', {
+		this.logger.info("Queueing document for processing", {
 			documentId,
 			priority: input.priority,
 		})
 
 		// Process in background (don't await)
 		this.processDocument(input.document).catch((error) => {
-			this.logger.error('Background processing failed', error as Error, {
+			this.logger.error("Background processing failed", error as Error, {
 				documentId,
 			})
 		})
@@ -283,7 +289,7 @@ export class IngestionOrchestratorService
 		return {
 			jobId: documentId,
 			documentId,
-			status: 'queued',
+			status: "queued",
 		}
 	}
 
@@ -295,36 +301,36 @@ export class IngestionOrchestratorService
 
 		if (!state) {
 			throw this.createError(
-				'DOCUMENT_NOT_FOUND',
-				`Document ${documentId} not found in processing states`
+				"DOCUMENT_NOT_FOUND",
+				`Document ${documentId} not found in processing states`,
 			)
 		}
 
-		if (state.status !== 'failed') {
+		if (state.status !== "failed") {
 			throw this.createError(
-				'DOCUMENT_NOT_FAILED',
-				`Document ${documentId} is not in failed state`
+				"DOCUMENT_NOT_FAILED",
+				`Document ${documentId} is not in failed state`,
 			)
 		}
 
 		// Increment retry count
 		state.retryCount++
 
-		this.logger.info('Retrying failed document', {
+		this.logger.info("Retrying failed document", {
 			documentId,
 			retryCount: state.retryCount,
 		})
 
 		// Reset state
-		state.status = 'processing'
-		state.internalStatus = 'extracting'
+		state.status = "processing"
+		state.internalStatus = "extracting"
 		state.error = undefined
 
 		// We would need the original input to retry, which we don't have here
 		// In a real implementation, we'd store this in the database
 		throw this.createError(
-			'NOT_IMPLEMENTED',
-			'Retry functionality requires database integration'
+			"NOT_IMPLEMENTED",
+			"Retry functionality requires database integration",
 		)
 	}
 
@@ -338,9 +344,9 @@ export class IngestionOrchestratorService
 			return {
 				success: false,
 				documentId,
-				status: 'failed',
+				status: "failed",
 				error: {
-					code: 'DOCUMENT_NOT_FOUND',
+					code: "DOCUMENT_NOT_FOUND",
 					message: `Document ${documentId} not found`,
 					recoverable: false,
 				},
@@ -348,7 +354,7 @@ export class IngestionOrchestratorService
 		}
 
 		return {
-			success: state.status === 'done',
+			success: state.status === "done",
 			documentId,
 			status: state.status,
 			error: state.error,
@@ -368,16 +374,19 @@ export class IngestionOrchestratorService
 		const state = this.processingStates.get(documentId)
 
 		if (!state) {
-			throw this.createError('DOCUMENT_NOT_FOUND', `Document ${documentId} not found`)
+			throw this.createError(
+				"DOCUMENT_NOT_FOUND",
+				`Document ${documentId} not found`,
+			)
 		}
 
-		this.logger.info('Cancelling document processing', { documentId })
+		this.logger.info("Cancelling document processing", { documentId })
 
 		// Mark as failed
-		state.status = 'failed'
+		state.status = "failed"
 		state.error = {
-			code: 'CANCELLED',
-			message: 'Processing was cancelled',
+			code: "CANCELLED",
+			message: "Processing was cancelled",
 			recoverable: false,
 		}
 
@@ -396,15 +405,17 @@ export class IngestionOrchestratorService
 	 * Get circuit breaker state
 	 */
 	getCircuitBreakerState(): CircuitBreakerState {
-		const extractorBreaker = this.circuitBreakers.get('extractor')
-		return extractorBreaker?.getState() ?? {
-			state: 'closed',
-			failures: 0,
-			lastFailureTime: 0,
-			lastSuccessTime: 0,
-			totalRequests: 0,
-			successfulRequests: 0,
-		}
+		const extractorBreaker = this.circuitBreakers.get("extractor")
+		return (
+			extractorBreaker?.getState() ?? {
+				state: "closed",
+				failures: 0,
+				lastFailureTime: 0,
+				lastSuccessTime: 0,
+				totalRequests: 0,
+				successfulRequests: 0,
+			}
+		)
 	}
 
 	// ========================================================================
@@ -414,9 +425,11 @@ export class IngestionOrchestratorService
 	/**
 	 * Execute extraction step
 	 */
-	private async executeExtraction(input: ProcessDocumentInput): Promise<ExtractionResult> {
+	private async executeExtraction(
+		input: ProcessDocumentInput,
+	): Promise<ExtractionResult> {
 		const operation = async () => {
-			this.logger.debug('Executing extraction', {
+			this.logger.debug("Executing extraction", {
 				type: input.type,
 				url: input.url,
 			})
@@ -434,7 +447,7 @@ export class IngestionOrchestratorService
 		}
 
 		// Execute with circuit breaker and retry
-		return await this.executeWithProtection('extractor', operation)
+		return await this.executeWithProtection("extractor", operation)
 	}
 
 	/**
@@ -442,41 +455,43 @@ export class IngestionOrchestratorService
 	 */
 	private async executeProcessing(
 		extraction: ExtractionResult,
-		options?: ProcessDocumentInput['options']
+		options?: ProcessDocumentInput["options"],
 	): Promise<ProcessedDocument> {
 		const operation = async () => {
-			this.logger.debug('Executing processing')
+			this.logger.debug("Executing processing")
 
 			return await this.processorService!.process(extraction, options)
 		}
 
 		// Execute with circuit breaker and retry
-		return await this.executeWithProtection('processor', operation)
+		return await this.executeWithProtection("processor", operation)
 	}
 
 	/**
 	 * Execute preview generation step
 	 */
-	private async executePreviewGeneration(extraction: ExtractionResult): Promise<any> {
+	private async executePreviewGeneration(
+		extraction: ExtractionResult,
+	): Promise<any> {
 		const operation = async () => {
-			this.logger.debug('Executing preview generation')
+			this.logger.debug("Executing preview generation")
 
 			return await this.previewService!.generate(extraction)
 		}
 
 		// Execute with circuit breaker and retry (with fallback)
 		try {
-			return await this.executeWithProtection('preview', operation)
+			return await this.executeWithProtection("preview", operation)
 		} catch (error) {
 			// Preview generation is non-critical, return default
-			this.logger.warn('Preview generation failed, using default', {
+			this.logger.warn("Preview generation failed, using default", {
 				error: (error as Error).message,
 			})
 
 			return {
-				url: '/default-preview.svg',
-				source: 'default',
-				type: 'svg',
+				url: "/default-preview.svg",
+				source: "default",
+				type: "svg",
 			}
 		}
 	}
@@ -486,7 +501,7 @@ export class IngestionOrchestratorService
 	 */
 	private async executeWithProtection<T>(
 		serviceName: string,
-		operation: () => Promise<T>
+		operation: () => Promise<T>,
 	): Promise<T> {
 		const circuitBreaker = this.circuitBreakers.get(serviceName)
 
@@ -496,7 +511,10 @@ export class IngestionOrchestratorService
 			: operation
 
 		// Execute with retry logic
-		return await this.retryHandler.execute(protectedOperation, this.config.retry)
+		return await this.retryHandler.execute(
+			protectedOperation,
+			this.config.retry,
+		)
 	}
 
 	/**
@@ -506,9 +524,9 @@ export class IngestionOrchestratorService
 		documentId: string,
 		input: ProcessDocumentInput,
 		processed: ProcessedDocument,
-		preview?: PreviewResult
+		preview?: PreviewResult,
 	): Promise<void> {
-		this.logger.debug('Storing document', { documentId })
+		this.logger.debug("Storing document", { documentId })
 
 		// TODO: Implement actual database storage
 		// This would involve:
@@ -518,7 +536,7 @@ export class IngestionOrchestratorService
 		// 4. Updating document status
 
 		// For now, just log
-		this.logger.info('Document stored (mock)', {
+		this.logger.info("Document stored (mock)", {
 			documentId,
 			chunkCount: processed.chunks.length,
 			hasPreview: !!preview,
@@ -538,7 +556,7 @@ export class IngestionOrchestratorService
 		if (!circuitBreaker) return
 
 		// Create circuit breakers for each service
-		const services = ['extractor', 'processor', 'preview']
+		const services = ["extractor", "processor", "preview"]
 
 		for (const serviceName of services) {
 			const breaker = new CircuitBreaker(serviceName, {
@@ -566,8 +584,8 @@ export class IngestionOrchestratorService
 		const err = error as Error
 
 		return {
-			code: 'PROCESSING_ERROR',
-			message: err.message || 'Unknown error',
+			code: "PROCESSING_ERROR",
+			message: err.message || "Unknown error",
 			recoverable: this.isRetryableError(err),
 			details: {
 				name: err.name,
@@ -582,20 +600,20 @@ export class IngestionOrchestratorService
 	private assertServicesRegistered(): void {
 		if (!this.extractorService) {
 			throw this.createError(
-				'SERVICE_NOT_REGISTERED',
-				'DocumentExtractorService not registered'
+				"SERVICE_NOT_REGISTERED",
+				"DocumentExtractorService not registered",
 			)
 		}
 		if (!this.processorService) {
 			throw this.createError(
-				'SERVICE_NOT_REGISTERED',
-				'DocumentProcessorService not registered'
+				"SERVICE_NOT_REGISTERED",
+				"DocumentProcessorService not registered",
 			)
 		}
 		if (!this.previewService) {
 			throw this.createError(
-				'SERVICE_NOT_REGISTERED',
-				'PreviewGeneratorService not registered'
+				"SERVICE_NOT_REGISTERED",
+				"PreviewGeneratorService not registered",
 			)
 		}
 	}
@@ -605,7 +623,7 @@ export class IngestionOrchestratorService
 	// ========================================================================
 
 	protected async onInitialize(): Promise<void> {
-		this.logger.info('Initializing ingestion orchestrator', {
+		this.logger.info("Initializing ingestion orchestrator", {
 			config: this.config,
 		})
 
@@ -627,7 +645,7 @@ export class IngestionOrchestratorService
 	}
 
 	protected async onCleanup(): Promise<void> {
-		this.logger.info('Cleaning up ingestion orchestrator')
+		this.logger.info("Cleaning up ingestion orchestrator")
 
 		// Cleanup circuit breakers
 		const breakers = Array.from(this.circuitBreakers.values())
@@ -651,7 +669,7 @@ export class IngestionOrchestratorService
  * Create ingestion orchestrator with default configuration
  */
 export function createIngestionOrchestrator(
-	config?: Partial<OrchestratorServiceConfig>
+	config?: Partial<OrchestratorServiceConfig>,
 ): IngestionOrchestratorService {
 	const defaultConfig: OrchestratorServiceConfig = {
 		circuitBreaker: {

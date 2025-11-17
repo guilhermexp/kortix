@@ -10,17 +10,17 @@
  * - Lifecycle management (initialize, healthCheck, cleanup)
  */
 
-import type { BaseService as IBaseService } from '../interfaces'
+import type { BaseService as IBaseService } from "../interfaces"
 
 // ============================================================================
 // Logging Types
 // ============================================================================
 
 export enum LogLevel {
-	DEBUG = 'debug',
-	INFO = 'info',
-	WARN = 'warn',
-	ERROR = 'error',
+	DEBUG = "debug",
+	INFO = "info",
+	WARN = "warn",
+	ERROR = "error",
 }
 
 export interface LogEntry {
@@ -38,7 +38,11 @@ export interface Logger {
 	debug(message: string, metadata?: Record<string, unknown>): void
 	info(message: string, metadata?: Record<string, unknown>): void
 	warn(message: string, metadata?: Record<string, unknown>): void
-	error(message: string, error?: Error, metadata?: Record<string, unknown>): void
+	error(
+		message: string,
+		error?: Error,
+		metadata?: Record<string, unknown>,
+	): void
 }
 
 // ============================================================================
@@ -79,10 +83,11 @@ export abstract class BaseService implements IBaseService {
 	constructor(
 		public readonly serviceName: string,
 		logger?: Logger,
-		performanceMonitor?: PerformanceMonitor
+		performanceMonitor?: PerformanceMonitor,
 	) {
 		this.logger = logger || new ConsoleLogger(serviceName)
-		this.performanceMonitor = performanceMonitor || new SimplePerformanceMonitor()
+		this.performanceMonitor =
+			performanceMonitor || new SimplePerformanceMonitor()
 	}
 
 	// ========================================================================
@@ -94,24 +99,28 @@ export abstract class BaseService implements IBaseService {
 	 */
 	async initialize(): Promise<void> {
 		if (this.initialized) {
-			this.logger.warn('Service already initialized', { service: this.serviceName })
+			this.logger.warn("Service already initialized", {
+				service: this.serviceName,
+			})
 			return
 		}
 
-		const tracker = this.performanceMonitor.startOperation('initialize')
+		const tracker = this.performanceMonitor.startOperation("initialize")
 
 		try {
-			this.logger.info('Initializing service', { service: this.serviceName })
+			this.logger.info("Initializing service", { service: this.serviceName })
 			await this.onInitialize()
 			this.initialized = true
-			this.logger.info('Service initialized successfully', { service: this.serviceName })
+			this.logger.info("Service initialized successfully", {
+				service: this.serviceName,
+			})
 			tracker.end(true)
 		} catch (error) {
-			this.logger.error('Service initialization failed', error as Error, {
+			this.logger.error("Service initialization failed", error as Error, {
 				service: this.serviceName,
 			})
 			tracker.end(false)
-			throw this.handleError(error, 'initialization')
+			throw this.handleError(error, "initialization")
 		}
 	}
 
@@ -120,15 +129,15 @@ export abstract class BaseService implements IBaseService {
 	 */
 	async healthCheck(): Promise<boolean> {
 		try {
-			this.logger.debug('Running health check', { service: this.serviceName })
+			this.logger.debug("Running health check", { service: this.serviceName })
 			const healthy = await this.onHealthCheck()
-			this.logger.debug('Health check completed', {
+			this.logger.debug("Health check completed", {
 				service: this.serviceName,
 				healthy,
 			})
 			return healthy
 		} catch (error) {
-			this.logger.error('Health check failed', error as Error, {
+			this.logger.error("Health check failed", error as Error, {
 				service: this.serviceName,
 			})
 			return false
@@ -140,24 +149,24 @@ export abstract class BaseService implements IBaseService {
 	 */
 	async cleanup(): Promise<void> {
 		if (!this.initialized) {
-			this.logger.warn('Service not initialized, skipping cleanup', {
+			this.logger.warn("Service not initialized, skipping cleanup", {
 				service: this.serviceName,
 			})
 			return
 		}
 
 		try {
-			this.logger.info('Cleaning up service', { service: this.serviceName })
+			this.logger.info("Cleaning up service", { service: this.serviceName })
 			await this.onCleanup()
 			this.initialized = false
-			this.logger.info('Service cleaned up successfully', {
+			this.logger.info("Service cleaned up successfully", {
 				service: this.serviceName,
 			})
 		} catch (error) {
-			this.logger.error('Service cleanup failed', error as Error, {
+			this.logger.error("Service cleanup failed", error as Error, {
 				service: this.serviceName,
 			})
-			throw this.handleError(error, 'cleanup')
+			throw this.handleError(error, "cleanup")
 		}
 	}
 
@@ -215,7 +224,11 @@ export abstract class BaseService implements IBaseService {
 	/**
 	 * Create a standardized error
 	 */
-	protected createError(code: string, message: string, details?: Record<string, unknown>): Error {
+	protected createError(
+		code: string,
+		message: string,
+		details?: Record<string, unknown>,
+	): Error {
 		const error = new Error(message) as Error & {
 			code?: string
 			details?: Record<string, unknown>
@@ -231,12 +244,12 @@ export abstract class BaseService implements IBaseService {
 	protected isRetryableError(error: Error): boolean {
 		// Network errors are typically retryable
 		const retryableMessages = [
-			'ECONNREFUSED',
-			'ETIMEDOUT',
-			'ENOTFOUND',
-			'ECONNRESET',
-			'timeout',
-			'network',
+			"ECONNREFUSED",
+			"ETIMEDOUT",
+			"ENOTFOUND",
+			"ECONNRESET",
+			"timeout",
+			"network",
 		]
 
 		const errorMessage = error.message.toLowerCase()
@@ -252,10 +265,10 @@ export abstract class BaseService implements IBaseService {
 	 */
 	protected validateRequired<T>(
 		value: T | null | undefined,
-		fieldName: string
+		fieldName: string,
 	): asserts value is T {
-		if (value === null || value === undefined || value === '') {
-			throw this.createError('VALIDATION_ERROR', `${fieldName} is required`)
+		if (value === null || value === undefined || value === "") {
+			throw this.createError("VALIDATION_ERROR", `${fieldName} is required`)
 		}
 	}
 
@@ -264,7 +277,7 @@ export abstract class BaseService implements IBaseService {
 	 */
 	protected validateNotEmpty(value: string, fieldName: string): void {
 		if (!value || value.trim().length === 0) {
-			throw this.createError('VALIDATION_ERROR', `${fieldName} cannot be empty`)
+			throw this.createError("VALIDATION_ERROR", `${fieldName} cannot be empty`)
 		}
 	}
 
@@ -275,18 +288,18 @@ export abstract class BaseService implements IBaseService {
 		value: string,
 		fieldName: string,
 		min?: number,
-		max?: number
+		max?: number,
 	): void {
 		if (min !== undefined && value.length < min) {
 			throw this.createError(
-				'VALIDATION_ERROR',
-				`${fieldName} must be at least ${min} characters`
+				"VALIDATION_ERROR",
+				`${fieldName} must be at least ${min} characters`,
 			)
 		}
 		if (max !== undefined && value.length > max) {
 			throw this.createError(
-				'VALIDATION_ERROR',
-				`${fieldName} must be at most ${max} characters`
+				"VALIDATION_ERROR",
+				`${fieldName} must be at most ${max} characters`,
 			)
 		}
 	}
@@ -298,7 +311,10 @@ export abstract class BaseService implements IBaseService {
 		try {
 			new URL(value)
 		} catch {
-			throw this.createError('VALIDATION_ERROR', `${fieldName} must be a valid URL`)
+			throw this.createError(
+				"VALIDATION_ERROR",
+				`${fieldName} must be a valid URL`,
+			)
 		}
 	}
 
@@ -309,16 +325,19 @@ export abstract class BaseService implements IBaseService {
 		value: number,
 		fieldName: string,
 		min?: number,
-		max?: number
+		max?: number,
 	): void {
 		if (min !== undefined && value < min) {
 			throw this.createError(
-				'VALIDATION_ERROR',
-				`${fieldName} must be at least ${min}`
+				"VALIDATION_ERROR",
+				`${fieldName} must be at least ${min}`,
 			)
 		}
 		if (max !== undefined && value > max) {
-			throw this.createError('VALIDATION_ERROR', `${fieldName} must be at most ${max}`)
+			throw this.createError(
+				"VALIDATION_ERROR",
+				`${fieldName} must be at most ${max}`,
+			)
 		}
 	}
 
@@ -328,12 +347,12 @@ export abstract class BaseService implements IBaseService {
 	protected validateEnum<T extends string>(
 		value: T,
 		fieldName: string,
-		allowedValues: readonly T[]
+		allowedValues: readonly T[],
 	): void {
 		if (!allowedValues.includes(value)) {
 			throw this.createError(
-				'VALIDATION_ERROR',
-				`${fieldName} must be one of: ${allowedValues.join(', ')}`
+				"VALIDATION_ERROR",
+				`${fieldName} must be one of: ${allowedValues.join(", ")}`,
 			)
 		}
 	}
@@ -347,7 +366,7 @@ export abstract class BaseService implements IBaseService {
 	 */
 	protected async executeWithTracking<T>(
 		operation: string,
-		fn: () => Promise<T>
+		fn: () => Promise<T>,
 	): Promise<T> {
 		const tracker = this.performanceMonitor.startOperation(operation)
 
@@ -392,8 +411,8 @@ export abstract class BaseService implements IBaseService {
 	protected assertInitialized(): void {
 		if (!this.initialized) {
 			throw this.createError(
-				'SERVICE_NOT_INITIALIZED',
-				`Service ${this.serviceName} is not initialized`
+				"SERVICE_NOT_INITIALIZED",
+				`Service ${this.serviceName} is not initialized`,
 			)
 		}
 	}
@@ -409,12 +428,16 @@ export abstract class BaseService implements IBaseService {
 export class ConsoleLogger implements Logger {
 	constructor(private serviceName: string) {}
 
-	private log(level: LogLevel, message: string, metadata?: Record<string, unknown>): void {
+	private log(
+		level: LogLevel,
+		message: string,
+		metadata?: Record<string, unknown>,
+	): void {
 		const entry: LogEntry = {
 			timestamp: new Date().toISOString(),
 			level,
 			service: this.serviceName,
-			operation: '',
+			operation: "",
 			message,
 			metadata,
 		}
@@ -451,7 +474,11 @@ export class ConsoleLogger implements Logger {
 		this.log(LogLevel.WARN, message, metadata)
 	}
 
-	error(message: string, error?: Error, metadata?: Record<string, unknown>): void {
+	error(
+		message: string,
+		error?: Error,
+		metadata?: Record<string, unknown>,
+	): void {
 		const errorMetadata = {
 			...metadata,
 			error: error?.message,

@@ -12,13 +12,13 @@
  * - TaggingService: Automatic tag generation
  */
 
-import {
-	ExtractionResult,
+import type {
+	BaseService,
 	Chunk,
+	ExtractionResult,
 	ProcessedDocument,
 	ProcessingOptions,
-	BaseService,
-} from './document-processing'
+} from "./document-processing"
 
 // ============================================================================
 // Chunking Service Interfaces
@@ -103,7 +103,7 @@ export interface ChunkBoundary {
 	/** End position */
 	end: number
 	/** Boundary type */
-	type: 'sentence' | 'paragraph' | 'section' | 'token'
+	type: "sentence" | "paragraph" | "section" | "token"
 	/** Confidence score */
 	confidence: number
 }
@@ -157,7 +157,7 @@ export interface EmbeddingService extends BaseService {
  */
 export interface EmbeddingOptions {
 	/** Embedding provider */
-	provider?: 'gemini' | 'openai' | 'hybrid' | 'deterministic'
+	provider?: "gemini" | "openai" | "hybrid" | "deterministic"
 	/** Model to use */
 	model?: string
 	/** Batch size for processing */
@@ -216,7 +216,7 @@ export interface HybridEmbeddingStrategy {
  */
 export interface HybridEmbeddingConfig {
 	/** AI provider */
-	aiProvider: 'gemini' | 'openai'
+	aiProvider: "gemini" | "openai"
 	/** Weight for AI embedding (0-1) */
 	aiWeight: number
 	/** Weight for deterministic embedding (0-1) */
@@ -236,7 +236,10 @@ export interface SummarizationService extends BaseService {
 	/**
 	 * Generate summary for content
 	 */
-	generateSummary(content: string, options?: SummarizationOptions): Promise<string>
+	generateSummary(
+		content: string,
+		options?: SummarizationOptions,
+	): Promise<string>
 
 	/**
 	 * Generate multi-level summary (brief, detailed)
@@ -251,7 +254,10 @@ export interface SummarizationService extends BaseService {
 	/**
 	 * Get summarization statistics
 	 */
-	getSummarizationStats(content: string, summary: string): SummarizationStatistics
+	getSummarizationStats(
+		content: string,
+		summary: string,
+	): SummarizationStatistics
 }
 
 /**
@@ -259,17 +265,17 @@ export interface SummarizationService extends BaseService {
  */
 export interface SummarizationOptions {
 	/** Target summary length */
-	targetLength?: 'brief' | 'medium' | 'detailed'
+	targetLength?: "brief" | "medium" | "detailed"
 	/** Maximum words */
 	maxWords?: number
 	/** Minimum words */
 	minWords?: number
 	/** Style */
-	style?: 'bullet-points' | 'paragraph' | 'executive'
+	style?: "bullet-points" | "paragraph" | "executive"
 	/** Include key points */
 	includeKeyPoints?: boolean
 	/** AI provider */
-	provider?: 'openrouter' | 'gemini' | 'claude'
+	provider?: "openrouter" | "gemini" | "claude"
 	/** Model to use */
 	model?: string
 	/** Timeout */
@@ -355,7 +361,7 @@ export interface TaggingOptions {
 	/** Include category tags */
 	includeCategories?: boolean
 	/** AI provider */
-	provider?: 'openrouter' | 'gemini'
+	provider?: "openrouter" | "gemini"
 	/** Model to use */
 	model?: string
 	/** Timeout */
@@ -373,7 +379,7 @@ export interface TagWithMetadata {
 	/** Tag category */
 	category: TagCategory
 	/** Source of tag */
-	source: 'ai' | 'keyword' | 'manual'
+	source: "ai" | "keyword" | "manual"
 	/** Confidence score (0-1) */
 	confidence: number
 }
@@ -382,16 +388,16 @@ export interface TagWithMetadata {
  * Tag category
  */
 export type TagCategory =
-	| 'topic'
-	| 'technology'
-	| 'person'
-	| 'organization'
-	| 'location'
-	| 'concept'
-	| 'language'
-	| 'format'
-	| 'domain'
-	| 'other'
+	| "topic"
+	| "technology"
+	| "person"
+	| "organization"
+	| "location"
+	| "concept"
+	| "language"
+	| "format"
+	| "domain"
+	| "other"
 
 /**
  * Tag extraction result
@@ -459,7 +465,7 @@ export interface Entity {
 	/** Entity text */
 	text: string
 	/** Entity type */
-	type: 'person' | 'organization' | 'location' | 'date' | 'other'
+	type: "person" | "organization" | "location" | "date" | "other"
 	/** Confidence score */
 	confidence: number
 	/** Position in text */
@@ -508,7 +514,7 @@ export interface QualityScore {
  */
 export interface Sentiment {
 	/** Sentiment label */
-	label: 'positive' | 'negative' | 'neutral'
+	label: "positive" | "negative" | "neutral"
 	/** Confidence score (0-1) */
 	confidence: number
 	/** Detailed scores */
@@ -546,7 +552,10 @@ export interface ProcessingPipeline {
 	/**
 	 * Process document through complete pipeline
 	 */
-	process(extraction: ExtractionResult, options?: ProcessingOptions): Promise<ProcessedDocument>
+	process(
+		extraction: ExtractionResult,
+		options?: ProcessingOptions,
+	): Promise<ProcessedDocument>
 
 	/**
 	 * Add processing stage
@@ -577,7 +586,10 @@ export interface ProcessingStage {
 	/** Skip condition */
 	shouldSkip?(data: ProcessingStageData): boolean
 	/** Error handler */
-	onError?(error: Error, data: ProcessingStageData): Promise<ProcessingStageData>
+	onError?(
+		error: Error,
+		data: ProcessingStageData,
+	): Promise<ProcessingStageData>
 }
 
 /**
@@ -645,7 +657,13 @@ export interface ProcessingMetrics {
  */
 export interface ProcessingEvent {
 	/** Event type */
-	type: 'started' | 'completed' | 'failed' | 'stage_started' | 'stage_completed' | 'stage_failed'
+	type:
+		| "started"
+		| "completed"
+		| "failed"
+		| "stage_started"
+		| "stage_completed"
+		| "stage_failed"
 	/** Timestamp */
 	timestamp: Date
 	/** Document ID */

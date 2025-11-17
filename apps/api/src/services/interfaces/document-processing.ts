@@ -135,7 +135,7 @@ export interface PreviewResult {
 	/** Preview source/method */
 	source: string
 	/** Preview type */
-	type: 'image' | 'svg' | 'favicon' | 'generated'
+	type: "image" | "svg" | "favicon" | "generated"
 	/** Width in pixels (if applicable) */
 	width?: number
 	/** Height in pixels (if applicable) */
@@ -181,7 +181,7 @@ export interface ProcessingOptions {
 	/** Custom chunk overlap */
 	chunkOverlap?: number
 	/** Priority level */
-	priority?: 'low' | 'normal' | 'high'
+	priority?: "low" | "normal" | "high"
 }
 
 /**
@@ -191,7 +191,7 @@ export interface QueueDocumentInput {
 	/** Document processing input */
 	document: ProcessDocumentInput
 	/** Job priority */
-	priority?: 'low' | 'normal' | 'high'
+	priority?: "low" | "normal" | "high"
 	/** Delay before processing (milliseconds) */
 	delay?: number
 }
@@ -205,7 +205,7 @@ export interface JobResult {
 	/** Document ID */
 	documentId: string
 	/** Job status */
-	status: 'queued' | 'delayed'
+	status: "queued" | "delayed"
 	/** Estimated start time */
 	estimatedStartTime?: Date
 }
@@ -243,7 +243,7 @@ export interface ProcessingResult {
 	/** Document ID if created */
 	documentId?: string
 	/** Current processing status */
-	status: 'queued' | 'processing' | 'done' | 'failed'
+	status: "queued" | "processing" | "done" | "failed"
 	/** Error if processing failed */
 	error?: ProcessingError
 	/** Processing metadata */
@@ -257,7 +257,7 @@ export interface ProcessingResult {
  */
 export interface CircuitBreakerState {
 	/** Current state */
-	state: 'closed' | 'open' | 'half-open'
+	state: "closed" | "open" | "half-open"
 	/** Number of failures */
 	failures: number
 	/** Last failure timestamp */
@@ -311,13 +311,7 @@ export interface ExtractorServiceConfig {
 	pdf?: {
 		enabled: boolean
 		ocrEnabled: boolean
-		ocrProvider?: 'replicate' | 'gemini'
-		timeout?: number
-	}
-	/** Repository extraction configuration */
-	repository?: {
-		enabled: boolean
-		maxFileSize?: number
+		ocrProvider?: "replicate" | "gemini"
 		timeout?: number
 	}
 	/** Default timeout for all extractors */
@@ -339,7 +333,7 @@ export interface ProcessorServiceConfig {
 	}
 	/** Embedding configuration */
 	embedding?: {
-		provider: 'gemini' | 'openai' | 'hybrid'
+		provider: "gemini" | "openai" | "hybrid"
 		model?: string
 		dimensions?: number
 		batchSize?: number
@@ -347,14 +341,14 @@ export interface ProcessorServiceConfig {
 	/** Summarization configuration */
 	summarization?: {
 		enabled: boolean
-		provider: 'openrouter' | 'gemini' | 'claude'
+		provider: "openrouter" | "gemini" | "claude"
 		model?: string
 		maxLength?: number
 	}
 	/** Tagging configuration */
 	tagging?: {
 		enabled: boolean
-		provider: 'openrouter' | 'gemini'
+		provider: "openrouter" | "gemini"
 		maxTags?: number
 	}
 }
@@ -417,7 +411,10 @@ export interface DocumentExtractorService {
 	/**
 	 * Extract content from a URL
 	 */
-	extractFromUrl(url: string, metadata?: Record<string, unknown>): Promise<ExtractionResult>
+	extractFromUrl(
+		url: string,
+		metadata?: Record<string, unknown>,
+	): Promise<ExtractionResult>
 
 	/**
 	 * Extract content from a file
@@ -426,18 +423,16 @@ export interface DocumentExtractorService {
 		file: Buffer,
 		fileName: string,
 		mimeType: string,
-		metadata?: Record<string, unknown>
+		metadata?: Record<string, unknown>,
 	): Promise<ExtractionResult>
 
 	/**
 	 * Extract content from YouTube
 	 */
-	extractFromYouTube(url: string, metadata?: Record<string, unknown>): Promise<ExtractionResult>
-
-	/**
-	 * Extract content from a repository
-	 */
-	extractFromRepository(url: string, metadata?: Record<string, unknown>): Promise<ExtractionResult>
+	extractFromYouTube(
+		url: string,
+		metadata?: Record<string, unknown>,
+	): Promise<ExtractionResult>
 
 	/**
 	 * Validate extraction input
@@ -457,12 +452,18 @@ export interface DocumentProcessorService {
 	/**
 	 * Process extracted content into a complete document
 	 */
-	process(extraction: ExtractionResult, options?: ProcessingOptions): Promise<ProcessedDocument>
+	process(
+		extraction: ExtractionResult,
+		options?: ProcessingOptions,
+	): Promise<ProcessedDocument>
 
 	/**
 	 * Chunk content into smaller pieces
 	 */
-	chunk(content: string, options?: { chunkSize?: number; overlap?: number }): Promise<Chunk[]>
+	chunk(
+		content: string,
+		options?: { chunkSize?: number; overlap?: number },
+	): Promise<Chunk[]>
 
 	/**
 	 * Generate embeddings for chunks

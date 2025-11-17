@@ -11,59 +11,52 @@
 export {
 	ChunkingService,
 	createChunkingService,
-} from './chunking-service'
-
+} from "./chunking-service"
 export {
-	EmbeddingService,
-	createEmbeddingService,
-} from './embedding-service'
-
-export {
-	SummarizationService,
-	createSummarizationService,
-} from './summarization-service'
-
-export {
-	TaggingService,
-	createTaggingService,
-} from './tagging-service'
-
-export {
-	DocumentProcessorService,
 	createDocumentProcessorService,
-} from './document-processor'
+	DocumentProcessorService,
+} from "./document-processor"
+export {
+	createEmbeddingService,
+	EmbeddingService,
+} from "./embedding-service"
+export {
+	createSummarizationService,
+	SummarizationService,
+} from "./summarization-service"
+export {
+	createTaggingService,
+	TaggingService,
+} from "./tagging-service"
 
 // ============================================================================
 // Re-export Types
 // ============================================================================
 
 export type {
-	// Service types
-	ChunkingService as IChunkingService,
-	EmbeddingService as IEmbeddingService,
-	SummarizationService as ISummarizationService,
-	TaggingService as ITaggingService,
-	DocumentProcessorService as IDocumentProcessorService,
-
-	// Configuration types
-	ChunkingOptions,
-	EmbeddingOptions,
-	SummarizationOptions,
-	TaggingOptions,
-	ProcessorServiceConfig,
-	ProcessingOptions,
-
+	AggregateStatistics,
 	// Result types
 	Chunk,
-	ProcessedDocument,
-	SummarizationResult,
-	TaggingResult,
+	// Configuration types
+	ChunkingOptions,
+	// Service types
+	ChunkingService as IChunkingService,
 	ChunkingStatistics,
+	DocumentProcessorService as IDocumentProcessorService,
+	EmbeddingOptions,
 	EmbeddingProviderInfo,
-
+	EmbeddingService as IEmbeddingService,
+	ProcessedDocument,
+	ProcessingEvent,
 	// Processing types
 	ProcessingMetrics,
-	ProcessingEvent,
 	ProcessingMonitor,
-	AggregateStatistics,
-} from '../interfaces'
+	ProcessingOptions,
+	ProcessorServiceConfig,
+	SummarizationOptions,
+	SummarizationResult,
+	SummarizationService as ISummarizationService,
+	TaggingOptions,
+	TaggingResult,
+	TaggingService as ITaggingService,
+} from "../interfaces"

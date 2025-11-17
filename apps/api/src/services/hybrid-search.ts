@@ -8,21 +8,21 @@ import { rerankSearchResults } from "./rerank"
  * Prevents SQL injection via pattern matching attacks
  */
 function escapeIlike(str: string): string {
-	return str.replace(/[%_\\]/g, '\\$&')
+	return str.replace(/[%_\\]/g, "\\$&")
 }
 
 export interface HybridSearchOptions {
-    query: string
-    orgId: string
-    limit?: number
-    mode?: "vector" | "keyword" | "hybrid"
-    weightVector?: number // 0-1, how much to weight vector search vs keyword
-    includeSummary?: boolean
-    includeFullDocs?: boolean
-    documentId?: string
-    containerTags?: string[]
-    categoriesFilter?: string[]
-    rerankResults?: boolean
+	query: string
+	orgId: string
+	limit?: number
+	mode?: "vector" | "keyword" | "hybrid"
+	weightVector?: number // 0-1, how much to weight vector search vs keyword
+	includeSummary?: boolean
+	includeFullDocs?: boolean
+	documentId?: string
+	containerTags?: string[]
+	categoriesFilter?: string[]
+	rerankResults?: boolean
 }
 
 interface SearchResult {
@@ -217,35 +217,37 @@ export async function hybridSearch(
 		results = reciprocalRankFusion(keywordResults, vectorResults, weightVector)
 	}
 
-    // Apply container tags filter if specified
-    if (options.containerTags?.length) {
-        results = results.filter((result) => {
-            const tags = result.metadata?.containerTags || []
-            return options.containerTags!.some((tag) => tags.includes(tag))
-        })
-    }
+	// Apply container tags filter if specified
+	if (options.containerTags?.length) {
+		results = results.filter((result) => {
+			const tags = result.metadata?.containerTags || []
+			return options.containerTags!.some((tag) => tags.includes(tag))
+		})
+	}
 
-    // Apply AI category tags filter if specified
-    if (options.categoriesFilter?.length) {
-        const wanted = options.categoriesFilter.map((s) => s.toLowerCase().trim()).filter(Boolean)
-        if (wanted.length) {
-            results = results.filter((result) => {
-                const md = (result.metadata || {}) as Record<string, any>
-                let tags: string[] = []
-                if (Array.isArray(md.aiTags)) {
-                    tags = md.aiTags
-                } else if (typeof md.aiTagsString === "string") {
-                    tags = md.aiTagsString
-                        .split(/[,\n]+/)
-                        .map((t: string) => t.toLowerCase().trim())
-                        .filter(Boolean)
-                }
-                if (!tags.length) return false
-                const lower = tags.map((t) => t.toLowerCase().trim())
-                return wanted.some((w) => lower.includes(w))
-            })
-        }
-    }
+	// Apply AI category tags filter if specified
+	if (options.categoriesFilter?.length) {
+		const wanted = options.categoriesFilter
+			.map((s) => s.toLowerCase().trim())
+			.filter(Boolean)
+		if (wanted.length) {
+			results = results.filter((result) => {
+				const md = (result.metadata || {}) as Record<string, any>
+				let tags: string[] = []
+				if (Array.isArray(md.aiTags)) {
+					tags = md.aiTags
+				} else if (typeof md.aiTagsString === "string") {
+					tags = md.aiTagsString
+						.split(/[,\n]+/)
+						.map((t: string) => t.toLowerCase().trim())
+						.filter(Boolean)
+				}
+				if (!tags.length) return false
+				const lower = tags.map((t) => t.toLowerCase().trim())
+				return wanted.some((w) => lower.includes(w))
+			})
+		}
+	}
 
 	// Apply document ID filter if specified
 	if (options.documentId) {

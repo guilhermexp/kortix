@@ -4,7 +4,7 @@ import {
 	ENHANCED_SYSTEM_PROMPT,
 	formatSearchResultsForSystemMessage,
 } from "../prompts/chat"
-import { executeClaudeAgent, type AgentMessage } from "../services/claude-agent"
+import { type AgentMessage, executeClaudeAgent } from "../services/claude-agent"
 import { searchDocuments } from "./search"
 
 const chatRequestSchema = z.object({
@@ -22,21 +22,20 @@ const chatRequestSchema = z.object({
 		.optional(),
 })
 
-type IncomingMessage = z.infer<typeof chatRequestSchema>[
-	"messages"
-][number]
+type IncomingMessage = z.infer<typeof chatRequestSchema>["messages"][number]
 
 type LegacyContentPart = { text?: string }
 
 function isLegacyContent(value: unknown): value is LegacyContentPart[] {
 	return (
 		Array.isArray(value) &&
-		value.every((part) =>
-			part !== null &&
-			typeof part === "object" &&
-			("text" in part
-				? typeof part.text === "string" || typeof part.text === "undefined"
-				: true),
+		value.every(
+			(part) =>
+				part !== null &&
+				typeof part === "object" &&
+				("text" in part
+					? typeof part.text === "string" || typeof part.text === "undefined"
+					: true),
 		)
 	)
 }
@@ -96,7 +95,8 @@ export async function handleChat({
 	const payload = chatRequestSchema.parse(body ?? {})
 	const inputMessages = payload.messages ?? []
 
-	const { items: agentMessages, extraSystem } = buildAgentMessages(inputMessages)
+	const { items: agentMessages, extraSystem } =
+		buildAgentMessages(inputMessages)
 	const lastUserMessage = [...agentMessages]
 		.reverse()
 		.find((message) => message.role === "user")

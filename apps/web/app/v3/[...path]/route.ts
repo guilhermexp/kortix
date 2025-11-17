@@ -106,8 +106,10 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
 		}
 
 		const data = await response.text()
+		const disallowBodyStatus = new Set([101, 204, 205, 304])
+		const responseBody = disallowBodyStatus.has(response.status) ? null : data
 
-		return new Response(data, {
+		return new Response(responseBody, {
 			status: response.status,
 			statusText: response.statusText,
 			headers: responseHeaders,

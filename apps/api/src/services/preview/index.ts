@@ -8,45 +8,39 @@
 // Preview Services
 // ============================================================================
 
-export { ImageExtractor, createImageExtractor } from './image-extractor'
-
-export { SVGGenerator, createSVGGenerator } from './svg-generator'
-
-export { FaviconExtractor, createFaviconExtractor } from './favicon-extractor'
-
+export { createFaviconExtractor, FaviconExtractor } from "./favicon-extractor"
+export { createImageExtractor, ImageExtractor } from "./image-extractor"
 export {
-	PreviewGeneratorService,
 	createPreviewGeneratorService,
-} from './preview-generator'
+	PreviewGeneratorService,
+} from "./preview-generator"
+export { createSVGGenerator, SVGGenerator } from "./svg-generator"
 
 // ============================================================================
 // Re-export Types
 // ============================================================================
 
 export type {
-	// Service types
-	ImageExtractor as IImageExtractor,
-	SVGGenerator as ISVGGenerator,
+	FaviconCollection,
+	FaviconExtractionOptions,
 	FaviconExtractor as IFaviconExtractor,
-	PreviewGeneratorService as IPreviewGeneratorService,
-
+	FaviconMetadata,
+	IconSVGOptions,
 	// Configuration types
 	ImageExtractionOptions,
-	SVGGenerationOptions,
-	FaviconExtractionOptions,
-	PreviewGenerationOptions,
-	PreviewGeneratorConfig,
-
 	// Result types
 	ImageExtractionResult,
+	// Service types
+	ImageExtractor as IImageExtractor,
 	ImageMetadata,
-	FaviconCollection,
-	FaviconMetadata,
-	PreviewResult,
+	PreviewGenerationOptions,
+	PreviewGeneratorConfig,
+	PreviewGeneratorService as IPreviewGeneratorService,
 	PreviewMetrics,
-
+	PreviewResult,
+	SVGGenerationOptions,
+	SVGGenerator as ISVGGenerator,
+	SVGTemplate,
 	// SVG types
 	TextSVGOptions,
-	IconSVGOptions,
-	SVGTemplate,
-} from '../interfaces'
+} from "../interfaces"

@@ -10,8 +10,8 @@
  * - Format validation
  */
 
-import { BaseService } from '../base/base-service'
-import type { ExtractionInput, ExtractionResult } from '../interfaces'
+import { BaseService } from "../base/base-service"
+import type { ExtractionInput, ExtractionResult } from "../interfaces"
 
 // ============================================================================
 // Validation Rules
@@ -29,10 +29,10 @@ const VALIDATION_RULES = {
 	MIN_TEXT_LENGTH: 10, // 10 characters minimum
 
 	// Allowed protocols
-	ALLOWED_PROTOCOLS: ['http:', 'https:', 'ftp:', 'ftps:'],
+	ALLOWED_PROTOCOLS: ["http:", "https:", "ftp:", "ftps:"],
 
 	// Blocked domains (example - expand as needed)
-	BLOCKED_DOMAINS: ['localhost', '127.0.0.1', '0.0.0.0', '::1'],
+	BLOCKED_DOMAINS: ["localhost", "127.0.0.1", "0.0.0.0", "::1"],
 
 	// Dangerous patterns
 	DANGEROUS_PATTERNS: [
@@ -53,7 +53,7 @@ const VALIDATION_RULES = {
  */
 export class ExtractionValidator extends BaseService {
 	constructor() {
-		super('ExtractionValidator')
+		super("ExtractionValidator")
 	}
 
 	// ========================================================================
@@ -66,16 +66,16 @@ export class ExtractionValidator extends BaseService {
 	async validateInput(input: ExtractionInput): Promise<void> {
 		this.assertInitialized()
 
-		const tracker = this.performanceMonitor.startOperation('validateInput')
+		const tracker = this.performanceMonitor.startOperation("validateInput")
 
 		try {
-			this.logger.debug('Validating extraction input')
+			this.logger.debug("Validating extraction input")
 
 			// Check that at least one source is provided
 			if (!input.originalContent && !input.url && !input.fileBuffer) {
 				throw this.createError(
-					'INVALID_INPUT',
-					'Input must have at least one of: originalContent, url, or fileBuffer'
+					"INVALID_INPUT",
+					"Input must have at least one of: originalContent, url, or fileBuffer",
 				)
 			}
 
@@ -102,7 +102,7 @@ export class ExtractionValidator extends BaseService {
 			tracker.end(true)
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'validateInput')
+			throw this.handleError(error, "validateInput")
 		}
 	}
 
@@ -113,8 +113,8 @@ export class ExtractionValidator extends BaseService {
 		// Check length
 		if (url.length > VALIDATION_RULES.MAX_URL_LENGTH) {
 			throw this.createError(
-				'URL_TOO_LONG',
-				`URL length ${url.length} exceeds maximum of ${VALIDATION_RULES.MAX_URL_LENGTH}`
+				"URL_TOO_LONG",
+				`URL length ${url.length} exceeds maximum of ${VALIDATION_RULES.MAX_URL_LENGTH}`,
 			)
 		}
 
@@ -123,14 +123,14 @@ export class ExtractionValidator extends BaseService {
 		try {
 			parsedUrl = new URL(url)
 		} catch (error) {
-			throw this.createError('INVALID_URL', `Invalid URL format: ${url}`)
+			throw this.createError("INVALID_URL", `Invalid URL format: ${url}`)
 		}
 
 		// Check protocol
 		if (!VALIDATION_RULES.ALLOWED_PROTOCOLS.includes(parsedUrl.protocol)) {
 			throw this.createError(
-				'INVALID_PROTOCOL',
-				`Protocol ${parsedUrl.protocol} is not allowed. Allowed: ${VALIDATION_RULES.ALLOWED_PROTOCOLS.join(', ')}`
+				"INVALID_PROTOCOL",
+				`Protocol ${parsedUrl.protocol} is not allowed. Allowed: ${VALIDATION_RULES.ALLOWED_PROTOCOLS.join(", ")}`,
 			)
 		}
 
@@ -138,31 +138,40 @@ export class ExtractionValidator extends BaseService {
 		const hostname = parsedUrl.hostname.toLowerCase()
 		for (const blocked of VALIDATION_RULES.BLOCKED_DOMAINS) {
 			if (hostname === blocked || hostname.endsWith(`.${blocked}`)) {
-				throw this.createError('BLOCKED_DOMAIN', `Domain ${hostname} is blocked`)
+				throw this.createError(
+					"BLOCKED_DOMAIN",
+					`Domain ${hostname} is blocked`,
+				)
 			}
 		}
 
 		// Check for private IP addresses (basic check)
 		if (this.isPrivateIP(hostname)) {
-			throw this.createError('PRIVATE_IP', `Private IP addresses are not allowed: ${hostname}`)
+			throw this.createError(
+				"PRIVATE_IP",
+				`Private IP addresses are not allowed: ${hostname}`,
+			)
 		}
 
-		this.logger.debug('URL validation passed', { url })
+		this.logger.debug("URL validation passed", { url })
 	}
 
 	/**
 	 * Validate file buffer
 	 */
-	async validateFileBuffer(buffer: Buffer, fileName?: string | null): Promise<void> {
+	async validateFileBuffer(
+		buffer: Buffer,
+		fileName?: string | null,
+	): Promise<void> {
 		// Check size
 		if (buffer.length === 0) {
-			throw this.createError('EMPTY_BUFFER', 'File buffer is empty')
+			throw this.createError("EMPTY_BUFFER", "File buffer is empty")
 		}
 
 		if (buffer.length > VALIDATION_RULES.MAX_BUFFER_SIZE) {
 			throw this.createError(
-				'BUFFER_TOO_LARGE',
-				`Buffer size ${buffer.length} exceeds maximum of ${VALIDATION_RULES.MAX_BUFFER_SIZE}`
+				"BUFFER_TOO_LARGE",
+				`Buffer size ${buffer.length} exceeds maximum of ${VALIDATION_RULES.MAX_BUFFER_SIZE}`,
 			)
 		}
 
@@ -170,29 +179,36 @@ export class ExtractionValidator extends BaseService {
 		if (fileName) {
 			if (fileName.length > VALIDATION_RULES.MAX_FILENAME_LENGTH) {
 				throw this.createError(
-					'FILENAME_TOO_LONG',
-					`Filename length ${fileName.length} exceeds maximum of ${VALIDATION_RULES.MAX_FILENAME_LENGTH}`
+					"FILENAME_TOO_LONG",
+					`Filename length ${fileName.length} exceeds maximum of ${VALIDATION_RULES.MAX_FILENAME_LENGTH}`,
 				)
 			}
 
 			// Check for directory traversal attempts
-			if (fileName.includes('..') || fileName.includes('/') || fileName.includes('\\')) {
+			if (
+				fileName.includes("..") ||
+				fileName.includes("/") ||
+				fileName.includes("\\")
+			) {
 				throw this.createError(
-					'INVALID_FILENAME',
-					'Filename contains invalid characters (directory traversal attempt?)'
+					"INVALID_FILENAME",
+					"Filename contains invalid characters (directory traversal attempt?)",
 				)
 			}
 
 			// Check for null bytes
-			if (fileName.includes('\0')) {
-				throw this.createError('INVALID_FILENAME', 'Filename contains null bytes')
+			if (fileName.includes("\0")) {
+				throw this.createError(
+					"INVALID_FILENAME",
+					"Filename contains null bytes",
+				)
 			}
 		}
 
 		// Check for malicious file signatures (basic check)
 		await this.checkMaliciousContent(buffer)
 
-		this.logger.debug('File buffer validation passed', {
+		this.logger.debug("File buffer validation passed", {
 			size: buffer.length,
 			fileName,
 		})
@@ -205,17 +221,17 @@ export class ExtractionValidator extends BaseService {
 		// Check size
 		if (content.length > VALIDATION_RULES.MAX_CONTENT_LENGTH) {
 			throw this.createError(
-				'CONTENT_TOO_LONG',
-				`Content length ${content.length} exceeds maximum of ${VALIDATION_RULES.MAX_CONTENT_LENGTH}`
+				"CONTENT_TOO_LONG",
+				`Content length ${content.length} exceeds maximum of ${VALIDATION_RULES.MAX_CONTENT_LENGTH}`,
 			)
 		}
 
 		// Check for null bytes
-		if (content.includes('\0')) {
-			throw this.createError('INVALID_CONTENT', 'Content contains null bytes')
+		if (content.includes("\0")) {
+			throw this.createError("INVALID_CONTENT", "Content contains null bytes")
 		}
 
-		this.logger.debug('Content validation passed', {
+		this.logger.debug("Content validation passed", {
 			length: content.length,
 		})
 	}
@@ -228,25 +244,25 @@ export class ExtractionValidator extends BaseService {
 		const metadataStr = JSON.stringify(metadata)
 		if (metadataStr.length > 1024 * 1024) {
 			// 1MB
-			throw this.createError('METADATA_TOO_LARGE', 'Metadata exceeds 1MB')
+			throw this.createError("METADATA_TOO_LARGE", "Metadata exceeds 1MB")
 		}
 
 		// Check for dangerous patterns in metadata values
 		for (const [key, value] of Object.entries(metadata)) {
-			if (typeof value === 'string') {
+			if (typeof value === "string") {
 				// Check for XSS attempts
 				for (const pattern of VALIDATION_RULES.DANGEROUS_PATTERNS) {
 					if (pattern.test(value)) {
 						throw this.createError(
-							'DANGEROUS_METADATA',
-							`Metadata field '${key}' contains dangerous content`
+							"DANGEROUS_METADATA",
+							`Metadata field '${key}' contains dangerous content`,
 						)
 					}
 				}
 			}
 		}
 
-		this.logger.debug('Metadata validation passed')
+		this.logger.debug("Metadata validation passed")
 	}
 
 	// ========================================================================
@@ -259,10 +275,10 @@ export class ExtractionValidator extends BaseService {
 	async sanitizeResult(result: ExtractionResult): Promise<ExtractionResult> {
 		this.assertInitialized()
 
-		const tracker = this.performanceMonitor.startOperation('sanitizeResult')
+		const tracker = this.performanceMonitor.startOperation("sanitizeResult")
 
 		try {
-			this.logger.debug('Sanitizing extraction result')
+			this.logger.debug("Sanitizing extraction result")
 
 			// Sanitize text content
 			const sanitizedText = await this.sanitizeText(result.text)
@@ -275,15 +291,15 @@ export class ExtractionValidator extends BaseService {
 			// Validate text length
 			if (sanitizedText.length < VALIDATION_RULES.MIN_TEXT_LENGTH) {
 				throw this.createError(
-					'TEXT_TOO_SHORT',
-					`Extracted text is too short (${sanitizedText.length} chars, minimum ${VALIDATION_RULES.MIN_TEXT_LENGTH})`
+					"TEXT_TOO_SHORT",
+					`Extracted text is too short (${sanitizedText.length} chars, minimum ${VALIDATION_RULES.MIN_TEXT_LENGTH})`,
 				)
 			}
 
 			if (sanitizedText.length > VALIDATION_RULES.MAX_TEXT_LENGTH) {
 				throw this.createError(
-					'TEXT_TOO_LONG',
-					`Extracted text is too long (${sanitizedText.length} chars, maximum ${VALIDATION_RULES.MAX_TEXT_LENGTH})`
+					"TEXT_TOO_LONG",
+					`Extracted text is too long (${sanitizedText.length} chars, maximum ${VALIDATION_RULES.MAX_TEXT_LENGTH})`,
 				)
 			}
 
@@ -299,7 +315,7 @@ export class ExtractionValidator extends BaseService {
 			return sanitizedResult
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'sanitizeResult')
+			throw this.handleError(error, "sanitizeResult")
 		}
 	}
 
@@ -310,7 +326,7 @@ export class ExtractionValidator extends BaseService {
 		let sanitized = text
 
 		// Remove null bytes
-		sanitized = sanitized.replace(/\0/g, '')
+		sanitized = sanitized.replace(/\0/g, "")
 
 		// Normalize Unicode characters
 		sanitized = this.normalizeUnicode(sanitized)
@@ -322,7 +338,7 @@ export class ExtractionValidator extends BaseService {
 		sanitized = this.normalizeWhitespace(sanitized)
 
 		// Trim excessive line breaks
-		sanitized = sanitized.replace(/\n{4,}/g, '\n\n\n')
+		sanitized = sanitized.replace(/\n{4,}/g, "\n\n\n")
 
 		// Trim
 		sanitized = sanitized.trim()
@@ -374,7 +390,10 @@ export class ExtractionValidator extends BaseService {
 		// Windows executables
 		if (magicBytes[0] === 0x4d && magicBytes[1] === 0x5a) {
 			// MZ header
-			throw this.createError('MALICIOUS_FILE', 'Executable files are not allowed')
+			throw this.createError(
+				"MALICIOUS_FILE",
+				"Executable files are not allowed",
+			)
 		}
 
 		// ELF executables
@@ -384,14 +403,19 @@ export class ExtractionValidator extends BaseService {
 			magicBytes[2] === 0x4c &&
 			magicBytes[3] === 0x46
 		) {
-			throw this.createError('MALICIOUS_FILE', 'Executable files are not allowed')
+			throw this.createError(
+				"MALICIOUS_FILE",
+				"Executable files are not allowed",
+			)
 		}
 
 		// Check for script shebangs in text files
-		const firstLine = buffer.toString('utf-8', 0, Math.min(100, buffer.length))
-		if (firstLine.startsWith('#!')) {
+		const firstLine = buffer.toString("utf-8", 0, Math.min(100, buffer.length))
+		if (firstLine.startsWith("#!")) {
 			// This might be a script - allow it but log it
-			this.logger.warn('File appears to be a script', { firstLine: firstLine.substring(0, 50) })
+			this.logger.warn("File appears to be a script", {
+				firstLine: firstLine.substring(0, 50),
+			})
 		}
 	}
 
@@ -401,7 +425,7 @@ export class ExtractionValidator extends BaseService {
 	private normalizeUnicode(text: string): string {
 		try {
 			// Normalize to NFC (Canonical Decomposition, followed by Canonical Composition)
-			return text.normalize('NFC')
+			return text.normalize("NFC")
 		} catch {
 			// If normalization fails, return original
 			return text
@@ -415,19 +439,19 @@ export class ExtractionValidator extends BaseService {
 		let cleaned = text
 
 		// Remove script tags
-		cleaned = cleaned.replace(/<script[\s\S]*?<\/script>/gi, '')
+		cleaned = cleaned.replace(/<script[\s\S]*?<\/script>/gi, "")
 
 		// Remove iframe tags
-		cleaned = cleaned.replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
+		cleaned = cleaned.replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
 
 		// Remove event handlers
-		cleaned = cleaned.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '')
+		cleaned = cleaned.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, "")
 
 		// Remove javascript: URLs
-		cleaned = cleaned.replace(/javascript:\s*/gi, '')
+		cleaned = cleaned.replace(/javascript:\s*/gi, "")
 
 		// Remove data URLs with HTML
-		cleaned = cleaned.replace(/data:text\/html[^"'\s]*/gi, '')
+		cleaned = cleaned.replace(/data:text\/html[^"'\s]*/gi, "")
 
 		return cleaned
 	}
@@ -439,23 +463,23 @@ export class ExtractionValidator extends BaseService {
 		let normalized = text
 
 		// Normalize line breaks
-		normalized = normalized.replace(/\r\n/g, '\n')
-		normalized = normalized.replace(/\r/g, '\n')
+		normalized = normalized.replace(/\r\n/g, "\n")
+		normalized = normalized.replace(/\r/g, "\n")
 
 		// Normalize spaces and tabs on each line
-		const lines = normalized.split('\n')
+		const lines = normalized.split("\n")
 		const normalizedLines = lines.map((line) => {
 			// Preserve leading whitespace for code blocks
-			const leadingWhitespace = line.match(/^[\s\t]*/)?.[0] || ''
+			const leadingWhitespace = line.match(/^[\s\t]*/)?.[0] || ""
 			const content = line.substring(leadingWhitespace.length)
 
 			// Normalize spaces in content
-			const normalizedContent = content.replace(/[\s\t]+/g, ' ')
+			const normalizedContent = content.replace(/[\s\t]+/g, " ")
 
 			return leadingWhitespace + normalizedContent
 		})
 
-		normalized = normalizedLines.join('\n')
+		normalized = normalizedLines.join("\n")
 
 		return normalized
 	}

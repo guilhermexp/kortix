@@ -14,15 +14,15 @@
  * - Metrics collection
  */
 
-import { BaseService } from '../base/base-service'
+import { BaseService } from "../base/base-service"
 import type {
-	CircuitBreaker as ICircuitBreaker,
-	CircuitBreakerOptions,
-	CircuitBreakerMetrics,
-	CircuitBreakerState,
-	StateChange,
 	CircuitBreakerEvent,
-} from '../interfaces'
+	CircuitBreakerMetrics,
+	CircuitBreakerOptions,
+	CircuitBreakerState,
+	CircuitBreaker as ICircuitBreaker,
+	StateChange,
+} from "../interfaces"
 
 // ============================================================================
 // Circuit Breaker Implementation
@@ -32,7 +32,7 @@ import type {
  * Circuit breaker for protecting services from cascading failures
  */
 export class CircuitBreaker extends BaseService implements ICircuitBreaker {
-	private state: 'closed' | 'open' | 'half-open' = 'closed'
+	private state: "closed" | "open" | "half-open" = "closed"
 	private failures = 0
 	private successes = 0
 	private totalRequests = 0
@@ -40,7 +40,8 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 	private lastSuccessTime: Date | null = null
 	private stateChanges: StateChange[] = []
 	private readonly options: Required<CircuitBreakerOptions>
-	private readonly eventListeners: Array<(event: CircuitBreakerEvent) => void> = []
+	private readonly eventListeners: Array<(event: CircuitBreakerEvent) => void> =
+		[]
 
 	// Window for tracking recent requests
 	private readonly requestWindow: Array<{
@@ -61,7 +62,7 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 			errorFilter: options?.errorFilter ?? (() => true),
 		}
 
-		this.logger.info('Circuit breaker initialized', {
+		this.logger.info("Circuit breaker initialized", {
 			options: this.options,
 		})
 	}
@@ -75,7 +76,7 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 	 */
 	async execute<T>(
 		operation: () => Promise<T>,
-		options?: CircuitBreakerOptions
+		options?: CircuitBreakerOptions,
 	): Promise<T> {
 		// Merge with instance options if provided
 		const effectiveOptions = options
@@ -83,7 +84,7 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 			: this.options
 
 		// Check if circuit is open
-		if (this.state === 'open') {
+		if (this.state === "open") {
 			const timeSinceLastFailure = this.lastFailureTime
 				? Date.now() - this.lastFailureTime.getTime()
 				: Number.POSITIVE_INFINITY
@@ -91,24 +92,24 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 			if (timeSinceLastFailure < effectiveOptions.resetTimeout) {
 				// Circuit is still open
 				this.emitEvent({
-					type: 'rejected',
+					type: "rejected",
 					timestamp: new Date(),
 					serviceName: this.serviceName,
 				})
 
 				throw this.createError(
-					'CIRCUIT_BREAKER_OPEN',
-					'Circuit breaker is open',
+					"CIRCUIT_BREAKER_OPEN",
+					"Circuit breaker is open",
 					{
 						state: this.state,
 						timeSinceLastFailure,
 						resetTimeout: effectiveOptions.resetTimeout,
-					}
+					},
 				)
 			}
 
 			// Attempt to transition to half-open
-			this.transitionTo('half-open', 'Reset timeout elapsed')
+			this.transitionTo("half-open", "Reset timeout elapsed")
 		}
 
 		// Execute operation
@@ -140,8 +141,8 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 	 * Reset circuit breaker
 	 */
 	reset(): void {
-		this.logger.info('Resetting circuit breaker')
-		this.transitionTo('closed', 'Manual reset')
+		this.logger.info("Resetting circuit breaker")
+		this.transitionTo("closed", "Manual reset")
 		this.failures = 0
 		this.successes = 0
 		this.totalRequests = 0
@@ -154,16 +155,16 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 	 * Force open circuit breaker
 	 */
 	forceOpen(): void {
-		this.logger.warn('Forcing circuit breaker open')
-		this.transitionTo('open', 'Forced open')
+		this.logger.warn("Forcing circuit breaker open")
+		this.transitionTo("open", "Forced open")
 	}
 
 	/**
 	 * Force close circuit breaker
 	 */
 	forceClose(): void {
-		this.logger.info('Forcing circuit breaker closed')
-		this.transitionTo('closed', 'Forced close')
+		this.logger.info("Forcing circuit breaker closed")
+		this.transitionTo("closed", "Forced close")
 		this.failures = 0
 	}
 
@@ -182,8 +183,10 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 			lastFailureTime: this.lastFailureTime,
 			lastSuccessTime: this.lastSuccessTime,
 			stateChanges: [...this.stateChanges],
-			failureRate: this.totalRequests > 0 ? this.failures / this.totalRequests : 0,
-			successRate: this.totalRequests > 0 ? this.successes / this.totalRequests : 0,
+			failureRate:
+				this.totalRequests > 0 ? this.failures / this.totalRequests : 0,
+			successRate:
+				this.totalRequests > 0 ? this.successes / this.totalRequests : 0,
 		}
 	}
 
@@ -215,18 +218,18 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 		this.recordRequest(true)
 
 		this.emitEvent({
-			type: 'success',
+			type: "success",
 			timestamp: new Date(),
 			serviceName: this.serviceName,
 		})
 
 		// Transition from half-open to closed if success threshold met
-		if (this.state === 'half-open') {
+		if (this.state === "half-open") {
 			const recentRequests = this.getRequestsInWindow()
 			const recentSuccesses = recentRequests.filter((r) => r.success).length
 
 			if (recentSuccesses >= this.options.successThreshold) {
-				this.transitionTo('closed', 'Success threshold met')
+				this.transitionTo("closed", "Success threshold met")
 				this.failures = 0
 			}
 		}
@@ -235,13 +238,16 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 	/**
 	 * Handle failed operation
 	 */
-	private onFailure(error: Error, options: Required<CircuitBreakerOptions>): void {
+	private onFailure(
+		error: Error,
+		options: Required<CircuitBreakerOptions>,
+	): void {
 		this.totalRequests++
 		this.lastFailureTime = new Date()
 
 		// Check if error should be counted
 		if (!options.errorFilter(error)) {
-			this.logger.debug('Error filtered out by errorFilter', {
+			this.logger.debug("Error filtered out by errorFilter", {
 				error: error.message,
 			})
 			return
@@ -251,14 +257,14 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 		this.recordRequest(false)
 
 		this.emitEvent({
-			type: 'failure',
+			type: "failure",
 			timestamp: new Date(),
 			serviceName: this.serviceName,
 			error,
 		})
 
 		// Check if we should open the circuit
-		if (this.state === 'closed' || this.state === 'half-open') {
+		if (this.state === "closed" || this.state === "half-open") {
 			const recentRequests = this.getRequestsInWindow()
 
 			// Only open if we have minimum requests
@@ -268,14 +274,17 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 
 				// Open circuit if failure threshold exceeded
 				if (recentFailures >= options.failureThreshold) {
-					this.transitionTo('open', `Failure threshold exceeded (${recentFailures})`)
+					this.transitionTo(
+						"open",
+						`Failure threshold exceeded (${recentFailures})`,
+					)
 				}
 			}
 		}
 
 		// If in half-open and got failure, immediately open
-		if (this.state === 'half-open') {
-			this.transitionTo('open', 'Failure in half-open state')
+		if (this.state === "half-open") {
+			this.transitionTo("open", "Failure in half-open state")
 		}
 	}
 
@@ -283,8 +292,8 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 	 * Transition to new state
 	 */
 	private transitionTo(
-		newState: 'closed' | 'open' | 'half-open',
-		reason: string
+		newState: "closed" | "open" | "half-open",
+		reason: string,
 	): void {
 		if (this.state === newState) return
 
@@ -305,7 +314,7 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 			this.stateChanges.shift()
 		}
 
-		this.logger.info('Circuit breaker state changed', {
+		this.logger.info("Circuit breaker state changed", {
 			from: previousState,
 			to: newState,
 			reason,
@@ -313,11 +322,11 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 
 		// Emit state change event
 		const eventType =
-			newState === 'open'
-				? 'opened'
-				: newState === 'closed'
-					? 'closed'
-					: 'half_opened'
+			newState === "open"
+				? "opened"
+				: newState === "closed"
+					? "closed"
+					: "half_opened"
 
 		this.emitEvent({
 			type: eventType,
@@ -376,7 +385,7 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 			try {
 				listener(event)
 			} catch (error) {
-				this.logger.error('Error in event listener', error as Error)
+				this.logger.error("Error in event listener", error as Error)
 			}
 		}
 	}
@@ -387,7 +396,7 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 
 	protected async onHealthCheck(): Promise<boolean> {
 		// Circuit breaker is healthy if not permanently open
-		return this.state !== 'open' || this.canAttemptReset()
+		return this.state !== "open" || this.canAttemptReset()
 	}
 
 	/**
@@ -410,7 +419,7 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
  */
 export function createCircuitBreaker(
 	serviceName: string,
-	options?: CircuitBreakerOptions
+	options?: CircuitBreakerOptions,
 ): CircuitBreaker {
 	return new CircuitBreaker(serviceName, options)
 }
@@ -418,7 +427,9 @@ export function createCircuitBreaker(
 /**
  * Create a circuit breaker with aggressive failure detection
  */
-export function createAggressiveCircuitBreaker(serviceName: string): CircuitBreaker {
+export function createAggressiveCircuitBreaker(
+	serviceName: string,
+): CircuitBreaker {
 	return new CircuitBreaker(serviceName, {
 		failureThreshold: 3,
 		successThreshold: 2,
@@ -431,7 +442,9 @@ export function createAggressiveCircuitBreaker(serviceName: string): CircuitBrea
 /**
  * Create a circuit breaker with lenient failure detection
  */
-export function createLenientCircuitBreaker(serviceName: string): CircuitBreaker {
+export function createLenientCircuitBreaker(
+	serviceName: string,
+): CircuitBreaker {
 	return new CircuitBreaker(serviceName, {
 		failureThreshold: 10,
 		successThreshold: 5,

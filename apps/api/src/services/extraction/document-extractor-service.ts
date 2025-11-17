@@ -11,24 +11,23 @@
  * - Performance monitoring and metrics
  */
 
-import { BaseService } from '../base/base-service'
-import { CircuitBreaker } from '../orchestration/circuit-breaker'
-import { RetryHandler } from '../orchestration/retry-handler'
-import { URLExtractor, createURLExtractor } from './url-extractor'
-import { YouTubeExtractor, createYouTubeExtractor } from './youtube-extractor'
-import { PDFExtractor, createPDFExtractor } from './pdf-extractor'
-import { FileExtractor, createFileExtractor } from './file-extractor'
-import { RepositoryExtractor, createRepositoryExtractor } from './repository-extractor'
+import { BaseService } from "../base/base-service"
 import type {
-	DocumentExtractorService as IDocumentExtractorService,
+	ChainExecutionResult,
 	DocumentExtractor,
 	ExtractionInput,
 	ExtractionResult,
-	ExtractorServiceConfig,
 	ExtractorChainConfig,
-	ChainExecutionResult,
+	ExtractorServiceConfig,
+	DocumentExtractorService as IDocumentExtractorService,
 	ProcessingError,
-} from '../interfaces'
+} from "../interfaces"
+import { CircuitBreaker } from "../orchestration/circuit-breaker"
+import { RetryHandler } from "../orchestration/retry-handler"
+import { createFileExtractor, FileExtractor } from "./file-extractor"
+import { createPDFExtractor, PDFExtractor } from "./pdf-extractor"
+import { createURLExtractor, URLExtractor } from "./url-extractor"
+import { createYouTubeExtractor, YouTubeExtractor } from "./youtube-extractor"
 
 // ============================================================================
 // Document Extractor Service Implementation
@@ -47,7 +46,7 @@ export class DocumentExtractorService
 	private readonly retryHandler: RetryHandler
 
 	constructor(config: ExtractorServiceConfig) {
-		super('DocumentExtractorService')
+		super("DocumentExtractorService")
 		this.config = config
 		this.retryHandler = new RetryHandler()
 	}
@@ -57,7 +56,7 @@ export class DocumentExtractorService
 	// ========================================================================
 
 	protected async onInitialize(): Promise<void> {
-		this.logger.info('Initializing document extractor service', {
+		this.logger.info("Initializing document extractor service", {
 			config: this.config,
 		})
 
@@ -72,7 +71,7 @@ export class DocumentExtractorService
 			await this.initializeCircuitBreakers()
 		}
 
-		this.logger.info('Document extractor service initialized', {
+		this.logger.info("Document extractor service initialized", {
 			extractorCount: this.extractors.size,
 		})
 	}
@@ -110,10 +109,10 @@ export class DocumentExtractorService
 	async extract(input: ExtractionInput): Promise<ExtractionResult> {
 		this.assertInitialized()
 
-		const tracker = this.performanceMonitor.startOperation('extract')
+		const tracker = this.performanceMonitor.startOperation("extract")
 
 		try {
-			this.logger.info('Starting extraction', {
+			this.logger.info("Starting extraction", {
 				type: input.type,
 				url: input.url,
 				hasBuffer: !!input.fileBuffer,
@@ -124,12 +123,12 @@ export class DocumentExtractorService
 
 			if (suitableExtractors.length === 0) {
 				throw this.createError(
-					'NO_SUITABLE_EXTRACTOR',
-					'No extractor found that can handle this input'
+					"NO_SUITABLE_EXTRACTOR",
+					"No extractor found that can handle this input",
 				)
 			}
 
-			this.logger.debug('Selected extractors', {
+			this.logger.debug("Selected extractors", {
 				extractors: suitableExtractors.map((e) => e.constructor.name),
 			})
 
@@ -138,7 +137,7 @@ export class DocumentExtractorService
 
 			tracker.end(true)
 
-			this.logger.info('Extraction completed', {
+			this.logger.info("Extraction completed", {
 				extractor: result.successfulExtractor,
 				wordCount: result.result.wordCount,
 			})
@@ -146,7 +145,7 @@ export class DocumentExtractorService
 			return result.result
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'extract')
+			throw this.handleError(error, "extract")
 		}
 	}
 
@@ -173,27 +172,27 @@ export class DocumentExtractorService
 		// Basic validation
 		if (!input.originalContent && !input.url && !input.fileBuffer) {
 			throw this.createError(
-				'INVALID_INPUT',
-				'Input must have at least one of: originalContent, url, or fileBuffer'
+				"INVALID_INPUT",
+				"Input must have at least one of: originalContent, url, or fileBuffer",
 			)
 		}
 
 		// URL validation
 		if (input.url) {
-			this.validateUrl(input.url, 'url')
+			this.validateUrl(input.url, "url")
 		}
 
 		// Buffer validation
 		if (input.fileBuffer) {
 			if (input.fileBuffer.length === 0) {
-				throw this.createError('EMPTY_BUFFER', 'File buffer is empty')
+				throw this.createError("EMPTY_BUFFER", "File buffer is empty")
 			}
 
 			const maxSize = 100 * 1024 * 1024 // 100MB
 			if (input.fileBuffer.length > maxSize) {
 				throw this.createError(
-					'FILE_TOO_LARGE',
-					`File size ${input.fileBuffer.length} exceeds maximum of ${maxSize}`
+					"FILE_TOO_LARGE",
+					`File size ${input.fileBuffer.length} exceeds maximum of ${maxSize}`,
 				)
 			}
 		}
@@ -203,8 +202,8 @@ export class DocumentExtractorService
 
 		if (extractors.length === 0) {
 			throw this.createError(
-				'UNSUPPORTED_INPUT',
-				'No extractor available for this input type'
+				"UNSUPPORTED_INPUT",
+				"No extractor available for this input type",
 			)
 		}
 
@@ -283,16 +282,18 @@ export class DocumentExtractorService
 		if (this.config.url?.enabled !== false) {
 			const extractor = createURLExtractor()
 			await extractor.initialize()
-			this.extractors.set('url', extractor)
-			this.logger.debug('Registered URL extractor (MarkItDown + Puppeteer)')
+			this.extractors.set("url", extractor)
+			this.logger.debug("Registered URL extractor (MarkItDown + Puppeteer)")
 		}
 
 		// YouTube extractor
 		if (this.config.youtube?.enabled !== false) {
-			const extractor = createYouTubeExtractor(this.config.youtube?.preferredLanguages)
+			const extractor = createYouTubeExtractor(
+				this.config.youtube?.preferredLanguages,
+			)
 			await extractor.initialize()
-			this.extractors.set('youtube', extractor)
-			this.logger.debug('Registered YouTube extractor')
+			this.extractors.set("youtube", extractor)
+			this.logger.debug("Registered YouTube extractor")
 		}
 
 		// PDF extractor
@@ -302,45 +303,40 @@ export class DocumentExtractorService
 				ocrProvider: this.config.pdf?.ocrProvider,
 			})
 			await extractor.initialize()
-			this.extractors.set('pdf', extractor)
-			this.logger.debug('Registered PDF extractor')
+			this.extractors.set("pdf", extractor)
+			this.logger.debug("Registered PDF extractor")
 		}
 
 		// File extractor
 		if (this.config.file?.enabled !== false) {
 			const extractor = createFileExtractor(this.config.file?.markitdownEnabled)
 			await extractor.initialize()
-			this.extractors.set('file', extractor)
-			this.logger.debug('Registered File extractor')
+			this.extractors.set("file", extractor)
+			this.logger.debug("Registered File extractor")
 		}
-
-		// Repository extractor - DISABLED (use MarkItDown for all URLs including GitHub)
-		// if (this.config.repository?.enabled !== false) {
-		// 	const extractor = createRepositoryExtractor(this.config.repository?.githubToken)
-		// 	await extractor.initialize()
-		// 	this.extractors.set('repository', extractor)
-		// 	this.logger.debug('Registered Repository extractor')
-		// }
 	}
 
 	/**
 	 * Select extractors that can handle the input
 	 */
 	private selectExtractors(input: ExtractionInput): DocumentExtractor[] {
-		const suitableExtractors: Array<{ extractor: DocumentExtractor; priority: number }> = []
+		const suitableExtractors: Array<{
+			extractor: DocumentExtractor
+			priority: number
+		}> = []
 
 		for (const [name, extractor] of this.extractors) {
 			try {
 				if (extractor.canHandle(input)) {
 					const priority = extractor.getPriority()
 					suitableExtractors.push({ extractor, priority })
-					this.logger.debug('Extractor can handle input', {
+					this.logger.debug("Extractor can handle input", {
 						extractor: name,
 						priority,
 					})
 				}
 			} catch (error) {
-				this.logger.warn('Error checking if extractor can handle input', {
+				this.logger.warn("Error checking if extractor can handle input", {
 					extractor: name,
 					error: (error as Error).message,
 				})
@@ -358,7 +354,7 @@ export class DocumentExtractorService
 	 */
 	private async executeExtractorChain(
 		input: ExtractionInput,
-		extractors: DocumentExtractor[]
+		extractors: DocumentExtractor[],
 	): Promise<ChainExecutionResult> {
 		const startTime = Date.now()
 		const attemptedExtractors: string[] = []
@@ -369,11 +365,11 @@ export class DocumentExtractorService
 			attemptedExtractors.push(extractorName)
 
 			try {
-				this.logger.debug('Attempting extraction', { extractor: extractorName })
+				this.logger.debug("Attempting extraction", { extractor: extractorName })
 
 				// Execute with protection (circuit breaker + retry)
 				const result = await this.executeWithProtection(extractorName, () =>
-					extractor.extract(input)
+					extractor.extract(input),
 				)
 
 				// Success!
@@ -387,13 +383,13 @@ export class DocumentExtractorService
 			} catch (error) {
 				const err = error as Error
 
-				this.logger.warn('Extractor failed', {
+				this.logger.warn("Extractor failed", {
 					extractor: extractorName,
 					error: err.message,
 				})
 
 				errors.set(extractorName, {
-					code: 'EXTRACTION_FAILED',
+					code: "EXTRACTION_FAILED",
 					message: err.message,
 					recoverable: this.isRetryableError(err),
 					details: {
@@ -408,8 +404,8 @@ export class DocumentExtractorService
 
 		// All extractors failed
 		throw this.createError(
-			'ALL_EXTRACTORS_FAILED',
-			`All ${attemptedExtractors.length} extractors failed. Attempted: ${attemptedExtractors.join(', ')}`
+			"ALL_EXTRACTORS_FAILED",
+			`All ${attemptedExtractors.length} extractors failed. Attempted: ${attemptedExtractors.join(", ")}`,
 		)
 	}
 
@@ -418,7 +414,7 @@ export class DocumentExtractorService
 	 */
 	private async executeWithProtection<T>(
 		extractorName: string,
-		operation: () => Promise<T>
+		operation: () => Promise<T>,
 	): Promise<T> {
 		const circuitBreaker = this.circuitBreakers.get(extractorName)
 
@@ -428,7 +424,10 @@ export class DocumentExtractorService
 			: operation
 
 		// Execute with retry logic
-		return await this.retryHandler.execute(protectedOperation, this.config.retry)
+		return await this.retryHandler.execute(
+			protectedOperation,
+			this.config.retry,
+		)
 	}
 
 	// ========================================================================
@@ -472,7 +471,7 @@ export class DocumentExtractorService
 					healthyCount++
 				}
 			} catch (error) {
-				this.logger.warn('Extractor health check failed', {
+				this.logger.warn("Extractor health check failed", {
 					extractor: name,
 					error: (error as Error).message,
 				})
@@ -480,7 +479,7 @@ export class DocumentExtractorService
 		}
 
 		const isHealthy = healthyCount > 0
-		this.logger.debug('Service health check', {
+		this.logger.debug("Service health check", {
 			healthy: isHealthy,
 			healthyExtractors: healthyCount,
 			totalExtractors: this.extractors.size,
@@ -490,7 +489,7 @@ export class DocumentExtractorService
 	}
 
 	protected async onCleanup(): Promise<void> {
-		this.logger.info('Cleaning up document extractor service')
+		this.logger.info("Cleaning up document extractor service")
 
 		// Cleanup circuit breakers
 		const breakers = Array.from(this.circuitBreakers.values())
@@ -520,7 +519,7 @@ export class DocumentExtractorService
  * Create document extractor service with configuration
  *
  * Factory function to create a fully configured DocumentExtractorService instance
- * with all extractors (URL/MarkItDown, YouTube, PDF, File, Repository) and protection
+ * with all extractors (URL/MarkItDown, YouTube, PDF, File) and protection
  * mechanisms (circuit breakers, retry logic) enabled by default.
  *
  * @param config - Optional service configuration to override defaults
@@ -551,29 +550,25 @@ export class DocumentExtractorService
  * ```
  */
 export function createDocumentExtractorService(
-	config: Partial<ExtractorServiceConfig> = {}
+	config: Partial<ExtractorServiceConfig> = {},
 ): DocumentExtractorService {
 	const defaultConfig: ExtractorServiceConfig = {
 		url: {
-			enabled: true,  // URL extractor using MarkItDown and Puppeteer
+			enabled: true, // URL extractor using MarkItDown and Puppeteer
 			timeout: 30000,
 		},
 		youtube: {
 			enabled: true,
-			preferredLanguages: ['en', 'en-US', 'pt', 'pt-BR'],
+			preferredLanguages: ["en", "en-US", "pt", "pt-BR"],
 		},
 		pdf: {
 			enabled: true,
 			ocrEnabled: true,
-			ocrProvider: 'replicate',
+			ocrProvider: "replicate",
 		},
 		file: {
 			enabled: true,
 			markitdownEnabled: true,
-		},
-		repository: {
-			enabled: true,
-			githubToken: process.env.GITHUB_TOKEN || process.env.GITHUB_API_KEY,
 		},
 		circuitBreaker: {
 			enabled: true,

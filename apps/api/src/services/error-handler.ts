@@ -82,7 +82,7 @@ export class AppError extends Error {
 				headers: {
 					"Content-Type": "application/json",
 				},
-			}
+			},
 		)
 	}
 }
@@ -91,7 +91,10 @@ export class ErrorHandler {
 	/**
 	 * Create a validation error
 	 */
-	static validation(message: string, context?: Record<string, unknown>): AppError {
+	static validation(
+		message: string,
+		context?: Record<string, unknown>,
+	): AppError {
 		return new AppError({
 			category: ErrorCategory.VALIDATION,
 			statusCode: 400,
@@ -109,7 +112,7 @@ export class ErrorHandler {
 	static database(
 		operation: string,
 		error: unknown,
-		context?: Record<string, unknown>
+		context?: Record<string, unknown>,
 	): AppError {
 		const errorMessage = error instanceof Error ? error.message : String(error)
 		return new AppError({
@@ -130,13 +133,13 @@ export class ErrorHandler {
 	static externalApi(
 		service: string,
 		error: unknown,
-		context?: Record<string, unknown>
+		context?: Record<string, unknown>,
 	): AppError {
 		const errorMessage = error instanceof Error ? error.message : String(error)
 		return new AppError({
 			category: ErrorCategory.EXTERNAL_API,
 			statusCode: 502,
-			userMessage: `Service temporarily unavailable. Please try again later.`,
+			userMessage: "Service temporarily unavailable. Please try again later.",
 			internalMessage: `External API error from ${service}: ${errorMessage}`,
 			originalError: error,
 			context: { ...context, service },
@@ -148,7 +151,10 @@ export class ErrorHandler {
 	/**
 	 * Create an authentication error
 	 */
-	static authentication(message: string, context?: Record<string, unknown>): AppError {
+	static authentication(
+		message: string,
+		context?: Record<string, unknown>,
+	): AppError {
 		return new AppError({
 			category: ErrorCategory.AUTHENTICATION,
 			statusCode: 401,
@@ -166,7 +172,7 @@ export class ErrorHandler {
 	static authorization(
 		resource: string,
 		action: string,
-		context?: Record<string, unknown>
+		context?: Record<string, unknown>,
 	): AppError {
 		return new AppError({
 			category: ErrorCategory.AUTHORIZATION,
@@ -201,7 +207,7 @@ export class ErrorHandler {
 		return new AppError({
 			category: ErrorCategory.RATE_LIMIT,
 			statusCode: 429,
-			userMessage: `Too many requests. Please try again later.`,
+			userMessage: "Too many requests. Please try again later.",
 			internalMessage: `Rate limit exceeded: ${limit} requests per ${window}`,
 			context: { limit, window },
 			recoverable: true,
@@ -230,7 +236,7 @@ export class ErrorHandler {
 	static internal(
 		message: string,
 		error?: unknown,
-		context?: Record<string, unknown>
+		context?: Record<string, unknown>,
 	): AppError {
 		const errorMessage = error instanceof Error ? error.message : String(error)
 		return new AppError({
@@ -283,7 +289,10 @@ export class ErrorHandler {
 	/**
 	 * Wrap an unknown error in an AppError
 	 */
-	static wrap(error: unknown, defaultMessage = "An unexpected error occurred"): AppError {
+	static wrap(
+		error: unknown,
+		defaultMessage = "An unexpected error occurred",
+	): AppError {
 		if (error instanceof AppError) {
 			return error
 		}
@@ -316,7 +325,7 @@ export class ErrorHandler {
 			initialDelay?: number
 			maxDelay?: number
 			backoffMultiplier?: number
-		} = {}
+		} = {},
 	): Promise<T> {
 		const {
 			maxAttempts = 3,
@@ -345,12 +354,15 @@ export class ErrorHandler {
 				}
 
 				// Wait before retrying
-				await new Promise(resolve => setTimeout(resolve, delay))
+				await new Promise((resolve) => setTimeout(resolve, delay))
 				delay = Math.min(delay * backoffMultiplier, maxDelay)
 			}
 		}
 
-		throw ErrorHandler.wrap(lastError, `Operation failed after ${maxAttempts} attempts`)
+		throw ErrorHandler.wrap(
+			lastError,
+			`Operation failed after ${maxAttempts} attempts`,
+		)
 	}
 
 	/**
@@ -359,7 +371,7 @@ export class ErrorHandler {
 	static async withTimeout<T>(
 		operation: () => Promise<T>,
 		timeoutMs: number,
-		operationName: string
+		operationName: string,
 	): Promise<T> {
 		const timeoutPromise = new Promise<never>((_, reject) => {
 			setTimeout(() => {

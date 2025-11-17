@@ -33,7 +33,11 @@ import { z } from "zod"
 // NOTE: Using legacy processDocument for backward compatibility
 // TODO (Phase 6): Replace with IngestionOrchestratorService
 import { processDocument } from "../services/ingestion"
-import { documentListCache, generateCacheKey } from "../services/query-cache"
+import {
+	documentCache,
+	documentListCache,
+	generateCacheKey,
+} from "../services/query-cache"
 
 const defaultContainerTag = "sm_project_default"
 
@@ -77,8 +81,12 @@ const ALLOWED_DOCUMENT_TYPES = new Set([
 	"notion_doc",
 	"webpage",
 	"onedrive",
-	"repository",
 ])
+
+const invalidateDocumentCaches = () => {
+	documentListCache.clear()
+	documentCache.clear()
+}
 
 type DocumentSpaceRelation = {
 	space_id?: string | null
@@ -564,6 +572,7 @@ export async function addDocument({
 				},
 			)
 
+			invalidateDocumentCaches()
 			return MemoryResponseSchema.parse({
 				id: docId,
 				status: "done", // Changed from "processing" to reflect actual status
@@ -581,6 +590,7 @@ export async function addDocument({
 		}
 	}
 
+	invalidateDocumentCaches()
 	return MemoryResponseSchema.parse({ id: docId, status: "queued" })
 }
 
@@ -1282,6 +1292,8 @@ export async function deleteDocument(
 		.eq("org_id", organizationId)
 
 	if (error) throw error
+
+	invalidateDocumentCaches()
 }
 
 export async function cancelDocument(

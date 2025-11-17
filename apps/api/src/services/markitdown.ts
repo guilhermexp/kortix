@@ -131,32 +131,38 @@ async function retryWithBackoff<T>(
  */
 function isValidYouTubeTranscript(markdown: string, url: string): boolean {
 	// Check if URL is YouTube
-	const isYouTube = url.toLowerCase().includes('youtube.com') || url.toLowerCase().includes('youtu.be')
+	const isYouTube =
+		url.toLowerCase().includes("youtube.com") ||
+		url.toLowerCase().includes("youtu.be")
 	if (!isYouTube) return true // Not YouTube, skip validation
 
-    // Minimum content length threshold
-    // Allow shorter transcripts; some videos have brief captions
-    const MIN_VALID_LENGTH = 300
+	// Minimum content length threshold
+	// Allow shorter transcripts; some videos have brief captions
+	const MIN_VALID_LENGTH = 300
 	if (markdown.length < MIN_VALID_LENGTH) {
-		console.warn(`[MarkItDown] YouTube result too short: ${markdown.length} chars (expected >${MIN_VALID_LENGTH})`)
+		console.warn(
+			`[MarkItDown] YouTube result too short: ${markdown.length} chars (expected >${MIN_VALID_LENGTH})`,
+		)
 		return false
 	}
 
 	// Check for common footer patterns that indicate failed extraction
-    const footerPatterns = [
-        '[Sobre](https://www.youtube.com/about/)',
-        '[Imprensa](https://www.youtube.com/about/press/)',
-        '© 2025 Google LLC',
-        '[Direitos autorais](https://www.youtube.com/about/copyright/)'
-    ]
+	const footerPatterns = [
+		"[Sobre](https://www.youtube.com/about/)",
+		"[Imprensa](https://www.youtube.com/about/press/)",
+		"© 2025 Google LLC",
+		"[Direitos autorais](https://www.youtube.com/about/copyright/)",
+	]
 
-    // Consider it "footer-only" only for very short results
-    const hasOnlyFooter = footerPatterns.some(pattern =>
-        markdown.includes(pattern)
-    ) && markdown.length < 700
+	// Consider it "footer-only" only for very short results
+	const hasOnlyFooter =
+		footerPatterns.some((pattern) => markdown.includes(pattern)) &&
+		markdown.length < 700
 
 	if (hasOnlyFooter) {
-		console.warn('[MarkItDown] YouTube result contains only footer, no actual transcript')
+		console.warn(
+			"[MarkItDown] YouTube result contains only footer, no actual transcript",
+		)
 		return false
 	}
 
@@ -168,7 +174,9 @@ function isValidYouTubeTranscript(markdown: string, url: string): boolean {
  * This is specifically for URLs that need special handling like YouTube
  * Implements retry with exponential backoff for rate limiting
  */
-async function runMarkItDownPythonAPI(url: string): Promise<MarkItDownResponse> {
+async function runMarkItDownPythonAPI(
+	url: string,
+): Promise<MarkItDownResponse> {
 	return new Promise((resolve, reject) => {
 		const pythonScript = `
 import json
@@ -221,11 +229,13 @@ except Exception as e:
 				if (result.success) {
 					// Validate content before resolving
 					if (!isValidYouTubeTranscript(result.markdown, url)) {
-						reject(new Error(
-							`MarkItDown returned invalid YouTube transcript (too short or footer only). ` +
-							`Got ${result.markdown.length} chars, expected >500. ` +
-							`Video may not have captions or transcript available.`
-						))
+						reject(
+							new Error(
+								"MarkItDown returned invalid YouTube transcript (too short or footer only). " +
+									`Got ${result.markdown.length} chars, expected >500. ` +
+									"Video may not have captions or transcript available.",
+							),
+						)
 						return
 					}
 
@@ -256,126 +266,144 @@ except Exception as e:
 }
 
 function extractYouTubeVideoIdFromUrl(url: string): string | null {
-  try {
-    const u = new URL(url)
-    if (!u.hostname.includes('youtube.com') && !u.hostname.includes('youtu.be')) return null
-    if (u.hostname.includes('youtu.be')) {
-      const id = u.pathname.replace(/^\//, '')
-      return id || null
-    }
-    const id = u.searchParams.get('v')
-    return id || null
-  } catch {
-    return null
-  }
+	try {
+		const u = new URL(url)
+		if (!u.hostname.includes("youtube.com") && !u.hostname.includes("youtu.be"))
+			return null
+		if (u.hostname.includes("youtu.be")) {
+			const id = u.pathname.replace(/^\//, "")
+			return id || null
+		}
+		const id = u.searchParams.get("v")
+		return id || null
+	} catch {
+		return null
+	}
 }
 
 function htmlDecode(input: string): string {
-  return input
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
+	return input
+		.replace(/&amp;/g, "&")
+		.replace(/&lt;/g, "<")
+		.replace(/&gt;/g, ">")
+		.replace(/&quot;/g, '"')
+		.replace(/&#39;/g, "'")
 }
 
-async function fetchYouTubeTimedTextVtt(videoId: string, lang: string, asr = false): Promise<string | null> {
-  const base = 'https://www.youtube.com/api/timedtext'
-  const params = new URLSearchParams({ v: videoId, lang, fmt: 'vtt' })
-  if (asr) params.set('kind', 'asr')
-  const url = `${base}?${params.toString()}`
-  try {
-    const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0' } })
-    if (!res.ok) return null
-    const vtt = await res.text()
-    // Parse VTT to plain text: drop headers, timestamps, cues numbers
-    const lines = vtt.split(/\r?\n/)
-    const textLines: string[] = []
-    for (const line of lines) {
-      const l = line.trim()
-      if (!l) continue
-      if (l.startsWith('WEBVTT')) continue
-      if (/^\d+$/.test(l)) continue
-      if (/^\d{2}:\d{2}:\d{2}\.\d{3} -->/.test(l)) continue
-      textLines.push(l)
-    }
-    const text = htmlDecode(textLines.join(' ')).replace(/\s+/g, ' ').trim()
-    return text.length > 0 ? text : null
-  } catch {
-    return null
-  }
+async function fetchYouTubeTimedTextVtt(
+	videoId: string,
+	lang: string,
+	asr = false,
+): Promise<string | null> {
+	const base = "https://www.youtube.com/api/timedtext"
+	const params = new URLSearchParams({ v: videoId, lang, fmt: "vtt" })
+	if (asr) params.set("kind", "asr")
+	const url = `${base}?${params.toString()}`
+	try {
+		const res = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" } })
+		if (!res.ok) return null
+		const vtt = await res.text()
+		// Parse VTT to plain text: drop headers, timestamps, cues numbers
+		const lines = vtt.split(/\r?\n/)
+		const textLines: string[] = []
+		for (const line of lines) {
+			const l = line.trim()
+			if (!l) continue
+			if (l.startsWith("WEBVTT")) continue
+			if (/^\d+$/.test(l)) continue
+			if (/^\d{2}:\d{2}:\d{2}\.\d{3} -->/.test(l)) continue
+			textLines.push(l)
+		}
+		const text = htmlDecode(textLines.join(" ")).replace(/\s+/g, " ").trim()
+		return text.length > 0 ? text : null
+	} catch {
+		return null
+	}
 }
 
-export async function fetchYouTubeTranscriptFallback(videoUrl: string): Promise<MarkItDownResponse | null> {
-  const videoId = extractYouTubeVideoIdFromUrl(videoUrl)
-  if (!videoId) return null
+export async function fetchYouTubeTranscriptFallback(
+	videoUrl: string,
+): Promise<MarkItDownResponse | null> {
+	const videoId = extractYouTubeVideoIdFromUrl(videoUrl)
+	if (!videoId) return null
 
-  // Extract title from YouTube page metadata
-  let title: string | undefined = undefined
-  try {
-    const response = await fetch(videoUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      }
-    })
-    const html = await response.text()
+	// Extract title from YouTube page metadata
+	let title: string | undefined
+	try {
+		const response = await fetch(videoUrl, {
+			headers: {
+				"User-Agent":
+					"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+			},
+		})
+		const html = await response.text()
 
-    // Try multiple extraction methods
-    // 1. og:title meta tag
-    const ogTitleMatch = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i)
-    if (ogTitleMatch) {
-      title = ogTitleMatch[1]
-    } else {
-      // 2. twitter:title meta tag
-      const twitterTitleMatch = html.match(/<meta\s+name=["']twitter:title["']\s+content=["']([^"']+)["']/i)
-      if (twitterTitleMatch) {
-        title = twitterTitleMatch[1]
-      } else {
-        // 3. <title> tag
-        const titleMatch = html.match(/<title>([^<]+)<\/title>/i)
-        if (titleMatch) {
-          title = titleMatch[1].replace(/ - YouTube$/, '').trim()
-        }
-      }
-    }
-  } catch (error) {
-    console.warn('[fetchYouTubeTranscriptFallback] Failed to extract title:', error)
-  }
+		// Try multiple extraction methods
+		// 1. og:title meta tag
+		const ogTitleMatch = html.match(
+			/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i,
+		)
+		if (ogTitleMatch) {
+			title = ogTitleMatch[1]
+		} else {
+			// 2. twitter:title meta tag
+			const twitterTitleMatch = html.match(
+				/<meta\s+name=["']twitter:title["']\s+content=["']([^"']+)["']/i,
+			)
+			if (twitterTitleMatch) {
+				title = twitterTitleMatch[1]
+			} else {
+				// 3. <title> tag
+				const titleMatch = html.match(/<title>([^<]+)<\/title>/i)
+				if (titleMatch) {
+					title = titleMatch[1].replace(/ - YouTube$/, "").trim()
+				}
+			}
+		}
+	} catch (error) {
+		console.warn(
+			"[fetchYouTubeTranscriptFallback] Failed to extract title:",
+			error,
+		)
+	}
 
-  const langs = ['en', 'en-US', 'pt', 'pt-BR']
-  for (const lang of langs) {
-    // Try official + ASR
-    const variants = [false, true]
-    for (const asr of variants) {
-      const text = await fetchYouTubeTimedTextVtt(videoId, lang, asr)
-      if (text && text.length >= 200) {
-        return {
-          markdown: text,
-          metadata: {
-            url: videoUrl,
-            title,
-            markdown_length: text.length,
-          },
-        }
-      }
-    }
-  }
+	const langs = ["en", "en-US", "pt", "pt-BR"]
+	for (const lang of langs) {
+		// Try official + ASR
+		const variants = [false, true]
+		for (const asr of variants) {
+			const text = await fetchYouTubeTimedTextVtt(videoId, lang, asr)
+			if (text && text.length >= 200) {
+				return {
+					markdown: text,
+					metadata: {
+						url: videoUrl,
+						title,
+						markdown_length: text.length,
+					},
+				}
+			}
+		}
+	}
 
-  // If we couldn't get transcript but have a title, return basic video info
-  // This prevents losing the title when transcript extraction fails
-  if (title) {
-    console.log('[fetchYouTubeTranscriptFallback] No transcript found, but returning title:', title)
-    return {
-      markdown: `# ${title}\n\nYouTube Video: ${videoUrl}\n\n(Transcript not available)`,
-      metadata: {
-        url: videoUrl,
-        title,
-        markdown_length: 0,
-      },
-    }
-  }
+	// If we couldn't get transcript but have a title, return basic video info
+	// This prevents losing the title when transcript extraction fails
+	if (title) {
+		console.log(
+			"[fetchYouTubeTranscriptFallback] No transcript found, but returning title:",
+			title,
+		)
+		return {
+			markdown: `# ${title}\n\nYouTube Video: ${videoUrl}\n\n(Transcript not available)`,
+			metadata: {
+				url: videoUrl,
+				title,
+				markdown_length: 0,
+			},
+		}
+	}
 
-  return null
+	return null
 }
 
 export async function convertWithMarkItDown(
@@ -408,45 +436,43 @@ export async function convertUrlWithMarkItDown(
 	url: string,
 ): Promise<MarkItDownResponse> {
 	// Use Python API directly for URLs (supports YouTube transcripts, etc)
-	console.log('[MarkItDown] Using convert_url() for:', url)
+	console.log("[MarkItDown] Using convert_url() for:", url)
 
 	// Implement retry with exponential backoff for rate limiting
 	try {
-		const result = await retryWithBackoff(
-			() => runMarkItDownPythonAPI(url),
-			{
-				maxRetries: 2,
-				initialDelayMs: 2000,
-				maxDelayMs: 8000,
-				backoffMultiplier: 2,
-				shouldRetry: (error) => {
-					const errorMsg = error.message.toLowerCase()
-					const isRateLimit = errorMsg.includes('429') ||
-						errorMsg.includes('too many requests') ||
-						errorMsg.includes('ipblocked') ||
-						errorMsg.includes('rate limit') ||
-						errorMsg.includes('invalid youtube transcript') ||
-						errorMsg.includes('likely rate limited')
-					return isRateLimit
-				}
-			}
-		)
+		const result = await retryWithBackoff(() => runMarkItDownPythonAPI(url), {
+			maxRetries: 2,
+			initialDelayMs: 2000,
+			maxDelayMs: 8000,
+			backoffMultiplier: 2,
+			shouldRetry: (error) => {
+				const errorMsg = error.message.toLowerCase()
+				const isRateLimit =
+					errorMsg.includes("429") ||
+					errorMsg.includes("too many requests") ||
+					errorMsg.includes("ipblocked") ||
+					errorMsg.includes("rate limit") ||
+					errorMsg.includes("invalid youtube transcript") ||
+					errorMsg.includes("likely rate limited")
+				return isRateLimit
+			},
+		})
 
-		console.log('[MarkItDown] Result:', {
+		console.log("[MarkItDown] Result:", {
 			chars: result.markdown.length,
 			title: result.metadata.title,
-			preview: result.markdown.substring(0, 100)
+			preview: result.markdown.substring(0, 100),
 		})
 
 		return result
 	} catch (err) {
 		// Fallback to YouTube timedtext if applicable
-		console.warn('MarkItDown URL conversion failed warn:', err)
+		console.warn("MarkItDown URL conversion failed warn:", err)
 		const fallback = await fetchYouTubeTranscriptFallback(url)
 		if (fallback) {
-			console.log('[MarkItDown] Fallback transcript (timedtext) used:', {
+			console.log("[MarkItDown] Fallback transcript (timedtext) used:", {
 				chars: fallback.markdown.length,
-				preview: fallback.markdown.substring(0, 80)
+				preview: fallback.markdown.substring(0, 80),
 			})
 			return fallback
 		}

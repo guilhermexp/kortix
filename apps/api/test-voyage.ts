@@ -14,7 +14,7 @@ async function testVoyageAI() {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				"Authorization": `Bearer ${VOYAGE_API_KEY}`,
+				Authorization: `Bearer ${VOYAGE_API_KEY}`,
 			},
 			body: JSON.stringify({
 				input: "Hello World",

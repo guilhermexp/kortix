@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
-import {
-	DocumentProcessorService,
-	createDocumentProcessorService,
-} from '../document-processor'
 import type {
+	Chunk,
 	ExtractionResult,
 	ProcessedDocument,
+	ProcessingError,
+	ProcessingMetrics,
 	ProcessingOptions,
 	ProcessorServiceConfig,
-	ProcessingMetrics,
-	Chunk,
-	ProcessingError,
-} from '../../interfaces'
+} from "../../interfaces"
+import {
+	createDocumentProcessorService,
+	DocumentProcessorService,
+} from "../document-processor"
 
 /**
  * Unit tests for DocumentProcessorService
@@ -43,7 +43,7 @@ describe("DocumentProcessorService", () => {
 				overlapTokens: 50,
 			},
 			embeddingOptions: {
-				provider: 'gemini',
+				provider: "gemini",
 				dimension: 1536,
 			},
 			summarizationOptions: {
@@ -63,10 +63,11 @@ describe("DocumentProcessorService", () => {
 		mockExtractionResult = {
 			success: true,
 			data: {
-				content: 'This is a sample document with multiple paragraphs. It contains substantial content that needs to be processed through the document pipeline. The document includes various topics and should be chunked, embedded, summarized, and tagged appropriately.',
+				content:
+					"This is a sample document with multiple paragraphs. It contains substantial content that needs to be processed through the document pipeline. The document includes various topics and should be chunked, embedded, summarized, and tagged appropriately.",
 				metadata: {
-					title: 'Sample Document',
-					author: 'Test Author',
+					title: "Sample Document",
+					author: "Test Author",
 					pageCount: 3,
 				},
 				processingTime: 2000,
@@ -81,7 +82,7 @@ describe("DocumentProcessorService", () => {
 	describe("Service Initialization", () => {
 		it("should initialize with correct configuration", () => {
 			expect(service).toBeDefined()
-			expect(service.getName()).toBe('DocumentProcessorService')
+			expect(service.getName()).toBe("DocumentProcessorService")
 		})
 
 		it("should initialize processing services", async () => {
@@ -105,20 +106,21 @@ describe("DocumentProcessorService", () => {
 				},
 				chunks: [
 					{
-						id: 'chunk-1',
-						content: 'This is a sample document with multiple paragraphs.',
+						id: "chunk-1",
+						content: "This is a sample document with multiple paragraphs.",
 						embeddings: [0.1, 0.2, 0.3],
 						metadata: { position: 0, tokenCount: 8 },
 					},
 					{
-						id: 'chunk-2',
-						content: 'It contains substantial content that needs to be processed.',
+						id: "chunk-2",
+						content:
+							"It contains substantial content that needs to be processed.",
 						embeddings: [0.4, 0.5, 0.6],
 						metadata: { position: 1, tokenCount: 9 },
 					},
 				],
-				summary: 'Sample document summary with key points',
-				tags: ['document', 'sample', 'processing'],
+				summary: "Sample document summary with key points",
+				tags: ["document", "sample", "processing"],
 				processingMetrics: {
 					totalProcessingTime: 5000,
 					chunkingTime: 500,
@@ -129,10 +131,10 @@ describe("DocumentProcessorService", () => {
 			}
 
 			// Mock the processing steps
-			const chunkingSpy = vi.spyOn(service as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(service as any, 'processEmbedding')
-			const summarizationSpy = vi.spyOn(service as any, 'processSummarization')
-			const taggingSpy = vi.spyOn(service as any, 'processTagging')
+			const chunkingSpy = vi.spyOn(service as any, "processChunking")
+			const embeddingSpy = vi.spyOn(service as any, "processEmbedding")
+			const summarizationSpy = vi.spyOn(service as any, "processSummarization")
+			const taggingSpy = vi.spyOn(service as any, "processTagging")
 
 			chunkingSpy.mockResolvedValue(mockProcessedDocument.chunks!)
 			embeddingSpy.mockResolvedValue(mockProcessedDocument.chunks!)
@@ -144,7 +146,9 @@ describe("DocumentProcessorService", () => {
 			expect(result.success).toBe(true)
 			expect(result.data?.content).toBe(mockExtractionResult.data!.content)
 			expect(result.data?.chunks).toHaveLength(2)
-			expect(result.data?.summary).toBe('Sample document summary with key points')
+			expect(result.data?.summary).toBe(
+				"Sample document summary with key points",
+			)
 			expect(result.data?.tags).toHaveLength(3)
 			expect(result.data?.processingMetrics).toBeDefined()
 		})
@@ -153,25 +157,25 @@ describe("DocumentProcessorService", () => {
 			const minimalExtractionResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'Short',
-					metadata: { title: 'Short Document' },
+					content: "Short",
+					metadata: { title: "Short Document" },
 					processingTime: 500,
 				},
 			}
 
 			const minimalProcessed: ProcessedDocument = {
-				content: 'Short',
-				metadata: { title: 'Short Document', wordCount: 1 },
+				content: "Short",
+				metadata: { title: "Short Document", wordCount: 1 },
 				chunks: [
 					{
-						id: 'chunk-1',
-						content: 'Short',
+						id: "chunk-1",
+						content: "Short",
 						embeddings: [0.1],
 						metadata: { position: 0, tokenCount: 1 },
 					},
 				],
-				summary: 'Short document',
-				tags: ['short'],
+				summary: "Short document",
+				tags: ["short"],
 				processingMetrics: {
 					totalProcessingTime: 1000,
 					chunkingTime: 100,
@@ -181,10 +185,10 @@ describe("DocumentProcessorService", () => {
 				},
 			}
 
-			const chunkingSpy = vi.spyOn(service as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(service as any, 'processEmbedding')
-			const summarizationSpy = vi.spyOn(service as any, 'processSummarization')
-			const taggingSpy = vi.spyOn(service as any, 'processTagging')
+			const chunkingSpy = vi.spyOn(service as any, "processChunking")
+			const embeddingSpy = vi.spyOn(service as any, "processEmbedding")
+			const summarizationSpy = vi.spyOn(service as any, "processSummarization")
+			const taggingSpy = vi.spyOn(service as any, "processTagging")
 
 			chunkingSpy.mockResolvedValue(minimalProcessed.chunks!)
 			embeddingSpy.mockResolvedValue(minimalProcessed.chunks!)
@@ -195,31 +199,33 @@ describe("DocumentProcessorService", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toHaveLength(1)
-			expect(result.data?.summary).toBe('Short document')
+			expect(result.data?.summary).toBe("Short document")
 		})
 
 		it("should handle large documents efficiently", async () => {
-			const largeContent = 'Large document content. '.repeat(1000) // 20k+ characters
+			const largeContent = "Large document content. ".repeat(1000) // 20k+ characters
 			const largeExtractionResult: ExtractionResult = {
 				success: true,
 				data: {
 					content: largeContent,
-					metadata: { title: 'Large Document', pageCount: 50 },
+					metadata: { title: "Large Document", pageCount: 50 },
 					processingTime: 5000,
 				},
 			}
 
 			const largeProcessed: ProcessedDocument = {
 				content: largeContent,
-				metadata: { title: 'Large Document', wordCount: 2000 },
-				chunks: Array(10).fill(null).map((_, i) => ({
-					id: `chunk-${i}`,
-					content: `Large chunk ${i}`,
-					embeddings: Array(1536).fill(0.1),
-					metadata: { position: i, tokenCount: 800 },
-				})),
-				summary: 'Comprehensive summary of large document',
-				tags: ['large', 'document', 'comprehensive'],
+				metadata: { title: "Large Document", wordCount: 2000 },
+				chunks: Array(10)
+					.fill(null)
+					.map((_, i) => ({
+						id: `chunk-${i}`,
+						content: `Large chunk ${i}`,
+						embeddings: Array(1536).fill(0.1),
+						metadata: { position: i, tokenCount: 800 },
+					})),
+				summary: "Comprehensive summary of large document",
+				tags: ["large", "document", "comprehensive"],
 				processingMetrics: {
 					totalProcessingTime: 15000,
 					chunkingTime: 2000,
@@ -229,10 +235,10 @@ describe("DocumentProcessorService", () => {
 				},
 			}
 
-			const chunkingSpy = vi.spyOn(service as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(service as any, 'processEmbedding')
-			const summarizationSpy = vi.spyOn(service as any, 'processSummarization')
-			const taggingSpy = vi.spyOn(service as any, 'processTagging')
+			const chunkingSpy = vi.spyOn(service as any, "processChunking")
+			const embeddingSpy = vi.spyOn(service as any, "processEmbedding")
+			const summarizationSpy = vi.spyOn(service as any, "processSummarization")
+			const taggingSpy = vi.spyOn(service as any, "processTagging")
 
 			chunkingSpy.mockResolvedValue(largeProcessed.chunks!)
 			embeddingSpy.mockResolvedValue(largeProcessed.chunks!)
@@ -243,7 +249,9 @@ describe("DocumentProcessorService", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toHaveLength(10)
-			expect(result.data?.processingMetrics?.totalProcessingTime).toBeGreaterThan(10000)
+			expect(
+				result.data?.processingMetrics?.totalProcessingTime,
+			).toBeGreaterThan(10000)
 		})
 	})
 
@@ -255,7 +263,10 @@ describe("DocumentProcessorService", () => {
 				enableTagging: true,
 			}
 
-			const result = await service.processDocument(mockExtractionResult, options)
+			const result = await service.processDocument(
+				mockExtractionResult,
+				options,
+			)
 
 			expect(result.success).toBe(true)
 			// Should only run enabled processing stages
@@ -268,18 +279,21 @@ describe("DocumentProcessorService", () => {
 					overlapTokens: 25,
 				},
 				embeddingOptions: {
-					provider: 'gemini',
+					provider: "gemini",
 					dimension: 1536,
 				},
 			}
 
-			const chunkingSpy = vi.spyOn(service as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(service as any, 'processEmbedding')
+			const chunkingSpy = vi.spyOn(service as any, "processChunking")
+			const embeddingSpy = vi.spyOn(service as any, "processEmbedding")
 
 			chunkingSpy.mockResolvedValue([])
-			embeddingSpy.mockResolvedValue([]		 )
+			embeddingSpy.mockResolvedValue([])
 
-			const result = await service.processDocument(mockExtractionResult, options)
+			const result = await service.processDocument(
+				mockExtractionResult,
+				options,
+			)
 
 			expect(result.success).toBe(true)
 			// Verify custom options are passed to sub-services
@@ -293,7 +307,10 @@ describe("DocumentProcessorService", () => {
 				enableTagging: false,
 			}
 
-			const result = await service.processDocument(mockExtractionResult, options)
+			const result = await service.processDocument(
+				mockExtractionResult,
+				options,
+			)
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toBeUndefined()
@@ -311,15 +328,26 @@ describe("DocumentProcessorService", () => {
 
 			const parallelService = new DocumentProcessorService(config)
 
-			const chunkingSpy = vi.spyOn(parallelService as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(parallelService as any, 'processEmbedding')
-			const summarizationSpy = vi.spyOn(parallelService as any, 'processSummarization')
-			const taggingSpy = vi.spyOn(parallelService as any, 'processTagging')
+			const chunkingSpy = vi.spyOn(parallelService as any, "processChunking")
+			const embeddingSpy = vi.spyOn(parallelService as any, "processEmbedding")
+			const summarizationSpy = vi.spyOn(
+				parallelService as any,
+				"processSummarization",
+			)
+			const taggingSpy = vi.spyOn(parallelService as any, "processTagging")
 
-			chunkingSpy.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve([]), 100)))
-			embeddingSpy.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve([]), 200)))
-			summarizationSpy.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve(''), 150)))
-			taggingSpy.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve([]), 120)))
+			chunkingSpy.mockImplementation(
+				() => new Promise((resolve) => setTimeout(() => resolve([]), 100)),
+			)
+			embeddingSpy.mockImplementation(
+				() => new Promise((resolve) => setTimeout(() => resolve([]), 200)),
+			)
+			summarizationSpy.mockImplementation(
+				() => new Promise((resolve) => setTimeout(() => resolve(""), 150)),
+			)
+			taggingSpy.mockImplementation(
+				() => new Promise((resolve) => setTimeout(() => resolve([]), 120)),
+			)
 
 			const startTime = Date.now()
 			await parallelService.processDocument(mockExtractionResult)
@@ -342,10 +370,13 @@ describe("DocumentProcessorService", () => {
 
 			const parallelService = new DocumentProcessorService(config)
 
-			const parallelSpy = vi.spyOn(parallelService as any, 'processInParallel')
-			parallelSpy.mockRejectedValue(new Error('Parallel processing failed'))
+			const parallelSpy = vi.spyOn(parallelService as any, "processInParallel")
+			parallelSpy.mockRejectedValue(new Error("Parallel processing failed"))
 
-			const sequentialSpy = vi.spyOn(parallelService as any, 'processSequentially')
+			const sequentialSpy = vi.spyOn(
+				parallelService as any,
+				"processSequentially",
+			)
 			sequentialSpy.mockResolvedValue({
 				success: true,
 				data: {
@@ -369,16 +400,25 @@ describe("DocumentProcessorService", () => {
 
 			const sequentialService = new DocumentProcessorService(config)
 
-			const parallelSpy = vi.spyOn(sequentialService as any, 'processInParallel')
+			const parallelSpy = vi.spyOn(
+				sequentialService as any,
+				"processInParallel",
+			)
 
-			const chunkingSpy = vi.spyOn(sequentialService as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(sequentialService as any, 'processEmbedding')
-			const summarizationSpy = vi.spyOn(sequentialService as any, 'processSummarization')
-			const taggingSpy = vi.spyOn(sequentialService as any, 'processTagging')
+			const chunkingSpy = vi.spyOn(sequentialService as any, "processChunking")
+			const embeddingSpy = vi.spyOn(
+				sequentialService as any,
+				"processEmbedding",
+			)
+			const summarizationSpy = vi.spyOn(
+				sequentialService as any,
+				"processSummarization",
+			)
+			const taggingSpy = vi.spyOn(sequentialService as any, "processTagging")
 
 			chunkingSpy.mockResolvedValue([])
 			embeddingSpy.mockResolvedValue([])
-			summarizationSpy.mockResolvedValue('')
+			summarizationSpy.mockResolvedValue("")
 			taggingSpy.mockResolvedValue([])
 
 			await sequentialService.processDocument(mockExtractionResult)
@@ -390,65 +430,65 @@ describe("DocumentProcessorService", () => {
 
 	describe("Error Handling", () => {
 		it("should handle chunking service failures", async () => {
-			const chunkingSpy = vi.spyOn(service as any, 'processChunking')
-			chunkingSpy.mockRejectedValue(new Error('Chunking failed'))
+			const chunkingSpy = vi.spyOn(service as any, "processChunking")
+			chunkingSpy.mockRejectedValue(new Error("Chunking failed"))
 
 			const result = await service.processDocument(mockExtractionResult)
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('CHUNKING_FAILED')
+			expect(result.error?.code).toBe("CHUNKING_FAILED")
 		})
 
 		it("should handle embedding service failures", async () => {
-			const chunkingSpy = vi.spyOn(service as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(service as any, 'processEmbedding')
+			const chunkingSpy = vi.spyOn(service as any, "processChunking")
+			const embeddingSpy = vi.spyOn(service as any, "processEmbedding")
 
 			chunkingSpy.mockResolvedValue([
 				{
-					id: 'chunk-1',
-					content: 'Test chunk',
+					id: "chunk-1",
+					content: "Test chunk",
 					embeddings: [],
 					metadata: { position: 0, tokenCount: 2 },
 				},
 			])
-			embeddingSpy.mockRejectedValue(new Error('Embedding failed'))
+			embeddingSpy.mockRejectedValue(new Error("Embedding failed"))
 
 			const result = await service.processDocument(mockExtractionResult)
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('EMBEDDING_FAILED')
+			expect(result.error?.code).toBe("EMBEDDING_FAILED")
 		})
 
 		it("should handle summarization service failures", async () => {
-			const chunkingSpy = vi.spyOn(service as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(service as any, 'processEmbedding')
-			const summarizationSpy = vi.spyOn(service as any, 'processSummarization')
+			const chunkingSpy = vi.spyOn(service as any, "processChunking")
+			const embeddingSpy = vi.spyOn(service as any, "processEmbedding")
+			const summarizationSpy = vi.spyOn(service as any, "processSummarization")
 
 			chunkingSpy.mockResolvedValue([])
 			embeddingSpy.mockResolvedValue([])
-			summarizationSpy.mockRejectedValue(new Error('Summarization failed'))
+			summarizationSpy.mockRejectedValue(new Error("Summarization failed"))
 
 			const result = await service.processDocument(mockExtractionResult)
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('SUMMARIZATION_FAILED')
+			expect(result.error?.code).toBe("SUMMARIZATION_FAILED")
 		})
 
 		it("should handle tagging service failures", async () => {
-			const chunkingSpy = vi.spyOn(service as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(service as any, 'processEmbedding')
-			const summarizationSpy = vi.spyOn(service as any, 'processSummarization')
-			const taggingSpy = vi.spyOn(service as any, 'processTagging')
+			const chunkingSpy = vi.spyOn(service as any, "processChunking")
+			const embeddingSpy = vi.spyOn(service as any, "processEmbedding")
+			const summarizationSpy = vi.spyOn(service as any, "processSummarization")
+			const taggingSpy = vi.spyOn(service as any, "processTagging")
 
 			chunkingSpy.mockResolvedValue([])
 			embeddingSpy.mockResolvedValue([])
-			summarizationSpy.mockResolvedValue('')
-			taggingSpy.mockRejectedValue(new Error('Tagging failed'))
+			summarizationSpy.mockResolvedValue("")
+			taggingSpy.mockRejectedValue(new Error("Tagging failed"))
 
 			const result = await service.processDocument(mockExtractionResult)
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('TAGGING_FAILED')
+			expect(result.error?.code).toBe("TAGGING_FAILED")
 		})
 
 		it("should continue processing when optional services fail", async () => {
@@ -456,17 +496,20 @@ describe("DocumentProcessorService", () => {
 				continueOnError: true,
 			}
 
-			const chunkingSpy = vi.spyOn(service as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(service as any, 'processEmbedding')
-			const summarizationSpy = vi.spyOn(service as any, 'processSummarization')
-			const taggingSpy = vi.spyOn(service as any, 'processTagging')
+			const chunkingSpy = vi.spyOn(service as any, "processChunking")
+			const embeddingSpy = vi.spyOn(service as any, "processEmbedding")
+			const summarizationSpy = vi.spyOn(service as any, "processSummarization")
+			const taggingSpy = vi.spyOn(service as any, "processTagging")
 
 			chunkingSpy.mockResolvedValue([])
 			embeddingSpy.mockResolvedValue([])
-			summarizationSpy.mockRejectedValue(new Error('Summarization failed'))
+			summarizationSpy.mockRejectedValue(new Error("Summarization failed"))
 			taggingSpy.mockResolvedValue([])
 
-			const result = await service.processDocument(mockExtractionResult, options)
+			const result = await service.processDocument(
+				mockExtractionResult,
+				options,
+			)
 
 			expect(result.success).toBe(true)
 			expect(result.data?.summary).toBeUndefined() // Failed stage
@@ -477,84 +520,104 @@ describe("DocumentProcessorService", () => {
 			const invalidResult: ExtractionResult = {
 				success: false,
 				error: {
-					code: 'EXTRACTION_FAILED',
-					message: 'Extraction failed',
+					code: "EXTRACTION_FAILED",
+					message: "Extraction failed",
 				},
 			}
 
 			const result = await service.processDocument(invalidResult)
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('INVALID_INPUT')
+			expect(result.error?.code).toBe("INVALID_INPUT")
 		})
 	})
 
 	describe("Performance Monitoring", () => {
 		it("should track processing metrics", async () => {
-			const chunkingSpy = vi.spyOn(service as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(service as any, 'processEmbedding')
-			const summarizationSpy = vi.spyOn(service as any, 'processSummarization')
-			const taggingSpy = vi.spyOn(service as any, 'processTagging')
+			const chunkingSpy = vi.spyOn(service as any, "processChunking")
+			const embeddingSpy = vi.spyOn(service as any, "processEmbedding")
+			const summarizationSpy = vi.spyOn(service as any, "processSummarization")
+			const taggingSpy = vi.spyOn(service as any, "processTagging")
 
 			chunkingSpy.mockResolvedValue([])
 			embeddingSpy.mockResolvedValue([])
-			summarizationSpy.mockResolvedValue('')
+			summarizationSpy.mockResolvedValue("")
 			taggingSpy.mockResolvedValue([])
 
 			const result = await service.processDocument(mockExtractionResult)
 
 			expect(result.data?.processingMetrics).toBeDefined()
-			expect(result.data?.processingMetrics?.totalProcessingTime).toBeGreaterThan(0)
+			expect(
+				result.data?.processingMetrics?.totalProcessingTime,
+			).toBeGreaterThan(0)
 		})
 
 		it("should provide detailed timing information", async () => {
-			const chunkingSpy = vi.spyOn(service as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(service as any, 'processEmbedding')
-			const summarizationSpy = vi.spyOn(service as any, 'processSummarization')
-			const taggingSpy = vi.spyOn(service as any, 'processTagging')
+			const chunkingSpy = vi.spyOn(service as any, "processChunking")
+			const embeddingSpy = vi.spyOn(service as any, "processEmbedding")
+			const summarizationSpy = vi.spyOn(service as any, "processSummarization")
+			const taggingSpy = vi.spyOn(service as any, "processTagging")
 
 			// Mock different processing times
-			chunkingSpy.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve([]), 100)))
-			embeddingSpy.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve([]), 200)))
-			summarizationSpy.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve(''), 150)))
-			taggingSpy.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve([]), 120)))
+			chunkingSpy.mockImplementation(
+				() => new Promise((resolve) => setTimeout(() => resolve([]), 100)),
+			)
+			embeddingSpy.mockImplementation(
+				() => new Promise((resolve) => setTimeout(() => resolve([]), 200)),
+			)
+			summarizationSpy.mockImplementation(
+				() => new Promise((resolve) => setTimeout(() => resolve(""), 150)),
+			)
+			taggingSpy.mockImplementation(
+				() => new Promise((resolve) => setTimeout(() => resolve([]), 120)),
+			)
 
 			const result = await service.processDocument(mockExtractionResult)
 
-			expect(result.data?.processingMetrics?.chunkingTime).toBeGreaterThanOrEqual(100)
-			expect(result.data?.processingMetrics?.embeddingTime).toBeGreaterThanOrEqual(200)
-			expect(result.data?.processingMetrics?.summarizationTime).toBeGreaterThanOrEqual(150)
-			expect(result.data?.processingMetrics?.taggingTime).toBeGreaterThanOrEqual(120)
+			expect(
+				result.data?.processingMetrics?.chunkingTime,
+			).toBeGreaterThanOrEqual(100)
+			expect(
+				result.data?.processingMetrics?.embeddingTime,
+			).toBeGreaterThanOrEqual(200)
+			expect(
+				result.data?.processingMetrics?.summarizationTime,
+			).toBeGreaterThanOrEqual(150)
+			expect(
+				result.data?.processingMetrics?.taggingTime,
+			).toBeGreaterThanOrEqual(120)
 		})
 
 		it("should handle concurrent document processing", async () => {
 			const documentCount = 5
-			const extractionResults = Array(documentCount).fill(null).map((_, i) => ({
-				...mockExtractionResult,
-				data: {
-					...mockExtractionResult.data!,
-					content: `Document ${i}: ${mockExtractionResult.data!.content}`,
-				},
-			}))
+			const extractionResults = Array(documentCount)
+				.fill(null)
+				.map((_, i) => ({
+					...mockExtractionResult,
+					data: {
+						...mockExtractionResult.data!,
+						content: `Document ${i}: ${mockExtractionResult.data!.content}`,
+					},
+				}))
 
-			const chunkingSpy = vi.spyOn(service as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(service as any, 'processEmbedding')
-			const summarizationSpy = vi.spyOn(service as any, 'processSummarization')
-			const taggingSpy = vi.spyOn(service as any, 'processTagging')
+			const chunkingSpy = vi.spyOn(service as any, "processChunking")
+			const embeddingSpy = vi.spyOn(service as any, "processEmbedding")
+			const summarizationSpy = vi.spyOn(service as any, "processSummarization")
+			const taggingSpy = vi.spyOn(service as any, "processTagging")
 
 			chunkingSpy.mockResolvedValue([])
 			embeddingSpy.mockResolvedValue([])
-			summarizationSpy.mockResolvedValue('')
+			summarizationSpy.mockResolvedValue("")
 			taggingSpy.mockResolvedValue([])
 
 			const startTime = Date.now()
 			const results = await Promise.all(
-				extractionResults.map(result => service.processDocument(result))
+				extractionResults.map((result) => service.processDocument(result)),
 			)
 			const endTime = Date.now()
 
 			expect(results).toHaveLength(documentCount)
-			results.forEach(result => expect(result.success).toBe(true))
+			results.forEach((result) => expect(result.success).toBe(true))
 			expect(endTime - startTime).toBeLessThan(1000) // Should be reasonably fast
 		})
 	})
@@ -562,28 +625,28 @@ describe("DocumentProcessorService", () => {
 	describe("Progress Tracking", () => {
 		it("should report progress through processing stages", async () => {
 			const progressCallback = vi.fn()
-			
+
 			const options: ProcessingOptions = {
 				progressCallback,
 			}
 
-			const chunkingSpy = vi.spyOn(service as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(service as any, 'processEmbedding')
-			const summarizationSpy = vi.spyOn(service as any, 'processSummarization')
-			const taggingSpy = vi.spyOn(service as any, 'processTagging')
+			const chunkingSpy = vi.spyOn(service as any, "processChunking")
+			const embeddingSpy = vi.spyOn(service as any, "processEmbedding")
+			const summarizationSpy = vi.spyOn(service as any, "processSummarization")
+			const taggingSpy = vi.spyOn(service as any, "processTagging")
 
 			chunkingSpy.mockResolvedValue([])
 			embeddingSpy.mockResolvedValue([])
-			summarizationSpy.mockResolvedValue('')
+			summarizationSpy.mockResolvedValue("")
 			taggingSpy.mockResolvedValue([])
 
 			await service.processDocument(mockExtractionResult, options)
 
 			// Verify progress callbacks were called for each stage
-			expect(progressCallback).toHaveBeenCalledWith('chunking', 25)
-			expect(progressCallback).toHaveBeenCalledWith('embedding', 50)
-			expect(progressCallback).toHaveBeenCalledWith('summarization', 75)
-			expect(progressCallback).toHaveBeenCalledWith('tagging', 100)
+			expect(progressCallback).toHaveBeenCalledWith("chunking", 25)
+			expect(progressCallback).toHaveBeenCalledWith("embedding", 50)
+			expect(progressCallback).toHaveBeenCalledWith("summarization", 75)
+			expect(progressCallback).toHaveBeenCalledWith("tagging", 100)
 		})
 
 		it("should handle progress tracking in parallel mode", async () => {
@@ -600,14 +663,17 @@ describe("DocumentProcessorService", () => {
 				progressCallback,
 			}
 
-			const chunkingSpy = vi.spyOn(parallelService as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(parallelService as any, 'processEmbedding')
-			const summarizationSpy = vi.spyOn(parallelService as any, 'processSummarization')
-			const taggingSpy = vi.spyOn(parallelService as any, 'processTagging')
+			const chunkingSpy = vi.spyOn(parallelService as any, "processChunking")
+			const embeddingSpy = vi.spyOn(parallelService as any, "processEmbedding")
+			const summarizationSpy = vi.spyOn(
+				parallelService as any,
+				"processSummarization",
+			)
+			const taggingSpy = vi.spyOn(parallelService as any, "processTagging")
 
 			chunkingSpy.mockResolvedValue([])
 			embeddingSpy.mockResolvedValue([])
-			summarizationSpy.mockResolvedValue('')
+			summarizationSpy.mockResolvedValue("")
 			taggingSpy.mockResolvedValue([])
 
 			await parallelService.processDocument(mockExtractionResult, options)
@@ -642,7 +708,7 @@ describe("DocumentProcessorService", () => {
 		it("should create service with default configuration", () => {
 			const service = createDocumentProcessorService()
 			expect(service).toBeDefined()
-			expect(service.getName()).toBe('DocumentProcessorService')
+			expect(service.getName()).toBe("DocumentProcessorService")
 		})
 
 		it("should create service with custom configuration", () => {
@@ -664,8 +730,8 @@ describe("DocumentProcessorService", () => {
 			const emptyContentResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: '',
-					metadata: { title: 'Empty Document' },
+					content: "",
+					metadata: { title: "Empty Document" },
 					processingTime: 100,
 				},
 			}
@@ -680,10 +746,10 @@ describe("DocumentProcessorService", () => {
 			const metadataOnlyResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: '',
+					content: "",
 					metadata: {
-						title: 'Metadata Only',
-						author: 'Test Author',
+						title: "Metadata Only",
+						author: "Test Author",
 						pageCount: 1,
 						extractedAt: new Date().toISOString(),
 					},
@@ -695,16 +761,16 @@ describe("DocumentProcessorService", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toHaveLength(0)
-			expect(result.data?.summary).toBe('Metadata Only document')
+			expect(result.data?.summary).toBe("Metadata Only document")
 		})
 
 		it("should handle very long documents", async () => {
-			const veryLongContent = 'A'.repeat(1000000) // 1MB of text
+			const veryLongContent = "A".repeat(1000000) // 1MB of text
 			const veryLongResult: ExtractionResult = {
 				success: true,
 				data: {
 					content: veryLongContent,
-					metadata: { title: 'Very Long Document' },
+					metadata: { title: "Very Long Document" },
 					processingTime: 10000,
 				},
 			}
@@ -720,8 +786,8 @@ describe("DocumentProcessorService", () => {
 			const specialContentResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'Document with émojis 🎯 and spëciäl chårs and ünïcödé',
-					metadata: { title: 'Special Chars Document' },
+					content: "Document with émojis 🎯 and spëciäl chårs and ünïcödé",
+					metadata: { title: "Special Chars Document" },
 					processingTime: 500,
 				},
 			}
@@ -729,24 +795,24 @@ describe("DocumentProcessorService", () => {
 			const result = await service.processDocument(specialContentResult)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.content).toContain('émojis')
+			expect(result.data?.content).toContain("émojis")
 		})
 	})
 
 	describe("Resource Management", () => {
 		it("should clean up resources after processing", async () => {
-			const chunkingSpy = vi.spyOn(service as any, 'processChunking')
-			const embeddingSpy = vi.spyOn(service as any, 'processEmbedding')
-			const summarizationSpy = vi.spyOn(service as any, 'processSummarization')
-			const taggingSpy = vi.spyOn(service as any, 'processTagging')
+			const chunkingSpy = vi.spyOn(service as any, "processChunking")
+			const embeddingSpy = vi.spyOn(service as any, "processEmbedding")
+			const summarizationSpy = vi.spyOn(service as any, "processSummarization")
+			const taggingSpy = vi.spyOn(service as any, "processTagging")
 
 			chunkingSpy.mockResolvedValue([])
 			embeddingSpy.mockResolvedValue([])
-			summarizationSpy.mockResolvedValue('')
+			summarizationSpy.mockResolvedValue("")
 			taggingSpy.mockResolvedValue([])
 
 			await service.processDocument(mockExtractionResult)
-			
+
 			// Verify cleanup was called
 		})
 
@@ -754,29 +820,29 @@ describe("DocumentProcessorService", () => {
 			const largeResult: ExtractionResult = {
 				success: true,
 				data: {
-					content: 'x'.repeat(10000000), // 10MB
-					metadata: { title: 'Memory Test Document' },
+					content: "x".repeat(10000000), // 10MB
+					metadata: { title: "Memory Test Document" },
 					processingTime: 5000,
 				},
 			}
 
 			// Mock memory limit exceeded
-			const memorySpy = vi.spyOn(service as any, 'checkMemoryUsage')
+			const memorySpy = vi.spyOn(service as any, "checkMemoryUsage")
 			memorySpy.mockReturnValue(true)
 
 			const result = await service.processDocument(largeResult)
 
 			expect(result.success).toBe(false)
-			expect(result.error?.code).toBe('MEMORY_CONSTRAINT')
+			expect(result.error?.code).toBe("MEMORY_CONSTRAINT")
 		})
 	})
 
 	describe("Service Health", () => {
 		it("should report service health status", () => {
 			const health = service.getHealth()
-			expect(health).toHaveProperty('status')
-			expect(health).toHaveProperty('timestamp')
-			expect(health).toHaveProperty('services')
+			expect(health).toHaveProperty("status")
+			expect(health).toHaveProperty("timestamp")
+			expect(health).toHaveProperty("services")
 		})
 
 		it("should handle health check with failed dependencies", () => {

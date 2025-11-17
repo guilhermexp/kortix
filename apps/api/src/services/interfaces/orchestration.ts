@@ -12,14 +12,14 @@
  * - WorkflowOrchestrator: Coordinate complex workflows
  */
 
-import {
-	ProcessDocumentInput,
-	ProcessingResult,
-	ProcessingError,
-	RetryOptions,
+import type {
 	BaseService,
 	CircuitBreakerState,
-} from './document-processing'
+	ProcessDocumentInput,
+	ProcessingError,
+	ProcessingResult,
+	RetryOptions,
+} from "./document-processing"
 
 // ============================================================================
 // Circuit Breaker Interfaces
@@ -32,7 +32,10 @@ export interface CircuitBreaker extends BaseService {
 	/**
 	 * Execute operation with circuit breaker protection
 	 */
-	execute<T>(operation: () => Promise<T>, options?: CircuitBreakerOptions): Promise<T>
+	execute<T>(
+		operation: () => Promise<T>,
+		options?: CircuitBreakerOptions,
+	): Promise<T>
 
 	/**
 	 * Get current state
@@ -83,7 +86,7 @@ export interface CircuitBreakerOptions {
  */
 export interface CircuitBreakerMetrics {
 	/** Current state */
-	state: 'closed' | 'open' | 'half-open'
+	state: "closed" | "open" | "half-open"
 	/** Failure count */
 	failures: number
 	/** Success count */
@@ -107,9 +110,9 @@ export interface CircuitBreakerMetrics {
  */
 export interface StateChange {
 	/** Previous state */
-	from: 'closed' | 'open' | 'half-open'
+	from: "closed" | "open" | "half-open"
 	/** New state */
-	to: 'closed' | 'open' | 'half-open'
+	to: "closed" | "open" | "half-open"
 	/** Timestamp */
 	timestamp: Date
 	/** Reason */
@@ -121,7 +124,7 @@ export interface StateChange {
  */
 export interface CircuitBreakerEvent {
 	/** Event type */
-	type: 'opened' | 'closed' | 'half_opened' | 'success' | 'failure' | 'rejected'
+	type: "opened" | "closed" | "half_opened" | "success" | "failure" | "rejected"
 	/** Timestamp */
 	timestamp: Date
 	/** Service name */
@@ -292,7 +295,7 @@ export interface Job {
 	/** Job ID */
 	id?: string
 	/** Job type */
-	type: 'document_ingestion' | 'reprocessing' | 'batch_processing'
+	type: "document_ingestion" | "reprocessing" | "batch_processing"
 	/** Job data */
 	data: ProcessDocumentInput
 	/** Job options */
@@ -306,7 +309,7 @@ export interface Job {
  */
 export interface JobOptions {
 	/** Priority */
-	priority?: 'low' | 'normal' | 'high' | 'critical'
+	priority?: "low" | "normal" | "high" | "critical"
 	/** Delay before processing (ms) */
 	delay?: number
 	/** Maximum retry attempts */
@@ -326,7 +329,7 @@ export interface JobOptions {
  */
 export interface BackoffOptions {
 	/** Backoff type */
-	type: 'fixed' | 'exponential'
+	type: "fixed" | "exponential"
 	/** Delay in milliseconds */
 	delay: number
 	/** Maximum delay */
@@ -340,7 +343,7 @@ export interface JobStatus {
 	/** Job ID */
 	id: string
 	/** Current state */
-	state: 'waiting' | 'active' | 'completed' | 'failed' | 'delayed' | 'paused'
+	state: "waiting" | "active" | "completed" | "failed" | "delayed" | "paused"
 	/** Progress (0-100) */
 	progress: number
 	/** Result (if completed) */
@@ -390,14 +393,14 @@ export interface QueueStatistics {
 export interface JobEvent {
 	/** Event type */
 	type:
-		| 'added'
-		| 'started'
-		| 'progress'
-		| 'completed'
-		| 'failed'
-		| 'delayed'
-		| 'retrying'
-		| 'removed'
+		| "added"
+		| "started"
+		| "progress"
+		| "completed"
+		| "failed"
+		| "delayed"
+		| "retrying"
+		| "removed"
 	/** Job ID */
 	jobId: string
 	/** Timestamp */
@@ -478,7 +481,13 @@ export interface WorkflowStep {
 	/** Step name */
 	name: string
 	/** Step type */
-	type: 'extraction' | 'processing' | 'preview' | 'storage' | 'validation' | 'custom'
+	type:
+		| "extraction"
+		| "processing"
+		| "preview"
+		| "storage"
+		| "validation"
+		| "custom"
 	/** Step function */
 	execute: (context: WorkflowContext) => Promise<WorkflowStepResult>
 	/** Skip condition */
@@ -490,7 +499,10 @@ export interface WorkflowStep {
 	/** Dependencies */
 	dependencies?: string[]
 	/** On error handler */
-	onError?: (error: Error, context: WorkflowContext) => Promise<WorkflowStepResult>
+	onError?: (
+		error: Error,
+		context: WorkflowContext,
+	) => Promise<WorkflowStepResult>
 }
 
 /**
@@ -574,7 +586,7 @@ export interface WorkflowStatus {
 	/** Workflow ID */
 	id: string
 	/** Current state */
-	state: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+	state: "pending" | "running" | "completed" | "failed" | "cancelled"
 	/** Current step */
 	currentStep?: string
 	/** Progress (0-100) */
@@ -759,23 +771,23 @@ export interface RateLimitConfig {
 export interface OrchestrationEvent {
 	/** Event type */
 	type:
-		| 'workflow_started'
-		| 'workflow_completed'
-		| 'workflow_failed'
-		| 'step_started'
-		| 'step_completed'
-		| 'step_failed'
-		| 'circuit_opened'
-		| 'circuit_closed'
-		| 'retry_attempted'
-		| 'job_queued'
-		| 'rate_limited'
+		| "workflow_started"
+		| "workflow_completed"
+		| "workflow_failed"
+		| "step_started"
+		| "step_completed"
+		| "step_failed"
+		| "circuit_opened"
+		| "circuit_closed"
+		| "retry_attempted"
+		| "job_queued"
+		| "rate_limited"
 	/** Timestamp */
 	timestamp: Date
 	/** Entity ID (workflow/job/step) */
 	entityId: string
 	/** Entity type */
-	entityType: 'workflow' | 'job' | 'step' | 'circuit_breaker' | 'rate_limiter'
+	entityType: "workflow" | "job" | "step" | "circuit_breaker" | "rate_limiter"
 	/** Duration (if applicable) */
 	duration?: number
 	/** Error (if applicable) */
@@ -814,9 +826,9 @@ export interface OrchestrationMonitor extends BaseService {
  */
 export interface EventFilter {
 	/** Event types */
-	types?: OrchestrationEvent['type'][]
+	types?: OrchestrationEvent["type"][]
 	/** Entity types */
-	entityTypes?: OrchestrationEvent['entityType'][]
+	entityTypes?: OrchestrationEvent["entityType"][]
 	/** Start time */
 	startTime?: Date
 	/** End time */

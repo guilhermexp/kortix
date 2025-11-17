@@ -87,7 +87,6 @@ interfaces/
 - `YouTubeExtractor` - YouTube transcript extraction
 - `PDFExtractor` - PDF document extraction with OCR
 - `FileExtractor` - Office document extraction
-- `RepositoryExtractor` - GitHub repository extraction
 
 **Supporting Interfaces:**
 - `ExtractorChain` - Fallback chain for extractors

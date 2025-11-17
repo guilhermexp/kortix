@@ -1,5 +1,5 @@
 // Use central helpers to avoid model ID mismatches
-import { getGoogleClient, getGoogleModel } from "./google-genai"
+
 import {
 	AI_GENERATION_CONFIG,
 	AI_MODELS,
@@ -19,21 +19,24 @@ import {
 	getFallbackMessage,
 	getSectionHeader,
 } from "../i18n"
-import { summarizeWithOpenRouter } from "./summarizer-fallback"
-import { openRouterChat } from "./openrouter"
+import { getGoogleClient, getGoogleModel } from "./google-genai"
 import { convertUrlWithMarkItDown } from "./markitdown"
+import { openRouterChat } from "./openrouter"
+import { summarizeWithOpenRouter } from "./summarizer-fallback"
 
 const googleClient = null // Disable Gemini for summaries/tags; use OpenRouter
 
 export async function generateSummary(
-  text: string,
-  context?: { title?: string | null; url?: string | null },
+	text: string,
+	context?: { title?: string | null; url?: string | null },
 ): Promise<string | null> {
-  const trimmed = text.trim()
-  if (!trimmed) return null
-  console.log("[Summarizer] Using OpenRouter (summary)", { hasUrl: Boolean(context?.url) })
-  const viaOpenRouter = await summarizeWithOpenRouter(trimmed, context)
-  return viaOpenRouter || buildFallbackSummary(trimmed, context)
+	const trimmed = text.trim()
+	if (!trimmed) return null
+	console.log("[Summarizer] Using OpenRouter (summary)", {
+		hasUrl: Boolean(context?.url),
+	})
+	const viaOpenRouter = await summarizeWithOpenRouter(trimmed, context)
+	return viaOpenRouter || buildFallbackSummary(trimmed, context)
 }
 
 function buildPrompt(
@@ -124,9 +127,11 @@ export async function generateDeepAnalysis(
 	const trimmed = text.trim()
 	if (!trimmed) return null
 
-  console.log("[Summarizer] Using OpenRouter (deep analysis)", { hasUrl: Boolean(context?.url) })
-  const viaOpenRouter = await summarizeWithOpenRouter(trimmed, context)
-  return viaOpenRouter || buildFallbackSummary(trimmed, context)
+	console.log("[Summarizer] Using OpenRouter (deep analysis)", {
+		hasUrl: Boolean(context?.url),
+	})
+	const viaOpenRouter = await summarizeWithOpenRouter(trimmed, context)
+	return viaOpenRouter || buildFallbackSummary(trimmed, context)
 }
 
 /**
@@ -144,13 +149,13 @@ async function generateTextBasedAnalysis(
 	const trimmed = text.trim()
 	if (!trimmed) return null
 
-  try {
-    const viaOpenRouter = await summarizeWithOpenRouter(trimmed, context)
-    if (viaOpenRouter && viaOpenRouter.trim()) {
-      return ensureUseCasesSection(viaOpenRouter)
-    }
-  } catch {}
-  return buildFallbackSummary(trimmed, context)
+	try {
+		const viaOpenRouter = await summarizeWithOpenRouter(trimmed, context)
+		if (viaOpenRouter && viaOpenRouter.trim()) {
+			return ensureUseCasesSection(viaOpenRouter)
+		}
+	} catch {}
+	return buildFallbackSummary(trimmed, context)
 }
 
 /**
@@ -220,91 +225,139 @@ export async function summarizeYoutubeVideo(
  * Fallback: simple keyword extraction from title + text.
  */
 export async function generateCategoryTags(
-  text: string,
-  context?: { title?: string | null; url?: string | null },
-  opts?: { maxTags?: number; locale?: "pt-BR" | "en-US" }
+	text: string,
+	context?: { title?: string | null; url?: string | null },
+	opts?: { maxTags?: number; locale?: "pt-BR" | "en-US" },
 ): Promise<string[]> {
-  const MAX_TAGS = Math.max(3, Math.min(opts?.maxTags ?? 6, 12))
-  const trimmed = (context?.title ? `${context.title}\n` : "") + (text || "")
-  const snippet = trimmed.slice(0, TEXT_LIMITS.ANALYSIS_MAX_CHARS)
+	const MAX_TAGS = Math.max(3, Math.min(opts?.maxTags ?? 6, 12))
+	const trimmed = (context?.title ? `${context.title}\n` : "") + (text || "")
+	const snippet = trimmed.slice(0, TEXT_LIMITS.ANALYSIS_MAX_CHARS)
 
-  const fallback = (): string[] => {
-    try {
-      const source = (context?.title ? `${context.title}. ` : "") + snippet
-      const words = source
-        .toLowerCase()
-        .replace(/[^a-zà-ú0-9\s_-]/gi, " ")
-        .split(/\s+/)
-        .filter((w) => w.length >= 4 && w.length <= 28)
-      const stop = new Set([
-        "sobre","with","para","from","this","that","como","onde","quando","porque","the","and","for","com","uma","não","dos","das","nos","nas","entre","sobre","mais","less","http","https","www","github","readme","document","summary","resumo","executivo","executive","overview","introduction","intro","video","image","webpage","pagina","página","file",
-      ])
-      const freq = new Map<string, number>()
-      for (const w of words) {
-        if (stop.has(w)) continue
-        freq.set(w, (freq.get(w) || 0) + 1)
-      }
-      const sorted = Array.from(freq.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([w]) => w)
-      const uniq: string[] = []
-      for (const w of sorted) {
-        if (uniq.includes(w)) continue
-        // Favor multiword tags by merging common pairs appearing in title
-        uniq.push(w)
-        if (uniq.length >= MAX_TAGS) break
-      }
-      return uniq.map((t) => t.trim()).filter(Boolean)
-    } catch {
-      return []
-    }
-  }
+	const fallback = (): string[] => {
+		try {
+			const source = (context?.title ? `${context.title}. ` : "") + snippet
+			const words = source
+				.toLowerCase()
+				.replace(/[^a-zà-ú0-9\s_-]/gi, " ")
+				.split(/\s+/)
+				.filter((w) => w.length >= 4 && w.length <= 28)
+			const stop = new Set([
+				"sobre",
+				"with",
+				"para",
+				"from",
+				"this",
+				"that",
+				"como",
+				"onde",
+				"quando",
+				"porque",
+				"the",
+				"and",
+				"for",
+				"com",
+				"uma",
+				"não",
+				"dos",
+				"das",
+				"nos",
+				"nas",
+				"entre",
+				"sobre",
+				"mais",
+				"less",
+				"http",
+				"https",
+				"www",
+				"github",
+				"readme",
+				"document",
+				"summary",
+				"resumo",
+				"executivo",
+				"executive",
+				"overview",
+				"introduction",
+				"intro",
+				"video",
+				"image",
+				"webpage",
+				"pagina",
+				"página",
+				"file",
+			])
+			const freq = new Map<string, number>()
+			for (const w of words) {
+				if (stop.has(w)) continue
+				freq.set(w, (freq.get(w) || 0) + 1)
+			}
+			const sorted = Array.from(freq.entries())
+				.sort((a, b) => b[1] - a[1])
+				.map(([w]) => w)
+			const uniq: string[] = []
+			for (const w of sorted) {
+				if (uniq.includes(w)) continue
+				// Favor multiword tags by merging common pairs appearing in title
+				uniq.push(w)
+				if (uniq.length >= MAX_TAGS) break
+			}
+			return uniq.map((t) => t.trim()).filter(Boolean)
+		} catch {
+			return []
+		}
+	}
 
-  try {
-    const langHint = opts?.locale === "en-US" ? "English" : "Portuguese (pt-BR)"
-    const prompt = [
-      `Generate between 3 and ${MAX_TAGS} short, descriptive tags for the content below.`,
-      "- Output only the tags, comma-separated.",
-      "- No #, no sentences, all lowercase.",
-      "- Use topical/category terms, not IDs.",
-      context?.title ? `Title: ${context.title}` : null,
-      "\nContent:",
-      snippet,
-      "\nRespond ONLY with the tags.",
-      `Language: ${langHint}`,
-    ]
-      .filter(Boolean)
-      .join("\n")
+	try {
+		const langHint = opts?.locale === "en-US" ? "English" : "Portuguese (pt-BR)"
+		const prompt = [
+			`Generate between 3 and ${MAX_TAGS} short, descriptive tags for the content below.`,
+			"- Output only the tags, comma-separated.",
+			"- No #, no sentences, all lowercase.",
+			"- Use topical/category terms, not IDs.",
+			context?.title ? `Title: ${context.title}` : null,
+			"\nContent:",
+			snippet,
+			"\nRespond ONLY with the tags.",
+			`Language: ${langHint}`,
+		]
+			.filter(Boolean)
+			.join("\n")
 
-    const raw = (await openRouterChat([
-      { role: "system", content: "You generate concise topical tags." },
-      { role: "user", content: prompt },
-    ]))?.trim() || ""
-    if (!raw) return fallback()
+		const raw =
+			(
+				await openRouterChat([
+					{ role: "system", content: "You generate concise topical tags." },
+					{ role: "user", content: prompt },
+				])
+			)?.trim() || ""
+		if (!raw) return fallback()
 
-    // Accept comma, newline, or bullet separated
-    const parts = raw
-      .replace(/^[-*•]\s*/gm, "")
-      .split(/[,\n]+/)
-      .map((s) => s.toLowerCase().trim())
-      .map((s) => s.replace(/^#+/, "").trim())
-      .map((s) => s.replace(/\s{2,}/g, " "))
-      .filter(Boolean)
+		// Accept comma, newline, or bullet separated
+		const parts = raw
+			.replace(/^[-*•]\s*/gm, "")
+			.split(/[,\n]+/)
+			.map((s) => s.toLowerCase().trim())
+			.map((s) => s.replace(/^#+/, "").trim())
+			.map((s) => s.replace(/\s{2,}/g, " "))
+			.filter(Boolean)
 
-    // Deduplicate and clamp
-    const uniq: string[] = []
-    for (const p of parts) {
-      if (!p) continue
-      if (uniq.includes(p)) continue
-      uniq.push(p)
-      if (uniq.length >= MAX_TAGS) break
-    }
+		// Deduplicate and clamp
+		const uniq: string[] = []
+		for (const p of parts) {
+			if (!p) continue
+			if (uniq.includes(p)) continue
+			uniq.push(p)
+			if (uniq.length >= MAX_TAGS) break
+		}
 
-    return uniq.length > 0 ? uniq : fallback()
-  } catch (err) {
-    console.warn("generateCategoryTags via OpenRouter failed; using heuristic fallback", err)
-    return fallback()
-  }
+		return uniq.length > 0 ? uniq : fallback()
+	} catch (err) {
+		console.warn(
+			"generateCategoryTags via OpenRouter failed; using heuristic fallback",
+			err,
+		)
+		return fallback()
+	}
 }
 
 /**

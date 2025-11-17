@@ -11,20 +11,26 @@
  * - Progress tracking and reporting
  */
 
-import { BaseService } from '../base/base-service'
-import { ChunkingService, createChunkingService } from './chunking-service'
-import { EmbeddingService, createEmbeddingService } from './embedding-service'
-import { SummarizationService, createSummarizationService } from './summarization-service'
-import { TaggingService, createTaggingService } from './tagging-service'
+import { BaseService } from "../base/base-service"
 import type {
-	DocumentProcessorService as IDocumentProcessorService,
+	Chunk,
 	ExtractionResult,
+	DocumentProcessorService as IDocumentProcessorService,
 	ProcessedDocument,
+	ProcessingMetrics,
 	ProcessingOptions,
 	ProcessorServiceConfig,
-	ProcessingMetrics,
-	Chunk,
-} from '../interfaces'
+} from "../interfaces"
+import { type ChunkingService, createChunkingService } from "./chunking-service"
+import {
+	createEmbeddingService,
+	type EmbeddingService,
+} from "./embedding-service"
+import {
+	createSummarizationService,
+	type SummarizationService,
+} from "./summarization-service"
+import { createTaggingService, type TaggingService } from "./tagging-service"
 
 // ============================================================================
 // Document Processor Service Implementation
@@ -33,7 +39,10 @@ import type {
 /**
  * Service that coordinates all document processing steps
  */
-export class DocumentProcessorService extends BaseService implements IDocumentProcessorService {
+export class DocumentProcessorService
+	extends BaseService
+	implements IDocumentProcessorService
+{
 	private readonly config: ProcessorServiceConfig
 	private chunkingService?: ChunkingService
 	private embeddingService?: EmbeddingService
@@ -41,7 +50,7 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 	private taggingService?: TaggingService
 
 	constructor(config: ProcessorServiceConfig) {
-		super('DocumentProcessorService')
+		super("DocumentProcessorService")
 		this.config = config
 	}
 
@@ -50,14 +59,14 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 	// ========================================================================
 
 	protected async onInitialize(): Promise<void> {
-		this.logger.info('Initializing document processor service', {
+		this.logger.info("Initializing document processor service", {
 			config: this.config,
 		})
 
 		// Initialize processing services
 		await this.initializeServices()
 
-		this.logger.info('Document processor service initialized')
+		this.logger.info("Document processor service initialized")
 	}
 
 	/**
@@ -73,7 +82,7 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 				respectParagraphs: this.config.chunking?.respectParagraphs,
 			})
 			await this.chunkingService.initialize()
-			this.logger.debug('Chunking service initialized')
+			this.logger.debug("Chunking service initialized")
 		}
 
 		// Embedding service
@@ -84,7 +93,7 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 				useCache: this.config.embedding?.useCache,
 			})
 			await this.embeddingService.initialize()
-			this.logger.debug('Embedding service initialized')
+			this.logger.debug("Embedding service initialized")
 		}
 
 		// Summarization service
@@ -95,7 +104,7 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 				style: this.config.summarization?.style,
 			})
 			await this.summarizationService.initialize()
-			this.logger.debug('Summarization service initialized')
+			this.logger.debug("Summarization service initialized")
 		}
 
 		// Tagging service
@@ -106,7 +115,7 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 				provider: this.config.tagging?.provider,
 			})
 			await this.taggingService.initialize()
-			this.logger.debug('Tagging service initialized')
+			this.logger.debug("Tagging service initialized")
 		}
 	}
 
@@ -147,16 +156,16 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 	 */
 	async process(
 		extraction: ExtractionResult,
-		options?: ProcessingOptions
+		options?: ProcessingOptions,
 	): Promise<ProcessedDocument> {
 		this.assertInitialized()
 		this.assertServicesRegistered()
 
-		const tracker = this.performanceMonitor.startOperation('process')
+		const tracker = this.performanceMonitor.startOperation("process")
 		const startTime = Date.now()
 
 		try {
-			this.logger.info('Starting document processing', {
+			this.logger.info("Starting document processing", {
 				title: extraction.title,
 				wordCount: extraction.wordCount,
 			})
@@ -180,23 +189,24 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 			}
 
 			// Build processed document
-		const processed: ProcessedDocument = {
-			content: extraction.text,
-			chunks: chunksWithEmbeddings,
-			summary,
-			tags,
-			metadata: {
+			const processed: ProcessedDocument = {
+				content: extraction.text,
+				chunks: chunksWithEmbeddings,
+				summary,
+				tags,
+				metadata: {
 					extractionResult: extraction,
 					processingDate: new Date(),
 					processingTime: Date.now() - startTime,
 					chunkCount: chunksWithEmbeddings.length,
-					embeddingDimensions: this.embeddingService?.getEmbeddingDimensions() || 0,
+					embeddingDimensions:
+						this.embeddingService?.getEmbeddingDimensions() || 0,
 				},
 			}
 
 			tracker.end(true)
 
-			this.logger.info('Document processing completed', {
+			this.logger.info("Document processing completed", {
 				chunkCount: processed.chunks.length,
 				hasSummary: !!processed.summary,
 				tagCount: processed.tags?.length || 0,
@@ -206,7 +216,7 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 			return processed
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'process')
+			throw this.handleError(error, "process")
 		}
 	}
 
@@ -270,16 +280,19 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 	 */
 	private async executeChunking(
 		extraction: ExtractionResult,
-		options?: ProcessingOptions
+		options?: ProcessingOptions,
 	): Promise<Chunk[]> {
 		if (!this.chunkingService) {
-			throw this.createError('SERVICE_NOT_AVAILABLE', 'Chunking service not initialized')
+			throw this.createError(
+				"SERVICE_NOT_AVAILABLE",
+				"Chunking service not initialized",
+			)
 		}
 
-		const tracker = this.performanceMonitor.startOperation('chunking')
+		const tracker = this.performanceMonitor.startOperation("chunking")
 
 		try {
-			this.logger.debug('Executing chunking')
+			this.logger.debug("Executing chunking")
 
 			const chunks = await this.chunkingService.chunk(extraction.text, {
 				chunkSize: options?.chunkSize,
@@ -290,42 +303,49 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 
 			tracker.end(true)
 
-			this.logger.debug('Chunking completed', {
+			this.logger.debug("Chunking completed", {
 				chunkCount: chunks.length,
 			})
 
 			return chunks
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'executeChunking')
+			throw this.handleError(error, "executeChunking")
 		}
 	}
 
 	/**
 	 * Execute embedding generation step
 	 */
-	private async executeEmbedding(chunks: Chunk[], options?: ProcessingOptions): Promise<Chunk[]> {
+	private async executeEmbedding(
+		chunks: Chunk[],
+		options?: ProcessingOptions,
+	): Promise<Chunk[]> {
 		if (!this.embeddingService) {
-			throw this.createError('SERVICE_NOT_AVAILABLE', 'Embedding service not initialized')
+			throw this.createError(
+				"SERVICE_NOT_AVAILABLE",
+				"Embedding service not initialized",
+			)
 		}
 
-		const tracker = this.performanceMonitor.startOperation('embedding')
+		const tracker = this.performanceMonitor.startOperation("embedding")
 
 		try {
-			this.logger.debug('Executing embedding generation')
+			this.logger.debug("Executing embedding generation")
 
-			const chunksWithEmbeddings = await this.embeddingService.generateEmbeddings(chunks)
+			const chunksWithEmbeddings =
+				await this.embeddingService.generateEmbeddings(chunks)
 
 			tracker.end(true)
 
-			this.logger.debug('Embedding generation completed', {
+			this.logger.debug("Embedding generation completed", {
 				chunkCount: chunksWithEmbeddings.length,
 			})
 
 			return chunksWithEmbeddings
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'executeEmbedding')
+			throw this.handleError(error, "executeEmbedding")
 		}
 	}
 
@@ -334,22 +354,26 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 	 */
 	private async executeSummarization(
 		extraction: ExtractionResult,
-		options?: ProcessingOptions
+		options?: ProcessingOptions,
 	): Promise<string> {
 		if (!this.summarizationService) {
-			throw this.createError('SERVICE_NOT_AVAILABLE', 'Summarization service not initialized')
+			throw this.createError(
+				"SERVICE_NOT_AVAILABLE",
+				"Summarization service not initialized",
+			)
 		}
 
-		const tracker = this.performanceMonitor.startOperation('summarization')
+		const tracker = this.performanceMonitor.startOperation("summarization")
 
 		try {
-			this.logger.debug('Executing summarization')
+			this.logger.debug("Executing summarization")
 
-			const result = await this.summarizationService.summarizeExtraction(extraction)
+			const result =
+				await this.summarizationService.summarizeExtraction(extraction)
 
 			tracker.end(true)
 
-			this.logger.debug('Summarization completed', {
+			this.logger.debug("Summarization completed", {
 				summaryLength: result.summary.length,
 				quality: result.quality,
 			})
@@ -359,7 +383,7 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 			tracker.end(false)
 
 			// Summarization is non-critical, log error and return fallback
-			this.logger.warn('Summarization failed, using fallback', {
+			this.logger.warn("Summarization failed, using fallback", {
 				error: (error as Error).message,
 			})
 
@@ -372,22 +396,26 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 	 */
 	private async executeTagging(
 		extraction: ExtractionResult,
-		options?: ProcessingOptions
+		options?: ProcessingOptions,
 	): Promise<string[]> {
 		if (!this.taggingService) {
-			throw this.createError('SERVICE_NOT_AVAILABLE', 'Tagging service not initialized')
+			throw this.createError(
+				"SERVICE_NOT_AVAILABLE",
+				"Tagging service not initialized",
+			)
 		}
 
-		const tracker = this.performanceMonitor.startOperation('tagging')
+		const tracker = this.performanceMonitor.startOperation("tagging")
 
 		try {
-			this.logger.debug('Executing tagging')
+			this.logger.debug("Executing tagging")
 
-			const result = await this.taggingService.generateTagsFromExtraction(extraction)
+			const result =
+				await this.taggingService.generateTagsFromExtraction(extraction)
 
 			tracker.end(true)
 
-			this.logger.debug('Tagging completed', {
+			this.logger.debug("Tagging completed", {
 				tagCount: result.tags.length,
 				tags: result.tags,
 			})
@@ -397,7 +425,7 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 			tracker.end(false)
 
 			// Tagging is non-critical, log error and return empty array
-			this.logger.warn('Tagging failed', {
+			this.logger.warn("Tagging failed", {
 				error: (error as Error).message,
 			})
 
@@ -419,9 +447,9 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 			.map((s) => s.trim())
 			.filter((s) => s.length > 20)
 
-		const summary = sentences.slice(0, 3).join('. ')
+		const summary = sentences.slice(0, 3).join(". ")
 
-		return summary.length > 0 ? summary + '.' : 'No summary available.'
+		return summary.length > 0 ? summary + "." : "No summary available."
 	}
 
 	// ========================================================================
@@ -433,10 +461,16 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 	 */
 	private assertServicesRegistered(): void {
 		if (!this.chunkingService) {
-			throw this.createError('SERVICE_NOT_REGISTERED', 'ChunkingService not registered')
+			throw this.createError(
+				"SERVICE_NOT_REGISTERED",
+				"ChunkingService not registered",
+			)
 		}
 		if (!this.embeddingService) {
-			throw this.createError('SERVICE_NOT_REGISTERED', 'EmbeddingService not registered')
+			throw this.createError(
+				"SERVICE_NOT_REGISTERED",
+				"EmbeddingService not registered",
+			)
 		}
 		// Summarization and tagging are optional
 	}
@@ -481,7 +515,7 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 		// At least chunking and embedding must be healthy
 		const isHealthy = healthyCount >= 2
 
-		this.logger.debug('Service health check', {
+		this.logger.debug("Service health check", {
 			healthy: isHealthy,
 			healthyServices: healthyCount,
 			totalServices: totalCount,
@@ -491,7 +525,7 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
 	}
 
 	protected async onCleanup(): Promise<void> {
-		this.logger.info('Cleaning up document processor service')
+		this.logger.info("Cleaning up document processor service")
 
 		// Cleanup services
 		if (this.chunkingService) {
@@ -517,7 +551,7 @@ export class DocumentProcessorService extends BaseService implements IDocumentPr
  * Create document processor service with configuration
  */
 export function createDocumentProcessorService(
-	config?: Partial<ProcessorServiceConfig>
+	config?: Partial<ProcessorServiceConfig>,
 ): DocumentProcessorService {
 	const defaultConfig: ProcessorServiceConfig = {
 		chunking: {
@@ -529,21 +563,21 @@ export function createDocumentProcessorService(
 		},
 		embedding: {
 			enabled: true,
-			provider: 'hybrid',
+			provider: "hybrid",
 			batchSize: 10,
 			useCache: true,
 		},
 		summarization: {
 			enabled: true,
-			provider: 'openrouter',
+			provider: "openrouter",
 			maxLength: 500,
-			style: 'concise',
+			style: "concise",
 		},
 		tagging: {
 			enabled: true,
-			provider: 'openrouter',
+			provider: "openrouter",
 			maxTags: 6,
-			locale: 'en-US',
+			locale: "en-US",
 		},
 		pipeline: {
 			parallel: false,

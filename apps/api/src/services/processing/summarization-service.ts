@@ -11,14 +11,14 @@
  * - Multi-language support (EN, PT)
  */
 
-import { BaseService } from '../base/base-service'
-import { generateSummary as generateSummaryProvider } from '../summarizer'
+import { BaseService } from "../base/base-service"
 import type {
+	ExtractionResult,
 	SummarizationService as ISummarizationService,
 	SummarizationOptions,
 	SummarizationResult,
-	ExtractionResult,
-} from '../interfaces'
+} from "../interfaces"
+import { generateSummary as generateSummaryProvider } from "../summarizer"
 
 // ============================================================================
 // Constants
@@ -26,7 +26,7 @@ import type {
 
 const MAX_INPUT_LENGTH = 100000 // characters
 const DEFAULT_MAX_LENGTH = 500 // words
-const DEFAULT_STYLE = 'concise' as const
+const DEFAULT_STYLE = "concise" as const
 
 // ============================================================================
 // Summarization Service Implementation
@@ -35,15 +35,18 @@ const DEFAULT_STYLE = 'concise' as const
 /**
  * Service for AI-powered document summarization
  */
-export class SummarizationService extends BaseService implements ISummarizationService {
-	private readonly provider: 'openrouter' | 'gemini'
+export class SummarizationService
+	extends BaseService
+	implements ISummarizationService
+{
+	private readonly provider: "openrouter" | "gemini"
 	private readonly maxLength: number
-	private readonly style: 'concise' | 'detailed' | 'technical'
+	private readonly style: "concise" | "detailed" | "technical"
 
 	constructor(options?: SummarizationOptions) {
-		super('SummarizationService')
+		super("SummarizationService")
 
-		this.provider = options?.provider ?? 'openrouter'
+		this.provider = options?.provider ?? "openrouter"
 		this.maxLength = options?.maxLength ?? DEFAULT_MAX_LENGTH
 		this.style = options?.style ?? DEFAULT_STYLE
 	}
@@ -57,11 +60,11 @@ export class SummarizationService extends BaseService implements ISummarizationS
 	 */
 	async summarize(
 		content: string,
-		options?: SummarizationOptions
+		options?: SummarizationOptions,
 	): Promise<SummarizationResult> {
 		this.assertInitialized()
 
-		const tracker = this.performanceMonitor.startOperation('summarize')
+		const tracker = this.performanceMonitor.startOperation("summarize")
 
 		try {
 			const config = {
@@ -71,7 +74,7 @@ export class SummarizationService extends BaseService implements ISummarizationS
 				context: options?.context,
 			}
 
-			this.logger.info('Generating summary', {
+			this.logger.info("Generating summary", {
 				contentLength: content.length,
 				provider: config.provider,
 				style: config.style,
@@ -84,14 +87,17 @@ export class SummarizationService extends BaseService implements ISummarizationS
 			const safeContent = this.truncateContent(content, MAX_INPUT_LENGTH)
 
 			// Generate summary
-			const summary = await this.generateSummaryWithFallback(safeContent, config)
+			const summary = await this.generateSummaryWithFallback(
+				safeContent,
+				config,
+			)
 
 			// Validate summary quality
 			const quality = this.assessSummaryQuality(summary, safeContent)
 
 			tracker.end(true)
 
-			this.logger.info('Summary generated', {
+			this.logger.info("Summary generated", {
 				summaryLength: summary.length,
 				quality,
 			})
@@ -109,14 +115,16 @@ export class SummarizationService extends BaseService implements ISummarizationS
 			}
 		} catch (error) {
 			tracker.end(false)
-			throw this.handleError(error, 'summarize')
+			throw this.handleError(error, "summarize")
 		}
 	}
 
 	/**
 	 * Generate summary from extraction result
 	 */
-	async summarizeExtraction(extraction: ExtractionResult): Promise<SummarizationResult> {
+	async summarizeExtraction(
+		extraction: ExtractionResult,
+	): Promise<SummarizationResult> {
 		const context = {
 			title: extraction.title,
 			url: extraction.url,
@@ -133,22 +141,25 @@ export class SummarizationService extends BaseService implements ISummarizationS
 	validateSummarizationOptions(options: SummarizationOptions): void {
 		if (options.maxLength !== undefined) {
 			if (options.maxLength < 50) {
-				throw this.createError('INVALID_MAX_LENGTH', 'Max length must be at least 50 words')
+				throw this.createError(
+					"INVALID_MAX_LENGTH",
+					"Max length must be at least 50 words",
+				)
 			}
 			if (options.maxLength > 2000) {
 				throw this.createError(
-					'INVALID_MAX_LENGTH',
-					'Max length cannot exceed 2000 words'
+					"INVALID_MAX_LENGTH",
+					"Max length cannot exceed 2000 words",
 				)
 			}
 		}
 
 		if (options.style !== undefined) {
-			const validStyles = ['concise', 'detailed', 'technical']
+			const validStyles = ["concise", "detailed", "technical"]
 			if (!validStyles.includes(options.style)) {
 				throw this.createError(
-					'INVALID_STYLE',
-					`Style must be one of: ${validStyles.join(', ')}`
+					"INVALID_STYLE",
+					`Style must be one of: ${validStyles.join(", ")}`,
 				)
 			}
 		}
@@ -163,7 +174,7 @@ export class SummarizationService extends BaseService implements ISummarizationS
 	 */
 	private async generateSummaryWithFallback(
 		content: string,
-		config: Required<SummarizationOptions>
+		config: Required<SummarizationOptions>,
 	): Promise<string> {
 		// Try primary provider
 		try {
@@ -172,13 +183,13 @@ export class SummarizationService extends BaseService implements ISummarizationS
 				return summary
 			}
 		} catch (error) {
-			this.logger.warn('Primary summarization failed', {
+			this.logger.warn("Primary summarization failed", {
 				error: (error as Error).message,
 			})
 		}
 
 		// Fallback to extractive summary
-		this.logger.info('Using extractive summary fallback')
+		this.logger.info("Using extractive summary fallback")
 		return this.generateExtractiveSummary(content, config)
 	}
 
@@ -187,7 +198,7 @@ export class SummarizationService extends BaseService implements ISummarizationS
 	 */
 	private async generateWithProvider(
 		content: string,
-		config: Required<SummarizationOptions>
+		config: Required<SummarizationOptions>,
 	): Promise<string | null> {
 		// Use existing summarizer with context
 		const context = config.context || {}
@@ -205,40 +216,42 @@ export class SummarizationService extends BaseService implements ISummarizationS
 	 */
 	private generateExtractiveSummary(
 		content: string,
-		config: Required<SummarizationOptions>
+		config: Required<SummarizationOptions>,
 	): string {
 		// Split into sentences
 		const sentences = content
-			.replace(/\s+/g, ' ')
+			.replace(/\s+/g, " ")
 			.split(/[.!?]+/)
 			.map((s) => s.trim())
 			.filter((s) => s.length > 20) // Filter out very short sentences
 
 		if (sentences.length === 0) {
-			return 'No content available for summarization.'
+			return "No content available for summarization."
 		}
 
 		// Calculate how many sentences to include based on max length
-		const wordsPerSentence = sentences.reduce((sum, s) => sum + this.countWords(s), 0) / sentences.length
+		const wordsPerSentence =
+			sentences.reduce((sum, s) => sum + this.countWords(s), 0) /
+			sentences.length
 		const targetSentences = Math.ceil(config.maxLength / wordsPerSentence)
 
 		// Take first sentences as executive summary
 		const executiveSentences = Math.min(3, sentences.length)
-		const executive = sentences.slice(0, executiveSentences).join('. ')
+		const executive = sentences.slice(0, executiveSentences).join(". ")
 
 		// Take key points from remaining sentences
 		const remaining = sentences.slice(executiveSentences)
 		const keyPoints = remaining
 			.slice(0, Math.min(targetSentences - executiveSentences, 5))
 			.map((s) => `- ${s}`)
-			.join('\n')
+			.join("\n")
 
 		// Format based on style
-		if (config.style === 'concise') {
+		if (config.style === "concise") {
 			return `${executive}.`
 		}
 
-		if (config.style === 'technical') {
+		if (config.style === "technical") {
 			return `## Executive Summary\n\n${executive}.\n\n## Key Points\n\n${keyPoints}`
 		}
 
@@ -255,11 +268,14 @@ export class SummarizationService extends BaseService implements ISummarizationS
 	 */
 	private validateInput(content: string): void {
 		if (!content || content.trim().length === 0) {
-			throw this.createError('EMPTY_CONTENT', 'Content cannot be empty')
+			throw this.createError("EMPTY_CONTENT", "Content cannot be empty")
 		}
 
 		if (content.length < 100) {
-			throw this.createError('CONTENT_TOO_SHORT', 'Content must be at least 100 characters')
+			throw this.createError(
+				"CONTENT_TOO_SHORT",
+				"Content must be at least 100 characters",
+			)
 		}
 	}
 
@@ -283,27 +299,39 @@ export class SummarizationService extends BaseService implements ISummarizationS
 	/**
 	 * Assess summary quality
 	 */
-	private assessSummaryQuality(summary: string, originalContent: string): 'high' | 'medium' | 'low' {
+	private assessSummaryQuality(
+		summary: string,
+		originalContent: string,
+	): "high" | "medium" | "low" {
 		// Calculate compression ratio
 		const compressionRatio = summary.length / originalContent.length
 
 		// Check for key indicators
-		const hasSections = summary.includes('##') || summary.includes('**')
-		const hasBullets = summary.includes('-') || summary.includes('*')
+		const hasSections = summary.includes("##") || summary.includes("**")
+		const hasBullets = summary.includes("-") || summary.includes("*")
 		const wordCount = this.countWords(summary)
 
 		// High quality: good compression, structure, appropriate length
-		if (compressionRatio < 0.3 && hasSections && wordCount > 50 && wordCount < 500) {
-			return 'high'
+		if (
+			compressionRatio < 0.3 &&
+			hasSections &&
+			wordCount > 50 &&
+			wordCount < 500
+		) {
+			return "high"
 		}
 
 		// Medium quality: decent compression, some structure
-		if (compressionRatio < 0.5 && (hasSections || hasBullets) && wordCount > 30) {
-			return 'medium'
+		if (
+			compressionRatio < 0.5 &&
+			(hasSections || hasBullets) &&
+			wordCount > 30
+		) {
+			return "medium"
 		}
 
 		// Low quality: poor compression or structure
-		return 'low'
+		return "low"
 	}
 
 	// ========================================================================
@@ -318,16 +346,16 @@ export class SummarizationService extends BaseService implements ISummarizationS
 			return content
 		}
 
-		this.logger.warn('Content truncated for summarization', {
+		this.logger.warn("Content truncated for summarization", {
 			originalLength: content.length,
 			truncatedLength: maxLength,
 		})
 
 		// Try to truncate at sentence boundary
 		const truncated = content.slice(0, maxLength)
-		const lastPeriod = truncated.lastIndexOf('.')
-		const lastQuestion = truncated.lastIndexOf('?')
-		const lastExclamation = truncated.lastIndexOf('!')
+		const lastPeriod = truncated.lastIndexOf(".")
+		const lastQuestion = truncated.lastIndexOf("?")
+		const lastExclamation = truncated.lastIndexOf("!")
 
 		const lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation)
 
@@ -337,8 +365,8 @@ export class SummarizationService extends BaseService implements ISummarizationS
 		}
 
 		// Otherwise just truncate at word boundary
-		const lastSpace = truncated.lastIndexOf(' ')
-		return truncated.slice(0, lastSpace) + '...'
+		const lastSpace = truncated.lastIndexOf(" ")
+		return truncated.slice(0, lastSpace) + "..."
 	}
 
 	/**
@@ -377,7 +405,7 @@ export class SummarizationService extends BaseService implements ISummarizationS
  * Create summarization service with optional configuration
  */
 export function createSummarizationService(
-	options?: SummarizationOptions
+	options?: SummarizationOptions,
 ): SummarizationService {
 	return new SummarizationService(options)
 }

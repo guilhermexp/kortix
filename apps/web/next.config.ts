@@ -16,23 +16,23 @@ const nextConfig: NextConfig = {
 	experimental: {
 		viewTransition: true,
 		// Optimize preloading to prevent unused resource warnings
-		optimizePackageImports: ['lucide-react', 'framer-motion'],
+		optimizePackageImports: ["lucide-react", "framer-motion"],
 	},
 	poweredByHeader: false,
 	// Image optimization to cache external images (prevents GitHub 429 errors)
 	images: {
 		remotePatterns: [
 			{
-				protocol: 'https',
-				hostname: 'opengraph.githubassets.com',
+				protocol: "https",
+				hostname: "opengraph.githubassets.com",
 			},
 			{
-				protocol: 'https',
-				hostname: '**.githubusercontent.com',
+				protocol: "https",
+				hostname: "**.githubusercontent.com",
 			},
 			{
-				protocol: 'https',
-				hostname: 'i.ytimg.com',
+				protocol: "https",
+				hostname: "i.ytimg.com",
 			},
 		],
 		// Cache images for 60 days to prevent rate limiting

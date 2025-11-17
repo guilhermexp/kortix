@@ -1,14 +1,11 @@
 import { env } from "../env"
-import { getGoogleModel } from "./google-genai"
 import {
 	ensureVectorSize,
 	generateDeterministicEmbedding,
 	VECTOR_SIZE,
 } from "./embedding"
-import {
-	generateVoyageEmbedding,
-	isVoyageAvailable,
-} from "./voyage-provider"
+import { getGoogleModel } from "./google-genai"
+import { generateVoyageEmbedding, isVoyageAvailable } from "./voyage-provider"
 
 const embeddingModel = getGoogleModel(env.EMBEDDING_MODEL)
 
@@ -29,7 +26,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 		} catch (error) {
 			console.warn(
 				"[embedding] Voyage AI failed, falling back to Gemini",
-				error instanceof Error ? error.message : error
+				error instanceof Error ? error.message : error,
 			)
 		}
 	}
@@ -60,7 +57,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 		} catch (error) {
 			console.warn(
 				"[embedding] Gemini failed, falling back to deterministic vector",
-				error instanceof Error ? error.message : error
+				error instanceof Error ? error.message : error,
 			)
 		}
 	}
@@ -94,12 +91,12 @@ async function generateEmbeddingWithRetry(
 			const isRateLimit =
 				error instanceof Error &&
 				(error.message.includes("rate") ||
-				 error.message.includes("quota") ||
-				 error.message.includes("429"))
+					error.message.includes("quota") ||
+					error.message.includes("429"))
 
 			if (isRateLimit && attempt < maxRetries - 1) {
 				// Exponential backoff: 1s, 2s, 4s
-				const delayMs = 1000 * Math.pow(2, attempt)
+				const delayMs = 1000 * 2 ** attempt
 				console.warn(
 					`[embedding] Rate limit hit, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`,
 				)
@@ -160,12 +157,14 @@ export async function generateEmbeddingsBatch(
 			await delay(DELAY_BETWEEN_BATCHES)
 
 			// Force garbage collection every 3 batches to prevent memory buildup
-			if (typeof global.gc === 'function' && batchNumber % 3 === 0) {
+			if (typeof global.gc === "function" && batchNumber % 3 === 0) {
 				global.gc()
 			}
 		}
 	}
 
-	console.info(`[embedding] Batch processing complete: ${results.length} embeddings generated`)
+	console.info(
+		`[embedding] Batch processing complete: ${results.length} embeddings generated`,
+	)
 	return results
 }
