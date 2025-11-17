@@ -12,15 +12,26 @@ loadEnv()
 
 import { env } from "../env"
 import { ensureSpace } from "../routes/documents"
+import { createDocumentExtractorService } from "../services/extraction"
 import { createIngestionOrchestrator } from "../services/orchestration"
+import { createDocumentProcessorService } from "../services/processing"
+import { createPreviewGeneratorService } from "../services/preview"
 import { getDefaultUserId, supabaseAdmin } from "../supabase"
 
 const MAX_BATCH = env.INGESTION_BATCH_SIZE
 const POLL_INTERVAL = env.INGESTION_POLL_MS
 const MAX_ATTEMPTS = env.INGESTION_MAX_ATTEMPTS
 
-// Create ingestion orchestrator instance
+// Create service instances
+const extractorService = createDocumentExtractorService()
+const processorService = createDocumentProcessorService()
+const previewService = createPreviewGeneratorService()
+
+// Create ingestion orchestrator instance and register services
 const orchestrator = createIngestionOrchestrator()
+orchestrator.setExtractorService(extractorService)
+orchestrator.setProcessorService(processorService)
+orchestrator.setPreviewService(previewService)
 
 type IngestionJobRow = {
 	id: string
@@ -101,15 +112,17 @@ async function hydrateDocument(
 	const userId = document.user_id ?? (await getDefaultUserId())
 
 	if (!userId) {
-		console.warn(`[ingestion-worker] No user found for job ${jobId}, processing without user_id`)
+		console.warn(
+			`[ingestion-worker] No user found for job ${jobId}, processing without user_id`,
+		)
 	}
 
 	// Use the new orchestrator instead of deprecated processDocument
 	const result = await orchestrator.processDocument({
-		content: document.content ?? '',
+		content: document.content ?? "",
 		url: document.url ?? null,
 		type: document.type ?? null,
-		userId: userId ?? '',
+		userId: userId ?? "",
 		organizationId: orgId,
 		metadata: {
 			...document.metadata,
@@ -123,13 +136,16 @@ async function hydrateDocument(
 			processingMetadata: document.processing_metadata,
 		},
 	})
-	
-	console.log("[ingestion-worker] Document processed successfully with orchestrator", {
-		jobId,
-		documentId,
-		result: result.documentId,
-		status: result.status,
-	})
+
+	console.log(
+		"[ingestion-worker] Document processed successfully with orchestrator",
+		{
+			jobId,
+			documentId,
+			result: result.documentId,
+			status: result.status,
+		},
+	)
 }
 
 async function handleJobFailure(
@@ -138,25 +154,28 @@ async function handleJobFailure(
 	error: unknown,
 ) {
 	const message = error instanceof Error ? error.message : String(error)
-  // Sanitize helper to avoid JSON 22P02 due to invalid surrogates
-  const sanitizeString = (value: string) =>
-    value.replace(/([\uD800-\uDBFF])(?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])([\uDC00-\uDFFF])/g, "\uFFFD")
-  const sanitizeJson = (value: unknown): unknown => {
-    if (value == null) return value
-    const t = typeof value
-    if (t === "string") return sanitizeString(value as string)
-    if (t === "number" || t === "boolean") return value
-    if (Array.isArray(value)) return value.map((v) => sanitizeJson(v))
-    if (t === "object") {
-      const out: Record<string, unknown> = {}
-      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-        if (v === undefined || typeof v === "function") continue
-        out[k] = sanitizeJson(v)
-      }
-      return out
-    }
-    return null
-  }
+	// Sanitize helper to avoid JSON 22P02 due to invalid surrogates
+	const sanitizeString = (value: string) =>
+		value.replace(
+			/([\uD800-\uDBFF])(?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])([\uDC00-\uDFFF])/g,
+			"\uFFFD",
+		)
+	const sanitizeJson = (value: unknown): unknown => {
+		if (value == null) return value
+		const t = typeof value
+		if (t === "string") return sanitizeString(value as string)
+		if (t === "number" || t === "boolean") return value
+		if (Array.isArray(value)) return value.map((v) => sanitizeJson(v))
+		if (t === "object") {
+			const out: Record<string, unknown> = {}
+			for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+				if (v === undefined || typeof v === "function") continue
+				out[k] = sanitizeJson(v)
+			}
+			return out
+		}
+		return null
+	}
 
 	if (attempts >= MAX_ATTEMPTS) {
 		await supabaseAdmin
@@ -168,7 +187,10 @@ async function handleJobFailure(
 			.from("documents")
 			.update({
 				status: "failed",
-				processing_metadata: sanitizeJson({ error: message }) as Record<string, unknown>,
+				processing_metadata: sanitizeJson({ error: message }) as Record<
+					string,
+					unknown
+				>,
 			})
 			.eq("id", job.document_id)
 		console.error("ingestion-worker job permanently failed", job.id, message)
@@ -208,10 +230,13 @@ async function processJob(job: IngestionJobRow) {
 	try {
 		await hydrateDocument(job.id, job.document_id, job.org_id, job.payload)
 
-		console.log("[ingestion-worker] Job completed successfully with orchestrator", {
-			jobId: job.id,
-			documentId: job.document_id,
-		})
+		console.log(
+			"[ingestion-worker] Job completed successfully with orchestrator",
+			{
+				jobId: job.id,
+				documentId: job.document_id,
+			},
+		)
 	} catch (error) {
 		console.error("[ingestion-worker] Job failed with error", {
 			jobId: job.id,
@@ -237,8 +262,9 @@ async function tick() {
 		console.log(`[ingestion-worker] Finished processing ${jobs.length} jobs`)
 	} catch (error) {
 		console.error("[ingestion-worker] Tick error", {
-			error: error instanceof Error ? error.message : String(error),
+			error: error instanceof Error ? error.message : JSON.stringify(error),
 			stack: error instanceof Error ? error.stack : undefined,
+			rawError: error,
 		})
 	}
 }
@@ -254,10 +280,14 @@ async function main() {
 	try {
 		// Initialize the orchestrator
 		await orchestrator.initialize()
-		console.log("[ingestion-worker] Ingestion orchestrator initialized successfully")
-		
+		console.log(
+			"[ingestion-worker] Ingestion orchestrator initialized successfully",
+		)
+
 		await tick()
-		console.log(`[ingestion-worker] Starting polling (every ${POLL_INTERVAL}ms)`)
+		console.log(
+			`[ingestion-worker] Starting polling (every ${POLL_INTERVAL}ms)`,
+		)
 		setInterval(tick, POLL_INTERVAL)
 	} catch (error) {
 		console.error("[ingestion-worker] Fatal error during startup", {
