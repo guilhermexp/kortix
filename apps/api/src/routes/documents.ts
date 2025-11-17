@@ -284,7 +284,7 @@ export async function ensureSpace(
 	const { data: created, error: insertError } = await client
 		.from("spaces")
 		.insert({
-			organization_id: organizationId,
+			org_id: organizationId,
 			container_tag: containerTag,
 			name,
 		})
