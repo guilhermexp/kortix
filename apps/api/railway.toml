@@ -3,11 +3,14 @@
 #
 # IMPORTANT: This is a shared monorepo - builds must install from root
 # to ensure @repo/* dependencies are available
+#
+# Build configuration is in nixpacks.toml which includes:
+# - Python311 for MarkItDown
+# - Bun runtime
+# - GCC for native dependencies
 
 [build]
 builder = "NIXPACKS"
-# Install all dependencies from monorepo root, then run postinstall for markitdown
-buildCommand = "cd /app && bun install && cd apps/api && bash install-markitdown.sh"
 
 [deploy]
 # Start the API from monorepo root to access @repo/* packages
