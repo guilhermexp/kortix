@@ -47,9 +47,11 @@ import {
 	InputGroupButton,
 	InputGroupTextarea,
 } from "@/components/ui/input-group"
-import { useChatMentionQueue, usePersistentChat, useProject } from "@/stores"
+import { useCanvasAgentOptional } from "@/components/canvas/canvas-agent-provider"
+import { useChatMentionQueue, useChatOpen, usePersistentChat, useProject } from "@/stores"
 import { useCanvasSelection, useCanvasState } from "@/stores/canvas"
 import { useGraphHighlights } from "@/stores/highlights"
+import { useViewMode } from "@/lib/view-mode-context"
 import { Spinner } from "../../spinner"
 import {
 	type ProviderId,
@@ -546,6 +548,7 @@ type ClaudeChatOptions = {
 	}) => void
 	onConversationId?: (conversationId: string) => void
 	onSdkSessionId?: (sdkSessionId: string) => void
+	getSdkSessionId?: (chatId?: string) => string | null | undefined
 }
 
 type SendMessagePayload = { text: string; mentionedDocIds?: string[] }
@@ -614,6 +617,7 @@ function useClaudeChat({
 	onComplete,
 	onConversationId,
 	onSdkSessionId,
+	getSdkSessionId,
 }: ClaudeChatOptions) {
 	const [messagesState, setMessagesState] = useState<ClaudeChatMessage[]>([])
 	const [status, setStatus] = useState<ClaudeChatStatus>("ready")
@@ -631,15 +635,50 @@ function useClaudeChat({
 	const lastMessageTimeRef = useRef<number>(0)
 	const SESSION_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
 
+	// Canvas agent integration
+	const canvasAgent = useCanvasAgentOptional()
+
 	useEffect(() => {
+		console.log("========================================")
+		console.log("[Chat Hook] Conversation ID changed:", conversationId)
 		if (conversationId && conversationId.length > 0) {
 			conversationRef.current = conversationId
+			// Carregar sdkSessionId salvo da conversa
+			if (getSdkSessionId) {
+				const savedSessionId = getSdkSessionId(conversationId)
+				console.log("[Chat Hook] Checking for saved SDK session...")
+				console.log("[Chat Hook] Saved SDK session ID:", savedSessionId)
+				if (savedSessionId) {
+					sdkSessionIdRef.current = savedSessionId
+					lastMessageTimeRef.current = 0 // Reset tempo para forçar resume ao invés de continue
+					console.log("✅ [Frontend Session] Loaded SDK session ID:", savedSessionId)
+					console.log("✅ [Frontend Session] Will use RESUME mode on next message")
+				} else {
+					sdkSessionIdRef.current = null
+					lastMessageTimeRef.current = 0
+					console.log("⚠️ [Frontend Session] No SDK session ID found for this conversation")
+					console.log("⚠️ [Frontend Session] Will create NEW session on next message")
+				}
+			}
+		} else {
+			// Nova conversa - reset session
+			sdkSessionIdRef.current = null
+			lastMessageTimeRef.current = 0
+			console.log("🆕 [Frontend Session] New conversation - will create NEW session")
 		}
-		// Reset session when conversation changes
-		sdkSessionIdRef.current = null
-		lastMessageTimeRef.current = 0
-		console.log("[Frontend Session] Session reset due to conversation change")
-	}, [conversationId])
+		console.log("========================================")
+	}, [conversationId, getSdkSessionId])
+
+	// Reset session when scoped documents change (user switches document context)
+	const { scopedDocumentIds } = useCanvasSelection()
+	const scopedIdsKey = JSON.stringify(scopedDocumentIds.sort())
+	useEffect(() => {
+		if (sdkSessionIdRef.current !== null) {
+			sdkSessionIdRef.current = null
+			lastMessageTimeRef.current = 0
+			console.log("[Frontend Session] Session reset due to document context change")
+		}
+	}, [scopedIdsKey])
 
 	useEffect(() => {
 		messagesRef.current = messagesState
@@ -732,6 +771,13 @@ function useClaudeChat({
 			const controller = new AbortController()
 			abortRef.current = controller
 
+			// Timeout de 5 minutos - aborta se não houver resposta
+			const CHAT_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutos
+			const timeoutId = setTimeout(() => {
+				console.log("[Chat] Request timeout after 5 minutes")
+				controller.abort()
+			}, CHAT_TIMEOUT_MS)
+
 			const history = messagesRef.current.slice()
 			const userMessage = createTextMessage("user", trimmed)
 			if (Array.isArray(mentionedDocIds) && mentionedDocIds.length > 0) {
@@ -762,15 +808,31 @@ function useClaudeChat({
 			const continueSession = hasRecentSession
 			const sdkSessionId = continueSession ? null : sdkSessionIdRef.current
 
-			console.log("[Frontend Session]", {
-				sdkSessionId: sdkSessionIdRef.current,
-				timeSinceLastMessage: Math.round(timeSinceLastMessage / 1000),
+			console.log("========================================")
+			console.log("📤 [Send Message] Preparing to send message...")
+			console.log("[Frontend Session] Current state:", {
+				currentSdkSessionId: sdkSessionIdRef.current,
+				timeSinceLastMessage: `${Math.round(timeSinceLastMessage / 1000)}s`,
+				sessionTimeout: `${SESSION_TIMEOUT_MS / 1000}s`,
+				hasRecentSession,
+			})
+			console.log("[Frontend Session] Decision:", {
+				mode: continueSession
+					? "CONTINUE (recent session)"
+					: sdkSessionId
+						? "RESUME (old session)"
+						: "NEW SESSION",
 				continueSession,
-				resumeSessionId: sdkSessionId,
+				sdkSessionIdToSend: sdkSessionId,
 			})
 
 			try {
 				const body = buildRequestBody(trimmed, sdkSessionId, continueSession)
+				console.log("📦 [Send Message] Request body:", {
+					...body,
+					message: body.message?.substring(0, 50) + "...",
+				})
+				console.log("========================================")
 				const response = await fetch(endpoint, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -1104,12 +1166,59 @@ function useClaudeChat({
 							buffer = ""
 							if (payload && typeof payload === "object") {
 								const record = payload as Record<string, unknown>
+								console.log("[ChatMessages] Stream record received:", {
+									type: record.type,
+									hasMessage: !!record.message,
+									hasParts: !!(record.message as any)?.parts,
+								})
 								if (record.type === "thinking") {
 									if (typeof record.active === "boolean") {
 										setIsThinking(Boolean(record.active))
 									}
 								} else if (record.type === "tool_event") {
 									applyToolEvent(record)
+									// Process canvas changes if this is a canvasApplyChanges tool
+									const toolName = typeof record.toolName === "string" ? record.toolName : ""
+									const outputText = typeof record.outputText === "string" ? record.outputText : ""
+									const toolState = typeof record.state === "string" ? record.state : ""
+
+									// Debug: log all tool events
+									if (toolName.includes("canvas")) {
+										console.log("[ChatMessages] Canvas tool event received:", {
+											toolName,
+											toolState,
+											hasOutputText: !!outputText,
+											outputTextLength: outputText?.length || 0,
+											hasCanvasAgent: !!canvasAgent,
+										})
+									}
+
+									if (
+										toolName.includes("canvasApplyChanges") &&
+										toolState === "output-available" &&
+										outputText &&
+										canvasAgent
+									) {
+										try {
+											console.log("[ChatMessages] Processing canvas changes from tool:", toolName)
+											console.log("[ChatMessages] Output text preview:", outputText.substring(0, 200))
+											const applied = canvasAgent.processToolOutput(toolName, outputText)
+											if (applied) {
+												console.log("[ChatMessages] Canvas changes applied successfully")
+											} else {
+												console.warn("[ChatMessages] Canvas changes were not applied")
+											}
+										} catch (err) {
+											console.error("[ChatMessages] Failed to apply canvas changes:", err)
+										}
+									} else if (toolName.includes("canvasApplyChanges")) {
+										console.warn("[ChatMessages] Canvas tool conditions not met:", {
+											toolName,
+											toolState,
+											hasOutputText: !!outputText,
+											hasCanvasAgent: !!canvasAgent,
+										})
+									}
 								} else if (record.type === "final") {
 									const messagePayload =
 										record.message && typeof record.message === "object"
@@ -1127,6 +1236,71 @@ function useClaudeChat({
 										: ([
 												{ type: "text", text: finalText },
 											] as ClaudeChatMessage["parts"])
+
+									// Debug: log the final event for canvas debugging
+									console.log("[ChatMessages] Final event received:", {
+										hasCanvasAgent: !!canvasAgent,
+										hasParts: Array.isArray(messagePayload?.parts),
+										partsLength: Array.isArray(messagePayload?.parts) ? messagePayload.parts.length : 0,
+										partsTypes: Array.isArray(messagePayload?.parts)
+											? (messagePayload.parts as Array<Record<string, unknown>>).map(p => p?.type)
+											: [],
+									})
+
+									// Process canvas tool parts from the final response
+									if (Array.isArray(messagePayload?.parts)) {
+										console.log("[ChatMessages] Processing parts array:", {
+											length: messagePayload.parts.length,
+											allParts: messagePayload.parts.map((p: Record<string, unknown>) => ({
+												type: p?.type,
+												toolName: p?.toolName,
+												state: p?.state,
+											})),
+										})
+										for (const part of messagePayload.parts as Array<Record<string, unknown>>) {
+											// Debug: log each part
+											if (part?.type === "tool-generic") {
+												console.log("[ChatMessages] Found tool-generic part:", {
+													toolName: part?.toolName,
+													state: part?.state,
+													hasOutputText: typeof part?.outputText === "string",
+													outputTextPreview: typeof part?.outputText === "string"
+														? (part.outputText as string).substring(0, 100)
+														: null,
+												})
+											}
+
+											if (
+												part?.type === "tool-generic" &&
+												typeof part?.toolName === "string" &&
+												part.toolName.includes("canvasApplyChanges") &&
+												part?.state === "output-available" &&
+												typeof part?.outputText === "string"
+											) {
+												console.log("[ChatMessages] Processing canvas tool from final parts:", {
+													toolName: part.toolName,
+													outputTextLength: (part.outputText as string).length,
+													hasCanvasAgent: !!canvasAgent,
+												})
+
+												if (!canvasAgent) {
+													console.warn("[ChatMessages] Cannot apply canvas changes - canvasAgent is null")
+													continue
+												}
+
+												try {
+													const applied = canvasAgent.processToolOutput(part.toolName, part.outputText as string)
+													if (applied) {
+														console.log("[ChatMessages] Canvas changes applied successfully from final parts")
+													} else {
+														console.warn("[ChatMessages] Canvas changes were not applied from final parts")
+													}
+												} catch (err) {
+													console.error("[ChatMessages] Failed to apply canvas changes from final parts:", err)
+												}
+											}
+										}
+									}
 									const updatedAssistant = {
 										...assistantPlaceholder,
 										content: finalText,
@@ -1137,6 +1311,9 @@ function useClaudeChat({
 									pushConversationId(record.conversationId)
 
 									// Capture SDK session ID and update timestamp
+									console.log("========================================")
+									console.log("📥 [Stream] Received final event from backend")
+									console.log("[Stream] SDK session ID in event:", record.sdkSessionId)
 									if (
 										typeof record.sdkSessionId === "string" &&
 										record.sdkSessionId.length > 0
@@ -1144,13 +1321,17 @@ function useClaudeChat({
 										sdkSessionIdRef.current = record.sdkSessionId
 										lastMessageTimeRef.current = Date.now()
 										console.log(
-											"[Frontend Session] Captured sdkSessionId:",
+											"✅ [Frontend Session] Captured sdkSessionId:",
 											record.sdkSessionId,
 										)
 										if (onSdkSessionId) {
+											console.log("📞 [Stream] Calling onSdkSessionId callback...")
 											onSdkSessionId(record.sdkSessionId)
 										}
+									} else {
+										console.log("⚠️ [Stream] No SDK session ID in final event")
 									}
+									console.log("========================================")
 
 									if (onComplete) {
 										onComplete({ text: finalText, messages: finalMessages })
@@ -1218,6 +1399,48 @@ function useClaudeChat({
 								: ([
 										{ type: "text", text: finalText },
 									] as ClaudeChatMessage["parts"])
+
+							// Process canvas tool parts from the final response (STREAMING PATH)
+							console.log("[ChatMessages] Final event received (streaming):", {
+								hasCanvasAgent: !!canvasAgent,
+								hasParts: Array.isArray(messagePayload?.parts),
+								partsLength: Array.isArray(messagePayload?.parts) ? messagePayload.parts.length : 0,
+							})
+							if (Array.isArray(messagePayload?.parts) && canvasAgent) {
+								console.log("[ChatMessages] Processing parts for canvas (streaming):", {
+									length: messagePayload.parts.length,
+									allParts: messagePayload.parts.map((p: Record<string, unknown>) => ({
+										type: p?.type,
+										toolName: p?.toolName,
+										state: p?.state,
+									})),
+								})
+								for (const part of messagePayload.parts as Array<Record<string, unknown>>) {
+									if (
+										part?.type === "tool-generic" &&
+										typeof part?.toolName === "string" &&
+										part.toolName.includes("canvasApplyChanges") &&
+										part?.state === "output-available" &&
+										typeof part?.outputText === "string"
+									) {
+										console.log("[ChatMessages] Applying canvas changes (streaming):", {
+											toolName: part.toolName,
+											outputTextLength: (part.outputText as string).length,
+										})
+										try {
+											const applied = canvasAgent.processToolOutput(part.toolName, part.outputText as string)
+											if (applied) {
+												console.log("[ChatMessages] Canvas changes applied successfully (streaming)")
+											} else {
+												console.warn("[ChatMessages] Canvas changes were not applied (streaming)")
+											}
+										} catch (err) {
+											console.error("[ChatMessages] Failed to apply canvas changes (streaming):", err)
+										}
+									}
+								}
+							}
+
 							const updatedAssistant = {
 								...assistantPlaceholder,
 								content: finalText,
@@ -1301,6 +1524,7 @@ function useClaudeChat({
 				setMessages(finalMessages)
 				toast.error(message)
 			} finally {
+				clearTimeout(timeoutId)
 				abortRef.current = null
 				setIsThinking(false)
 				setStatus("ready")
@@ -1363,6 +1587,8 @@ export function ChatMessages() {
 		setConversation,
 		getCurrentConversation,
 		setConversationTitle,
+		setSdkSessionId,
+		getSdkSessionId,
 		getCurrentChat,
 	} = usePersistentChat()
 
@@ -1373,6 +1599,10 @@ export function ChatMessages() {
 	const { setDocumentIds, clear } = useGraphHighlights()
 	const { scopedDocumentIds, placedDocumentIds } = useCanvasSelection()
 	const { hasScopedDocuments, scopedCount } = useCanvasState()
+	const { viewMode } = useViewMode()
+
+	// Canvas agent integration for context
+	const canvasAgent = useCanvasAgentOptional()
 
 	// Mode and Model now handled by Claude Agent SDK backend
 	// Project scoping for chat (defaults to global selection or All Projects)
@@ -1522,12 +1752,21 @@ export function ChatMessages() {
 				metadata.mentionedDocIds = currentMentionedIds
 			}
 
+			// Add canvas context when user is viewing the canvas
+			if (viewMode === "infinity" && canvasAgent) {
+				const canvasContext = canvasAgent.buildContextForAgent()
+				if (canvasContext) {
+					metadata.canvasContext = canvasContext
+					console.log("[ChatMessages] Including canvas context in request:", canvasContext)
+				}
+			}
+
 			// Clear the pending ref after using it
 			pendingMentionedDocIdsRef.current = []
 
 			return {
 				message: userMessage,
-				...(sdkSessionId ? { sdkSessionId } : {}),
+				...(sdkSessionId ? { sdkSessionId, resume: true } : {}),
 				...(continueSession ? { continueSession: true } : {}),
 				...(scopedIds && scopedIds.length > 0
 					? { scopedDocumentIds: scopedIds }
@@ -1542,6 +1781,8 @@ export function ChatMessages() {
 			project,
 			expandContext,
 			provider, // Add provider to dependencies
+			viewMode,
+			canvasAgent,
 		],
 	)
 
@@ -1584,12 +1825,28 @@ export function ChatMessages() {
 		conversationId: currentChatId || undefined,
 		endpoint: `${BACKEND_URL}/chat/v2`,
 		buildRequestBody: composeRequestBody,
+		getSdkSessionId, // Passar função para carregar sdkSessionId salvo
 		onComplete: handleAssistantComplete,
 		onConversationId: (nextId) => {
 			activeChatIdRef.current = nextId
 			shouldGenerateTitleRef.current = true
 			skipHydrationRef.current = true
 			setCurrentChatId(nextId)
+		},
+		onSdkSessionId: (sdkId) => {
+			// Salvar sdkSessionId na conversa atual
+			console.log("========================================")
+			console.log("📥 [Callback] Received SDK session ID from backend:", sdkId)
+			const activeId = activeChatIdRef.current || currentChatId
+			console.log("[Callback] Active chat ID:", activeId)
+			if (activeId && sdkId) {
+				console.log("💾 [Callback] Calling setSdkSessionId to save...")
+				setSdkSessionId(activeId, sdkId)
+				console.log("✅ [Callback] SDK session ID saved successfully")
+			} else {
+				console.log("⚠️ [Callback] Cannot save - missing activeId or sdkId")
+			}
+			console.log("========================================")
 		},
 	})
 
@@ -1748,6 +2005,39 @@ export function ChatMessages() {
 		setMessages([])
 		shouldGenerateTitleRef.current = false
 	}, [project, setMessages])
+
+	// Create new chat when chat is opened (to avoid showing old messages)
+	const { isOpen } = useChatOpen()
+	const prevIsOpenRef = useRef(false)
+	const lastClosedTimeRef = useRef<number>(0)
+
+	useEffect(() => {
+		// Detect when chat is opened (transitions from closed to open)
+		if (isOpen && !prevIsOpenRef.current) {
+			const now = Date.now()
+			const timeSinceClosed = now - lastClosedTimeRef.current
+			const QUICK_REOPEN_THRESHOLD = 60 * 1000 // 1 minute
+
+			// Always create a new chat when opening, unless:
+			// - Chat was closed and reopened within 1 minute (quick toggle)
+			// - AND there are already messages in the current chat
+			const isQuickReopen = timeSinceClosed < QUICK_REOPEN_THRESHOLD && messages.length > 0
+
+			if (!isQuickReopen) {
+				const newChatId = crypto.randomUUID()
+				setCurrentChatId(newChatId)
+				setMessages([])
+				shouldGenerateTitleRef.current = false
+			}
+		}
+
+		// Track when chat is closed
+		if (!isOpen && prevIsOpenRef.current) {
+			lastClosedTimeRef.current = Date.now()
+		}
+
+		prevIsOpenRef.current = isOpen
+	}, [isOpen, messages.length, setCurrentChatId, setMessages])
 
 	async function saveMemory(content: string) {
 		const trimmed = content.trim()
@@ -2322,7 +2612,7 @@ export function ChatMessages() {
 				</Button>
 			</div>
 			<form
-				className="px-4 pb-4 pt-1 relative bg-chat-surface border-t border-border/50"
+				className="px-3 pb-3 pt-1 relative bg-chat-surface"
 				onSubmit={(e) => {
 					e.preventDefault()
 					if (status === "submitted") return
@@ -2338,16 +2628,15 @@ export function ChatMessages() {
 					}
 				}}
 			>
-				<div className="absolute top-0 left-0 -mt-7 w-full h-7 bg-gradient-to-t from-chat-surface to-transparent" />
 				{/* Mentioned docs chips */}
 				{mentionedDocIds.length > 0 && (
-					<div className="px-1 pb-1 flex flex-wrap gap-1">
+					<div className="px-1 pb-1.5 flex flex-wrap gap-1">
 						{mentionedDocIds.map((id) => {
 							const doc = canvasDocs.find((d) => d.id === id)
 							const preview = doc ? getPreviewUrl(doc) : null
 							return (
 								<button
-									className="text-[11px] pl-1.5 pr-2 py-0.5 rounded-md border bg-muted/50 border-border text-foreground hover:bg-muted inline-flex items-center gap-1.5"
+									className="text-[10px] pl-1 pr-1.5 py-0.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted/50 inline-flex items-center gap-1 transition-colors"
 									key={id}
 									onClick={() => removeMentionedDocId(id)}
 									title={doc?.title || id}
@@ -2357,45 +2646,30 @@ export function ChatMessages() {
 										// eslint-disable-next-line @next/next/no-img-element
 										<img
 											alt=""
-											className="w-3.5 h-3.5 object-cover rounded-sm"
+											className="w-3 h-3 object-cover rounded-sm"
 											src={preview}
 										/>
 									) : (
-										<span className="w-3.5 h-3.5 rounded-sm bg-muted inline-block" />
+										<span className="w-3 h-3 rounded-sm bg-muted/50 inline-block" />
 									)}
-									<span>@{doc?.title || id}</span>
+									<span className="truncate max-w-[100px]">@{doc?.title || id}</span>
+									<X className="size-2.5 opacity-60" />
 								</button>
 							)
 						})}
 					</div>
 				)}
-				{/* Provider selector and Project context indicator */}
-				<div className="flex items-center justify-between px-1 pb-2">
+				{/* Provider selector */}
+				<div className="flex items-center px-1 pb-1.5">
 					<ProviderSelector
 						disabled={status === "submitted"}
 						onChange={setProvider}
 						value={provider}
 					/>
-
-					{project && project !== "__ALL__" && (
-						<div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 border border-primary/20">
-							<div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-							<span className="text-[11px] text-primary font-medium">
-								{(() => {
-									const projectData = projects.find(
-										(p) => p.containerTag === project,
-									)
-									const displayName = projectData?.name || project
-									// Remove prefixos técnicos como "sm_project_"
-									return displayName.replace(/^sm_project_/i, "")
-								})()}
-							</span>
-						</div>
-					)}
 				</div>
-				<InputGroup className="rounded-xl border border-border/30 bg-background/10 backdrop-blur-xl focus-within:ring-0 focus-within:ring-offset-0">
+				<InputGroup className="rounded-lg border border-border/20 bg-muted/20 focus-within:border-border/40 focus-within:ring-0 focus-within:ring-offset-0 transition-colors">
 					<InputGroupTextarea
-						className="text-foreground placeholder-muted-foreground/60"
+						className="text-foreground placeholder-muted-foreground/50 text-sm"
 						disabled={status === "submitted"}
 						onChange={(e) => setInput(e.target.value)}
 						onKeyDown={(e) => {
@@ -2445,7 +2719,7 @@ export function ChatMessages() {
 					{/* Left bottom corner: quick-save button */}
 					<InputGroupAddon align="inline-start" className="gap-1 bottom-0">
 						<InputGroupButton
-							className="h-8 w-8 p-0 bg-muted/50 hover:bg-muted border border-border rounded-md"
+							className="h-7 w-7 p-0 hover:bg-muted/50 text-muted-foreground hover:text-foreground rounded-md transition-colors"
 							disabled={savingInput || status === "submitted"}
 							onClick={async () => {
 								if (!input.trim()) {
@@ -2464,7 +2738,7 @@ export function ChatMessages() {
 							variant="ghost"
 						>
 							{savingInput ? (
-								<Spinner className="size-3.5" />
+								<Spinner className="size-3" />
 							) : (
 								<Plus className="size-3.5" />
 							)}
@@ -2474,63 +2748,65 @@ export function ChatMessages() {
 					{/* Submit button */}
 					<InputGroupAddon align="inline-end" className="gap-1 bottom-0">
 						<InputGroupButton
-							className="h-8 w-9 p-0 bg-primary hover:bg-primary/90 text-primary-foreground border border-primary rounded-md disabled:opacity-50"
+							className="h-7 w-7 p-0 bg-foreground/10 hover:bg-foreground/20 text-foreground rounded-md disabled:opacity-30 transition-colors"
 							disabled={status === "submitted" || status === "streaming"}
 							size="sm"
 							type="submit"
 						>
 							{status === "ready" ? (
-								<ArrowUp className="size-3.5 text-primary-foreground" />
+								<ArrowUp className="size-3.5" />
 							) : status === "submitted" || status === "streaming" ? (
-								<Spinner className="size-3.5 text-primary-foreground" />
+								<Spinner className="size-3" />
 							) : (
-								<X className="size-3.5 text-primary-foreground" />
+								<X className="size-3.5" />
 							)}
 						</InputGroupButton>
 					</InputGroupAddon>
 				</InputGroup>
 				{mentionOpen && (
-					<div className="absolute bottom-20 left-4 w-[420px] max-h-72 overflow-auto rounded-md border border-border bg-popover backdrop-blur-xl z-10 p-2">
+					<div className="absolute bottom-16 left-3 right-3 max-h-64 overflow-auto rounded-lg border border-border/30 bg-background/95 backdrop-blur-xl z-10 p-2 shadow-lg">
 						<div className="mb-2">
 							<input
-								className="w-full text-sm bg-muted/50 border border-border rounded px-2 py-1 text-foreground placeholder-muted-foreground/60"
+								className="w-full text-xs bg-muted/30 border-0 rounded-md px-2.5 py-1.5 text-foreground placeholder-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border/50"
 								onChange={(e) => setMentionQuery(e.target.value)}
-								placeholder="Filtrar documentos..."
+								placeholder="Search documents..."
 								ref={mentionInputRef}
 								value={mentionQuery}
 							/>
 						</div>
 						{filteredMention.length === 0 ? (
-							<div className="text-xs text-muted-foreground px-1 py-2">
-								Nenhum documento encontrado
+							<div className="text-xs text-muted-foreground/70 px-1 py-2">
+								No documents found
 							</div>
 						) : (
-							filteredMention.map((d) => {
-								const preview = getPreviewUrl(d)
-								return (
-									<button
-										className="w-full text-left text-sm text-foreground hover:bg-muted rounded px-2 py-1 flex items-center gap-2"
-										key={d.id}
-										onClick={() => {
-											addMentionedDocId(d.id)
-											setMentionOpen(false)
-										}}
-										type="button"
-									>
-										{preview ? (
-											// eslint-disable-next-line @next/next/no-img-element
-											<img
-												alt=""
-												className="w-8 h-5 object-cover rounded"
-												src={preview}
-											/>
-										) : (
-											<span className="w-8 h-5 rounded bg-muted inline-block" />
-										)}
-										<span className="truncate">@{d.title || d.id}</span>
-									</button>
-								)
-							})
+							<div className="space-y-0.5">
+								{filteredMention.slice(0, 8).map((d) => {
+									const preview = getPreviewUrl(d)
+									return (
+										<button
+											className="w-full text-left text-xs text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-md px-2 py-1.5 flex items-center gap-2 transition-colors"
+											key={d.id}
+											onClick={() => {
+												addMentionedDocId(d.id)
+												setMentionOpen(false)
+											}}
+											type="button"
+										>
+											{preview ? (
+												// eslint-disable-next-line @next/next/no-img-element
+												<img
+													alt=""
+													className="w-6 h-4 object-cover rounded-sm"
+													src={preview}
+												/>
+											) : (
+												<span className="w-6 h-4 rounded-sm bg-muted/50 inline-block" />
+											)}
+											<span className="truncate">@{d.title || d.id}</span>
+										</button>
+									)
+								})}
+							</div>
 						)}
 					</div>
 				)}

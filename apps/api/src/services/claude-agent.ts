@@ -44,6 +44,7 @@ export type AgentContextOptions = {
 export type ClaudeAgentOptions = {
 	message: string // Single user message for this turn
 	sdkSessionId?: string // SDK session ID to resume (from SDK, not our DB)
+	resume?: boolean // If true with sdkSessionId, use --resume flag to resume old session
 	continueSession?: boolean // If true, use 'continue' to resume most recent session automatically
 	client: SupabaseClient
 	orgId: string
@@ -261,6 +262,7 @@ export async function executeClaudeAgent(
 	{
 		message,
 		sdkSessionId,
+		resume,
 		continueSession,
 		client,
 		orgId,
@@ -280,9 +282,11 @@ export async function executeClaudeAgent(
 }> {
 	const sessionMode = continueSession
 		? "continuing session"
-		: sdkSessionId
-			? "resuming specific session"
-			: "new session"
+		: sdkSessionId && resume
+			? "resuming old session with --resume flag"
+			: sdkSessionId
+				? "resuming specific session"
+				: "new session"
 
 	// Get provider configuration
 	const providerId = provider || getDefaultProvider()
@@ -420,10 +424,19 @@ export async function executeClaudeAgent(
 			},
 		}
 
-		// DO NOT send inline systemPrompt when settingSources is enabled
-		// The SDK will read from .claude/CLAUDE.md automatically
-		// If we pass systemPrompt here, it will override the file!
-		if (isNewSession) {
+		// Handle system prompt based on whether it was explicitly provided
+		// When systemPrompt is provided (e.g., canvas mode), always use it (even on resume)
+		// Otherwise, let SDK load from .claude/CLAUDE.md on new sessions
+		if (systemPrompt) {
+			queryOptions.systemPrompt = systemPrompt
+			// Don't use settingSources when we have a custom prompt
+			delete queryOptions.settingSources
+			console.log(
+				"[executeClaudeAgent] Using custom system prompt (canvas or special mode) - length:",
+				systemPrompt.length,
+				"chars",
+			)
+		} else if (isNewSession) {
 			console.log(
 				"[executeClaudeAgent] New session - SDK will load system prompt from .claude/CLAUDE.md",
 			)
@@ -433,6 +446,12 @@ export async function executeClaudeAgent(
 			)
 		}
 
+		// Suppress verbose CLI output by not passing --verbose flag when in production
+		// This prevents the system prompt from being logged
+		if (process.env.NODE_ENV === "production") {
+			delete (queryOptions as any).verbose
+		}
+
 		// Session management: continue (most recent) vs resume (specific session)
 		if (continueSession) {
 			// Continue most recent session automatically (for sequential chat)
@@ -440,11 +459,18 @@ export async function executeClaudeAgent(
 			console.log(
 				"[executeClaudeAgent] Using continue mode (most recent session)",
 			)
-		} else if (sdkSessionId) {
-			// Resume specific session (for returning to old conversation)
+		} else if (sdkSessionId && resume) {
+			// Resume old session with --resume flag (for returning to conversations after days)
 			queryOptions.resume = sdkSessionId
 			console.log(
-				"[executeClaudeAgent] Resuming specific session:",
+				"[executeClaudeAgent] Resuming old session with --resume flag:",
+				sdkSessionId,
+			)
+		} else if (sdkSessionId) {
+			// Resume specific session (backward compatibility - without explicit resume flag)
+			queryOptions.resume = sdkSessionId
+			console.log(
+				"[executeClaudeAgent] Resuming specific session (legacy):",
 				sdkSessionId,
 			)
 		}
@@ -602,6 +628,42 @@ export async function executeClaudeAgent(
 	}
 }
 
+/**
+ * Helper to check if value is a Record
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null
+}
+
+/**
+ * Unwrap stream_event wrappers to get actual events
+ * This handles the SDK's streaming format where events are wrapped
+ */
+function unwrapStreamEvents(events: unknown[]): unknown[] {
+	const result: unknown[] = []
+	const queue: unknown[] = [...events]
+
+	while (queue.length > 0) {
+		const current = queue.shift()
+		if (!isRecord(current)) continue
+
+		const eventType = current.type
+		if (
+			eventType === "stream_event" &&
+			"event" in current &&
+			isRecord(current.event)
+		) {
+			// Unwrap the inner event
+			queue.push(current.event)
+			continue
+		}
+
+		result.push(current)
+	}
+
+	return result
+}
+
 function buildAssistantResponse(events: unknown[]): {
 	text: string
 	parts: AgentPart[]
@@ -615,9 +677,167 @@ function buildAssistantResponse(events: unknown[]): {
 	>()
 	const toolParts: AgentPart[] = []
 
-	for (const event of events) {
+	// First, unwrap stream_events to get actual content
+	const unwrappedEvents = unwrapStreamEvents(events)
+
+	// Debug: count event types (after unwrapping)
+	const eventTypeCounts = new Map<string, number>()
+	for (const event of unwrappedEvents) {
+		if (event && typeof event === "object" && "type" in event) {
+			const type = (event as any).type
+			eventTypeCounts.set(type, (eventTypeCounts.get(type) || 0) + 1)
+		}
+	}
+	console.log("[buildAssistantResponse] Event types (after unwrap):", Object.fromEntries(eventTypeCounts))
+
+	// Track content blocks for tool results (from streaming format)
+	const toolResultBuffers = new Map<
+		number,
+		{
+			toolUseId: string
+			toolName?: string
+			buffer: string
+			isError: boolean
+		}
+	>()
+
+	// DEBUG: Log first 5 events to understand structure
+	console.log("[buildAssistantResponse] First 5 unwrapped events:")
+	for (let i = 0; i < Math.min(5, unwrappedEvents.length); i++) {
+		const e = unwrappedEvents[i]
+		if (e && typeof e === "object") {
+			const ev = e as Record<string, unknown>
+			console.log(`  Event ${i}: type=${ev.type}`, JSON.stringify(e).substring(0, 300))
+		}
+	}
+
+	// DEBUG: Look for content_block events
+	const contentBlockStarts = unwrappedEvents.filter(
+		(e) => e && typeof e === "object" && (e as any).type === "content_block_start"
+	)
+	console.log("[buildAssistantResponse] Found content_block_start events:", contentBlockStarts.length)
+	for (const cbs of contentBlockStarts) {
+		const cb = (cbs as any).content_block
+		console.log("  content_block:", cb ? JSON.stringify(cb).substring(0, 200) : "undefined")
+	}
+
+	// Process unwrapped events
+	for (const event of unwrappedEvents) {
 		if (!event || typeof event !== "object") continue
 		const base = event as Record<string, unknown>
+
+		// Handle content_block_start - track tool_use and tool_result blocks
+		if (base.type === "content_block_start") {
+			const index =
+				typeof base.index === "number" ? base.index : undefined
+			const contentBlock = base.content_block as
+				| Record<string, unknown>
+				| undefined
+
+			if (contentBlock && index !== undefined) {
+				const blockType = contentBlock.type
+
+				// Track tool_use to get tool names
+				if (blockType === "tool_use" || blockType === "mcp_tool_use") {
+					const id =
+						typeof contentBlock.id === "string" ? contentBlock.id : undefined
+					const name =
+						typeof contentBlock.name === "string"
+							? contentBlock.name
+							: (id ?? "tool")
+					if (id) {
+						toolCalls.set(id, { name })
+					}
+				}
+
+				// Track tool_result blocks
+				if (blockType === "tool_result" || blockType === "mcp_tool_result") {
+					const toolUseId =
+						typeof contentBlock.tool_use_id === "string"
+							? contentBlock.tool_use_id
+							: ""
+					const isError = Boolean(contentBlock.is_error)
+					const toolName = toolCalls.get(toolUseId)?.name
+					const initialContent =
+						"content" in contentBlock
+							? collectTextFromContent(contentBlock.content).join("")
+							: ""
+
+					toolResultBuffers.set(index, {
+						toolUseId,
+						toolName,
+						buffer: initialContent,
+						isError,
+					})
+
+					console.log("[buildAssistantResponse] Started tracking tool_result:", {
+						index,
+						toolUseId,
+						toolName,
+						isError,
+						initialContentLength: initialContent.length,
+					})
+				}
+			}
+		}
+
+		// Handle content_block_delta - accumulate tool result content
+		if (base.type === "content_block_delta") {
+			const index =
+				typeof base.index === "number" ? base.index : undefined
+			const delta = base.delta as Record<string, unknown> | undefined
+
+			if (index !== undefined && toolResultBuffers.has(index) && delta) {
+				const tracker = toolResultBuffers.get(index)!
+				const deltaText =
+					typeof delta.text === "string"
+						? delta.text
+						: collectTextFromContent(delta).join("")
+				if (deltaText.length > 0) {
+					tracker.buffer += deltaText
+				}
+			}
+		}
+
+		// Handle content_block_stop - finalize tool result
+		if (base.type === "content_block_stop") {
+			const index =
+				typeof base.index === "number" ? base.index : undefined
+
+			if (index !== undefined && toolResultBuffers.has(index)) {
+				const tracker = toolResultBuffers.get(index)!
+				const toolName = tracker.toolName ?? tracker.toolUseId ?? "tool"
+				const raw = tracker.buffer
+				const isError = tracker.isError
+
+				console.log("[buildAssistantResponse] Completed tool_result:", {
+					index,
+					toolName,
+					isError,
+					rawLength: raw.length,
+					rawPreview: raw.substring(0, 200),
+				})
+
+				if (toolName === "mcp__supermemory-tools__searchDatabase") {
+					toolParts.push(
+						buildSearchMemoriesPart(raw, isError ? raw : undefined),
+					)
+				} else {
+					toolParts.push({
+						type: "tool-generic",
+						toolName,
+						state: isError ? "output-error" : "output-available",
+						outputText: isError ? undefined : raw,
+						error: isError ? raw || "Tool execution failed" : undefined,
+					})
+					console.log("[buildAssistantResponse] Added tool-generic part for:", toolName)
+				}
+
+				toolResultBuffers.delete(index)
+			}
+		}
+
+		// Handle assistant events (for text content and tool_use tracking)
 		if (base.type === "assistant") {
 			const message = base.message as Record<string, unknown> | undefined
 			const content = message?.content
@@ -628,20 +848,24 @@ function buildAssistantResponse(events: unknown[]): {
 					const blockType = value.type
 					if (blockType === "text" && typeof value.text === "string") {
 						textChunks.push(value.text)
-					} else if (blockType === "tool_use") {
+					} else if (blockType === "tool_use" || blockType === "mcp_tool_use") {
 						const id = typeof value.id === "string" ? value.id : undefined
 						const name =
 							typeof value.name === "string" ? value.name : (id ?? "tool")
 						if (id) {
 							toolCalls.set(id, { name })
+							console.log("[buildAssistantResponse] Registered tool_use:", { id, name })
 						}
 					}
 				}
 			}
 		}
 
+		// Handle user events (tool_result in message.content array)
 		if (base.type === "user") {
-			const content = base.content
+			// The content is nested inside message.content, NOT directly in content
+			const message = base.message as Record<string, unknown> | undefined
+			const content = message?.content ?? base.content
 			if (Array.isArray(content)) {
 				for (const block of content) {
 					if (!block || typeof block !== "object") continue
@@ -654,6 +878,18 @@ function buildAssistantResponse(events: unknown[]): {
 						const segments = collectTextFromContent(value.content)
 						const raw = segments.join("")
 						const isError = Boolean(value.is_error)
+
+						console.log("[buildAssistantResponse] Tool result from user event:", {
+							toolUseId,
+							toolName,
+							resolvedFromMap: !!info,
+							toolCallsMapSize: toolCalls.size,
+							toolCallsKeys: Array.from(toolCalls.keys()),
+							isError,
+							rawLength: raw.length,
+							rawPreview: raw.substring(0, 100),
+						})
+
 						if (toolName === "mcp__supermemory-tools__searchDatabase") {
 							toolParts.push(
 								buildSearchMemoriesPart(raw, isError ? raw : undefined),
@@ -666,6 +902,7 @@ function buildAssistantResponse(events: unknown[]): {
 								outputText: isError ? undefined : raw,
 								error: isError ? raw || "Tool execution failed" : undefined,
 							})
+							console.log("[buildAssistantResponse] Added tool-generic part for:", toolName)
 						}
 					}
 				}

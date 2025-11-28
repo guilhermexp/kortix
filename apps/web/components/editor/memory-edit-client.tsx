@@ -120,19 +120,37 @@ export function MemoryEditClient({
 	// Resizable chat panel width (desktop only)
 	const MIN_CHAT_WIDTH = 420
 	const MAX_CHAT_WIDTH = 1100
-	const [chatWidth, setChatWidth] = useState<number>(() => {
-		if (typeof window === "undefined") return 600
-		const stored = Number(localStorage.getItem("chatPanelWidth"))
-		return Number.isFinite(stored)
-			? Math.min(MAX_CHAT_WIDTH, Math.max(MIN_CHAT_WIDTH, stored))
-			: 600
-	})
+	const DEFAULT_CHAT_WIDTH = 600
 
+	// Always initialize with default value to avoid hydration mismatch
+	const [chatWidth, setChatWidth] = useState<number>(DEFAULT_CHAT_WIDTH)
+
+	// Load from localStorage AFTER hydration
 	useEffect(() => {
-		try {
-			localStorage.setItem("chatPanelWidth", String(chatWidth))
-		} catch {
-			// ignore storage errors
+		if (typeof window !== "undefined") {
+			try {
+				const stored = Number(localStorage.getItem("chatPanelWidth"))
+				if (Number.isFinite(stored)) {
+					const validWidth = Math.min(
+						MAX_CHAT_WIDTH,
+						Math.max(MIN_CHAT_WIDTH, stored),
+					)
+					setChatWidth(validWidth)
+				}
+			} catch {
+				// ignore storage errors
+			}
+		}
+	}, [])
+
+	// Save to localStorage when width changes
+	useEffect(() => {
+		if (typeof window !== "undefined") {
+			try {
+				localStorage.setItem("chatPanelWidth", String(chatWidth))
+			} catch {
+				// ignore storage errors
+			}
 		}
 	}, [chatWidth])
 

@@ -337,28 +337,33 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			// Check file extension
 			const ext = this.getFileExtension(url)
 			if (ext && !this.defaultOptions.allowedFormats.includes(ext)) {
-				this.logger.debug("Image format not allowed", { url, ext })
 				return false
 			}
 
-			// Make HEAD request to check if image exists and get metadata
-			const response = await fetch(url, {
+			// Try HEAD request first
+			let response = await fetch(url, {
 				method: "HEAD",
 				signal: AbortSignal.timeout(this.defaultOptions.timeout),
 			})
 
-			if (!response.ok) {
-				this.logger.debug("Image URL not accessible", {
-					url,
-					status: response.status,
+			// If HEAD fails with 405 (Method Not Allowed), try GET
+			if (response.status === 405) {
+				response = await fetch(url, {
+					method: "GET",
+					signal: AbortSignal.timeout(this.defaultOptions.timeout),
+					headers: {
+						Range: "bytes=0-0", // Only fetch first byte
+					},
 				})
+			}
+
+			if (!response.ok) {
 				return false
 			}
 
 			// Check content type
 			const contentType = response.headers.get("content-type")
 			if (!contentType?.startsWith("image/")) {
-				this.logger.debug("URL is not an image", { url, contentType })
 				return false
 			}
 
@@ -367,17 +372,12 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			if (contentLength) {
 				const size = Number.parseInt(contentLength, 10)
 				if (size > this.defaultOptions.maxSize) {
-					this.logger.debug("Image too large", { url, size })
 					return false
 				}
 			}
 
 			return true
 		} catch (error) {
-			this.logger.debug("Image validation failed", {
-				url,
-				error: (error as Error).message,
-			})
 			return false
 		}
 	}
@@ -405,12 +405,24 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 				headers["Authorization"] = `Bearer ${githubToken}`
 			}
 
-			// Make HEAD request
-			const response = await fetch(url, {
+			// Try HEAD request first
+			let response = await fetch(url, {
 				method: "HEAD",
 				signal: AbortSignal.timeout(this.defaultOptions.timeout),
 				headers,
 			})
+
+			// If HEAD fails with 405 (Method Not Allowed), try GET with Range header
+			if (response.status === 405) {
+				response = await fetch(url, {
+					method: "GET",
+					signal: AbortSignal.timeout(this.defaultOptions.timeout),
+					headers: {
+						...headers,
+						Range: "bytes=0-0", // Only fetch first byte
+					},
+				})
+			}
 
 			if (!response.ok) {
 				throw this.createError(

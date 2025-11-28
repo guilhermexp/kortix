@@ -92,7 +92,9 @@ export const apiSchema = createSchema({
 		input: z.object({
 			containerTags: z.array(z.string()).optional(),
 		}),
-		output: z.array(ConnectionResponseSchema),
+		output: z.object({
+			data: z.array(ConnectionResponseSchema),
+		}),
 	},
 
 	"@get/connections": {

@@ -128,10 +128,7 @@ class QueryCache {
 		}
 	}
 
-	clear(): void {
-		this.cache.clear()
-	}
-
+	
 	/**
 	 * Clean up expired entries (should be called periodically)
 	 */
@@ -166,30 +163,43 @@ export const searchCache = new QueryCache({
 	ttl: 5 * 60 * 1000, // 5 minutes TTL for search results
 })
 
-// Cleanup interval - run every minute
+// Cleanup interval - run every 5 minutes in development, 2 minutes in production
+const cleanupInterval = process.env.NODE_ENV === 'production' ? 2 * 60 * 1000 : 5 * 60 * 1000
 setInterval(() => {
 	const removedDocs = documentListCache.cleanup()
 	const removedLists = documentCache.cleanup()
 	const removedSearch = searchCache.cleanup()
 
+	// Only log if we actually removed something
 	if (removedDocs + removedLists + removedSearch > 0) {
 		console.log(
 			`[Cache] Cleaned up ${removedDocs + removedLists + removedSearch} expired entries`,
 		)
 	}
-}, 60 * 1000)
+}, cleanupInterval)
 
-// Log cache stats every 5 minutes
-setInterval(
-	() => {
-		console.log("[Cache] Stats:", {
-			documentList: documentListCache.getStats(),
-			document: documentCache.getStats(),
-			search: searchCache.getStats(),
-		})
-	},
-	5 * 60 * 1000,
-)
+// Log cache stats only in production and only when there's activity
+if (process.env.NODE_ENV === 'production') {
+	setInterval(
+		() => {
+			const stats = {
+				documentList: documentListCache.getStats(),
+				document: documentCache.getStats(),
+				search: searchCache.getStats(),
+			}
+
+			// Only log if cache has been used (hits + misses > 0)
+			const hasActivity = stats.documentList.hits + stats.documentList.misses > 0 ||
+				stats.document.hits + stats.document.misses > 0 ||
+				stats.search.hits + stats.search.misses > 0
+
+			if (hasActivity) {
+				console.log("[Cache] Stats:", stats)
+			}
+		},
+		10 * 60 * 1000, // Every 10 minutes in production
+	)
+}
 
 /**
  * Helper function to generate cache keys

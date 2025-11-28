@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { z } from "zod"
 import { env } from "../env"
-import { ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
+import { ENHANCED_SYSTEM_PROMPT, CANVAS_SYSTEM_PROMPT } from "../prompts/chat"
 import {
 	executeClaudeAgent,
 	type ToolResultBlock,
@@ -18,6 +18,7 @@ import { createScopedSupabase, supabaseAdmin } from "../supabase"
 const chatRequestSchema = z.object({
 	message: z.string().min(1).max(50000), // Single user message (max 50KB)
 	sdkSessionId: z.string().optional(), // SDK session ID to resume (from SDK, not our DB)
+	resume: z.boolean().optional(), // If true with sdkSessionId, resume old session (for returning after days)
 	continueSession: z.boolean().optional(), // If true, continue most recent session (for sequential chat)
 	conversationId: z.string().uuid().optional(), // Our DB ID for display/analytics (optional)
 	mode: z.enum(["simple", "agentic", "deep"]).default("simple"),
@@ -48,6 +49,33 @@ const legacyChatRequestSchema = z.object({
 	scopedDocumentIds: z.array(z.string()).optional(),
 })
 
+type CanvasContextPayload = {
+	viewport?: {
+		x: number
+		y: number
+		w: number
+		h: number
+	}
+	shapesInViewport?: Array<{
+		id: string
+		type: string
+		x: number
+		y: number
+		width: number
+		height: number
+		text?: string
+		color?: string
+		geoType?: string
+	}>
+	userSelections?: Array<{
+		type: string
+		shapeId?: string
+		shape?: unknown
+		bounds?: { x: number; y: number; w: number; h: number }
+		point?: { x: number; y: number }
+	}>
+}
+
 type MetadataPayload = {
 	projectId?: string
 	expandContext?: boolean
@@ -59,6 +87,7 @@ type MetadataPayload = {
 		title: string | null
 		content: string | null
 	}
+	canvasContext?: CanvasContextPayload
 }
 
 function normalizeModel(
@@ -446,7 +475,18 @@ export async function handleChatV2({
 	try {
 		// Try new schema first
 		payload = chatRequestSchema.parse(body ?? {})
+		console.log("========================================")
+		console.log("📥 [Backend] Received chat request")
 		console.log("[Chat V2] Using new SDK session-based format")
+		console.log("[Chat V2] Payload:", {
+			conversationId: payload.conversationId,
+			sdkSessionId: payload.sdkSessionId,
+			resume: payload.resume,
+			continueSession: payload.continueSession,
+			hasMessage: !!payload.message,
+			messageLength: payload.message?.length,
+		})
+		console.log("========================================")
 	} catch (newSchemaError) {
 		// Try legacy schema for backward compatibility
 		try {
@@ -511,6 +551,7 @@ export async function handleChatV2({
 			)
 		: []
 	const contextDocument = metadata.contextDocument
+	const canvasContext = metadata.canvasContext as CanvasContextPayload | undefined
 
 	const scopedDocumentIds = Array.isArray(payload.scopedDocumentIds)
 		? payload.scopedDocumentIds.filter(
@@ -555,10 +596,105 @@ export async function handleChatV2({
 		)
 	}
 
+	// Add canvas context instructions when user is viewing the canvas
+	if (canvasContext) {
+		instructions.push(
+			"\n## CANVAS VIEW ACTIVE\nThe user is currently viewing the Infinity Canvas (visual organization view). You have access to the canvas manipulation tool (canvasApplyChanges) to create and modify visual elements.",
+		)
+
+		if (canvasContext.viewport) {
+			const vp = canvasContext.viewport
+			instructions.push(
+				`Current viewport bounds: x=${vp.x}, y=${vp.y}, width=${vp.w}, height=${vp.h}. Place new shapes within these bounds so the user can see them immediately.`,
+			)
+		}
+
+		if (canvasContext.shapesInViewport && canvasContext.shapesInViewport.length > 0) {
+			const shapesSummary = canvasContext.shapesInViewport
+				.slice(0, 10) // Limit to first 10 shapes to avoid token overflow
+				.map((s) => {
+					// Better descriptions for different shape types
+					if (s.type === "draw") {
+						return `freehand-drawing at (${s.x},${s.y}) size ${s.width}x${s.height}`
+					}
+
+					// Build description with available properties
+					const parts: string[] = []
+
+					// Shape type with geo type if available
+					if (s.type === "geo" && s.geoType) {
+						parts.push(s.geoType) // e.g., "rectangle", "ellipse"
+					} else {
+						parts.push(s.type)
+					}
+
+					// Color if available
+					if (s.color) {
+						parts.push(`color:${s.color}`)
+					}
+
+					// Text content if available
+					if (s.text) {
+						const truncatedText = s.text.length > 30
+							? `"${s.text.substring(0, 30)}..."`
+							: `"${s.text}"`
+						parts.push(`text:${truncatedText}`)
+					}
+
+					return `${parts.join(", ")} at (${s.x},${s.y}) ${s.width}x${s.height}`
+				})
+				.join("; ")
+			instructions.push(
+				`Shapes currently visible (${canvasContext.shapesInViewport.length} total): ${shapesSummary}`,
+			)
+			instructions.push(
+				"IMPORTANT: You can ONLY see the shapes listed above. Do NOT describe or mention any shapes that are not in this list. Never invent colors, text, or shapes that don't exist in the list above.",
+			)
+		} else {
+			instructions.push(
+				"The canvas is currently empty (no shapes exist). This is a great opportunity to create new shapes to help the user visualize information.",
+			)
+			instructions.push(
+				"IMPORTANT: The canvas is empty. Do NOT describe any shapes or content that don't exist. Only describe what you will CREATE when you use the canvasApplyChanges tool.",
+			)
+		}
+
+		if (canvasContext.userSelections && canvasContext.userSelections.length > 0) {
+			const selectionsSummary = canvasContext.userSelections
+				.map((sel) => {
+					if (sel.type === "selectedShape" && sel.shapeId) {
+						return `selected shape: ${sel.shapeId}`
+					}
+					if (sel.type === "selectedArea" && sel.bounds) {
+						const b = sel.bounds
+						return `selected area: (${b.x},${b.y}) ${b.w}x${b.h}`
+					}
+					if (sel.type === "selectedPoint" && sel.point) {
+						return `marked point: (${sel.point.x},${sel.point.y})`
+					}
+					return "unknown selection"
+				})
+				.join("; ")
+			instructions.push(`User selections: ${selectionsSummary}`)
+		}
+
+		instructions.push(
+			"When the user asks about visual organization, diagrams, or charts, proactively use the canvasApplyChanges tool to create visual representations on the canvas.",
+		)
+
+		console.log("[Chat V2] Canvas context active, added canvas instructions to prompt")
+	}
+
+	// Use canvas-specific prompt when canvas context is present
+	const basePrompt = canvasContext ? CANVAS_SYSTEM_PROMPT : ENHANCED_SYSTEM_PROMPT
 	const systemPrompt =
 		instructions.length > 0
-			? `${ENHANCED_SYSTEM_PROMPT}\n\n${instructions.join("\n")}`
-			: ENHANCED_SYSTEM_PROMPT
+			? `${basePrompt}\n\n${instructions.join("\n")}`
+			: basePrompt
+
+	if (canvasContext) {
+		console.log("[Chat V2] Using CANVAS_SYSTEM_PROMPT (canvas view active)")
+	}
 
 	// If a provider is specified, let executeClaudeAgent decide the model from provider config
 	// Otherwise use the model from payload or fallback to env.CHAT_MODEL
@@ -754,6 +890,15 @@ export async function handleChatV2({
 									isError,
 									buffer: initialBuffer,
 								})
+								// Debug: log canvas tool result start
+								if (toolName?.includes("canvasApplyChanges")) {
+									console.log("[Chat V2] Canvas tool_result block started:", {
+										toolName,
+										toolUseId,
+										initialBufferLength: initialBuffer.length,
+										initialBufferPreview: initialBuffer.substring(0, 100),
+									})
+								}
 							}
 
 							continue
@@ -768,6 +913,13 @@ export async function handleChatV2({
 								"delta" in event ? extractTextFromDelta(event.delta) : ""
 							if (deltaText.length > 0) {
 								tracker.buffer += deltaText
+								// Debug: log canvas tool delta
+								if (tracker.toolName?.includes("canvasApplyChanges")) {
+									console.log("[Chat V2] Canvas tool delta received:", {
+										deltaLength: deltaText.length,
+										totalBufferLength: tracker.buffer.length,
+									})
+								}
 							}
 							continue
 						}
@@ -827,6 +979,16 @@ export async function handleChatV2({
 									}
 								}
 
+								// Debug: log canvas tool_event being sent
+								if (resolvedToolName.includes("canvasApplyChanges")) {
+									console.log("[Chat V2] Canvas tool_event payload:", {
+										toolName: resolvedToolName,
+										state,
+										hasOutputText: !!payload.outputText,
+										outputTextLength: (payload.outputText as string)?.length || 0,
+										outputTextPreview: (payload.outputText as string)?.substring(0, 200),
+									})
+								}
 								enqueue(payload)
 							}
 						}
@@ -847,6 +1009,7 @@ export async function handleChatV2({
 						{
 							message: messageForAgent,
 							sdkSessionId: payload.sdkSessionId,
+							resume: payload.resume, // Pass resume flag for old sessions
 							continueSession: payload.continueSession,
 							client,
 							orgId,
@@ -927,6 +1090,30 @@ export async function handleChatV2({
 							console.error("[Chat V2] Failed to update SDK session ID:", error)
 						}
 					}
+
+					console.log("========================================")
+					console.log("📤 [Backend] Sending final response to frontend")
+					console.log("[Chat V2] Returned SDK session ID:", returnedSessionId)
+					console.log("[Chat V2] Conversation ID:", conversationId)
+
+					// Debug: log parts being sent
+					if (Array.isArray(parts) && parts.length > 0) {
+						console.log("[Chat V2] Parts being sent:", parts.length)
+						for (const part of parts) {
+							if (part && typeof part === "object" && "type" in part) {
+								const p = part as Record<string, unknown>
+								if (p.type === "tool-generic") {
+									console.log("[Chat V2] Tool-generic part:", {
+										toolName: p.toolName,
+										state: p.state,
+										hasOutputText: typeof p.outputText === "string",
+										outputTextLength: typeof p.outputText === "string" ? (p.outputText as string).length : 0,
+									})
+								}
+							}
+						}
+					}
+					console.log("========================================")
 
 					enqueue({
 						type: "final",

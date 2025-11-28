@@ -19,7 +19,6 @@ import { TOUR_STEP_IDS } from "@/lib/tour-constants"
 import { useChatOpen } from "@/stores"
 import { ConnectAIModal } from "./connect-ai-modal"
 import { ProjectSelector } from "./project-selector"
-import { useTour } from "./tour"
 import { AddMemoryExpandedView, AddMemoryView } from "./views/add-memory"
 import { IntegrationsView } from "./views/integrations"
 import { ProfileView } from "./views/profile"
@@ -71,7 +70,6 @@ function Menu({
 	const [showConnectAIModal, setShowConnectAIModal] = useState(false)
 	const isMobile = useIsMobile()
 	const { activePanel, setActivePanel } = useMobilePanel()
-	const { setMenuExpanded } = useTour()
 	const autumn = useCustomer()
 	const { setIsOpen, isOpen: isChatPanelOpen } = useChatOpen()
 
@@ -226,14 +224,6 @@ function Menu({
 			setExpandedView(null)
 		}
 	}, [isMobile, activePanel])
-
-	// Notify tour provider about expansion state changes
-	useEffect(() => {
-		const isExpanded = isMobile
-			? isMobileMenuOpen || !!expandedView
-			: isHovered || !!expandedView
-		setMenuExpanded(isExpanded)
-	}, [isMobile, isMobileMenuOpen, isHovered, expandedView, setMenuExpanded])
 
 	// Collapse menu to icons when chat panel is open (desktop only)
 	const isCollapsedToIcons = !isMobile && !expandedView && isChatPanelOpen

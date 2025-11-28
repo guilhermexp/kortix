@@ -39,6 +39,7 @@ import {
 	getSourceUrl,
 	stripMarkdown,
 } from "../memories"
+import { MarkdownContent } from "@/components/markdown-content"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
@@ -919,12 +920,11 @@ export const DocumentCard = memo(
 						return (
 							displayText &&
 							!displayText.startsWith("data:") && (
-								<p
+								<MarkdownContent
 									className="text-xs line-clamp-6 mb-3"
+									content={displayText}
 									style={{ color: colors.text.muted }}
-								>
-									{displayText}
-								</p>
+								/>
 							)
 						)
 					})()}

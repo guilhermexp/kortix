@@ -23,7 +23,8 @@ import { AnimatePresence, motion } from "motion/react"
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { z } from "zod"
-import { InfinityCanvas } from "@/components/canvas"
+import { TldrawCanvas } from "@/components/canvas"
+import { CanvasAgentProvider } from "@/components/canvas/canvas-agent-provider"
 import { ConnectAIModal } from "@/components/connect-ai-modal"
 import { InstallPrompt } from "@/components/install-prompt"
 import { MemoryListView } from "@/components/memory-list-view"
@@ -31,11 +32,9 @@ import Menu from "@/components/menu"
 import { ProjectSelector } from "@/components/project-selector"
 import { ReferralUpgradeModal } from "@/components/referral-upgrade-modal"
 import { ThemeToggle } from "@/components/theme-toggle"
-import type { TourStep } from "@/components/tour"
-import { TourAlertDialog, useTour } from "@/components/tour"
 import { AddMemoryView } from "@/components/views/add-memory"
 import { ChatRewrite } from "@/components/views/chat"
-import { TOUR_STEP_IDS, TOUR_STORAGE_KEY } from "@/lib/tour-constants"
+import { TOUR_STEP_IDS } from "@/lib/tour-constants"
 import { useViewMode } from "@/lib/view-mode-context"
 import { useChatOpen, useProject } from "@/stores"
 import { useGraphHighlights } from "@/stores/highlights"
@@ -50,7 +49,6 @@ const MemoryGraphPage = () => {
 	const isMobile = useIsMobile()
 	const { viewMode, setViewMode } = useViewMode()
 	const { selectedProject } = useProject()
-	const { setSteps, isTourCompleted } = useTour()
 	const { isOpen, setIsOpen } = useChatOpen()
 	const [injectedDocs, setInjectedDocs] = useState<DocumentWithMemories[]>([])
 	const [graphEdges, setGraphEdges] = useState<DocumentConnectionEdge[] | null>(
@@ -108,167 +106,6 @@ const MemoryGraphPage = () => {
 		window.addEventListener("mouseup", onUp)
 		e.preventDefault()
 	}
-
-	// Tour state
-	const [showTourDialog, setShowTourDialog] = useState(false)
-
-	// Define tour steps with useMemo to prevent recreation
-	const tourSteps: TourStep[] = useMemo(() => {
-		return [
-			{
-				content: (
-					<div>
-						<h3 className="font-semibold text-lg mb-2 text-white">
-							Memories Overview
-						</h3>
-						<p className="text-gray-200">
-							This is your memory graph. Each node represents a memory, and
-							connections show relationships between them.
-						</p>
-					</div>
-				),
-				selectorId: TOUR_STEP_IDS.MEMORY_GRAPH,
-				position: "center",
-			},
-			{
-				content: (
-					<div>
-						<h3 className="font-semibold text-lg mb-2 text-white">
-							Add Memories
-						</h3>
-						<p className="text-gray-200">
-							Click here to add new memories to your knowledge base. You can add
-							text, links, or connect external sources.
-						</p>
-					</div>
-				),
-				selectorId: TOUR_STEP_IDS.MENU_ADD_MEMORY,
-				position: "right",
-			},
-			{
-				content: (
-					<div>
-						<h3 className="font-semibold text-lg mb-2 text-white">
-							Connections
-						</h3>
-						<p className="text-gray-200">
-							Connect your external accounts like Google Drive, Notion, or
-							OneDrive to automatically sync and organize your content.
-						</p>
-					</div>
-				),
-				selectorId: TOUR_STEP_IDS.MENU_CONNECTIONS,
-				position: "right",
-			},
-			{
-				content: (
-					<div>
-						<h3 className="font-semibold text-lg mb-2 text-white">Projects</h3>
-						<p className="text-gray-200">
-							Organize your memories into projects. Switch between different
-							contexts easily.
-						</p>
-					</div>
-				),
-				selectorId: TOUR_STEP_IDS.MENU_PROJECTS,
-				position: "right",
-			},
-			{
-				content: (
-					<div>
-						<h3 className="font-semibold text-lg mb-2 text-white">
-							MCP Servers
-						</h3>
-						<p className="text-gray-200">
-							Access Model Context Protocol servers to give AI tools access to
-							your memories securely.
-						</p>
-					</div>
-				),
-				selectorId: TOUR_STEP_IDS.MENU_MCP,
-				position: "right",
-			},
-			{
-				content: (
-					<div>
-						<h3 className="font-semibold text-lg mb-2 text-white">Billing</h3>
-						<p className="text-gray-200">
-							Manage your subscription and billing information.
-						</p>
-					</div>
-				),
-				selectorId: TOUR_STEP_IDS.MENU_BILLING,
-				position: "right",
-			},
-			{
-				content: (
-					<div>
-						<h3 className="font-semibold text-lg mb-2 text-white">
-							View Toggle
-						</h3>
-						<p className="text-gray-200">
-							Switch between graph view and list view to see your memories in
-							different ways.
-						</p>
-					</div>
-				),
-				selectorId: TOUR_STEP_IDS.VIEW_TOGGLE,
-				position: "left",
-			},
-			{
-				content: (
-					<div>
-						<h3 className="font-semibold text-lg mb-2 text-white">Legend</h3>
-						<p className="text-gray-200">
-							Understand the different types of nodes and connections in your
-							memory graph.
-						</p>
-					</div>
-				),
-				selectorId: TOUR_STEP_IDS.LEGEND,
-				position: "left",
-			},
-			{
-				content: (
-					<div>
-						<h3 className="font-semibold text-lg mb-2 text-white">
-							Chat Assistant
-						</h3>
-						<p className="text-gray-200">
-							Ask questions or add new memories using our AI-powered chat
-							interface.
-						</p>
-					</div>
-				),
-				selectorId: TOUR_STEP_IDS.FLOATING_CHAT,
-				position: "left",
-			},
-		]
-	}, [])
-
-	// Check if tour has been completed before
-	useEffect(() => {
-		const hasCompletedTour = localStorage.getItem(TOUR_STORAGE_KEY) === "true"
-		if (!hasCompletedTour && !isTourCompleted) {
-			const timer = setTimeout(() => {
-				setShowTourDialog(true)
-				setShowConnectAIModal(false)
-			}, 1000) // Show after 1 second
-			return () => clearTimeout(timer)
-		}
-	}, [isTourCompleted])
-
-	// Set up tour steps
-	useEffect(() => {
-		setSteps(tourSteps)
-	}, [setSteps, tourSteps])
-
-	// Save tour completion to localStorage
-	useEffect(() => {
-		if (isTourCompleted) {
-			localStorage.setItem(TOUR_STORAGE_KEY, "true")
-		}
-	}, [isTourCompleted])
 
 	// Progressive loading via useInfiniteQuery
 	const IS_DEV = process.env.NODE_ENV === "development"
@@ -559,17 +396,10 @@ const MemoryGraphPage = () => {
 	)
 
 	useEffect(() => {
-		const hasCompletedTour = localStorage.getItem(TOUR_STORAGE_KEY) === "true"
-		if (
-			hasCompletedTour &&
-			(allDocuments?.length ?? 0) === 0 &&
-			!showTourDialog
-		) {
+		if ((allDocuments?.length ?? 0) === 0) {
 			setShowConnectAIModal(true)
-		} else if (showTourDialog) {
-			setShowConnectAIModal(false)
 		}
-	}, [allDocuments?.length, showTourDialog])
+	}, [allDocuments?.length])
 
 	// Prevent body scrolling
 	useEffect(() => {
@@ -592,6 +422,7 @@ const MemoryGraphPage = () => {
 	const viewToggleInactiveClasses = "border-foreground/15"
 
 	return (
+		<CanvasAgentProvider>
 		<div className="relative h-screen bg-background overflow-hidden touch-none">
 			{/* Main content area */}
 			<motion.div
@@ -706,7 +537,7 @@ const MemoryGraphPage = () => {
 										<div className="rounded-xl overflow-hidden cursor-pointer hover:bg-white/5 transition-colors p-6">
 											<div className="relative z-10 text-slate-200 text-center">
 												<p className="text-lg font-medium mb-4">
-													Get Started with supermemory
+													Get Started with Kortix
 												</p>
 												<div className="flex flex-col gap-3">
 													<p className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
@@ -775,7 +606,7 @@ const MemoryGraphPage = () => {
 								damping: 30,
 							}}
 						>
-							<InfinityCanvas />
+							<TldrawCanvas />
 						</motion.div>
 					) : (
 						<motion.div
@@ -809,7 +640,7 @@ const MemoryGraphPage = () => {
 										<div className="rounded-xl overflow-hidden cursor-pointer hover:bg-white/5 transition-colors p-6">
 											<div className="relative z-10 text-slate-200 text-center">
 												<p className="text-lg font-medium mb-4">
-													Get Started with supermemory
+													Get Started with Kortix
 												</p>
 												<div className="flex flex-col gap-3">
 													<p className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
@@ -916,15 +747,13 @@ const MemoryGraphPage = () => {
 				<AddMemoryView onClose={() => setShowAddMemoryView(false)} />
 			)}
 
-			{/* Tour Alert Dialog */}
-			<TourAlertDialog onOpenChange={setShowTourDialog} open={showTourDialog} />
-
 			{/* Referral/Upgrade Modal */}
 			<ReferralUpgradeModal
 				isOpen={showReferralModal}
 				onClose={() => setShowReferralModal(false)}
 			/>
 		</div>
+		</CanvasAgentProvider>
 	)
 }
 

@@ -41,14 +41,13 @@ import {
 } from "./routes/auth"
 import { generateChatTitle, handleChat } from "./routes/chat"
 import { handleChatV2 } from "./routes/chat-v2"
-// DISABLED: connections table does not exist
-// import {
-// 	createConnection,
-// 	createConnectionInputSchema,
-// 	deleteConnection,
-// 	getConnection,
-// 	listConnections,
-// } from "./routes/connections"
+import {
+	createConnection,
+	createConnectionInputSchema,
+	deleteConnection,
+	getConnection,
+	listConnections,
+} from "./routes/connections"
 import {
 	handleCreateConversation,
 	handleDeleteConversation,
@@ -82,6 +81,7 @@ import {
 import { createProject, deleteProject, listProjects } from "./routes/projects"
 import { searchDocuments } from "./routes/search"
 import { getSettings, updateSettings } from "./routes/settings"
+import { getCanvasState, saveCanvasState, deleteCanvasState } from "./routes/canvas"
 import { getWaitlistStatus } from "./routes/waitlist"
 import { AnalysisService } from "./services/analysis-service"
 import {
@@ -705,20 +705,97 @@ app.post(
 	},
 )
 
-// DISABLED: connections table does not exist
-// app.post("/v3/connections/:provider", zValidator("json", createConnectionInputSchema), async (c) => {...})
+// List all connections for the organization
+// IMPORTANT: This route must come BEFORE /:provider to avoid matching "list" as a provider
+app.post(
+	"/v3/connections/list",
+	requireAuth,
+	zValidator(
+		"json",
+		z.object({
+			containerTags: z.array(z.string()).optional(),
+		}),
+	),
+	async (c) => {
+		const { organizationId, userId } = c.var.session
+		const { containerTags } = c.req.valid("json")
+		const supabase = createScopedSupabase(organizationId, userId)
 
-// DISABLED: connections table does not exist
-// app.post("/v3/connections/list", zValidator("json", z.object({...})), async (c) => {...})
+		try {
+			const connections = await listConnections(
+				supabase,
+				organizationId,
+				containerTags,
+			)
+			return c.json({ data: connections })
+		} catch (error) {
+			console.error("Failed to list connections", error)
+			return c.json({ error: { message: "Failed to load connections" } }, 500)
+		}
+	},
+)
 
-// app.get("/v3/connections", ...)
+// Create a new connection (OAuth flow initiation)
+app.post(
+	"/v3/connections/:provider",
+	requireAuth,
+	zValidator("json", createConnectionInputSchema),
+	async (c) => {
+		const { organizationId, userId } = c.var.session
+		const provider = c.req.param("provider")
+		const payload = c.req.valid("json")
+		const supabase = createScopedSupabase(organizationId, userId)
 
+		try {
+			const result = await createConnection(supabase, {
+				organizationId,
+				userId,
+				provider,
+				payload,
+			})
+			return c.json({ data: result })
+		} catch (error) {
+			console.error("Failed to create connection", error)
+			return c.json(
+				{ error: { message: "Failed to create connection" } },
+				500,
+			)
+		}
+	},
+)
 
-// app.get("/v3/connections/:connectionId", ...)
+// Get a specific connection by ID
+app.get("/v3/connections/:connectionId", requireAuth, async (c) => {
+	const { organizationId, userId } = c.var.session
+	const connectionId = c.req.param("connectionId")
+	const supabase = createScopedSupabase(organizationId, userId)
 
+	try {
+		const connection = await getConnection(supabase, organizationId, connectionId)
+		if (!connection) {
+			return c.json({ error: { message: "Connection not found" } }, 404)
+		}
+		return c.json({ data: connection })
+	} catch (error) {
+		console.error("Failed to get connection", error)
+		return c.json({ error: { message: "Failed to get connection" } }, 500)
+	}
+})
 
-// DISABLED: connections table does not exist
-// app.delete("/v3/connections/:connectionId", ...)
+// Delete a connection
+app.delete("/v3/connections/:connectionId", requireAuth, async (c) => {
+	const { organizationId, userId } = c.var.session
+	const connectionId = c.req.param("connectionId")
+	const supabase = createScopedSupabase(organizationId, userId)
+
+	try {
+		await deleteConnection(supabase, organizationId, connectionId)
+		return c.json({ data: { success: true } })
+	} catch (error) {
+		console.error("Failed to delete connection", error)
+		return c.json({ error: { message: "Failed to remove connection" } }, 500)
+	}
+})
 
 app.get("/v3/settings", async (c) => {
 	const { organizationId } = c.var.session
@@ -751,6 +828,47 @@ app.patch(
 )
 
 app.get("/v3/waitlist/status", (c) => c.json(getWaitlistStatus()))
+
+// Canvas state endpoints
+app.get("/v3/canvas/:projectId?", async (c) => {
+	const { organizationId, userId } = c.var.session
+	const projectId = c.req.param("projectId") || "default"
+	const supabase = createScopedSupabase(organizationId, userId)
+	try {
+		const result = await getCanvasState(supabase, userId, organizationId, projectId)
+		return c.json(result)
+	} catch (error) {
+		console.error("Failed to fetch canvas state", error)
+		return c.json({ error: { message: "Failed to fetch canvas state" } }, 500)
+	}
+})
+
+app.post("/v3/canvas/:projectId?", async (c) => {
+	const { organizationId, userId } = c.var.session
+	const projectId = c.req.param("projectId") || "default"
+	const body = await c.req.json()
+	const supabase = createScopedSupabase(organizationId, userId)
+	try {
+		const result = await saveCanvasState(supabase, userId, organizationId, projectId, body.state)
+		return c.json(result)
+	} catch (error) {
+		console.error("Failed to save canvas state", error)
+		return c.json({ error: { message: "Failed to save canvas state" } }, 500)
+	}
+})
+
+app.delete("/v3/canvas/:projectId?", async (c) => {
+	const { organizationId, userId } = c.var.session
+	const projectId = c.req.param("projectId") || "default"
+	const supabase = createScopedSupabase(organizationId, userId)
+	try {
+		const result = await deleteCanvasState(supabase, userId, projectId)
+		return c.json(result)
+	} catch (error) {
+		console.error("Failed to delete canvas state", error)
+		return c.json({ error: { message: "Failed to delete canvas state" } }, 500)
+	}
+})
 
 app.post("/chat", async (c) => {
 	const { organizationId } = c.var.session

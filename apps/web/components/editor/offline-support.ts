@@ -26,7 +26,7 @@ export interface ConnectionStatus {
 	reconnectedAt: number | null
 }
 
-const STORAGE_KEY_PREFIX = "supermemory_offline_"
+const STORAGE_KEY_PREFIX = "kortix_offline_"
 const SYNC_QUEUE_KEY = `${STORAGE_KEY_PREFIX}sync_queue`
 const MAX_RETRY_ATTEMPTS = 3
 const RETRY_DELAY = 2000 // 2 seconds

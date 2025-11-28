@@ -1,0 +1,42 @@
+{
+  "name": "supermemory-comprehensive-testing",
+  "version": "1.0.0",
+  "description": "Comprehensive testing suite for Supermemory application including authentication, network analysis, DevTools automation, and multi-user simulation",
+  "main": "run-all-tests.sh",
+  "scripts": {
+    "test": "bash run-all-tests.sh",
+    "test:auth": "bash 01-auth-test.sh",
+    "test:network": "bash 02-network-analysis.sh",
+    "test:devtools": "node 03-devtools-automation.js",
+    "test:multiuser": "node 04-multi-user-sim.js",
+    "install:deps": "npm install",
+    "postinstall": "chmod +x *.sh"
+  },
+  "keywords": [
+    "testing",
+    "automation",
+    "puppeteer",
+    "devtools",
+    "multi-user",
+    "load-testing",
+    "performance",
+    "security"
+  ],
+  "author": "Supermemory Team",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^21.11.0"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/supermemory/supermemory.git"
+  },
+  "bugs": {
+    "url": "https://github.com/supermemory/supermemory/issues"
+  },
+  "homepage": "https://github.com/supermemory/supermemory#readme"
+}

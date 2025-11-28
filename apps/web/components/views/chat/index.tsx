@@ -51,21 +51,21 @@ export function ChatRewrite() {
 	// No header controls (kept only in composer)
 
 	return (
-		<div className="flex flex-col h-full overflow-y-hidden border-l border-border bg-chat-surface">
-			<div className="sticky top-0 z-20 border-b border-border/50 bg-chat-surface backdrop-blur px-4 py-3 flex justify-between items-center shadow-sm">
-				<h3 className="text-base font-semibold line-clamp-1 text-ellipsis overflow-hidden text-foreground">
+		<div className="flex flex-col h-full overflow-y-hidden border-l border-border/30 bg-chat-surface">
+			<div className="sticky top-0 z-20 bg-chat-surface/80 backdrop-blur-md px-4 py-2.5 flex justify-between items-center">
+				<h3 className="text-sm font-medium line-clamp-1 text-ellipsis overflow-hidden text-foreground/80">
 					{getCurrentChat()?.title ?? "New Chat"}
 				</h3>
-				<div className="flex items-center gap-2">
+				<div className="flex items-center gap-1">
 					<Dialog onOpenChange={setIsDialogOpen} open={isDialogOpen}>
 						<DialogTrigger asChild>
 							<Button
-								className="h-8 w-8 bg-muted/50 hover:bg-muted border border-border rounded-md text-foreground"
+								className="h-7 w-7 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
 								onClick={() => analytics.chatHistoryViewed()}
 								size="icon"
 								variant="ghost"
 							>
-								<HistoryIcon className="size-4" />
+								<HistoryIcon className="size-3.5" />
 							</Button>
 						</DialogTrigger>
 						<DialogContent className="sm:max-w-lg bg-popover backdrop-blur-xl border-border text-foreground">
@@ -98,6 +98,15 @@ export function ChatRewrite() {
 												<button
 													className="min-w-0 flex-1 text-left outline-none"
 													onClick={() => {
+														console.log("========================================")
+														console.log("[UI] Conversation clicked:", {
+															id: c.id,
+															title: c.title,
+															lastUpdated: c.lastUpdated,
+															sdkSessionId: c.sdkSessionId,
+															hasSdkSession: !!c.sdkSessionId,
+														})
+														console.log("========================================")
 														setCurrentChatId(c.id)
 														setIsDialogOpen(false)
 													}}
@@ -154,20 +163,20 @@ export function ChatRewrite() {
 						</DialogContent>
 					</Dialog>
 					<Button
-						className="h-8 w-8 bg-muted/50 hover:bg-muted border border-border rounded-md text-foreground"
+						className="h-7 w-7 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
 						onClick={handleNewChat}
 						size="icon"
 						variant="ghost"
 					>
-						<Plus className="size-4" />
+						<Plus className="size-3.5" />
 					</Button>
 					<Button
-						className="h-8 w-8 bg-muted/50 hover:bg-muted border border-border rounded-md text-foreground"
+						className="h-7 w-7 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
 						onClick={() => setIsOpen(false)}
 						size="icon"
 						variant="ghost"
 					>
-						<X className="size-4" />
+						<X className="size-3.5" />
 					</Button>
 				</div>
 			</div>

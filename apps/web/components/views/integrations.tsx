@@ -294,12 +294,15 @@ export function IntegrationsView() {
 							<h3 className="text-foreground dark:text-foreground dark:text-white font-semibold text-base mb-1">
 								Apple shortcuts
 							</h3>
-							<p className="text-foreground dark:text-foreground dark:text-white/70 text-sm leading-relaxed">
-								Add memories directly from iPhone, iPad or Mac.
+							<p className="text-foreground dark:text-foreground dark:text-white/70 text-sm leading-relaxed mb-2">
+								Add memories directly from iPhone, iPad or Mac using Siri Shortcuts.
+							</p>
+							<p className="text-xs text-blue-400/90 bg-blue-500/10 px-3 py-2 rounded-lg border border-blue-500/20">
+								💡 Click a button below to generate an API key and download the shortcut. You'll need to paste the API key when installing the shortcut.
 							</p>
 						</div>
 					</div>
-					<div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+					<div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-3">
 						<Button
 							className="flex-1 text-foreground hover:bg-blue-500/10 bg-[#171F59]/75 dark:text-foreground dark:text-foreground dark:text-white"
 							disabled={createApiKeyMutation.isPending}
@@ -344,7 +347,7 @@ export function IntegrationsView() {
 							<ChromeIcon className="h-5 w-5 text-orange-400" />
 						</div>
 						<div className="flex-1 min-w-0 mb-3">
-							<div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2 mb-1">
+							<div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2 mb-2">
 								<h3 className="text-foreground dark:text-foreground dark:text-foreground dark:text-white font-semibold text-base">
 									Chrome Extension
 								</h3>
@@ -362,9 +365,12 @@ export function IntegrationsView() {
 									variant="ghost"
 								>
 									<ChromeIcon className="h-3 w-3 mr-1" />
-									Add to Chrome
+									Install from Chrome Web Store
 								</Button>
 							</div>
+							<p className="text-xs text-orange-400/90 bg-orange-500/10 px-3 py-2 rounded-lg border border-orange-500/20 mb-3">
+								🔗 This will open the Chrome Web Store where you can install the official Supermemory extension
+							</p>
 						</div>
 					</div>
 					<div className="space-y-2">
@@ -415,8 +421,13 @@ export function IntegrationsView() {
 								Connections
 							</h3>
 							<p className="text-foreground dark:text-foreground dark:text-white/70 text-sm leading-relaxed mb-2">
-								Connect your accounts to sync document.
+								Connect your cloud storage accounts to automatically sync documents to Supermemory.
 							</p>
+							{isProUser && (
+								<p className="text-xs text-green-400/90 bg-green-500/10 px-3 py-2 rounded-lg border border-green-500/20">
+									✓ Pro Feature Active - Connect up to 5 services and sync unlimited documents
+								</p>
+							)}
 							{!isProUser && (
 								<p className="text-xs text-foreground dark:text-foreground dark:text-white/50">
 									Connections require a Pro subscription

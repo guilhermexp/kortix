@@ -20,12 +20,16 @@ import {
 	Brain,
 	X as CloseIcon,
 	Map as MapIcon,
+	Minus,
+	Palette as PaletteIcon,
 	Plus,
 	Sparkles,
+	Trash2,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { z } from "zod"
 import { useToast } from "@/components/ui/rich-editor/hooks/use-toast"
+import { Tooltip } from "@/components/ui/tooltip"
 import { useProject } from "@/stores"
 import {
 	useCanvasPositions,
@@ -866,52 +870,82 @@ export function InfinityCanvas() {
 		>
 			{/* Action controls above Graph controls (mesmo estilo do Graph) */}
 			<div
-				className="absolute left-4 z-20 flex flex-col gap-1"
+				className="absolute left-4 z-20 flex flex-col gap-2"
 				style={{ bottom: 160 }}
 			>
-				<button
-					className="bg-background/20 backdrop-blur-sm hover:bg-muted/30 border border-border hover:border-border/50 rounded-lg p-2 text-foreground/70 hover:text-foreground transition-colors text-xs font-medium min-w-16"
-					onClick={handleOpenSelector}
-					title="Add documents"
+				<Tooltip content="Add documents to canvas" side="right">
+					<Button
+						className="bg-background/80 backdrop-blur-md hover:bg-blue-500/20 border-2 border-border hover:border-blue-500/50 rounded-xl px-3 py-2 text-foreground/80 hover:text-blue-400 transition-all duration-200 text-sm font-semibold min-w-[120px] shadow-lg hover:shadow-xl group"
+						onClick={handleOpenSelector}
+						size="sm"
+						variant="outline"
+					>
+						<Plus className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+						Add
+					</Button>
+				</Tooltip>
+				<Tooltip content="Toggle document palette" side="right">
+					<Button
+						className={`bg-background/80 backdrop-blur-md border-2 rounded-xl px-3 py-2 transition-all duration-200 text-sm font-semibold min-w-[120px] shadow-lg hover:shadow-xl group ${
+							isPaletteOpen
+								? "bg-purple-500/20 border-purple-500 text-purple-400"
+								: "hover:bg-purple-500/20 border-border hover:border-purple-500/50 text-foreground/80 hover:text-purple-400"
+						}`}
+						onClick={() => setIsPaletteOpen((v) => !v)}
+						size="sm"
+						variant="outline"
+					>
+						<PaletteIcon className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+						Palette
+					</Button>
+				</Tooltip>
+				<Tooltip
+					content={selectedCount > 0 ? `Remove ${selectedCount} selected document(s)` : "Select documents to remove"}
+					side="right"
 				>
-					Add
-				</button>
-				<button
-					className="bg-background/20 backdrop-blur-sm hover:bg-muted/30 border border-border hover:border-border/50 rounded-lg p-2 text-foreground/70 hover:text-foreground transition-colors text-xs font-medium min-w-16"
-					onClick={() => setIsPaletteOpen((v) => !v)}
-					title="Toggle palette"
+					<Button
+						className="bg-background/80 backdrop-blur-md hover:bg-orange-500/20 border-2 border-border hover:border-orange-500/50 rounded-xl px-3 py-2 text-foreground/80 hover:text-orange-400 transition-all duration-200 text-sm font-semibold min-w-[120px] shadow-lg hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed group"
+						disabled={selectedCount === 0}
+						onClick={() => {
+							removeSelected()
+							toast({ title: "Removed selected" })
+						}}
+						size="sm"
+						variant="outline"
+					>
+						<Minus className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+						Remove
+					</Button>
+				</Tooltip>
+				<Tooltip
+					content={selectedCount > 0 ? `Clear ${selectedCount} selected document(s)` : "No selection to clear"}
+					side="right"
 				>
-					Palette
-				</button>
-				<button
-					className="bg-background/20 backdrop-blur-sm hover:bg-muted/30 border border-border hover:border-border/50 rounded-lg p-2 text-foreground/70 hover:text-foreground transition-colors text-xs font-medium min-w-16 disabled:opacity-50"
-					disabled={selectedCount === 0}
-					onClick={() => {
-						removeSelected()
-						toast({ title: "Removed selected" })
-					}}
-					title="Remove selected"
-				>
-					Remove
-				</button>
-				<button
-					className="bg-background/20 backdrop-blur-sm hover:bg-muted/30 border border-border hover:border-border/50 rounded-lg p-2 text-foreground/70 hover:text-foreground transition-colors text-xs font-medium min-w-16 disabled:opacity-50"
-					disabled={selectedCount === 0}
-					onClick={clearSelection}
-					title="Clear selection"
-				>
-					Clear
-				</button>
-				<button
-					className="bg-background/20 backdrop-blur-sm hover:bg-muted/30 border border-border hover:border-border/50 rounded-lg p-2 text-foreground/70 hover:text-foreground transition-colors text-xs font-medium min-w-16"
-					onClick={() => {
-						clearCanvas()
-						toast({ title: "Canvas cleared" })
-					}}
-					title="Clear all"
-				>
-					Clear All
-				</button>
+					<Button
+						className="bg-background/80 backdrop-blur-md hover:bg-red-500/20 border-2 border-border hover:border-red-500/50 rounded-xl px-3 py-2 text-foreground/80 hover:text-red-400 transition-all duration-200 text-sm font-semibold min-w-[120px] shadow-lg hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed group"
+						disabled={selectedCount === 0}
+						onClick={clearSelection}
+						size="sm"
+						variant="outline"
+					>
+						<CloseIcon className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+						Clear
+					</Button>
+				</Tooltip>
+				<Tooltip content="Remove all documents from canvas" side="right">
+					<Button
+						className="bg-background/80 backdrop-blur-md hover:bg-red-600/20 border-2 border-border hover:border-red-600/50 rounded-xl px-3 py-2 text-foreground/80 hover:text-red-500 transition-all duration-200 text-sm font-semibold min-w-[120px] shadow-lg hover:shadow-xl group"
+						onClick={() => {
+							clearCanvas()
+							toast({ title: "Canvas cleared" })
+						}}
+						size="sm"
+						variant="outline"
+					>
+						<Trash2 className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+						Clear All
+					</Button>
+				</Tooltip>
 			</div>
 
 			{/* Canvas area with drag & drop + pan/zoom */}

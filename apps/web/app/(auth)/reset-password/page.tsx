@@ -105,7 +105,7 @@ export default function ResetPasswordPage() {
 			<div className="hidden lg:flex lg:col-span-6 flex-col gap-6">
 				<LogoFull className="w-48 text-white" />
 				<h1 className="text-4xl font-semibold">
-					Recuperar acesso ao supermemory
+					Recuperar acesso ao Kortix
 				</h1>
 				<p className="text-white/70 max-w-lg">
 					Gere um link de redefinição por email ou informe o token recebido para

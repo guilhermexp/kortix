@@ -1361,88 +1361,100 @@ export function AddMemoryView({
 														)}
 													</addContentForm.Field>
 												</motion.div>
-											</div>
-											<div className="mt-6 flex justify-between items-end w-full">
-												<div className="flex items-end gap-4">
-													{/* Left side - Project Selection */}
-													<motion.div
-														animate={{ opacity: 1, y: 0 }}
-														className={`flex flex-col gap-2 ${
-															addContentMutation.isPending ? "opacity-50" : ""
-														}`}
-														initial={{ opacity: 0, y: 10 }}
-														transition={{ delay: 0.15 }}
-													>
-														<addContentForm.Field name="project">
-															{({ state, handleChange }) => (
-																<ProjectSelection
-																	disabled={addContentMutation.isPending}
-																	id="link-project-2"
-																	isLoading={isLoadingProjects}
-																	onCreateProject={() =>
-																		setShowCreateProjectDialog(true)
-																	}
-																	onProjectChange={handleChange}
-																	projects={projects}
-																	selectedProject={state.value}
-																/>
-															)}
-														</addContentForm.Field>
-													</motion.div>
-												</div>
 
-												{/* Deep Agent (YouTube) — opcional */}
-												<div className="flex-1" />
-											</div>
-
-											{/* Deep Agent | Standard inline toggle */}
-											<div className="mt-3 flex items-center gap-2">
-												<button
-													className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
-														useAgentForLink
-															? "bg-white/10 border-white/20 text-foreground dark:text-white"
-															: "bg-white/5 border-white/10 text-foreground dark:text-white/80 hover:bg-white/8"
-													}`}
-													onClick={() => {
-														setUseAgentForLink(true)
-														try {
-															addContentForm.validate()
-														} catch {}
-													}}
-													type="button"
+												{/* Processing Mode Toggle */}
+												<motion.div
+													animate={{ opacity: 1, y: 0 }}
+													className="flex flex-col gap-2"
+													initial={{ opacity: 0, y: 10 }}
+													transition={{ delay: 0.15 }}
 												>
-													Deep Agent
-												</button>
-												<button
-													className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
-														!useAgentForLink
-															? "bg-white/10 border-white/20 text-foreground dark:text-white"
-															: "bg-white/5 border-white/10 text-foreground dark:text-white/80 hover:bg-white/8"
-													}`}
-													onClick={() => {
-														setUseAgentForLink(false)
-														try {
-															addContentForm.validate()
-														} catch {}
-													}}
-													type="button"
-												>
-													Standard
-												</button>
-												{/* Legend removed as requested */}
+													<label className="text-sm font-medium">
+														Processing Mode
+													</label>
+													<div className="flex items-center gap-2">
+														<button
+															className={`text-xs px-3 py-1.5 rounded-md border transition-all ${
+																useAgentForLink
+																	? "bg-white/15 border-white/30 text-foreground dark:text-white font-medium"
+																	: "bg-white/5 border-white/10 text-foreground/70 dark:text-white/60 hover:bg-white/10"
+															}`}
+															onClick={() => {
+																setUseAgentForLink(true)
+																try {
+																	addContentForm.validate()
+																} catch {}
+															}}
+															type="button"
+														>
+															<span className="flex items-center gap-1.5">
+																<Sparkles className="h-3 w-3" />
+																Deep Agent
+															</span>
+														</button>
+														<button
+															className={`text-xs px-3 py-1.5 rounded-md border transition-all ${
+																!useAgentForLink
+																	? "bg-white/15 border-white/30 text-foreground dark:text-white font-medium"
+																	: "bg-white/5 border-white/10 text-foreground/70 dark:text-white/60 hover:bg-white/10"
+															}`}
+															onClick={() => {
+																setUseAgentForLink(false)
+																try {
+																	addContentForm.validate()
+																} catch {}
+															}}
+															type="button"
+														>
+															Standard
+														</button>
+														<span className="text-xs text-foreground/50 dark:text-white/40 ml-2">
+															{useAgentForLink ? "AI-enhanced extraction" : "Basic extraction"}
+														</span>
+													</div>
+												</motion.div>
 											</div>
 
-											<ActionButtons
-												isSubmitDisabled={!addContentForm.state.canSubmit}
-												isSubmitting={addContentMutation.isPending}
-												onCancel={() => {
-													setShowAddDialog(false)
-													onClose?.()
-													addContentForm.reset()
-												}}
-												submitIcon={Plus}
-												submitText="Add Link"
-											/>
+											{/* Footer with Project and Actions */}
+											<div className="mt-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+												{/* Project Selection */}
+												<motion.div
+													animate={{ opacity: 1, y: 0 }}
+													className={`flex flex-col gap-2 ${
+														addContentMutation.isPending ? "opacity-50" : ""
+													}`}
+													initial={{ opacity: 0, y: 10 }}
+													transition={{ delay: 0.2 }}
+												>
+													<addContentForm.Field name="project">
+														{({ state, handleChange }) => (
+															<ProjectSelection
+																disabled={addContentMutation.isPending}
+																id="link-project-2"
+																isLoading={isLoadingProjects}
+																onCreateProject={() =>
+																	setShowCreateProjectDialog(true)
+																}
+																onProjectChange={handleChange}
+																projects={projects}
+																selectedProject={state.value}
+															/>
+														)}
+													</addContentForm.Field>
+												</motion.div>
+
+												<ActionButtons
+													isSubmitDisabled={!addContentForm.state.canSubmit}
+													isSubmitting={addContentMutation.isPending}
+													onCancel={() => {
+														setShowAddDialog(false)
+														onClose?.()
+														addContentForm.reset()
+													}}
+													submitIcon={Plus}
+													submitText="Add Link"
+												/>
+											</div>
 										</form>
 									</div>
 								)}

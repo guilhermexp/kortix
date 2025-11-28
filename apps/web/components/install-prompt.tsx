@@ -87,7 +87,7 @@ export function InstallPrompt() {
 							<div className="w-8 h-8 bg-background rounded-lg flex items-center justify-center">
 								<Download className="w-4 h-4" />
 							</div>
-							<h3 className="font-semibold text-sm">Install Supermemory</h3>
+							<h3 className="font-semibold text-sm">Install Kortix</h3>
 						</div>
 						<Button
 							className="text-white/60 hover:text-white h-6 w-6 p-0"
@@ -100,7 +100,7 @@ export function InstallPrompt() {
 					</div>
 
 					<p className="text-white/80 text-xs mb-4 leading-relaxed">
-						Add Supermemory to your home screen for quick access and a better
+						Add Kortix to your home screen for quick access and a better
 						experience.
 					</p>
 
