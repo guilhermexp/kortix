@@ -105,6 +105,10 @@ const envSchema = z.object({
 	SEQ_MCP_COMMAND: z.string().min(1).optional(),
 	// JSON array of args, e.g.: ["--flag", "value"]
 	SEQ_MCP_ARGS: z.string().optional(),
+	// Enable sequential thinking MCP server (requires SEQ_MCP_COMMAND to be set)
+	SEQ_MCP_ENABLED: z.string().optional().default("false"),
+	// Enable deepwiki MCP server for external research
+	DEEPWIKI_ENABLED: z.string().optional().default("false"),
 })
 
 const parsed = envSchema.safeParse({
@@ -147,6 +151,8 @@ const parsed = envSchema.safeParse({
 	KIMI_API_KEY: process.env.KIMI_API_KEY,
 	SEQ_MCP_COMMAND: process.env.SEQ_MCP_COMMAND,
 	SEQ_MCP_ARGS: process.env.SEQ_MCP_ARGS,
+	SEQ_MCP_ENABLED: process.env.SEQ_MCP_ENABLED,
+	DEEPWIKI_ENABLED: process.env.DEEPWIKI_ENABLED,
 })
 
 if (!parsed.success) {
