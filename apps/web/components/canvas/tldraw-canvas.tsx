@@ -123,16 +123,25 @@ export function TldrawCanvas() {
 		const snapshotStr = JSON.stringify(snapshot)
 
 		// Skip if nothing changed
-		if (snapshotStr === lastSavedRef.current) return
+		if (snapshotStr === lastSavedRef.current) {
+			console.log("[TldrawCanvas] Save skipped - no changes")
+			return
+		}
 		lastSavedRef.current = snapshotStr
+
+		console.log("[TldrawCanvas] Saving canvas state to DB...", {
+			projectId,
+			snapshotSize: snapshotStr.length,
+		})
 
 		try {
 			await $fetch(`@post/canvas/${projectId}`, {
 				body: { state: snapshot },
 				disableValidation: true,
 			})
+			console.log("[TldrawCanvas] Canvas state saved successfully")
 		} catch (error) {
-			console.error("Failed to save canvas state:", error)
+			console.error("[TldrawCanvas] Failed to save canvas state:", error)
 		}
 	}, [selectedProject])
 
@@ -154,7 +163,7 @@ export function TldrawCanvas() {
 		}
 
 		const cleanup = editor.store.listen(handleChange, {
-			source: "user",
+			source: "all", // Listen to ALL changes including programmatic ones from the agent
 			scope: "document",
 		})
 
@@ -345,7 +354,7 @@ export function TldrawCanvas() {
 		}
 
 		const cleanup = editor.store.listen(handleChange, {
-			source: "user",
+			source: "all", // Listen to ALL changes including programmatic ones from the agent
 			scope: "document",
 		})
 

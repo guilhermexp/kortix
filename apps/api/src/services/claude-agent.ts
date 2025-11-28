@@ -360,37 +360,47 @@ export async function executeClaudeAgent(
 			)
 		}
 
-		// Configure optional external MCP server (sequential thinking)
-		// Allows override via env:
-		//   SEQ_MCP_COMMAND="/path/to/zed-mcp-server-sequential-thinking"
-		//   SEQ_MCP_ARGS='["--flag","value"]'
-		let seqArgs: string[] = []
-		try {
-			seqArgs = env.SEQ_MCP_ARGS ? JSON.parse(env.SEQ_MCP_ARGS) : []
-			if (!Array.isArray(seqArgs)) seqArgs = []
-		} catch {
-			console.warn("[executeClaudeAgent] Invalid SEQ_MCP_ARGS JSON; ignoring")
-			seqArgs = []
+		// Configure MCP servers
+		// Note: Sequential thinking server is now DISABLED by default as it requires
+		// an external binary that may not be installed, causing "Stream closed" errors.
+		// To enable: set SEQ_MCP_ENABLED=true and SEQ_MCP_COMMAND to the binary path
+		const mcpServers: Record<string, unknown> = {
+			"supermemory-tools": toolsServer,
 		}
 
-		const seqCommand =
-			env.SEQ_MCP_COMMAND || "zed-mcp-server-sequential-thinking"
+		// Only add deepwiki if we want external research capabilities
+		// Disabled by default to reduce potential connection issues
+		if (env.DEEPWIKI_ENABLED === "true") {
+			mcpServers.deepwiki = {
+				type: "http",
+				url: "https://mcp.deepwiki.com/mcp",
+			}
+			console.log("[executeClaudeAgent] Deepwiki MCP server enabled")
+		}
+
+		// Only add sequential-thinking if explicitly enabled and configured
+		if (env.SEQ_MCP_ENABLED === "true" && env.SEQ_MCP_COMMAND) {
+			let seqArgs: string[] = []
+			try {
+				seqArgs = env.SEQ_MCP_ARGS ? JSON.parse(env.SEQ_MCP_ARGS) : []
+				if (!Array.isArray(seqArgs)) seqArgs = []
+			} catch {
+				console.warn("[executeClaudeAgent] Invalid SEQ_MCP_ARGS JSON; ignoring")
+				seqArgs = []
+			}
+
+			mcpServers["sequential-thinking"] = {
+				command: env.SEQ_MCP_COMMAND,
+				args: seqArgs,
+			}
+			console.log("[executeClaudeAgent] Sequential thinking MCP server enabled")
+		}
+
+		console.log("[executeClaudeAgent] Active MCP servers:", Object.keys(mcpServers).join(", "))
 
 		const queryOptions: Record<string, unknown> = {
 			model: resolvedModel,
-			mcpServers: {
-				"supermemory-tools": toolsServer,
-				deepwiki: {
-					type: "http",
-					url: "https://mcp.deepwiki.com/mcp",
-				},
-				// External MCP server: Sequential Thinking (LoamStudios)
-				// Runs as a stdio MCP process. Command can be overridden via env.
-				"sequential-thinking": {
-					command: seqCommand,
-					args: seqArgs,
-				},
-			},
+			mcpServers,
 			disallowedTools: [
 				"Bash",
 				"bash",
