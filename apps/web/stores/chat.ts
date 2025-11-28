@@ -46,12 +46,14 @@ export interface ConversationSummary {
 	id: string
 	title?: string
 	lastUpdated: string
+	sdkSessionId?: string | null
 }
 
 interface ConversationRecord {
 	messages: PersistedMessage[]
 	title?: string
 	lastUpdated: string
+	sdkSessionId?: string | null
 }
 
 interface ProjectConversationsState {
@@ -72,6 +74,11 @@ interface ConversationsStoreState {
 		projectId: string,
 		chatId: string,
 		title: string | undefined,
+	) => void
+	setSdkSessionId: (
+		projectId: string,
+		chatId: string,
+		sdkSessionId: string | null,
 	) => void
 }
 
@@ -180,9 +187,43 @@ export const usePersistentChatStore = create<ConversationsStoreState>()(
 					}
 				})
 			},
+
+			setSdkSessionId(projectId, chatId, sdkSessionId) {
+				console.log("========================================")
+				console.log("💾 [Store] Saving SDK session ID to localStorage...")
+				console.log("[Store] Project:", projectId)
+				console.log("[Store] Chat ID:", chatId)
+				console.log("[Store] SDK Session ID:", sdkSessionId)
+				set((state) => {
+					const project = state.byProject[projectId] ?? {
+						currentChatId: null,
+						conversations: {},
+					}
+					const existing = project.conversations[chatId]
+					if (!existing) {
+						console.log("⚠️ [Store] Conversation not found, cannot save SDK session ID")
+						console.log("========================================")
+						return { byProject: state.byProject }
+					}
+					console.log("✅ [Store] SDK session ID saved successfully")
+					console.log("========================================")
+					return {
+						byProject: {
+							...state.byProject,
+							[projectId]: {
+								currentChatId: project.currentChatId,
+								conversations: {
+									...project.conversations,
+									[chatId]: { ...existing, sdkSessionId },
+								},
+							},
+						},
+					}
+				})
+			},
 		}),
 		{
-			name: "supermemory-chats",
+			name: "kortix-chats",
 		},
 	),
 )
@@ -203,6 +244,7 @@ export function usePersistentChat() {
 	const setConversationTitleRaw = usePersistentChatStore(
 		(s) => s.setConversationTitle,
 	)
+	const setSdkSessionIdRaw = usePersistentChatStore((s) => s.setSdkSessionId)
 
 	const conversations: ConversationSummary[] = (() => {
 		const convs = projectState?.conversations ?? {}
@@ -210,6 +252,7 @@ export function usePersistentChat() {
 			id,
 			title: rec.title,
 			lastUpdated: rec.lastUpdated,
+			sdkSessionId: rec.sdkSessionId,
 		}))
 	})()
 
@@ -246,7 +289,23 @@ export function usePersistentChat() {
 		if (!id) return undefined
 		const rec = projectState?.conversations?.[id]
 		if (!rec) return undefined
-		return { id, title: rec.title, lastUpdated: rec.lastUpdated }
+		return {
+			id,
+			title: rec.title,
+			lastUpdated: rec.lastUpdated,
+			sdkSessionId: rec.sdkSessionId,
+		}
+	}
+
+	function setSdkSessionId(chatId: string, sdkSessionId: string | null): void {
+		setSdkSessionIdRaw(projectId, chatId, sdkSessionId)
+	}
+
+	function getSdkSessionId(chatId?: string): string | null | undefined {
+		const id = chatId ?? currentChatId
+		if (!id) return undefined
+		const rec = projectState?.conversations?.[id]
+		return rec?.sdkSessionId
 	}
 
 	return {
@@ -256,6 +315,8 @@ export function usePersistentChat() {
 		setConversation,
 		deleteConversation,
 		setConversationTitle,
+		setSdkSessionId,
+		getSdkSessionId,
 		getCurrentConversation,
 		getCurrentChat,
 	}

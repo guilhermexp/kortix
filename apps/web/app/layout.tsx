@@ -10,8 +10,6 @@ import { Suspense } from "react"
 import { Toaster } from "sonner"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { ThemeProvider } from "@/components/providers/theme-provider"
-import { TourProvider } from "@/components/tour"
-// Chat dock disabled (reverted to page-level chat)
 import { MobilePanelProvider } from "@/lib/mobile-panel-context"
 import { ViewModeProvider } from "@/lib/view-mode-context"
 
@@ -46,8 +44,25 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
 	metadataBase,
-	description: "Self-hosted Supermemory",
-	title: "supermemory",
+	description: "Kortix - Your memory, accessible and private",
+	title: {
+		default: "Kortix",
+		template: "%s | Kortix",
+	},
+	icons: {
+		icon: [
+			{ url: "/favicon.svg", type: "image/svg+xml" },
+			{ url: "/icon.svg", type: "image/svg+xml" },
+		],
+		apple: "/icon.svg",
+	},
+	manifest: "/manifest.json",
+	openGraph: {
+		title: "Kortix",
+		description: "Your memory, accessible and private",
+		type: "website",
+		locale: "pt_BR",
+	},
 }
 
 export default function RootLayout({
@@ -69,12 +84,10 @@ export default function RootLayout({
 							<ViewModeProvider>
 								<MobilePanelProvider>
 									<ErrorTrackingProvider>
-										<TourProvider>
-											<ErrorBoundary>
-												<Suspense>{children}</Suspense>
-											</ErrorBoundary>
-											<Toaster richColors />
-										</TourProvider>
+										<ErrorBoundary>
+											<Suspense>{children}</Suspense>
+										</ErrorBoundary>
+										<Toaster richColors />
 									</ErrorTrackingProvider>
 								</MobilePanelProvider>
 							</ViewModeProvider>

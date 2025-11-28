@@ -386,7 +386,7 @@ export function TourAlertDialog({ open, onOpenChange }: TourAlertDialogProps) {
 				{/* Content */}
 				<div className="relative z-10 p-8 md:p-10 lg:p-12">
 					<h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-						Welcome to supermemory™
+						Welcome to Kortix™
 					</h2>
 					<p className="text-lg md:text-xl text-gray-200 mb-8 leading-relaxed">
 						This is your personal knowledge graph where all your memories are

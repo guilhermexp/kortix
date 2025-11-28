@@ -95,7 +95,16 @@ export function ConnectionsTabContent() {
 				throw new Error(response.error?.message || "Failed to load connections")
 			}
 
-			return response.data as Connection[]
+			// Ensure we always return an array
+			const data = response.data
+			if (Array.isArray(data)) {
+				return data as Connection[]
+			}
+			// Handle case where data might be an object with connections property
+			if (data && typeof data === "object" && "connections" in data && Array.isArray((data as any).connections)) {
+				return (data as any).connections as Connection[]
+			}
+			return []
 		},
 		staleTime: 30 * 1000,
 		refetchInterval: 60 * 1000,

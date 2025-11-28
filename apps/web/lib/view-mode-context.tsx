@@ -53,25 +53,17 @@ const isMobileDevice = () => {
 }
 
 export function ViewModeProvider({ children }: { children: ReactNode }) {
-	// Start with a default that works for SSR
-	const [viewMode, setViewModeState] = useState<ViewMode>("graph")
+	// Start with "list" as default for SSR and initial state
+	const [viewMode, setViewModeState] = useState<ViewMode>("list")
 	const [isInitialized, setIsInitialized] = useState(false)
 
 	// Load preferences on the client side
 	useEffect(() => {
 		if (!isInitialized) {
-			// Check for saved preference first
-			const savedMode = readStoredViewMode()
-			if (
-				savedMode === "list" ||
-				savedMode === "graph" ||
-				savedMode === "graphEmpty"
-			) {
-				setViewModeState(savedMode)
-			} else {
-				// If no saved preference, default to list on mobile, graph on desktop
-				setViewModeState(isMobileDevice() ? "list" : "graph")
-			}
+			// Always start with "list" view - ignore saved preferences
+			// This ensures consistent initial experience
+			setViewModeState("list")
+			persistViewMode("list")
 			setIsInitialized(true)
 		}
 	}, [isInitialized])

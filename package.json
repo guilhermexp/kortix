@@ -1,5 +1,5 @@
 {
-  "name": "supermemory",
+  "name": "kortix",
   "private": true,
   "scripts": {
     "build": "turbo run build",

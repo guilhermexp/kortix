@@ -12,6 +12,7 @@ import {
 	getPastelBackgroundColor,
 	getSourceUrl,
 } from "../memories-utils"
+import { MarkdownContent } from "@/components/markdown-content"
 import { MCPIcon } from "../menu"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
@@ -94,12 +95,11 @@ export const NoteCard = ({
 					const snippet = getDocumentSnippet(document)
 					return (
 						snippet && (
-							<p
+							<MarkdownContent
 								className="text-xs line-clamp-6"
+								content={snippet}
 								style={{ color: colors.text.muted }}
-							>
-								{snippet}
-							</p>
+							/>
 						)
 					)
 				})()}

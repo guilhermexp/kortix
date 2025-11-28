@@ -28,8 +28,10 @@ import { createClient } from "@supabase/supabase-js"
 const SUPABASE_URL = process.env.SUPABASE_URL!
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-// Check interval: every 60 seconds (1 minute)
-const CHECK_INTERVAL_MS = 60 * 1000
+// Check interval: 5 minutes in production, 2 minutes in development
+const CHECK_INTERVAL_MS = process.env.NODE_ENV === 'production'
+	? 5 * 60 * 1000  // 5 minutes
+	: 2 * 60 * 1000  // 2 minutes
 
 let monitorInterval: NodeJS.Timeout | null = null
 let isRunning = false
@@ -60,13 +62,13 @@ async function checkStuckDocuments(): Promise<void> {
 
 		const affectedCount = data as number
 
+		// Only log when documents are actually stuck
 		if (affectedCount > 0) {
 			console.warn(
 				`[DocumentTimeoutMonitor] Marked ${affectedCount} stuck document(s) as failed`,
 			)
-		} else {
-			console.log("[DocumentTimeoutMonitor] No stuck documents found")
 		}
+		// Silent when no stuck documents (no need to spam logs)
 	} catch (error) {
 		console.error("[DocumentTimeoutMonitor] Unexpected error:", error)
 	}
@@ -82,10 +84,8 @@ export function startDocumentTimeoutMonitor(): void {
 		return
 	}
 
-	console.log("[DocumentTimeoutMonitor] Starting document timeout monitor")
-	console.log(
-		`[DocumentTimeoutMonitor] Check interval: ${CHECK_INTERVAL_MS / 1000}s`,
-	)
+	const intervalMinutes = Math.floor(CHECK_INTERVAL_MS / 60000)
+	console.log(`[DocumentTimeoutMonitor] Starting (checking every ${intervalMinutes} minutes)`)
 
 	// Run immediately on start
 	checkStuckDocuments().catch((error) => {

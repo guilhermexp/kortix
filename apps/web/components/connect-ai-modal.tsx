@@ -195,7 +195,7 @@ export function ConnectAIModal({
 	function getCursorDeeplink() {
 		const command = `npx -y install-mcp@latest ${MCP_SERVER_BASE} --client cursor --oauth=yes`
 		const config = encodeURIComponent(JSON.stringify({ command }))
-		return `https://cursor.com/en/install-mcp?name=supermemory-mcp&config=${config}`
+		return `https://cursor.com/en/install-mcp?name=kortix-mcp&config=${config}`
 	}
 
 	const copyToClipboard = () => {
@@ -210,9 +210,9 @@ export function ConnectAIModal({
 			<DialogTrigger asChild>{children}</DialogTrigger>
 			<DialogContent className="sm:max-w-4xl">
 				<DialogHeader>
-					<DialogTitle>Connect Supermemory to Your AI</DialogTitle>
+					<DialogTitle>Connect Kortix to Your AI</DialogTitle>
 					<DialogDescription>
-						Connect supermemory to your favorite AI tools using the Model
+						Connect Kortix to your favorite AI tools using the Model
 						Context Protocol (MCP). This allows your AI assistant to create,
 						search, and access your memories directly.
 					</DialogDescription>
@@ -300,7 +300,7 @@ export function ConnectAIModal({
 									</div>
 									<h3 className="text-sm font-medium text-foreground">
 										{selectedClient === "cursor"
-											? "Install Supermemory MCP"
+											? "Install Kortix MCP"
 											: selectedClient === "mcp-url"
 												? "MCP Server URL"
 												: "Select Target Project (Optional)"}
@@ -352,7 +352,7 @@ export function ConnectAIModal({
 												<div className="text-center">
 													<p className="text-sm text-foreground mb-2">
 														Click the button below to automatically install and
-														configure Supermemory in Cursor
+														configure Kortix in Cursor
 													</p>
 													<p className="text-xs text-muted-foreground">
 														This will install the MCP server without any
@@ -367,7 +367,7 @@ export function ConnectAIModal({
 													}}
 												>
 													<img
-														alt="Add Supermemory MCP server to Cursor"
+														alt="Add Kortix MCP server to Cursor"
 														className="hover:opacity-80 transition-opacity cursor-pointer"
 														height="40"
 														src="https://cursor.com/deeplink/mcp-install-dark.svg"
@@ -446,7 +446,7 @@ export function ConnectAIModal({
 										</Button>
 									</div>
 									<p className="text-xs text-muted-foreground">
-										Use this URL to configure supermemory in your AI assistant
+										Use this URL to configure Kortix in your AI assistant
 									</p>
 								</div>
 							) : (
@@ -566,7 +566,7 @@ export function ConnectAIModal({
 								MCP Server URL
 							</label>
 							<p className="text-xs text-muted-foreground mt-2">
-								Use this URL to configure supermemory in your AI assistant
+								Use this URL to configure Kortix in your AI assistant
 							</p>
 						</div>
 						<div className="p-1 bg-white/5 rounded-lg border border-white/10 items-center flex px-2">
@@ -592,7 +592,7 @@ export function ConnectAIModal({
 							<Button
 								onClick={() =>
 									window.open(
-										`${DOCS_URL.replace(/\/$/, "")}/supermemory-mcp/introduction`,
+										`${DOCS_URL.replace(/\/$/, "")}/kortix-mcp/introduction`,
 										"_blank",
 									)
 								}
