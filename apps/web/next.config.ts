@@ -4,6 +4,10 @@ import type { NextConfig } from "next"
 const workspaceRoot = path.resolve(__dirname, "..", "..")
 
 const nextConfig: NextConfig = {
+	// Force new build ID to bust all caches
+	generateBuildId: async () => {
+		return `build-${Date.now()}`
+	},
 	// Enable compression for better performance
 	compress: true,
 	// Temporarily ignore TypeScript errors during build for Railway deployment
