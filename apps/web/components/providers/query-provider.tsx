@@ -1,5 +1,9 @@
 "use client"
 
+/**
+ * QueryProvider - Provides React Query context to the application
+ * Build: 2025-12-02-v5
+ */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useState, type ReactNode } from "react"
 
@@ -12,6 +16,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
 						refetchIntervalInBackground: false,
 						refetchOnWindowFocus: false,
 						staleTime: 60 * 1000,
+						retry: 1,
 					},
 				},
 			}),
