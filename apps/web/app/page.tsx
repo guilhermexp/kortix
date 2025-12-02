@@ -7,7 +7,7 @@ import { $fetch } from "@repo/lib/api"
 import { MemoryGraph } from "@repo/ui/memory-graph"
 import type { DocumentConnectionEdge } from "@repo/ui/memory-graph/types"
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
+import { useInfiniteQuery } from "@tanstack/react-query"
 import { Button } from "@ui/components/button"
 import { GlassMenuEffect } from "@ui/other/glass-effect"
 import {
