@@ -3,7 +3,7 @@
 import { useAuth } from "@lib/auth-context"
 import { useCustomer } from "@lib/autumn-stub"
 import { APP_URL } from "@lib/env"
-import { fetchMemoriesFeature, fetchSubscriptionStatus } from "@/lib/queries"
+import { fetchMemoriesFeature, fetchSubscriptionStatus } from "@lib/queries"
 import { Button } from "@repo/ui/components/button"
 import {
 	Dialog,

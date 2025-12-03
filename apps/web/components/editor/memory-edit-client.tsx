@@ -1,7 +1,7 @@
 "use client"
 
 import { useIsMobile } from "@hooks/use-mobile"
-import { useDeleteDocument } from "@/lib/queries"
+import { useDeleteDocument } from "@lib/queries"
 import { cn } from "@lib/utils"
 import { DEFAULT_PROJECT_ID } from "@repo/lib/constants"
 import { Button } from "@repo/ui/components/button"

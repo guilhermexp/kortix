@@ -2,7 +2,7 @@
 
 import { $fetch } from "@lib/api";
 import { useCustomer } from "@lib/autumn-stub";
-import { fetchMemoriesFeature } from "@/lib/queries";
+import { fetchMemoriesFeature } from "@repo/lib/queries";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,
