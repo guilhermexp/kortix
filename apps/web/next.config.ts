@@ -61,6 +61,16 @@ const nextConfig: NextConfig = {
 	skipTrailingSlashRedirect: true,
 	async headers() {
 		return [
+			// Prevent caching of HTML pages to ensure fresh builds are served
+			{
+				source: "/",
+				headers: [
+					{
+						key: "Cache-Control",
+						value: "no-store, must-revalidate",
+					},
+				],
+			},
 			{
 				source: "/:path*",
 				headers: [
