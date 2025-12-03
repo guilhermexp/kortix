@@ -10,7 +10,7 @@ import {
   ADD_MEMORY_SHORTCUT_URL,
   SEARCH_MEMORY_SHORTCUT_URL,
 } from "@repo/lib/constants";
-import { fetchConnectionsFeature } from "@repo/lib/queries";
+import { fetchConnectionsFeature } from "@/lib/queries";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,

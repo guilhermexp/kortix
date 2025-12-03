@@ -5,7 +5,7 @@ import {
 	fetchConnectionsFeature,
 	fetchMemoriesFeature,
 	fetchSubscriptionStatus,
-} from "@lib/queries"
+} from "@/lib/queries"
 import { Button } from "@ui/components/button"
 import { HeadingH3Bold } from "@ui/text/heading/heading-h3-bold"
 import { CheckCircle, LoaderIcon, X } from "lucide-react"
