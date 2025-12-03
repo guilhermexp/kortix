@@ -14,11 +14,13 @@ const nextConfig: NextConfig = {
 	typescript: {
 		ignoreBuildErrors: true,
 	},
+	// Transpile monorepo packages to ensure shared module instances
+	transpilePackages: ["@repo/lib", "@repo/ui", "@repo/validation", "@repo/hooks"],
 	turbopack: {}, // Empty config to silence warning
 	experimental: {
 		viewTransition: true,
 		// Optimize preloading to prevent unused resource warnings
-		optimizePackageImports: ["lucide-react", "framer-motion"],
+		optimizePackageImports: ["lucide-react", "framer-motion", "@tanstack/react-query"],
 	},
 	poweredByHeader: false,
 	// Image optimization to cache external images (prevents GitHub 429 errors)
