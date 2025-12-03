@@ -5,7 +5,7 @@ import { useCustomer } from "@lib/autumn-stub"
 import {
 	fetchConsumerProProduct,
 	fetchMemoriesFeature,
-} from "@repo/lib/queries"
+} from "@/lib/queries"
 import { Button } from "@repo/ui/components/button"
 import { HeadingH2Bold } from "@repo/ui/text/heading/heading-h2-bold"
 import { GlassMenuEffect } from "@ui/other/glass-effect"
