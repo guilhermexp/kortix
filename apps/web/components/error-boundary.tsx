@@ -40,16 +40,43 @@ export class ErrorBoundary extends Component<
 		}
 	}
 
-	static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+	static getDerivedStateFromError(error: unknown): Partial<ErrorBoundaryState> {
+		// Handle non-Error objects being thrown
+		let normalizedError: Error
+		if (error instanceof Error) {
+			normalizedError = error
+		} else if (typeof error === "string") {
+			normalizedError = new Error(error)
+		} else if (error && typeof error === "object") {
+			// If an object is thrown, try to extract useful info
+			const errorObj = error as Record<string, unknown>
+			const message =
+				errorObj.message ||
+				errorObj.error ||
+				errorObj.msg ||
+				JSON.stringify(error)
+			normalizedError = new Error(String(message))
+			normalizedError.name = errorObj.name
+				? String(errorObj.name)
+				: "UnknownError"
+		} else {
+			normalizedError = new Error(`Unknown error: ${String(error)}`)
+		}
+
 		return {
 			hasError: true,
-			error,
+			error: normalizedError,
 		}
 	}
 
-	override componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-		// Log error to console in development
+	override componentDidCatch(error: unknown, errorInfo: React.ErrorInfo): void {
+		// Log error to console
 		console.error("ErrorBoundary caught an error:", error, errorInfo)
+		console.error("Error type:", typeof error)
+		console.error("Error constructor:", error?.constructor?.name)
+		if (error && typeof error === "object") {
+			console.error("Error keys:", Object.keys(error as object))
+		}
 
 		// Update state with error info
 		this.setState({
@@ -107,11 +134,14 @@ export class ErrorBoundary extends Component<
 							</div>
 						</div>
 
-						{/* Error details (only in development) */}
-						{process.env.NODE_ENV === "development" && this.state.error && (
+						{/* Error details - shown in all environments for debugging */}
+						{this.state.error && (
 							<div className="bg-muted rounded-lg p-4 space-y-2">
 								<div className="text-sm font-mono text-destructive">
-									<strong>Error:</strong> {this.state.error.message}
+									<strong>Error:</strong> {this.state.error.message || "No message"}
+								</div>
+								<div className="text-xs font-mono text-muted-foreground">
+									<strong>Name:</strong> {this.state.error.name || "Unknown"}
 								</div>
 								{this.state.error.stack && (
 									<details className="text-xs font-mono text-muted-foreground">
