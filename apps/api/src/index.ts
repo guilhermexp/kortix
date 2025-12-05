@@ -62,6 +62,7 @@ import {
 	cancelDocument,
 	DocumentsByIdsSchema,
 	deleteDocument,
+	findDocumentRelatedLinks,
 	getDocument,
 	listDocuments,
 	listDocumentsWithMemories,
@@ -81,7 +82,7 @@ import {
 import { createProject, deleteProject, listProjects } from "./routes/projects"
 import { searchDocuments } from "./routes/search"
 import { getSettings, updateSettings } from "./routes/settings"
-import { getCanvasState, saveCanvasState, deleteCanvasState } from "./routes/canvas"
+import { getCanvasState, saveCanvasState, deleteCanvasState, listCanvasProjects, createCanvasProject, updateCanvasProject, deleteCanvasProject } from "./routes/canvas"
 import { getWaitlistStatus } from "./routes/waitlist"
 import { AnalysisService } from "./services/analysis-service"
 import {
@@ -631,6 +632,21 @@ app.post("/v3/documents/:id/cancel", async (c) => {
 	}
 })
 
+// Find related links for a document (manually triggered)
+app.post("/v3/documents/:id/related-links", async (c) => {
+	const { organizationId } = c.var.session
+	const documentId = c.req.param("id")
+	const supabase = createScopedSupabase(organizationId, c.var.session.userId)
+
+	try {
+		const result = await findDocumentRelatedLinks(supabase, documentId, organizationId)
+		return c.json(result)
+	} catch (error) {
+		console.error("Failed to find related links", error)
+		return c.json({ success: false, relatedLinks: [], error: "Failed to find related links" }, 500)
+	}
+})
+
 app.delete("/v3/documents/:id", async (c) => {
 	const { organizationId } = c.var.session
 	const documentId = c.req.param("id")
@@ -828,6 +844,59 @@ app.patch(
 )
 
 app.get("/v3/waitlist/status", (c) => c.json(getWaitlistStatus()))
+
+// Canvas Projects endpoints (like Figma projects)
+app.get("/v3/canvas-projects", async (c) => {
+	const { organizationId, userId } = c.var.session
+	const supabase = createScopedSupabase(organizationId, userId)
+	try {
+		const projects = await listCanvasProjects(supabase, userId, organizationId)
+		return c.json({ projects })
+	} catch (error) {
+		console.error("Failed to list canvas projects", error)
+		return c.json({ error: { message: "Failed to list canvas projects" } }, 500)
+	}
+})
+
+app.post("/v3/canvas-projects", async (c) => {
+	const { organizationId, userId } = c.var.session
+	const body = await c.req.json()
+	const supabase = createScopedSupabase(organizationId, userId)
+	try {
+		const project = await createCanvasProject(supabase, userId, organizationId, body)
+		return c.json(project, 201)
+	} catch (error) {
+		console.error("Failed to create canvas project", error)
+		return c.json({ error: { message: "Failed to create canvas project" } }, 400)
+	}
+})
+
+app.patch("/v3/canvas-projects/:projectId", async (c) => {
+	const { organizationId, userId } = c.var.session
+	const projectId = c.req.param("projectId")
+	const body = await c.req.json()
+	const supabase = createScopedSupabase(organizationId, userId)
+	try {
+		const project = await updateCanvasProject(supabase, userId, projectId, body)
+		return c.json(project)
+	} catch (error) {
+		console.error("Failed to update canvas project", error)
+		return c.json({ error: { message: "Failed to update canvas project" } }, 400)
+	}
+})
+
+app.delete("/v3/canvas-projects/:projectId", async (c) => {
+	const { organizationId, userId } = c.var.session
+	const projectId = c.req.param("projectId")
+	const supabase = createScopedSupabase(organizationId, userId)
+	try {
+		const result = await deleteCanvasProject(supabase, userId, projectId)
+		return c.json(result)
+	} catch (error) {
+		console.error("Failed to delete canvas project", error)
+		return c.json({ error: { message: "Failed to delete canvas project" } }, 400)
+	}
+})
 
 // Canvas state endpoints
 app.get("/v3/canvas/:projectId?", async (c) => {

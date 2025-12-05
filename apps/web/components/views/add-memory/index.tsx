@@ -23,7 +23,9 @@ import {
   DropzoneEmptyState,
 } from "@ui/components/shadcn-io/dropzone";
 import {
+  AlertTriangle,
   Brain,
+  ExternalLink,
   FileIcon,
   Link as LinkIcon,
   Loader2,
@@ -270,6 +272,20 @@ export function AddMemoryView({
   const autumn = useCustomer();
   const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
+
+  // Duplicate content modal state
+  const [duplicateModal, setDuplicateModal] = useState<{
+    open: boolean;
+    documentId: string | null;
+    contentType: "link" | "note" | "file";
+    addedToProject: boolean;
+    url?: string;
+  }>({
+    open: false,
+    documentId: null,
+    contentType: "link",
+    addedToProject: false,
+  });
 
   // Check memory limits
   const { data: memoriesCheck } = fetchMemoriesFeature(autumn);
@@ -532,12 +548,19 @@ export function AddMemoryView({
       ]);
 
       // Create optimistic memory
+      const getLinkHostname = (linkUrl: string) => {
+        try {
+          return new URL(linkUrl).hostname.replace("www.", "");
+        } catch {
+          return linkUrl.substring(0, 50);
+        }
+      };
       const optimisticMemory: DocumentListItem = {
         id: `temp-${Date.now()}`,
         content: "",
         url: url || null,
-        title: "Deep Agent Processing...",
-        description: "Analyzing and extracting content...",
+        title: url ? getLinkHostname(url) : "Processing...",
+        description: url || "Analyzing and extracting content...",
         containerTags: [project],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -596,11 +619,13 @@ export function AddMemoryView({
             context.previousMemories,
           );
         }
-        toast.warning("⚠️ Conteúdo Duplicado", {
-          description: addedToProject
-            ? "Este conteúdo já existe na sua memória. Ligamos ao projeto atual."
-            : "Este conteúdo já está salvo na sua memória.",
-          duration: 6000,
+        // Show duplicate modal instead of toast
+        setDuplicateModal({
+          open: true,
+          documentId,
+          contentType: "link",
+          addedToProject,
+          url: variables.content,
         });
       } else {
         if (context?.optimisticId && documentId) {
@@ -800,16 +825,23 @@ export function AddMemoryView({
       console.log("📸 Previous memories:", previousMemories);
 
       // Create optimistic memory
+      const getLinkTitle = (url: string) => {
+        try {
+          const hostname = new URL(url).hostname.replace("www.", "");
+          return hostname;
+        } catch {
+          return url.substring(0, 50);
+        }
+      };
       const optimisticMemory: DocumentListItem = {
         id: `temp-${Date.now()}`,
         content: contentType === "link" ? "" : content,
         url: contentType === "link" ? content : null,
         title:
-          contentType === "link" ? "Processing..." : content.substring(0, 100),
-        description:
           contentType === "link"
-            ? "Extracting content..."
-            : "Processing content...",
+            ? getLinkTitle(content)
+            : content.substring(0, 100),
+        description: contentType === "link" ? content : "Processing content...",
         containerTags: [project],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -870,14 +902,13 @@ export function AddMemoryView({
           );
         }
 
-        // Show warning toast for duplicate
-        toast.warning("⚠️ Conteúdo Duplicado", {
-          description: addedToProject
-            ? "Este conteúdo já existe na sua memória. Ligamos ao projeto atual."
-            : variables.contentType === "link"
-              ? "Este link já está salvo na sua memória."
-              : "Esta nota já está salva na sua memória.",
-          duration: 6000,
+        // Show duplicate modal instead of toast
+        setDuplicateModal({
+          open: true,
+          documentId,
+          contentType: variables.contentType,
+          addedToProject,
+          url: variables.contentType === "link" ? variables.content : undefined,
         });
       } else {
         // Update optimistic entry with real data
@@ -1035,16 +1066,16 @@ export function AddMemoryView({
           );
         }
 
-        // Show warning toast for duplicate
-        toast.warning("⚠️ Arquivo Duplicado", {
-          description: addedToProject
-            ? "Este arquivo já existe na sua memória. Ligamos ao projeto atual."
-            : "Este arquivo já está salvo na sua memória.",
-          duration: 6000,
+        // Show duplicate modal instead of toast
+        const docId = (data as any)?.id ?? (data as any)?.data?.id ?? null;
+        setDuplicateModal({
+          open: true,
+          documentId: docId,
+          contentType: "file",
+          addedToProject,
         });
 
         setShowAddDialog(false);
-        onClose?.();
         return;
       }
 
@@ -1712,6 +1743,95 @@ export function AddMemoryView({
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Duplicate Content Modal */}
+      <Dialog
+        open={duplicateModal.open}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDuplicateModal((prev) => ({ ...prev, open: false }));
+            onClose?.();
+          }
+        }}
+      >
+        <DialogContent className="w-[95vw] max-w-md sm:max-w-md bg-background border-border text-foreground z-[90] overflow-hidden">
+          <motion.div
+            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+          >
+            <DialogHeader className="text-center sm:text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10 border border-amber-500/20">
+                <AlertTriangle className="h-7 w-7 text-amber-500" />
+              </div>
+              <DialogTitle className="text-xl">Conteúdo já existe</DialogTitle>
+              <DialogDescription className="text-muted-foreground mt-2">
+                {duplicateModal.addedToProject ? (
+                  <>
+                    Este{" "}
+                    {duplicateModal.contentType === "link"
+                      ? "link"
+                      : duplicateModal.contentType === "file"
+                        ? "arquivo"
+                        : "conteúdo"}{" "}
+                    já está salvo na sua memória.
+                    <span className="block mt-1 text-emerald-500">
+                      ✓ Vinculamos ao projeto atual.
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Este{" "}
+                    {duplicateModal.contentType === "link"
+                      ? "link"
+                      : duplicateModal.contentType === "file"
+                        ? "arquivo"
+                        : "conteúdo"}{" "}
+                    já está salvo na sua memória.
+                  </>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            {duplicateModal.url && (
+              <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border">
+                <p className="text-xs text-muted-foreground mb-1">
+                  URL duplicada:
+                </p>
+                <p className="text-sm text-foreground truncate font-mono">
+                  {duplicateModal.url}
+                </p>
+              </div>
+            )}
+
+            <DialogFooter className="flex-col sm:flex-row gap-2 mt-6">
+              {duplicateModal.documentId && (
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto gap-2"
+                  onClick={() => {
+                    window.open(
+                      `/memory/${duplicateModal.documentId}/edit`,
+                      "_blank",
+                    );
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Ver documento
+                </Button>
+              )}
+              <Button
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  setDuplicateModal((prev) => ({ ...prev, open: false }));
+                  onClose?.();
+                }}
+              >
+                Entendi
+              </Button>
+            </DialogFooter>
+          </motion.div>
+        </DialogContent>
+      </Dialog>
     </AnimatePresence>
   );
 }

@@ -610,6 +610,27 @@ small,
 	z-index: 500 !important;
 }
 
+/* Move TLDraw toolbar from bottom to top center */
+.tl-container .tlui-layout__bottom,
+.tlui-layout__bottom {
+	top: 16px !important;
+	bottom: unset !important;
+	inset-block-end: unset !important;
+	inset-block-start: 16px !important;
+}
+
+/* Adjust toolbar styles for top position */
+.tl-container .tlui-toolbar,
+.tlui-toolbar {
+	border-radius: 12px !important;
+}
+
+/* Hide the license watermark */
+.tlui-watermark_SEE-LICENSE,
+[class*="watermark"] {
+	display: none !important;
+}
+
 @layer utilities {
 	.bg-chat-surface {
 		background: rgba(255, 255, 255, 0.65) !important;

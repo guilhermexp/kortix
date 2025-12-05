@@ -20,6 +20,10 @@ export interface CanvasState {
 	// Selection state for bulk operations
 	selectedDocumentIds: string[]
 
+	// Project modal state
+	showProjectModal: boolean
+	setShowProjectModal: (show: boolean) => void
+
 	// Document management actions
 	setPlacedDocumentIds: (ids: string[]) => void
 	addPlacedDocuments: (ids: string[]) => void
@@ -47,6 +51,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 	scopedDocumentIds: [],
 	cardPositions: {},
 	selectedDocumentIds: [],
+	showProjectModal: true,
+	setShowProjectModal: (show: boolean) => set({ showProjectModal: show }),
 
 	// Document management actions
 	setPlacedDocumentIds: (ids: string[]) => {

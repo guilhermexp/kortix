@@ -176,52 +176,37 @@ export function DocumentProjectTransfer({
 	})()
 
 	return (
-		<div className="flex flex-col gap-2">
-			<div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-				Projeto
-				{isError && (
-					<Button
-						className="h-5 px-1 text-[10px]"
-						onClick={() => refetch()}
-						size="xs"
-						variant="ghost"
-					>
-						Tentar novamente
-					</Button>
-				)}
-			</div>
-			<Select
-				disabled={
-					isLoading || moveMutation.isPending || projectOptions.length === 0
-				}
-				onValueChange={handleChange}
-				value={selection}
-			>
-				<SelectTrigger className="h-8 w-52 justify-between text-xs">
-					{triggerLabel}
-				</SelectTrigger>
-				<SelectContent>
-					{projectOptions.map((project) => {
-						const isCurrent = project.containerTag === selection
-						return (
-							<SelectItem
-								disabled={isCurrent}
-								key={project.containerTag}
-								value={project.containerTag}
-							>
-								<span className="flex items-center gap-2">
-									{project.name}
-									{isCurrent && (
-										<span className="text-[10px] text-muted-foreground">
-											(atual)
-										</span>
-									)}
-								</span>
-							</SelectItem>
-						)
-					})}
-				</SelectContent>
-			</Select>
-		</div>
+		<Select
+			disabled={
+				isLoading || moveMutation.isPending || projectOptions.length === 0
+			}
+			onValueChange={handleChange}
+			value={selection}
+		>
+			<SelectTrigger className="h-6 w-auto min-w-[80px] max-w-[120px] gap-1 px-1.5 text-[10px] border-0 bg-transparent hover:bg-muted/30">
+				{triggerLabel}
+			</SelectTrigger>
+			<SelectContent>
+				{projectOptions.map((project) => {
+					const isCurrent = project.containerTag === selection
+					return (
+						<SelectItem
+							disabled={isCurrent}
+							key={project.containerTag}
+							value={project.containerTag}
+						>
+							<span className="flex items-center gap-2 text-xs">
+								{project.name}
+								{isCurrent && (
+									<span className="text-[10px] text-muted-foreground">
+										(atual)
+									</span>
+								)}
+							</span>
+						</SelectItem>
+					)
+				})}
+			</SelectContent>
+		</Select>
 	)
 }

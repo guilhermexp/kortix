@@ -8,6 +8,8 @@ export type ExaWebResult = {
 	snippet: string | null
 	score: number | null
 	publishedAt?: string | null
+	image?: string | null
+	favicon?: string | null
 }
 
 export type ExaSearchOptions = {
@@ -32,6 +34,12 @@ export async function searchWebWithExa(
 		numResults: limit,
 		type: "neural",
 		useAutoprompt: true,
+		// Request contents to get images
+		contents: {
+			text: false,
+			highlights: false,
+			summary: true,
+		},
 	}
 
 	if (
@@ -104,6 +112,9 @@ export async function searchWebWithExa(
 						: typeof item.published_at === "string"
 							? (item.published_at as string)
 							: null,
+				image: typeof item.image === "string" ? (item.image as string) : null,
+				favicon:
+					typeof item.favicon === "string" ? (item.favicon as string) : null,
 			}
 		})
 	} catch (error) {
