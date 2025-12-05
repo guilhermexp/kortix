@@ -68,6 +68,7 @@ import type {
 	PreviewResult,
 	ProcessedDocument,
 } from "./interfaces"
+import { findRelatedLinks } from "./related-links"
 
 // ============================================================================
 // Legacy Type Definitions (for backward compatibility)
@@ -585,6 +586,9 @@ export async function processDocument(input: ProcessDocumentInput) {
 				if (imagesToExtract && imagesToExtract.length > 0) {
 					rawPayloadBase.images = imagesToExtract
 				}
+
+				// Related links pipeline is now triggered manually via API endpoint
+				// See: POST /api/documents/:id/related-links
 
 				const sanitizedRaw = sanitizeJson(rawPayloadBase)
 				const raw =

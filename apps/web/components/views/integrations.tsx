@@ -148,7 +148,9 @@ export function IntegrationsView() {
         );
       }
 
-      return response.data as Connection[];
+      // API returns { data: Connection[] }, extract the inner data array
+      const result = response.data as { data: Connection[] } | Connection[];
+      return Array.isArray(result) ? result : (result?.data ?? []);
     },
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,

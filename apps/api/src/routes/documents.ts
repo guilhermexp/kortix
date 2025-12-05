@@ -33,6 +33,7 @@ import { z } from "zod"
 // NOTE: Using legacy processDocument for backward compatibility
 // TODO (Phase 6): Replace with IngestionOrchestratorService
 import { processDocument } from "../services/ingestion"
+import { findRelatedLinks, type RelatedLink } from "../services/related-links"
 import {
 	documentCache,
 	documentListCache,
@@ -1152,6 +1153,7 @@ export async function listDocumentsWithMemoriesByIds(
 							(tag): tag is string => tag != null && tag.trim().length > 0,
 						)
 				: [],
+			containerTags,
 			previewImage: doc.preview_image ?? null,
 			error: doc.error ?? null,
 			// ogImage removed - column does not exist
@@ -1357,4 +1359,65 @@ export async function migrateMcpDocuments(
 	}
 
 	return MigrateMCPResponseSchema.parse(response)
+}
+
+/**
+ * Find related links for a document
+ * Extracts mentions from content and searches for related resources
+ */
+export async function findDocumentRelatedLinks(
+	supabase: SupabaseClient,
+	documentId: string,
+	organizationId: string,
+): Promise<{ success: boolean; relatedLinks: RelatedLink[]; error?: string }> {
+	console.log("[findDocumentRelatedLinks] Starting for document:", documentId)
+
+	// Get document content
+	const { data: document, error: fetchError } = await supabase
+		.from("documents")
+		.select("id, content, title, url, raw")
+		.eq("id", documentId)
+		.eq("org_id", organizationId)
+		.single()
+
+	if (fetchError || !document) {
+		console.error("[findDocumentRelatedLinks] Failed to fetch document:", fetchError)
+		return { success: false, relatedLinks: [], error: "Document not found" }
+	}
+
+	const content = document.content || ""
+	if (content.length < 100) {
+		return { success: false, relatedLinks: [], error: "Content too short for analysis" }
+	}
+
+	// Find related links
+	console.log("[findDocumentRelatedLinks] Finding related links...")
+	const relatedLinks = await findRelatedLinks(content, { maxLinks: 10 })
+
+	if (relatedLinks.length === 0) {
+		console.log("[findDocumentRelatedLinks] No related links found")
+		return { success: true, relatedLinks: [] }
+	}
+
+	console.log(`[findDocumentRelatedLinks] Found ${relatedLinks.length} related links`)
+
+	// Update document raw with related links
+	const existingRaw = (document.raw as Record<string, unknown>) || {}
+	const updatedRaw = {
+		...existingRaw,
+		relatedLinks,
+	}
+
+	const { error: updateError } = await supabase
+		.from("documents")
+		.update({ raw: updatedRaw })
+		.eq("id", documentId)
+
+	if (updateError) {
+		console.error("[findDocumentRelatedLinks] Failed to update document:", updateError)
+		return { success: false, relatedLinks, error: "Failed to save related links" }
+	}
+
+	console.log("[findDocumentRelatedLinks] Successfully saved related links")
+	return { success: true, relatedLinks }
 }

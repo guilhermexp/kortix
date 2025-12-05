@@ -7,21 +7,36 @@ import {
 	fetchMemoriesFeature,
 } from "@repo/lib/queries"
 import { Button } from "@repo/ui/components/button"
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@repo/ui/components/dialog"
 import { HeadingH2Bold } from "@repo/ui/text/heading/heading-h2-bold"
+import { ScrollArea } from "@repo/ui/components/scroll-area"
 import { GlassMenuEffect } from "@ui/other/glass-effect"
-import { MessageSquareMore, Plus, Puzzle, User, X } from "lucide-react"
+import { LayoutGrid, List, MessageSquareMore, Network, Plus, Puzzle, User, X } from "lucide-react"
 import { AnimatePresence, LayoutGroup, motion } from "motion/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import React, { useCallback, useEffect, useState } from "react"
 import { Drawer } from "vaul"
 import { useMobilePanel } from "@/lib/mobile-panel-context"
 import { TOUR_STEP_IDS } from "@/lib/tour-constants"
+import { useViewMode } from "@/lib/view-mode-context"
 import { useChatOpen } from "@/stores"
 import { ConnectAIModal } from "./connect-ai-modal"
 import { ProjectSelector } from "./project-selector"
 import { AddMemoryExpandedView, AddMemoryView } from "./views/add-memory"
 import { IntegrationsView } from "./views/integrations"
 import { ProfileView } from "./views/profile"
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@repo/ui/components/tooltip"
 
 export const MCPIcon = ({ className }: { className?: string }) => {
 	return (
@@ -68,10 +83,12 @@ function Menu({
 	const [isCollapsing, setIsCollapsing] = useState(false)
 	const [showAddMemoryView, setShowAddMemoryView] = useState(false)
 	const [showConnectAIModal, setShowConnectAIModal] = useState(false)
+	const [showProfileModal, setShowProfileModal] = useState(false)
 	const isMobile = useIsMobile()
 	const { activePanel, setActivePanel } = useMobilePanel()
 	const autumn = useCustomer()
 	const { setIsOpen, isOpen: isChatPanelOpen } = useChatOpen()
+	const { setViewMode } = useViewMode()
 
 	const { data: memoriesCheck } = fetchMemoriesFeature(autumn)
 
@@ -125,15 +142,27 @@ function Menu({
 			disabled: false,
 		},
 		{
-			icon: Puzzle,
-			text: "Integrations",
-			key: "integrations" as const,
+			icon: List,
+			text: "List",
+			key: "list" as const,
 			disabled: false,
 		},
 		{
-			icon: MCPIcon,
-			text: "MCP",
-			key: "mcp" as const,
+			icon: Network,
+			text: "Graph",
+			key: "graph" as const,
+			disabled: false,
+		},
+		{
+			icon: LayoutGrid,
+			text: "Canvas",
+			key: "canvas" as const,
+			disabled: false,
+		},
+		{
+			icon: Puzzle,
+			text: "Connections",
+			key: "connections" as const,
 			disabled: false,
 		},
 		{
@@ -145,25 +174,50 @@ function Menu({
 	]
 
 	const handleMenuItemClick = (
-		key: "chat" | "addUrl" | "mcp" | "projects" | "profile" | "integrations",
+		key: "chat" | "addUrl" | "connections" | "projects" | "profile" | "canvas" | "list" | "graph",
 	) => {
+		console.log("[Menu] handleMenuItemClick called with key:", key)
 		if (key === "chat") {
 			setIsOpen(true)
 			setIsMobileMenuOpen(false)
 			if (isMobile) {
 				setActivePanel("chat")
 			}
-		} else if (key === "mcp") {
-			// Open ConnectAIModal directly for MCP
+		} else if (key === "list") {
+			// Switch to list view mode
+			setViewMode("list")
+			router.push("/")
+			setIsMobileMenuOpen(false)
+			setExpandedView(null)
+		} else if (key === "graph") {
+			// Switch to graph view mode
+			setViewMode("graph")
+			router.push("/")
+			setIsMobileMenuOpen(false)
+			setExpandedView(null)
+		} else if (key === "canvas") {
+			// Switch to infinity canvas view mode
+			setViewMode("infinity")
+			router.push("/")
+			setIsMobileMenuOpen(false)
+			setExpandedView(null)
+		} else if (key === "connections") {
+			// Open ConnectAIModal (combined MCP + Integrations)
 			setIsMobileMenuOpen(false)
 			setExpandedView(null)
 			setShowConnectAIModal(true)
+		} else if (key === "profile") {
+			// Open Profile modal
+			setIsMobileMenuOpen(false)
+			setExpandedView(null)
+			setShowProfileModal(true)
+		} else if (key === "addUrl") {
+			setShowAddMemoryView(true)
+			setExpandedView(null)
+			setIsMobileMenuOpen(false)
 		} else {
 			if (expandedView === key) {
 				setIsCollapsing(true)
-				setExpandedView(null)
-			} else if (key === "addUrl") {
-				setShowAddMemoryView(true)
 				setExpandedView(null)
 			} else {
 				setExpandedView(key)
@@ -183,11 +237,16 @@ function Menu({
 				if (isMobile) {
 					setActivePanel("chat")
 				}
-			} else if (openParam === "mcp") {
-				// Open ConnectAIModal directly for MCP
+			} else if (openParam === "mcp" || openParam === "connections" || openParam === "integrations") {
+				// Open ConnectAIModal (combined MCP + Integrations)
 				setIsMobileMenuOpen(false)
 				setExpandedView(null)
 				setShowConnectAIModal(true)
+			} else if (openParam === "profile") {
+				// Open Profile modal
+				setIsMobileMenuOpen(false)
+				setExpandedView(null)
+				setShowProfileModal(true)
 			} else if (openParam === "addUrl") {
 				setShowAddMemoryView(true)
 				setExpandedView(null)
@@ -196,7 +255,7 @@ function Menu({
 					setActivePanel("menu")
 				}
 			} else if (validViews.includes(openParam as ValidView)) {
-				// For other valid views like "profile", "integrations"
+				// For other valid views
 				setExpandedView(openParam as ValidView)
 				if (isMobile) {
 					setIsMobileMenuOpen(true)
@@ -234,236 +293,49 @@ function Menu({
 
 	return (
 		<>
-			{/* Desktop Menu */}
+			{/* Desktop Floating Sidebar Menu */}
 			{!isMobile && (
-				<LayoutGroup>
-					<div
-						className="fixed px-4 py-1.5 top-0 left-0 pointer-events-none z-[60] flex justify-center items-start transition-all duration-200"
-						style={{
-							right: isChatPanelOpen ? chatRightOffset + 128 : chatRightOffset,
-						}}
-					>
+				<TooltipProvider delayDuration={100}>
+					{/* Floating Menu Container - Centered on left side */}
+					<div className="fixed left-4 top-1/2 -translate-y-1/2 z-[10000] pointer-events-auto">
 						<motion.nav
-							animate={{
-								width: menuWidth,
-								scale: 1,
-							}}
-							className={`pointer-events-auto group relative flex text-sm font-medium flex-row items-center overflow-hidden rounded-xl ${isCollapsedToIcons ? "bg-transparent border-0 shadow-none" : "shadow-2xl bg-background border border-border"}`}
+							animate={{ x: 0, opacity: 1, scale: 1 }}
+							className="flex flex-col items-center py-2 px-1.5 bg-background border border-border rounded-xl shadow-2xl"
 							id={id}
-							initial={{ width: menuWidth, scale: 0.95 }}
-							layout
-							onMouseEnter={() => !expandedView && setIsHovered(true)}
-							onMouseLeave={() => !expandedView && setIsHovered(false)}
-							style={{ width: menuWidth }}
-							transition={{
-								width: {
-									duration: 0.2,
-									ease: [0.4, 0, 0.2, 1],
-								},
-								scale: {
-									duration: 0.5,
-									ease: [0.4, 0, 0.2, 1],
-								},
-								layout: {
-									duration: 0.2,
-									ease: [0.4, 0, 0.2, 1],
-								},
-							}}
+							initial={{ x: -20, opacity: 0, scale: 0.95 }}
+							transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
 						>
-							{/* Menu content */}
-							<motion.div
-								className="relative z-20 flex flex-row gap-6 w-full pointer-events-auto"
-								layout
-							>
-								<AnimatePresence
-									initial={false}
-									mode="wait"
-									onExitComplete={() => setIsCollapsing(false)}
-								>
-									{!expandedView ? (
-										<motion.div
-											animate={{
-												opacity: 1,
-											}}
-											className={`w-full flex flex-row ${isCollapsedToIcons ? "gap-1 px-1 py-1.5" : "gap-2 px-4 py-1.5"} justify-center items-center`}
-											exit={{
-												opacity: 0,
-												transition: {
-													duration: 0.2,
-													ease: "easeOut",
-												},
-											}}
-											initial={{
-												opacity: 0,
-											}}
-											key="menu-items"
-											layout
-											style={{
-												transform: "translateZ(0)",
-												willChange: "opacity",
-											}}
-											transition={{
-												opacity: {
-													duration: 0.15,
-													ease: "easeInOut",
-												},
-											}}
-										>
-											<div
-												className={`flex flex-row items-center justify-center ${isCollapsedToIcons ? "gap-1" : "gap-2"}`}
-											>
-												{menuItems.map((item, index) => (
-													<React.Fragment key={item.key}>
-														<motion.button
-															animate={{
-																opacity: 1,
-																y: 0,
-																scale: 1,
-																transition: {
-																	duration: 0.1,
-																},
-															}}
-															aria-label={item.text}
-															className={`flex items-center text-foreground/80 transition-colors duration-100 hover:text-foreground cursor-pointer relative ${isCollapsedToIcons ? "w-auto justify-center px-1" : "w-full px-1"}`}
-															id={menuItemTourIds[item.key]}
-															initial={{ opacity: 0, y: 20, scale: 0.95 }}
-															layout
-															onClick={() => handleMenuItemClick(item.key)}
-															type="button"
-															whileHover={{
-																scale: 1.02,
-																transition: { duration: 0.1 },
-															}}
-															whileTap={{ scale: 0.98 }}
-														>
-															<motion.div
-																animate={{
-																	scale: 1,
-																	transition: {
-																		delay: expandedView === null ? 0.15 : 0,
-																		duration: 0.1,
-																	},
-																}}
-																initial={{ scale: 0.8 }}
-																layout="position"
-															>
-																<item.icon className="duration-200 h-5 w-5 drop-shadow-lg flex-shrink-0" />
-															</motion.div>
-															<span
-																className={`drop-shadow-lg whitespace-nowrap ${isCollapsedToIcons ? "sr-only" : "pl-3"}`}
-															>
-																{item.text}
-															</span>
-														</motion.button>
-														{index === 0 && (
-															<motion.div
-																animate={{
-																	opacity: 1,
-																	scaleY: 1,
-																}}
-																className="h-6 w-px bg-border origin-top"
-																initial={{ opacity: 0, scaleY: 0 }}
-																key="divider"
-																transition={{
-																	duration: 0.3,
-																	delay: 0.1,
-																	ease: [0.4, 0, 0.2, 1],
-																}}
-															/>
-														)}
-													</React.Fragment>
-												))}
-											</div>
-										</motion.div>
-									) : (
-										<motion.div
-											animate={{
-												opacity: 1,
-											}}
-											className="w-full px-4 py-3"
-											exit={{
-												opacity: 0,
-												transition: {
-													duration: 0.2,
-													ease: "easeOut",
-												},
-											}}
-											initial={{
-												opacity: 0,
-											}}
-											key="expanded-view"
-											layout
-											style={{
-												transform: "translateZ(0)",
-												willChange: "opacity, transform",
-											}}
-											transition={{
-												opacity: {
-													duration: 0.15,
-													ease: "easeInOut",
-												},
-											}}
-										>
-											<motion.div
-												animate={{ opacity: 1, y: 0 }}
-												className="flex items-center justify-between mb-4"
-												initial={{ opacity: 0, y: -10 }}
-												layout
-												transition={{
-													delay: 0.05,
-													duration: 0.2,
-													ease: [0.4, 0, 0.2, 1],
-												}}
-											>
-												<HeadingH2Bold className="text-foreground">
-													{expandedView === "mcp" && "Model Context Protocol"}
-													{expandedView === "profile" && "Profile"}
-													{expandedView === "integrations" && "Integrations"}
-												</HeadingH2Bold>
-												<motion.div
-													animate={{ opacity: 1, scale: 1 }}
-													className="pointer-events-auto"
-													initial={{ opacity: 0, scale: 0.8 }}
-													transition={{
-														delay: 0.08,
-														duration: 0.2,
-													}}
+							{/* Menu Items */}
+							<div className="flex flex-col items-center gap-1">
+								{menuItems.map((item, index) => (
+									<React.Fragment key={item.key}>
+										{index === 1 && (
+											<div className="w-6 h-px bg-border my-1" />
+										)}
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<motion.button
+													aria-label={item.text}
+													className="flex items-center justify-center w-9 h-9 rounded-lg text-foreground/70 hover:text-foreground hover:bg-foreground/10 transition-all duration-150 cursor-pointer"
+													id={menuItemTourIds[item.key]}
+													onClick={() => handleMenuItemClick(item.key)}
+													type="button"
+													whileHover={{ scale: 1.05 }}
+													whileTap={{ scale: 0.95 }}
 												>
-													<Button
-														className="text-muted-foreground hover:text-foreground transition-colors duration-200 pointer-events-auto relative z-10"
-														onClick={() => {
-															setIsCollapsing(true)
-															setExpandedView(null)
-														}}
-														size="icon"
-														variant="ghost"
-													>
-														<X className="h-5 w-5" />
-													</Button>
-												</motion.div>
-											</motion.div>
-											<motion.div
-												animate={{ opacity: 1, y: 0 }}
-												className="max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar"
-												initial={{ opacity: 0, y: 10 }}
-												transition={{
-													delay: 0.1,
-													duration: 0.25,
-													ease: [0.4, 0, 0.2, 1],
-												}}
-											>
-												{expandedView === "profile" && <ProfileView />}
-												{expandedView === "integrations" && (
-													<IntegrationsView />
-												)}
-											</motion.div>
-										</motion.div>
-									)}
-								</AnimatePresence>
-							</motion.div>
+													<item.icon className="h-5 w-5" />
+												</motion.button>
+											</TooltipTrigger>
+											<TooltipContent side="right" sideOffset={8}>
+												{item.text}
+											</TooltipContent>
+										</Tooltip>
+									</React.Fragment>
+								))}
+							</div>
 						</motion.nav>
 					</div>
-				</LayoutGroup>
+				</TooltipProvider>
 			)}
 
 			{/* Mobile Menu with Vaul Drawer */}
@@ -585,13 +457,8 @@ function Menu({
 																layout
 																onClick={() => {
 																	handleMenuItemClick(item.key)
-																	if (
-																		item.key !== "mcp" &&
-																		item.key !== "profile" &&
-																		item.key !== "integrations"
-																	) {
-																		setIsMobileMenuOpen(false)
-																	}
+																	// Close mobile menu for all items
+																	setIsMobileMenuOpen(false)
 																}}
 																type="button"
 																whileHover={{ scale: 1.05 }}
@@ -693,6 +560,21 @@ function Menu({
 			>
 				<Button className="hidden">Connect AI Assistant</Button>
 			</ConnectAIModal>
+
+			{/* Profile Modal */}
+			<Dialog onOpenChange={setShowProfileModal} open={showProfileModal}>
+				<DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden">
+					<DialogHeader>
+						<DialogTitle>Profile</DialogTitle>
+						<DialogDescription className="sr-only">
+							Manage your profile settings and subscription
+						</DialogDescription>
+					</DialogHeader>
+					<ScrollArea className="max-h-[70vh] pr-4">
+						<ProfileView />
+					</ScrollArea>
+				</DialogContent>
+			</Dialog>
 		</>
 	)
 }

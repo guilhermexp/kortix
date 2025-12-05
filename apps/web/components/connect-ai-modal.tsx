@@ -23,12 +23,14 @@ import {
 	SelectValue,
 } from "@ui/components/select"
 import { CopyableCell } from "@ui/copyable-cell"
-import { CopyIcon, ExternalLink, Loader2 } from "lucide-react"
+import { CopyIcon, ExternalLink, Loader2, Puzzle } from "lucide-react"
 import Image from "next/image"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { z } from "zod/v4"
 import { analytics } from "@/lib/analytics"
+import { IntegrationsView } from "./views/integrations"
+import { MCPIcon } from "./menu"
 
 const escapeRegExp = (value: string) =>
 	value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -74,12 +76,14 @@ interface ConnectAIModalProps {
 	children: React.ReactNode
 	open?: boolean
 	onOpenChange?: (open: boolean) => void
+	initialTab?: "mcp" | "integrations"
 }
 
 export function ConnectAIModal({
 	children,
 	open,
 	onOpenChange,
+	initialTab = "mcp",
 }: ConnectAIModalProps) {
 	const [selectedClient, setSelectedClient] = useState<
 		keyof typeof clients | null
@@ -92,6 +96,12 @@ export function ConnectAIModal({
 	const [cursorInstallTab, setCursorInstallTab] = useState<
 		"oneClick" | "manual"
 	>("oneClick")
+	const [activeTab, setActiveTab] = useState<"mcp" | "integrations">(initialTab)
+
+	// Update activeTab when initialTab prop changes
+	useEffect(() => {
+		setActiveTab(initialTab)
+	}, [initialTab])
 
 	const [projectId, setProjectId] = useState("default")
 
@@ -208,17 +218,46 @@ export function ConnectAIModal({
 	return (
 		<Dialog onOpenChange={setIsOpen} open={isOpen}>
 			<DialogTrigger asChild>{children}</DialogTrigger>
-			<DialogContent className="sm:max-w-4xl">
-				<DialogHeader>
-					<DialogTitle>Connect Kortix to Your AI</DialogTitle>
+			<DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+				<DialogHeader className="flex-shrink-0">
+					<DialogTitle>Connections & Integrations</DialogTitle>
 					<DialogDescription>
-						Connect Kortix to your favorite AI tools using the Model
-						Context Protocol (MCP). This allows your AI assistant to create,
-						search, and access your memories directly.
+						Connect Kortix to your favorite AI tools and services.
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="space-y-6">
+				{/* Tabs */}
+				<div className="flex gap-2 border-b border-border pb-2 flex-shrink-0">
+					<button
+						className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+							activeTab === "mcp"
+								? "bg-foreground/10 text-foreground"
+								: "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+						}`}
+						onClick={() => setActiveTab("mcp")}
+						type="button"
+					>
+						<MCPIcon className="h-4 w-4" />
+						MCP
+					</button>
+					<button
+						className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+							activeTab === "integrations"
+								? "bg-foreground/10 text-foreground"
+								: "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+						}`}
+						onClick={() => setActiveTab("integrations")}
+						type="button"
+					>
+						<Puzzle className="h-4 w-4" />
+						Integrations
+					</button>
+				</div>
+
+				{/* Tab Content */}
+				<div className="flex-1 overflow-y-auto">
+					{activeTab === "mcp" ? (
+						<div className="space-y-6 py-2">
 					{/* Step 1: Client Selection */}
 					<div className="space-y-4">
 						<div className="flex items-center gap-3">
@@ -611,6 +650,12 @@ export function ConnectAIModal({
 						</div>
 						<Button onClick={() => setIsOpen(false)}>Done</Button>
 					</div>
+						</div>
+					) : (
+						<div className="py-2">
+							<IntegrationsView />
+						</div>
+					)}
 				</div>
 			</DialogContent>
 

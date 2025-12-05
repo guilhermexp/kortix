@@ -1,7 +1,7 @@
 "use client"
 
 import type { BoxModel, TLShapeId } from "tldraw"
-import { Box, type Editor, createShapeId } from "tldraw"
+import { Box, type Editor, createShapeId, toRichText } from "tldraw"
 
 // Minimal change format that Claude (via MCP) can produce
 // and the canvas can apply locally.
@@ -82,31 +82,78 @@ function prepareShapeForCreate(shape: Record<string, any>): Record<string, any> 
 			if (typeof props.w !== "number") props.w = 200
 			if (typeof props.h !== "number") props.h = 120
 			if (typeof props.geo !== "string") props.geo = "rectangle"
-			// geo shapes can have text labels via 'text' prop in some versions
-			// but we'll be safe and remove it if TLDraw rejects it
+			// TLDraw v4+ uses richText instead of text for labels
+			if (typeof props.text === "string") {
+				props.richText = toRichText(props.text)
+				delete props.text
+			}
 			break
 		}
 		case "note": {
-			// TLDraw note shapes do NOT accept "text" property in props
-			// Only valid props: color, size, font, align, verticalAlign, fontSizeAdjustment, url
-			delete props.text // Remove invalid property
+			// TLDraw v4+ note shapes use 'richText' for content
+			if (typeof props.text === "string") {
+				props.richText = toRichText(props.text)
+				delete props.text
+			} else if (!props.richText) {
+				props.richText = toRichText("")
+			}
 			if (typeof props.color !== "string") props.color = "yellow"
 			if (typeof props.size !== "string") props.size = "m"
 			break
 		}
 		case "text": {
-			// TLDraw v3+ text shapes do NOT use 'text' in props
-			// Text is stored separately via richText or similar
-			// For now, we'll create a text shape without the text content
-			// The user can edit it manually in the canvas
-			delete props.text // Remove invalid property
+			// TLDraw v4+ text shapes use 'richText' instead of 'text'
+			if (typeof props.text === "string") {
+				props.richText = toRichText(props.text)
+				delete props.text
+			} else if (!props.richText) {
+				props.richText = toRichText("")
+			}
 			if (typeof props.color !== "string") props.color = "black"
 			if (typeof props.size !== "string") props.size = "m"
+			if (typeof props.w !== "number") props.w = 200
+			if (props.autoSize === undefined) props.autoSize = true
 			break
 		}
 		case "arrow": {
-			if (!props.start) props.start = { x: 0, y: 0 }
-			if (!props.end) props.end = { x: 120, y: 0 }
+			// TLDraw arrows expect start/end to be {x: number, y: number}
+			// If AI sends binding format {type: "binding", boundShapeId: ...}, convert to point
+			// If AI sends point format {type: "point", x, y}, extract x and y
+			const normalizeArrowEndpoint = (
+				endpoint: any,
+				defaultX: number,
+				defaultY: number
+			): { x: number; y: number } => {
+				if (!endpoint) {
+					return { x: defaultX, y: defaultY }
+				}
+				// If it's already a simple {x, y} format
+				if (
+					typeof endpoint.x === "number" &&
+					typeof endpoint.y === "number" &&
+					!endpoint.type
+				) {
+					return { x: endpoint.x, y: endpoint.y }
+				}
+				// If it's point format {type: "point", x, y}
+				if (endpoint.type === "point" && typeof endpoint.x === "number") {
+					return { x: endpoint.x, y: endpoint.y }
+				}
+				// If it's binding format {type: "binding", boundShapeId: ...}
+				// We can't resolve bindings here, so use default position
+				// The arrow will be placed at default and user can reconnect manually
+				if (endpoint.type === "binding") {
+					console.warn(
+						"[prepareShapeForCreate] Arrow binding not supported, using default position"
+					)
+					return { x: defaultX, y: defaultY }
+				}
+				// Unknown format, use default
+				return { x: defaultX, y: defaultY }
+			}
+
+			props.start = normalizeArrowEndpoint(props.start, 0, 0)
+			props.end = normalizeArrowEndpoint(props.end, 120, 0)
 			break
 		}
 		default: {
@@ -137,13 +184,19 @@ export function applyCanvasAgentChange(editor: Editor, change: CanvasAgentChange
 	switch (change.type) {
 		case "createShape": {
 			if (change.shape && typeof change.shape === "object") {
+				console.log("[applyCanvasAgentChange] Input shape:", JSON.stringify(change.shape, null, 2))
 				const prepared = prepareShapeForCreate(change.shape)
 				// Ensure the shape has a parent page to avoid TLDraw rejecting the shape
 				if (!prepared.parentId) {
 					prepared.parentId = editor.getCurrentPageId()
 				}
-				console.log("[applyCanvasAgentChange] Creating shape:", prepared)
-				editor.createShape(prepared as any)
+				console.log("[applyCanvasAgentChange] Prepared shape:", JSON.stringify(prepared, null, 2))
+				try {
+					editor.createShape(prepared as any)
+					console.log("[applyCanvasAgentChange] Shape created successfully")
+				} catch (error) {
+					console.error("[applyCanvasAgentChange] Error creating shape:", error)
+				}
 			}
 			break
 		}
