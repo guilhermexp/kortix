@@ -1,5 +1,6 @@
 "use client";
 
+import "./tldraw-canvas.css";
 import { $fetch } from "@repo/lib/api";
 import { Button } from "@repo/ui/components/button";
 import { getColors } from "@repo/ui/memory-graph/constants";
@@ -18,6 +19,7 @@ import {
   Type,
   Video,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import {
   useCallback,
   useEffect,
@@ -96,6 +98,8 @@ const getDocumentUrl = (doc: DocumentWithMemories): string | undefined => {
 
 export function TldrawCanvas() {
   const colors = getColors();
+  const { theme, resolvedTheme } = useTheme();
+  const isDarkMode = resolvedTheme === "dark";
   const { selectedProject } = useProject();
   const showProjectModal = useCanvasStore((s) => s.showProjectModal);
   const setShowProjectModal = useCanvasStore((s) => s.setShowProjectModal);
@@ -223,6 +227,15 @@ export function TldrawCanvas() {
       canvasAgent.setEditor(editor);
     }
   }, [editor, canvasAgent]);
+
+  // Sync theme with app's theme system
+  useEffect(() => {
+    if (editor) {
+      editor.user.updateUserPreferences({
+        colorScheme: isDarkMode ? "dark" : "light",
+      });
+    }
+  }, [editor, isDarkMode]);
 
   // Database persistence state
   const [initialSnapshot, setInitialSnapshot] = useState<
@@ -1431,47 +1444,9 @@ export function TldrawCanvas() {
       </div>
 
       {/* Tldraw Canvas - Full UI enabled */}
-      <div className="absolute inset-0 tldraw-dark-theme">
-        {/* Dynamic CSS for style panel visibility and toolbar position */}
-        <style>{`
-					.tlui-style-panel {
-						opacity: ${isStylePanelOpen ? "1" : "0"} !important;
-						pointer-events: ${isStylePanelOpen ? "auto" : "none"} !important;
-						transition: opacity 0.2s ease-in-out !important;
-					}
-
-					/* Move main toolbar to top center */
-					.tlui-main-toolbar {
-						position: fixed !important;
-						top: 16px !important;
-						bottom: auto !important;
-						left: 50% !important;
-						transform: translateX(-50%) !important;
-						min-width: 500px !important;
-					}
-
-					/* Force toolbar to show all items - override responsive collapse */
-					.tlui-main-toolbar .tlui-toolbar__tools {
-						flex-wrap: nowrap !important;
-					}
-
-					.tlui-main-toolbar .tlui-toolbar__tools > * {
-						display: flex !important;
-						visibility: visible !important;
-						opacity: 1 !important;
-						position: static !important;
-						width: auto !important;
-						height: auto !important;
-						overflow: visible !important;
-					}
-
-					/* Hide watermark */
-					.tlui-watermark_SEE-LICENSE,
-					[class*="watermark"],
-					[class*="Watermark"] {
-						display: none !important;
-					}
-				`}</style>
+      <div
+        className={`absolute inset-0 tldraw-canvas-container ${isStylePanelOpen ? "style-panel-visible" : "style-panel-hidden"} ${isDarkMode ? "tldraw-theme-dark" : "tldraw-theme-light"}`}
+      >
         <Tldraw
           key={effectiveCanvasProjectId}
           onMount={(editor) => {
@@ -1482,6 +1457,11 @@ export function TldrawCanvas() {
             // Expose editor on window for testing
             (window as any).__TLDRAW_EDITOR__ = editor;
             setEditor(editor);
+
+            // Set theme based on app's theme system
+            editor.user.updateUserPreferences({
+              colorScheme: isDarkMode ? "dark" : "light",
+            });
 
             // Load snapshot if available and not already loaded
             console.log("[TldrawCanvas] onMount - checking snapshot:", {
@@ -1519,7 +1499,6 @@ export function TldrawCanvas() {
               );
             }
           }}
-          inferDarkMode
           tools={[TargetShapeTool, TargetAreaTool]}
           shapeUtils={[ResponseShapeUtil]}
         />
@@ -1645,78 +1624,78 @@ export function TldrawCanvas() {
           >
             <button
               onClick={() => setImageMenuOpen(!imageMenuOpen)}
-              className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-600 hover:bg-neutral-700 hover:border-neutral-500 transition-all flex items-center justify-center shadow-lg"
+              className="w-8 h-8 rounded-full bg-background dark:bg-neutral-800 border border-border dark:border-neutral-600 hover:bg-accent dark:hover:bg-neutral-700 hover:border-foreground/30 dark:hover:border-neutral-500 transition-all flex items-center justify-center shadow-lg"
             >
               <Plus
-                className={`w-4 h-4 text-white transition-transform ${imageMenuOpen ? "rotate-45" : ""}`}
+                className={`w-4 h-4 text-foreground transition-transform ${imageMenuOpen ? "rotate-45" : ""}`}
               />
             </button>
 
             {/* Dropdown menu */}
             {imageMenuOpen && (
-              <div className="absolute left-10 top-1/2 -translate-y-1/2 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl overflow-hidden min-w-[200px]">
-                <div className="px-3 py-2 text-xs text-neutral-500 uppercase tracking-wider border-b border-neutral-800">
+              <div className="absolute left-10 top-1/2 -translate-y-1/2 bg-background dark:bg-neutral-900 border border-border dark:border-neutral-700 rounded-xl shadow-2xl overflow-hidden min-w-[200px]">
+                <div className="px-3 py-2 text-xs text-muted-foreground uppercase tracking-wider border-b border-border dark:border-neutral-800">
                   Transformar em
                 </div>
                 <div className="py-1">
                   <button
-                    className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-neutral-800 transition-colors text-left"
+                    className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-accent dark:hover:bg-neutral-800 transition-colors text-left"
                     onClick={() => {
                       setImageMenuOpen(false);
                       handleDescribeImage();
                     }}
                     disabled={describeLoading}
                   >
-                    <FileText className="w-5 h-5 text-neutral-400" />
-                    <span className="text-sm text-white">Texto</span>
+                    <FileText className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-sm text-foreground">Texto</span>
                   </button>
                   <button
-                    className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-neutral-800 transition-colors text-left"
+                    className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-accent dark:hover:bg-neutral-800 transition-colors text-left"
                     onClick={() => {
                       setImageMenuOpen(false);
                       openPromptDialog("image");
                     }}
                     disabled={imageToImageLoading}
                   >
-                    <ImageIcon className="w-5 h-5 text-neutral-400" />
-                    <span className="text-sm text-white">Imagem</span>
+                    <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-sm text-foreground">Imagem</span>
                   </button>
                   <button
-                    className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-neutral-800 transition-colors text-left"
+                    className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-accent dark:hover:bg-neutral-800 transition-colors text-left"
                     onClick={() => {
                       setImageMenuOpen(false);
                       openPromptDialog("video");
                     }}
                     disabled={videoLoading}
                   >
-                    <Film className="w-5 h-5 text-neutral-400" />
-                    <span className="text-sm text-white">Vídeo</span>
+                    <Film className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-sm text-foreground">Vídeo</span>
                   </button>
                 </div>
-                <div className="px-3 py-2 text-xs text-neutral-500 uppercase tracking-wider border-t border-neutral-800">
+                <div className="px-3 py-2 text-xs text-muted-foreground uppercase tracking-wider border-t border-border dark:border-neutral-800">
                   Ações
                 </div>
                 <div className="py-1">
                   <button
-                    className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-neutral-800 transition-colors text-left"
+                    className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-accent dark:hover:bg-neutral-800 transition-colors text-left"
                     onClick={() => {
                       setImageMenuOpen(false);
                       handleOpenImageEditor();
                     }}
                   >
-                    <Edit3 className="w-5 h-5 text-neutral-400" />
-                    <span className="text-sm text-white">Editar</span>
+                    <Edit3 className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-sm text-foreground">Editar</span>
                   </button>
                   <button
-                    className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-neutral-800 transition-colors text-left"
+                    className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-accent dark:hover:bg-neutral-800 transition-colors text-left"
                     onClick={() => {
                       setImageMenuOpen(false);
                       handleGenerateVariant("flux");
                     }}
                     disabled={variantLoading}
                   >
-                    <ImagesIcon className="w-5 h-5 text-neutral-400" />
-                    <span className="text-sm text-white">Gerar Variantes</span>
+                    <ImagesIcon className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-sm text-foreground">Gerar Variantes</span>
                   </button>
                 </div>
               </div>
@@ -1728,7 +1707,7 @@ export function TldrawCanvas() {
       {/* Generation Loading Overlay */}
       {generationTask && (
         <div className="fixed inset-0 z-[150] pointer-events-none flex items-center justify-center">
-          <div className="bg-neutral-900/95 backdrop-blur-xl border border-neutral-700 rounded-2xl p-6 shadow-2xl min-w-[320px] pointer-events-auto">
+          <div className="bg-background/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-border dark:border-neutral-700 rounded-2xl p-6 shadow-2xl min-w-[320px] pointer-events-auto">
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -1741,13 +1720,13 @@ export function TldrawCanvas() {
                 {generationTask.type === "video" && (
                   <Video className="w-5 h-5 text-pink-400" />
                 )}
-                <span className="text-white font-medium">
+                <span className="text-foreground font-medium">
                   {generationTask.type === "text" && "Gerando Texto"}
                   {generationTask.type === "image" && "Gerando Imagem"}
                   {generationTask.type === "video" && "Gerando Vídeo"}
                 </span>
               </div>
-              <span className="text-neutral-500 text-sm">
+              <span className="text-muted-foreground text-sm">
                 ~
                 {generationTask.type === "video"
                   ? "2-3m"
@@ -1758,41 +1737,23 @@ export function TldrawCanvas() {
             </div>
 
             {/* Loading Animation */}
-            <div className="bg-neutral-800 rounded-xl h-40 flex items-center justify-center mb-4 overflow-hidden relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer" />
-              <Loader2 className="w-8 h-8 text-neutral-500 animate-spin" />
+            <div className="bg-accent dark:bg-neutral-800 rounded-xl h-40 flex items-center justify-center mb-4 overflow-hidden relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-foreground/5 to-transparent animate-shimmer" />
+              <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
             </div>
 
             {/* Prompt */}
-            <p className="text-neutral-400 text-sm line-clamp-2">
+            <p className="text-muted-foreground text-sm line-clamp-2">
               {generationTask.prompt}
             </p>
 
             {/* Progress indicator */}
-            <div className="mt-4 h-1 bg-neutral-800 rounded-full overflow-hidden">
+            <div className="mt-4 h-1 bg-accent dark:bg-neutral-800 rounded-full overflow-hidden">
               <div className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 animate-progress rounded-full" />
             </div>
           </div>
         </div>
       )}
-
-      <style>{`
-				@keyframes shimmer {
-					0% { transform: translateX(-100%); }
-					100% { transform: translateX(100%); }
-				}
-				@keyframes progress {
-					0% { width: 0%; }
-					50% { width: 70%; }
-					100% { width: 100%; }
-				}
-				.animate-shimmer {
-					animation: shimmer 2s infinite;
-				}
-				.animate-progress {
-					animation: progress 30s ease-out forwards;
-				}
-			`}</style>
 
       {/* Prompt Dialog for Image/Video Generation */}
       {promptDialogOpen && (

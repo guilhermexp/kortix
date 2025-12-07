@@ -1,0 +1,352 @@
+/* TLDraw Canvas Custom Styles - Integrated with App Theme System */
+
+/* ============================================
+   Style Panel Visibility Toggle
+   ============================================ */
+.tldraw-canvas-container .tlui-style-panel {
+  transition: opacity 0.2s ease-in-out !important;
+}
+
+.tldraw-canvas-container.style-panel-hidden .tlui-style-panel {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.tldraw-canvas-container.style-panel-visible .tlui-style-panel {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* ============================================
+   Main Toolbar Position - Top Center
+   The main toolbar is in .tlui-layout__bottom__main by default
+   We reposition it to the top center
+   ============================================ */
+
+/* Move the main toolbar container to top center */
+.tldraw-canvas-container .tlui-layout__bottom__main {
+  position: fixed !important;
+  top: 16px !important;
+  bottom: auto !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: auto !important;
+  z-index: 100 !important;
+}
+
+/* Hide navigation panel (zoom controls) from bottom - we don't need it there */
+.tldraw-canvas-container .tlui-navigation-panel {
+  display: none !important;
+}
+
+/* Style the main toolbar */
+.tldraw-canvas-container .tlui-main-toolbar__inner {
+  min-width: 500px !important;
+}
+
+/* Force toolbar to show all items - override responsive collapse */
+.tldraw-canvas-container .tlui-main-toolbar__tools {
+  flex-wrap: nowrap !important;
+}
+
+.tldraw-canvas-container .tlui-main-toolbar__tools > * {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* ============================================
+   Style Panel - Right side, separate from toolbar
+   ============================================ */
+.tldraw-canvas-container .tlui-layout__top__right {
+  position: fixed !important;
+  top: 80px !important;
+  right: 16px !important;
+  z-index: 100 !important;
+}
+
+.tldraw-canvas-container .tlui-style-panel {
+  max-height: calc(100vh - 120px) !important;
+  overflow-y: auto !important;
+}
+
+/* ============================================
+   Hide Watermark
+   ============================================ */
+.tlui-watermark_SEE-LICENSE,
+[class*="watermark"],
+[class*="Watermark"] {
+  display: none !important;
+}
+
+/* ============================================
+   Loading Animations
+   ============================================ */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes progress {
+  0% {
+    width: 0%;
+  }
+  50% {
+    width: 70%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animate-progress {
+  animation: progress 30s ease-out forwards;
+}
+
+/* ============================================
+   Light Theme - Integrated with App Variables
+   ============================================ */
+.tldraw-theme-light .tlui-main-toolbar__inner,
+.tldraw-theme-light .tlui-main-toolbar {
+  background-color: oklch(1 0 0) !important;
+  border-color: oklch(0.92 0.004 286.32) !important;
+}
+
+.tldraw-theme-light .tlui-button {
+  color: oklch(0.141 0.005 285.823) !important;
+}
+
+.tldraw-theme-light .tlui-button:hover {
+  background-color: oklch(0.967 0.001 286.375) !important;
+}
+
+.tldraw-theme-light .tlui-button[data-state="selected"],
+.tldraw-theme-light .tlui-button[aria-pressed="true"] {
+  background-color: oklch(0.967 0.001 286.375) !important;
+}
+
+/* Style panel light mode */
+.tldraw-theme-light .tlui-style-panel {
+  background-color: oklch(1 0 0) !important;
+  border-color: oklch(0.92 0.004 286.32) !important;
+}
+
+.tldraw-theme-light .tlui-style-panel__content {
+  color: oklch(0.141 0.005 285.823) !important;
+}
+
+/* Popover/dropdown light mode */
+.tldraw-theme-light .tlui-popover,
+.tldraw-theme-light .tlui-menu {
+  background-color: oklch(1 0 0) !important;
+  border-color: oklch(0.92 0.004 286.32) !important;
+  color: oklch(0.141 0.005 285.823) !important;
+}
+
+.tldraw-theme-light .tlui-menu__item:hover {
+  background-color: oklch(0.967 0.001 286.375) !important;
+}
+
+/* Canvas background light mode */
+.tldraw-theme-light .tl-background {
+  background-color: oklch(0.98 0 0) !important;
+}
+
+/* ============================================
+   Dark Theme - Integrated with App Variables
+   ============================================ */
+.tldraw-theme-dark .tlui-main-toolbar__inner,
+.tldraw-theme-dark .tlui-main-toolbar {
+  background-color: oklch(0.1 0 0) !important;
+  border-color: oklch(1 0 0 / 10%) !important;
+}
+
+.tldraw-theme-dark .tlui-button {
+  color: oklch(1 0 0) !important;
+}
+
+.tldraw-theme-dark .tlui-button:hover {
+  background-color: oklch(0.2 0 0) !important;
+}
+
+.tldraw-theme-dark .tlui-button[data-state="selected"],
+.tldraw-theme-dark .tlui-button[aria-pressed="true"] {
+  background-color: oklch(0.2 0 0) !important;
+}
+
+/* Style panel dark mode */
+.tldraw-theme-dark .tlui-style-panel {
+  background-color: oklch(0.1 0 0) !important;
+  border-color: oklch(1 0 0 / 10%) !important;
+}
+
+.tldraw-theme-dark .tlui-style-panel__content {
+  color: oklch(1 0 0) !important;
+}
+
+/* Popover/dropdown dark mode */
+.tldraw-theme-dark .tlui-popover,
+.tldraw-theme-dark .tlui-menu {
+  background-color: oklch(0.05 0 0) !important;
+  border-color: oklch(1 0 0 / 10%) !important;
+  color: oklch(1 0 0) !important;
+}
+
+.tldraw-theme-dark .tlui-menu__item:hover {
+  background-color: oklch(0.15 0 0) !important;
+}
+
+/* Canvas background dark mode */
+.tldraw-theme-dark .tl-background {
+  background-color: oklch(0 0 0) !important;
+}
+
+/* ============================================
+   Sidebar Icons - Theme Aware
+   ============================================ */
+.tldraw-theme-light .tlui-icon {
+  color: oklch(0.141 0.005 285.823) !important;
+}
+
+.tldraw-theme-dark .tlui-icon {
+  color: oklch(1 0 0) !important;
+}
+
+/* ============================================
+   Quick Actions Bar - Theme Aware
+   ============================================ */
+.tldraw-theme-light .tlui-quick-actions {
+  background-color: oklch(1 0 0) !important;
+  border-color: oklch(0.92 0.004 286.32) !important;
+}
+
+.tldraw-theme-dark .tlui-quick-actions {
+  background-color: oklch(0.1 0 0) !important;
+  border-color: oklch(1 0 0 / 10%) !important;
+}
+
+/* ============================================
+   Page Menu - Theme Aware
+   ============================================ */
+.tldraw-theme-light .tlui-page-menu,
+.tldraw-theme-light .tlui-page-menu__wrapper {
+  background-color: oklch(1 0 0) !important;
+  border-color: oklch(0.92 0.004 286.32) !important;
+  color: oklch(0.141 0.005 285.823) !important;
+}
+
+.tldraw-theme-dark .tlui-page-menu,
+.tldraw-theme-dark .tlui-page-menu__wrapper {
+  background-color: oklch(0.05 0 0) !important;
+  border-color: oklch(1 0 0 / 10%) !important;
+  color: oklch(1 0 0) !important;
+}
+
+/* ============================================
+   Navigation Zone - Theme Aware
+   ============================================ */
+.tldraw-theme-light .tlui-navigation-zone {
+  background-color: oklch(1 0 0) !important;
+  border-color: oklch(0.92 0.004 286.32) !important;
+}
+
+.tldraw-theme-dark .tlui-navigation-zone {
+  background-color: oklch(0.1 0 0) !important;
+  border-color: oklch(1 0 0 / 10%) !important;
+}
+
+/* ============================================
+   Help Menu - Theme Aware
+   ============================================ */
+.tldraw-theme-light .tlui-help-menu {
+  background-color: oklch(1 0 0) !important;
+  border-color: oklch(0.92 0.004 286.32) !important;
+}
+
+.tldraw-theme-dark .tlui-help-menu {
+  background-color: oklch(0.1 0 0) !important;
+  border-color: oklch(1 0 0 / 10%) !important;
+}
+
+/* ============================================
+   Debug Panel - Theme Aware
+   ============================================ */
+.tldraw-theme-light .tlui-debug-panel {
+  background-color: oklch(1 0 0) !important;
+  color: oklch(0.141 0.005 285.823) !important;
+}
+
+.tldraw-theme-dark .tlui-debug-panel {
+  background-color: oklch(0.1 0 0) !important;
+  color: oklch(1 0 0) !important;
+}
+
+/* ============================================
+   Toast Notifications - Theme Aware
+   ============================================ */
+.tldraw-theme-light .tlui-toast {
+  background-color: oklch(1 0 0) !important;
+  border-color: oklch(0.92 0.004 286.32) !important;
+  color: oklch(0.141 0.005 285.823) !important;
+}
+
+.tldraw-theme-dark .tlui-toast {
+  background-color: oklch(0.1 0 0) !important;
+  border-color: oklch(1 0 0 / 10%) !important;
+  color: oklch(1 0 0) !important;
+}
+
+/* ============================================
+   Dialogs - Theme Aware
+   ============================================ */
+.tldraw-theme-light .tlui-dialog {
+  background-color: oklch(1 0 0) !important;
+  border-color: oklch(0.92 0.004 286.32) !important;
+  color: oklch(0.141 0.005 285.823) !important;
+}
+
+.tldraw-theme-dark .tlui-dialog {
+  background-color: oklch(0.05 0 0) !important;
+  border-color: oklch(1 0 0 / 10%) !important;
+  color: oklch(1 0 0) !important;
+}
+
+/* ============================================
+   Inputs - Theme Aware
+   ============================================ */
+.tldraw-theme-light .tlui-input {
+  background-color: oklch(1 0 0) !important;
+  border-color: oklch(0.92 0.004 286.32) !important;
+  color: oklch(0.141 0.005 285.823) !important;
+}
+
+.tldraw-theme-dark .tlui-input {
+  background-color: oklch(0.15 0 0) !important;
+  border-color: oklch(1 0 0 / 15%) !important;
+  color: oklch(1 0 0) !important;
+}
+
+/* ============================================
+   Kbd Shortcuts - Theme Aware
+   ============================================ */
+.tldraw-theme-light .tlui-kbd {
+  background-color: oklch(0.967 0.001 286.375) !important;
+  color: oklch(0.552 0.016 285.938) !important;
+}
+
+.tldraw-theme-dark .tlui-kbd {
+  background-color: oklch(0.2 0 0) !important;
+  color: oklch(0.6 0 0) !important;
+}

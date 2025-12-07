@@ -2,6 +2,7 @@
 
 // ============================================================
 // Response Card Shape - Custom shape for AI responses
+// Theme-aware: uses CSS variables for colors
 // ============================================================
 
 import type { WheelEvent } from "react"
@@ -75,37 +76,10 @@ export class ResponseShapeUtil extends BaseBoxShapeUtil<ResponseShape> {
 					pointerEvents: "all",
 				}}
 			>
-				<div
-					style={{
-						width: "100%",
-						height: "100%",
-						background: "rgba(40, 40, 40, 0.95)",
-						borderRadius: "16px",
-						padding: "16px",
-						display: "flex",
-						flexDirection: "column",
-						fontFamily: "system-ui, -apple-system, sans-serif",
-						color: "white",
-						overflow: "hidden",
-						boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
-						boxSizing: "border-box",
-					}}
-				>
+				<div className="response-shape-card">
 					{/* Description text with scroll */}
 					<div
-						style={{
-							flex: 1,
-							fontSize: "14px",
-							lineHeight: "1.6",
-							overflowY: "auto",
-							overflowX: "hidden",
-							color: "rgba(255,255,255,0.9)",
-							paddingRight: "8px",
-							marginBottom: "12px",
-							scrollbarWidth: "thin",
-							scrollbarColor: "rgba(255,255,255,0.3) transparent",
-						}}
-						className="response-card-scroll"
+						className="response-shape-content response-card-scroll"
 						onWheel={handleWheel}
 					>
 						{text}
@@ -113,35 +87,16 @@ export class ResponseShapeUtil extends BaseBoxShapeUtil<ResponseShape> {
 
 					{/* Footer with thumbnail and prompt */}
 					{(thumbnail || prompt) && (
-						<div
-							style={{
-								flexShrink: 0,
-								display: "flex",
-								flexDirection: "column",
-								gap: "8px",
-								borderTop: "1px solid rgba(255,255,255,0.1)",
-								paddingTop: "12px",
-							}}
-						>
+						<div className="response-shape-footer">
 							{thumbnail && (
 								<img
 									src={thumbnail}
 									alt="Source"
-									style={{
-										width: "40px",
-										height: "40px",
-										borderRadius: "8px",
-										objectFit: "cover",
-									}}
+									className="response-shape-thumbnail"
 								/>
 							)}
 							{prompt && (
-								<div
-									style={{
-										fontSize: "12px",
-										color: "rgba(255,255,255,0.6)",
-									}}
-								>
+								<div className="response-shape-prompt">
 									{prompt}
 								</div>
 							)}
@@ -149,6 +104,76 @@ export class ResponseShapeUtil extends BaseBoxShapeUtil<ResponseShape> {
 					)}
 				</div>
 				<style>{`
+					.response-shape-card {
+						width: 100%;
+						height: 100%;
+						background: var(--response-shape-bg, oklch(0.1 0 0 / 95%));
+						border-radius: 16px;
+						padding: 16px;
+						display: flex;
+						flex-direction: column;
+						font-family: system-ui, -apple-system, sans-serif;
+						color: var(--response-shape-text, oklch(1 0 0));
+						overflow: hidden;
+						box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+						box-sizing: border-box;
+						border: 1px solid var(--response-shape-border, oklch(1 0 0 / 10%));
+					}
+
+					/* Light theme overrides */
+					.tldraw-theme-light .response-shape-card,
+					:root:not(.dark) .response-shape-card {
+						--response-shape-bg: oklch(1 0 0 / 95%);
+						--response-shape-text: oklch(0.141 0.005 285.823);
+						--response-shape-border: oklch(0 0 0 / 10%);
+						--response-shape-text-secondary: oklch(0 0 0 / 60%);
+						--response-shape-divider: oklch(0 0 0 / 10%);
+						box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+					}
+
+					/* Dark theme (default) */
+					.tldraw-theme-dark .response-shape-card {
+						--response-shape-bg: oklch(0.1 0 0 / 95%);
+						--response-shape-text: oklch(1 0 0);
+						--response-shape-border: oklch(1 0 0 / 10%);
+						--response-shape-text-secondary: oklch(1 0 0 / 60%);
+						--response-shape-divider: oklch(1 0 0 / 10%);
+					}
+
+					.response-shape-content {
+						flex: 1;
+						font-size: 14px;
+						line-height: 1.6;
+						overflow-y: auto;
+						overflow-x: hidden;
+						color: var(--response-shape-text, oklch(1 0 0 / 90%));
+						padding-right: 8px;
+						margin-bottom: 12px;
+						scrollbar-width: thin;
+						scrollbar-color: var(--response-shape-text-secondary, oklch(1 0 0 / 30%)) transparent;
+					}
+
+					.response-shape-footer {
+						flex-shrink: 0;
+						display: flex;
+						flex-direction: column;
+						gap: 8px;
+						border-top: 1px solid var(--response-shape-divider, oklch(1 0 0 / 10%));
+						padding-top: 12px;
+					}
+
+					.response-shape-thumbnail {
+						width: 40px;
+						height: 40px;
+						border-radius: 8px;
+						object-fit: cover;
+					}
+
+					.response-shape-prompt {
+						font-size: 12px;
+						color: var(--response-shape-text-secondary, oklch(1 0 0 / 60%));
+					}
+
 					.response-card-scroll::-webkit-scrollbar {
 						width: 6px;
 					}
@@ -156,11 +181,11 @@ export class ResponseShapeUtil extends BaseBoxShapeUtil<ResponseShape> {
 						background: transparent;
 					}
 					.response-card-scroll::-webkit-scrollbar-thumb {
-						background: rgba(255,255,255,0.3);
+						background: var(--response-shape-text-secondary, oklch(1 0 0 / 30%));
 						border-radius: 3px;
 					}
 					.response-card-scroll::-webkit-scrollbar-thumb:hover {
-						background: rgba(255,255,255,0.5);
+						background: var(--response-shape-text, oklch(1 0 0 / 50%));
 					}
 				`}</style>
 			</HTMLContainer>
