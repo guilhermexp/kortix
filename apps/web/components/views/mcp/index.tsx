@@ -38,7 +38,7 @@ const MCP_SSE_PATTERN = new RegExp(
 const getCursorDeeplink = () => {
   const command = `npx -y install-mcp@latest ${MCP_SERVER_BASE} --client cursor --oauth=yes`;
   const config = encodeURIComponent(JSON.stringify({ command }));
-  return `https://cursor.com/en/install-mcp?name=supermemory-mcp&config=${config}`;
+  return `https://cursor.com/en/install-mcp?name=kortix-mcp&config=${config}`;
 };
 
 // Validation schemas
@@ -142,7 +142,7 @@ export function MCPView() {
       <div>
         <p className="text-sm text-foreground dark:text-white/70">
           Use MCP to create and access memories directly from your AI assistant.
-          Integrate supermemory with Claude Desktop, Cursor, and other AI tools.
+          Integrate Kortix with Claude Desktop, Cursor, and other AI tools.
         </p>
       </div>
 
@@ -161,7 +161,7 @@ export function MCPView() {
             />
           </div>
           <p className="text-xs text-foreground dark:text-white/50 mt-2">
-            Use this URL to configure supermemory in your AI assistant
+            Use this URL to configure Kortix in your AI assistant
           </p>
         </div>
 
@@ -191,7 +191,7 @@ export function MCPView() {
             whileTap={{ scale: 0.95 }}
           >
             <Image
-              alt="Add supermemory MCP server to Cursor"
+              alt="Add Kortix MCP server to Cursor"
               height="32"
               src="https://cursor.com/deeplink/mcp-install-dark.svg"
               width="128"

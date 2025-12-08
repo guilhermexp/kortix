@@ -59,7 +59,7 @@ fi
 
 echo ""
 echo "5️⃣ Verificando MarkItDown..."
-MARKITDOWN_PATH="/Users/guilhermevarela/Public/supermemory/apps/markitdown/.venv/bin/python"
+MARKITDOWN_PATH="/Users/guilhermevarela/Public/kortix/apps/markitdown/.venv/bin/python"
 if [ -f "$MARKITDOWN_PATH" ]; then
     VERSION=$("$MARKITDOWN_PATH" -m markitdown --version 2>&1 | grep -o "markitdown [0-9.]*")
     echo "✅ MarkItDown instalado: $VERSION"

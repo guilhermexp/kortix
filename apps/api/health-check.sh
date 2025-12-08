@@ -269,7 +269,7 @@ run_health_checks() {
     local overall_status=0
 
     clear
-    echo "🏥 Supermemory Database Health Check"
+    echo "🏥 Kortix Database Health Check"
     echo "===================================="
     echo "Time: $(date)"
     echo ""

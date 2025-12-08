@@ -8,7 +8,7 @@
 
 ## 📋 Resumo Executivo
 
-Este documento detalha **exatamente** o que foi configurado no Railway para o projeto Supermemory. Todas as variáveis de ambiente foram migradas do arquivo `.env.local` e os serviços estão prontos para deploy via GitHub.
+Este documento detalha **exatamente** o que foi configurado no Railway para o projeto Kortix. Todas as variáveis de ambiente foram migradas do arquivo `.env.local` e os serviços estão prontos para deploy via GitHub.
 
 ---
 
@@ -26,10 +26,10 @@ railway login
 
 ```bash
 # Criar novo projeto
-railway init --name supermemory
+railway init --name kortix
 
 # Resultado:
-# - Projeto: supermemory
+# - Projeto: kortix
 # - ID: 9a9f0044-76f1-41e9-9c6d-7dfd026896d8
 # - Environment: production
 # - URL: https://railway.com/project/9a9f0044-76f1-41e9-9c6d-7dfd026896d8
@@ -39,14 +39,14 @@ railway init --name supermemory
 
 Dois serviços foram criados:
 
-#### **Serviço 1: supermemory-api**
+#### **Serviço 1: kortix-api**
 - **Tipo**: Empty Service (será conectado ao GitHub)
 - **ID**: f50ee210-0da0-40d9-ab09-c8ebb1775d7e
 - **Função**: Backend API (Bun + Hono)
 - **Porta**: Auto-gerenciada pelo Railway
 - **Root Directory**: `apps/api` (a ser configurado no GitHub)
 
-#### **Serviço 2: supermemory-web**
+#### **Serviço 2: kortix-web**
 - **Tipo**: Empty Service (será conectado ao GitHub)
 - **ID**: fec7d72d-9e6f-483c-b9ba-ffa340eff625
 - **Função**: Frontend Web (Next.js 16)
@@ -57,16 +57,16 @@ Dois serviços foram criados:
 
 ## 🔧 Variáveis de Ambiente Configuradas
 
-### **Serviço: supermemory-api**
+### **Serviço: kortix-api**
 
-Todas as variáveis foram migradas de `/Users/guilhermevarela/Public/supermemory/apps/api/.env.local`:
+Todas as variáveis foram migradas de `/Users/guilhermevarela/Public/kortix/apps/api/.env.local`:
 
 #### **Database & Authentication**
 ```bash
 SUPABASE_URL=https://gxowenznnqiwererpqde.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-AUTH_SECRET=supermemory-selfhost-secret-123456789012
+AUTH_SECRET=kortix-selfhost-secret-123456789012
 ```
 
 #### **AI Model APIs (Principais)**
@@ -126,18 +126,18 @@ ALLOWED_ORIGINS=https://placeholder.railway.app
 RAILWAY_ENVIRONMENT=production
 RAILWAY_ENVIRONMENT_ID=feac76a3-5801-46d2-8df0-94ec504c0c60
 RAILWAY_ENVIRONMENT_NAME=production
-RAILWAY_PRIVATE_DOMAIN=supermemory-api.railway.internal
+RAILWAY_PRIVATE_DOMAIN=kortix-api.railway.internal
 RAILWAY_PROJECT_ID=9a9f0044-76f1-41e9-9c6d-7dfd026896d8
-RAILWAY_PROJECT_NAME=supermemory
+RAILWAY_PROJECT_NAME=kortix
 RAILWAY_SERVICE_ID=f50ee210-0da0-40d9-ab09-c8ebb1775d7e
-RAILWAY_SERVICE_NAME=supermemory-api
+RAILWAY_SERVICE_NAME=kortix-api
 ```
 
 **Total: 30+ variáveis configuradas no serviço API**
 
 ---
 
-### **Serviço: supermemory-web**
+### **Serviço: kortix-web**
 
 #### **URLs Públicas**
 ```bash
@@ -157,11 +157,11 @@ NEXT_PUBLIC_DOCS_URL=/docs
 RAILWAY_ENVIRONMENT=production
 RAILWAY_ENVIRONMENT_ID=feac76a3-5801-46d2-8df0-94ec504c0c60
 RAILWAY_ENVIRONMENT_NAME=production
-RAILWAY_PRIVATE_DOMAIN=supermemory-web.railway.internal
+RAILWAY_PRIVATE_DOMAIN=kortix-web.railway.internal
 RAILWAY_PROJECT_ID=9a9f0044-76f1-41e9-9c6d-7dfd026896d8
-RAILWAY_PROJECT_NAME=supermemory
+RAILWAY_PROJECT_NAME=kortix
 RAILWAY_SERVICE_ID=fec7d72d-9e6f-483c-b9ba-ffa340eff625
-RAILWAY_SERVICE_NAME=supermemory-web
+RAILWAY_SERVICE_NAME=kortix-web
 ```
 
 **Total: 4 variáveis + auto-gerenciadas no serviço Web**
@@ -173,7 +173,7 @@ RAILWAY_SERVICE_NAME=supermemory-web
 ### 1. **apps/api/railway.toml**
 
 ```toml
-# Railway Configuration for Supermemory API
+# Railway Configuration for Kortix API
 # This file tells Railway how to build and deploy the API service
 
 [build]
@@ -200,7 +200,7 @@ healthcheckTimeout = 300
 ### 2. **apps/web/railway.toml**
 
 ```toml
-# Railway Configuration for Supermemory Web
+# Railway Configuration for Kortix Web
 # This file tells Railway how to build and deploy the Next.js web service
 
 [build]
@@ -240,22 +240,22 @@ Guia completo de 500+ linhas com:
 railway login
 
 # 2. Criar projeto
-railway init --name supermemory
+railway init --name kortix
 
 # 3. Criar serviço API (interativo)
-railway add --service supermemory-api
+railway add --service kortix-api
 
 # 4. Criar serviço Web (interativo)
-railway add --service supermemory-web
+railway add --service kortix-web
 
 # 5. Selecionar serviço API
-railway service supermemory-api
+railway service kortix-api
 
 # 6. Configurar variáveis API - Batch 1 (Database & Auth)
 railway variables --set "SUPABASE_URL=https://gxowenznnqiwererpqde.supabase.co" \
   --set "SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
   --set "SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
-  --set "AUTH_SECRET=supermemory-selfhost-secret-123456789012" \
+  --set "AUTH_SECRET=kortix-selfhost-secret-123456789012" \
   --skip-deploys
 
 # 7. Configurar variáveis API - Batch 2 (AI APIs principais)
@@ -303,7 +303,7 @@ railway variables --set "APP_URL=https://placeholder.railway.app" \
 railway variables --kv
 
 # 13. Selecionar serviço Web
-railway service supermemory-web
+railway service kortix-web
 
 # 14. Configurar variáveis Web
 railway variables --set "NEXT_PUBLIC_BACKEND_URL=" \
@@ -333,18 +333,18 @@ Sem isso, o deploy não acontecerá automaticamente.
 
 1. Acesse: https://railway.com/project/9a9f0044-76f1-41e9-9c6d-7dfd026896d8
 
-2. **Configurar supermemory-api**:
-   - Click no card `supermemory-api`
+2. **Configurar kortix-api**:
+   - Click no card `kortix-api`
    - Settings → Source → "Connect Repo"
-   - Repositório: `guilhermexp/supermemory`
+   - Repositório: `guilhermexp/kortix`
    - Branch: `main`
    - Root Directory: `apps/api`
    - Watch Paths: `apps/api/**` (opcional, para trigger apenas em mudanças na API)
 
-3. **Configurar supermemory-web**:
-   - Click no card `supermemory-web`
+3. **Configurar kortix-web**:
+   - Click no card `kortix-web`
    - Settings → Source → "Connect Repo"
-   - Repositório: `guilhermexp/supermemory`
+   - Repositório: `guilhermexp/kortix`
    - Branch: `main`
    - Root Directory: `apps/web`
    - Watch Paths: `apps/web/**` (opcional)
@@ -371,10 +371,10 @@ Railway detectará automaticamente e iniciará o deploy de ambos os serviços.
 #### **Via CLI**
 ```bash
 # Ver logs API em tempo real
-railway logs --service supermemory-api --tail
+railway logs --service kortix-api --tail
 
 # Ver logs Web em tempo real
-railway logs --service supermemory-web --tail
+railway logs --service kortix-web --tail
 ```
 
 #### **Via Dashboard**
@@ -387,12 +387,12 @@ railway logs --service supermemory-web --tail
 Após deploy bem-sucedido:
 
 1. **Obter domínio Web**:
-   - Dashboard → `supermemory-web` → Settings → Networking
-   - Copie o domínio gerado (ex: `supermemory-web-production-abc123.up.railway.app`)
+   - Dashboard → `kortix-web` → Settings → Networking
+   - Copie o domínio gerado (ex: `kortix-web-production-abc123.up.railway.app`)
 
 2. **Obter domínio API**:
-   - Dashboard → `supermemory-api` → Settings → Networking
-   - Copie o domínio gerado (ex: `supermemory-api-production-xyz.up.railway.app`)
+   - Dashboard → `kortix-api` → Settings → Networking
+   - Copie o domínio gerado (ex: `kortix-api-production-xyz.up.railway.app`)
 
 ### **Passo 5: Atualizar URLs do Serviço API**
 
@@ -400,7 +400,7 @@ Após deploy bem-sucedido:
 
 ```bash
 # Selecionar serviço API
-railway service supermemory-api
+railway service kortix-api
 
 # Atualizar com domínio real do Web
 railway variables --set "APP_URL=https://[SEU-DOMINIO-WEB].up.railway.app" \
@@ -411,8 +411,8 @@ railway variables --set "APP_URL=https://[SEU-DOMINIO-WEB].up.railway.app" \
 
 **Exemplo**:
 ```bash
-railway variables --set "APP_URL=https://supermemory-web-production-abc123.up.railway.app" \
-  --set "ALLOWED_ORIGINS=https://supermemory-web-production-abc123.up.railway.app"
+railway variables --set "APP_URL=https://kortix-web-production-abc123.up.railway.app" \
+  --set "ALLOWED_ORIGINS=https://kortix-web-production-abc123.up.railway.app"
 ```
 
 ---
@@ -470,14 +470,14 @@ open https://[dominio-web].up.railway.app
 
 ```bash
 # Ver logs recentes API
-railway logs --service supermemory-api --lines 100
+railway logs --service kortix-api --lines 100
 
 # Ver logs recentes Web
-railway logs --service supermemory-web --lines 100
+railway logs --service kortix-web --lines 100
 
 # Procurar por erros
-railway logs --service supermemory-api | grep -i error
-railway logs --service supermemory-web | grep -i error
+railway logs --service kortix-api | grep -i error
+railway logs --service kortix-web | grep -i error
 ```
 
 ### **5. Monitorar Recursos**
@@ -522,7 +522,7 @@ Error: Build command failed
 **Soluções**:
 1. Verificar credenciais Supabase nas variáveis:
    ```bash
-   railway service supermemory-api
+   railway service kortix-api
    railway variables | grep SUPABASE
    ```
 2. Testar connection string manualmente:
@@ -539,14 +539,14 @@ Error: Build command failed
 **Soluções**:
 1. Verificar `ALLOWED_ORIGINS` no API service:
    ```bash
-   railway service supermemory-api
+   railway service kortix-api
    railway variables | grep ALLOWED_ORIGINS
    ```
 2. Confirmar que domínio Web está correto
 3. Verificar que `NEXT_PUBLIC_BACKEND_URL` está vazio (Web service)
 4. Redeploy API após mudanças:
    ```bash
-   railway service supermemory-api
+   railway service kortix-api
    railway up
    ```
 
@@ -557,7 +557,7 @@ Error: Build command failed
 **Soluções**:
 1. Verificar API keys:
    ```bash
-   railway service supermemory-api
+   railway service kortix-api
    railway variables | grep -E "(ANTHROPIC|GOOGLE)_API_KEY"
    ```
 2. Testar endpoint manualmente:
@@ -569,7 +569,7 @@ Error: Build command failed
    ```
 3. Verificar logs para stack traces:
    ```bash
-   railway logs --service supermemory-api --tail | grep -A 10 error
+   railway logs --service kortix-api --tail | grep -A 10 error
    ```
 
 ### **Problema: MarkItDown não funciona**
@@ -579,7 +579,7 @@ Error: Build command failed
 **Soluções**:
 1. Verificar se postinstall script rodou:
    ```bash
-   railway logs --service supermemory-api | grep "install-markitdown"
+   railway logs --service kortix-api | grep "install-markitdown"
    ```
 2. Confirmar que `MARKITDOWN=true` está setado
 3. Verificar que Python está disponível no container (NIXPACKS instala automaticamente)
@@ -690,7 +690,7 @@ Antes de ir para produção:
 railway status
 
 # Listar variáveis de um serviço
-railway service supermemory-api
+railway service kortix-api
 railway variables --kv
 
 # Atualizar uma variável
@@ -799,8 +799,8 @@ railway rollback <deployment-id>
 - Discord: https://discord.gg/railway
 - Status: https://status.railway.app
 
-### **Problemas com Supermemory**
-- Issues: https://github.com/guilhermexp/supermemory/issues
+### **Problemas com Kortix**
+- Issues: https://github.com/guilhermexp/kortix/issues
 - Este documento: Referência de setup
 
 ### **Contatos**

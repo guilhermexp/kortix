@@ -335,13 +335,20 @@ export function useOfflineStatus(documentId: string) {
 		const edit = OfflineStorageManager.getOfflineEdit(documentId)
 		setOfflineEdit(edit)
 
-		// Poll for changes (in case multiple tabs)
-		const interval = setInterval(() => {
-			const updatedEdit = OfflineStorageManager.getOfflineEdit(documentId)
-			setOfflineEdit(updatedEdit)
-		}, 5000)
+		// Listen for storage changes from other tabs instead of polling
+		const handleStorageChange = (e: StorageEvent) => {
+			if (!e.key) return
 
-		return () => clearInterval(interval)
+			// Only react to our offline keys and updates for this document/queue
+			if (!e.key.startsWith(STORAGE_KEY_PREFIX)) return
+			if (e.key.includes(documentId) || e.key === SYNC_QUEUE_KEY) {
+				const updatedEdit = OfflineStorageManager.getOfflineEdit(documentId)
+				setOfflineEdit(updatedEdit)
+			}
+		}
+
+		window.addEventListener("storage", handleStorageChange)
+		return () => window.removeEventListener("storage", handleStorageChange)
 	}, [documentId])
 
 	return {

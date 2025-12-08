@@ -11,14 +11,21 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { Button } from "@ui/components/button";
 import { GlassMenuEffect } from "@ui/other/glass-effect";
 import {
+  Copy,
   FolderOpen,
   HelpCircle,
   LayoutGrid,
   LoaderIcon,
   MessageSquare,
+  Palette,
+  Redo2,
   RefreshCcw,
+  Search,
   SquareDashed,
+  Trash2,
+  Undo2,
   Unplug,
+  X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
@@ -46,6 +53,55 @@ type DocumentWithMemories = DocumentsResponse["documents"][0];
 // Experimental mode removed from UI; no project meta needed here
 // type Project = z.infer<typeof ProjectSchema>
 
+// Canvas Actions Bar component - uses editor from global store
+const CanvasActionsBar = () => {
+  const editor = useCanvasStore((s) => s.editor);
+
+  if (!editor) return null;
+
+  return (
+    <div className="flex items-center gap-1 bg-background border border-foreground/15 rounded-lg px-1 py-1">
+      <Button
+        className="w-8 h-8 p-0 bg-transparent hover:bg-foreground/10 text-foreground/70 hover:text-foreground rounded-md"
+        onClick={() => editor.undo()}
+        size="sm"
+        variant="ghost"
+        title="Desfazer"
+      >
+        <Undo2 className="h-4 w-4" />
+      </Button>
+      <Button
+        className="w-8 h-8 p-0 bg-transparent hover:bg-foreground/10 text-foreground/70 hover:text-foreground rounded-md"
+        onClick={() => editor.redo()}
+        size="sm"
+        variant="ghost"
+        title="Refazer"
+      >
+        <Redo2 className="h-4 w-4" />
+      </Button>
+      <div className="w-px h-5 bg-foreground/15 mx-1" />
+      <Button
+        className="w-8 h-8 p-0 bg-transparent hover:bg-foreground/10 text-foreground/70 hover:text-foreground rounded-md"
+        onClick={() => editor.deleteShapes(editor.getSelectedShapeIds())}
+        size="sm"
+        variant="ghost"
+        title="Excluir"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+      <Button
+        className="w-8 h-8 p-0 bg-transparent hover:bg-foreground/10 text-foreground/70 hover:text-foreground rounded-md"
+        onClick={() => editor.duplicateShapes(editor.getSelectedShapeIds())}
+        size="sm"
+        variant="ghost"
+        title="Duplicar"
+      >
+        <Copy className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+};
+
 const MemoryGraphPage = () => {
   const { documentIds: allHighlightDocumentIds } = useGraphHighlights();
   const isMobile = useIsMobile();
@@ -53,11 +109,30 @@ const MemoryGraphPage = () => {
   const { selectedProject } = useProject();
   const { isOpen, setIsOpen } = useChatOpen();
   const setShowProjectModal = useCanvasStore((s) => s.setShowProjectModal);
+  const isPaletteOpen = useCanvasStore((s) => s.isPaletteOpen);
+  const togglePalette = useCanvasStore((s) => s.togglePalette);
   const [injectedDocs, setInjectedDocs] = useState<DocumentWithMemories[]>([]);
   const [graphEdges, setGraphEdges] = useState<DocumentConnectionEdge[] | null>(
     null,
   );
   const [showAddMemoryView, setShowAddMemoryView] = useState(false);
+
+  // Search state with debounce
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    // If search is cleared, reset immediately (no debounce)
+    if (!searchQuery.trim()) {
+      setDebouncedSearch("");
+      return;
+    }
+    // Otherwise debounce the search
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [showConnectAIModal, setShowConnectAIModal] = useState(false);
   const [pausePolling, setPausePolling] = useState(false);
@@ -128,7 +203,7 @@ const MemoryGraphPage = () => {
   const IS_DEV = process.env.NODE_ENV === "development";
   const PAGE_SIZE = IS_DEV ? 100 : 100;
   const MAX_TOTAL = 1000;
-  const REFETCH_MS = 15_000;
+  const REFETCH_MS = 60_000; // 60 seconds - reduced from 15s to prevent database overload
   const RATE_LIMIT_BACKOFF_MS = 90_000; // backoff after 429 responses
 
   useEffect(() => {
@@ -144,7 +219,8 @@ const MemoryGraphPage = () => {
 
   useEffect(() => {
     if (!rateLimitedUntil) return;
-    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    // Update countdown every 5 seconds instead of every 1 second to reduce re-renders
+    const interval = window.setInterval(() => setNow(Date.now()), 5000);
     return () => window.clearInterval(interval);
   }, [rateLimitedUntil]);
 
@@ -170,7 +246,7 @@ const MemoryGraphPage = () => {
     fetchNextPage,
     refetch,
   } = useInfiniteQuery<DocumentsResponse, Error>({
-    queryKey: ["documents-with-memories", selectedProject],
+    queryKey: ["documents-with-memories", selectedProject, debouncedSearch],
     initialPageParam: 1,
     queryFn: async ({ pageParam }) => {
       const markRateLimited = () => {
@@ -202,17 +278,18 @@ const MemoryGraphPage = () => {
         );
       };
 
-      try {
-        const response = await $fetch("@post/documents/documents", {
-          body: {
-            page: pageParam as number,
-            limit: (pageParam as number) === 1 ? (IS_DEV ? 50 : 50) : PAGE_SIZE,
-            sort: "createdAt",
-            order: "desc",
-            containerTags:
-              selectedProject && selectedProject !== "sm_project_default"
-                ? [selectedProject]
+          try {
+            const response = await $fetch("@post/documents/documents", {
+              body: {
+                page: pageParam as number,
+                limit: PAGE_SIZE,
+                sort: "createdAt",
+                order: "desc",
+                containerTags:
+                  selectedProject && selectedProject !== "sm_project_default"
+                    ? [selectedProject]
                 : undefined,
+            search: debouncedSearch || undefined,
           },
           disableValidation: true,
         });
@@ -551,13 +628,45 @@ const MemoryGraphPage = () => {
           }}
         >
           <motion.div className="absolute top-0 left-0 right-0 z-20 px-4 pt-2">
-            <div className="flex items-center justify-between">
-              <div
-                className="flex items-center gap-2 pointer-events-auto"
-                id={TOUR_STEP_IDS.MENU_PROJECTS}
-              >
-                <ProjectSelector className="pointer-events-auto" />
-              </div>
+            <div className="flex items-center justify-between gap-2">
+              {/* Project Selector - hidden in canvas/infinity mode */}
+              {viewMode !== "infinity" && (
+                <div
+                  className="flex items-center gap-2 pointer-events-auto"
+                  id={TOUR_STEP_IDS.MENU_PROJECTS}
+                >
+                  <ProjectSelector className="pointer-events-auto" />
+                </div>
+              )}
+              {/* Empty spacer when in canvas mode */}
+              {viewMode === "infinity" && <div />}
+
+              {/* Search Input - only visible in list view */}
+              {viewMode === "list" && (
+                <div className="relative pointer-events-auto">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/60 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-8 w-[140px] sm:w-[180px] pl-8 pr-7 text-sm
+                               bg-background border border-foreground/15 rounded-md
+                               text-foreground/80 placeholder:text-foreground/40
+                               hover:bg-foreground/5 focus:outline-none focus:border-foreground/30
+                               transition-colors"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground/80"
+                      type="button"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
               <div
                 className="flex items-center gap-2 pointer-events-auto"
                 id={TOUR_STEP_IDS.VIEW_TOGGLE}
@@ -568,30 +677,45 @@ const MemoryGraphPage = () => {
                   </span>
                 ) : null}
                 {viewMode === "infinity" && (
-                  <Button
-                    className="bg-background border border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10 px-2 sm:px-3 rounded-md"
-                    onClick={() => setShowProjectModal(true)}
-                    size="sm"
-                    variant="ghost"
-                  >
-                    <FolderOpen className="h-4 w-4 text-current" />
-                    <span className="hidden md:inline ml-2">Projetos</span>
-                  </Button>
+                  <>
+                    <Button
+                      className="bg-background border border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10 px-2 sm:px-3 rounded-md"
+                      onClick={() => setShowProjectModal(true)}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      <FolderOpen className="h-4 w-4 text-current" />
+                      <span className="hidden md:inline ml-2">Projetos</span>
+                    </Button>
+                    <Button
+                      className={`bg-background border px-2 sm:px-3 rounded-md ${
+                        isPaletteOpen
+                          ? "border-foreground/30 text-foreground bg-foreground/10"
+                          : "border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10"
+                      }`}
+                      onClick={togglePalette}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      <Palette className="h-4 w-4 text-current" />
+                      <span className="hidden md:inline ml-2">Add Docs</span>
+                    </Button>
+                    <Button
+                      className="bg-background border border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10 px-2 sm:px-3 rounded-md"
+                      disabled={manualRefreshDisabled}
+                      onClick={handleManualRefresh}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      {isRefreshing ? (
+                        <LoaderIcon className="h-4 w-4 animate-spin text-current" />
+                      ) : (
+                        <RefreshCcw className="h-4 w-4 text-current" />
+                      )}
+                      <span className="hidden md:inline ml-2">Atualizar</span>
+                    </Button>
+                  </>
                 )}
-                <Button
-                  className="bg-background border text-foreground/80 hover:text-foreground hover:bg-foreground/10 px-2 sm:px-3 rounded-md"
-                  disabled={manualRefreshDisabled}
-                  onClick={handleManualRefresh}
-                  size="sm"
-                  variant="ghost"
-                >
-                  {isRefreshing ? (
-                    <LoaderIcon className="h-4 w-4 animate-spin text-current" />
-                  ) : (
-                    <RefreshCcw className="h-4 w-4 text-current" />
-                  )}
-                  <span className="hidden md:inline ml-2">Atualizar</span>
-                </Button>
               </div>
             </div>
           </motion.div>
@@ -791,10 +915,10 @@ const MemoryGraphPage = () => {
             </motion.div>
           )}
 
-          {/* Fixed Theme Toggle Button - Bottom Left */}
+          {/* Fixed Bottom Left Controls */}
           <motion.div
             animate={{ opacity: 1, scale: 1 }}
-            className="fixed bottom-6 left-6 z-50"
+            className="fixed bottom-6 left-6 z-50 flex items-center gap-2"
             initial={{ opacity: 0, scale: 0.8 }}
             transition={{
               type: "spring",
@@ -802,12 +926,18 @@ const MemoryGraphPage = () => {
               damping: 25,
             }}
           >
+            {/* Theme Toggle */}
             <div className="relative">
               <div className="absolute inset-0 rounded-full">
                 <GlassMenuEffect rounded="rounded-full" />
               </div>
               <ThemeToggle className="relative z-10 w-10 h-10 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 p-0" />
             </div>
+
+            {/* Canvas Actions - only visible in infinity/canvas mode */}
+            {viewMode === "infinity" && (
+              <CanvasActionsBar />
+            )}
           </motion.div>
         </motion.div>
 
@@ -843,7 +973,7 @@ const MemoryGraphPage = () => {
                 title="Drag to resize"
               />
             )}
-            <ChatRewrite />
+            {isOpen && <ChatRewrite />}
           </motion.div>
         </motion.div>
 

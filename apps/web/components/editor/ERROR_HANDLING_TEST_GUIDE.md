@@ -395,7 +395,7 @@ localStorage.setItem('debug:performance', 'true');
 ### View Offline Storage
 ```javascript
 // List all offline edits
-const keys = Object.keys(localStorage).filter(k => k.startsWith('supermemory_offline_'));
+const keys = Object.keys(localStorage).filter(k => k.startsWith('kortix_offline_'));
 keys.forEach(key => {
   console.log(key, localStorage.getItem(key));
 });

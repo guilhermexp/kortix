@@ -28,7 +28,7 @@ const translations: Record<Locale, Translations> = {
 }
 
 /**
- * Default locale (Portuguese for Supermemory)
+ * Default locale (Portuguese for Kortix)
  */
 const DEFAULT_LOCALE: Locale = "pt-BR"
 

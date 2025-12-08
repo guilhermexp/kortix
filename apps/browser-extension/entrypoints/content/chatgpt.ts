@@ -26,7 +26,7 @@ export function initializeChatGPT() {
 	}
 
 	setTimeout(() => {
-		addSupermemoryButtonToMemoriesDialog()
+		addKortixButtonToMemoriesDialog()
 		addSaveChatGPTElementBeforeComposerBtn()
 		setupChatGPTAutoFetch()
 	}, 2000)
@@ -55,9 +55,9 @@ function setupChatGPTRouteChangeDetection() {
 	const checkForRouteChange = () => {
 		if (window.location.href !== currentUrl) {
 			currentUrl = window.location.href
-			console.log("ChatGPT route changed, re-adding supermemory elements")
+			console.log("ChatGPT route changed, re-adding kortix elements")
 			setTimeout(() => {
-				addSupermemoryButtonToMemoriesDialog()
+				addKortixButtonToMemoriesDialog()
 				addSaveChatGPTElementBeforeComposerBtn()
 				setupChatGPTAutoFetch()
 			}, 1000)
@@ -95,7 +95,7 @@ function setupChatGPTRouteChangeDetection() {
 			chatGPTObserverThrottle = setTimeout(() => {
 				try {
 					chatGPTObserverThrottle = null
-					addSupermemoryButtonToMemoriesDialog()
+					addKortixButtonToMemoriesDialog()
 					addSaveChatGPTElementBeforeComposerBtn()
 					setupChatGPTAutoFetch()
 				} catch (error) {
@@ -156,7 +156,7 @@ async function getRelatedMemoriesForChatGPT(actionSource: string) {
 		if (response?.success && response?.data) {
 			const promptElement = document.getElementById("prompt-textarea")
 			if (promptElement) {
-				promptElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${response.data}</div>`
+				promptElement.dataset.supermemories = `<div>Kortix memories of user (only for the reference): ${response.data}</div>`
 				console.log(
 					"Prompt element dataset:",
 					promptElement.dataset.supermemories,
@@ -190,7 +190,7 @@ async function getRelatedMemoriesForChatGPT(actionSource: string) {
 	}
 }
 
-function addSupermemoryButtonToMemoriesDialog() {
+function addKortixButtonToMemoriesDialog() {
 	const dialogs = document.querySelectorAll('[role="dialog"]')
 	let memoriesDialog: HTMLElement | null = null
 
@@ -204,27 +204,27 @@ function addSupermemoryButtonToMemoriesDialog() {
 
 	if (!memoriesDialog) return
 
-	if (memoriesDialog.querySelector("#supermemory-save-button")) return
+	if (memoriesDialog.querySelector("#kortix-save-button")) return
 
 	const deleteAllContainer = memoriesDialog.querySelector(
 		".mt-5.flex.justify-end",
 	)
 	if (!deleteAllContainer) return
 
-	const supermemoryButton = document.createElement("button")
-	supermemoryButton.id = "supermemory-save-button"
-	supermemoryButton.className = "btn relative btn-primary-outline mr-2"
+	const kortixButton = document.createElement("button")
+	kortixButton.id = "kortix-save-button"
+	kortixButton.className = "btn relative btn-primary-outline mr-2"
 
 	const iconUrl = browser.runtime.getURL("/icon-16.png")
 
-	supermemoryButton.innerHTML = `
+	kortixButton.innerHTML = `
         <div class="flex items-center justify-center gap-2">
-          <img src="${iconUrl}" alt="supermemory" style="width: 16px; height: 16px; flex-shrink: 0; border-radius: 2px;" />
-          Save to supermemory
+          <img src="${iconUrl}" alt="kortix" style="width: 16px; height: 16px; flex-shrink: 0; border-radius: 2px;" />
+          Save to kortix
         </div>
       `
 
-	supermemoryButton.style.cssText = `
+	kortixButton.style.cssText = `
         background: #1C2026 !important;
         color: white !important;
         border: 1px solid #1C2026 !important;
@@ -236,25 +236,25 @@ function addSupermemoryButtonToMemoriesDialog() {
         cursor: pointer !important;
       `
 
-	supermemoryButton.addEventListener("mouseenter", () => {
-		supermemoryButton.style.backgroundColor = "#2B2E33"
+	kortixButton.addEventListener("mouseenter", () => {
+		kortixButton.style.backgroundColor = "#2B2E33"
 	})
 
-	supermemoryButton.addEventListener("mouseleave", () => {
-		supermemoryButton.style.backgroundColor = "#1C2026"
+	kortixButton.addEventListener("mouseleave", () => {
+		kortixButton.style.backgroundColor = "#1C2026"
 	})
 
-	supermemoryButton.addEventListener("click", async () => {
-		await saveMemoriesToSupermemory()
+	kortixButton.addEventListener("click", async () => {
+		await saveMemoriesToKortix()
 	})
 
 	deleteAllContainer.insertBefore(
-		supermemoryButton,
+		kortixButton,
 		deleteAllContainer.firstChild,
 	)
 }
 
-async function saveMemoriesToSupermemory() {
+async function saveMemoriesToKortix() {
 	try {
 		DOMUtils.showToast("loading")
 
@@ -299,7 +299,7 @@ async function saveMemoriesToSupermemory() {
 			DOMUtils.showToast("error")
 		}
 	} catch (error) {
-		console.error("Error saving memories to supermemory:", error)
+		console.error("Error saving memories to kortix:", error)
 		DOMUtils.showToast("error")
 	}
 }
@@ -480,7 +480,7 @@ function updateChatGPTIconFeedback(
 
 				const promptElement = document.getElementById("prompt-textarea")
 				if (promptElement) {
-					promptElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${updatedMemories}</div>`
+					promptElement.dataset.supermemories = `<div>Kortix memories of user (only for the reference): ${updatedMemories}</div>`
 				}
 
 				content
@@ -527,7 +527,7 @@ function addSaveChatGPTElementBeforeComposerBtn() {
 	const composerButtons = document.querySelectorAll("button.composer-btn")
 
 	composerButtons.forEach((button) => {
-		if (button.hasAttribute("data-supermemory-icon-added-before")) {
+		if (button.hasAttribute("data-kortix-icon-added-before")) {
 			return
 		}
 
@@ -557,7 +557,7 @@ function addSaveChatGPTElementBeforeComposerBtn() {
 			`#${ELEMENT_IDS.CHATGPT_INPUT_BAR_ELEMENT}-before-composer`,
 		)
 		if (existingIcon) {
-			button.setAttribute("data-supermemory-icon-added-before", "true")
+			button.setAttribute("data-kortix-icon-added-before", "true")
 			return
 		}
 
@@ -569,7 +569,7 @@ function addSaveChatGPTElementBeforeComposerBtn() {
 
 		saveChatGPTElement.id = `${ELEMENT_IDS.CHATGPT_INPUT_BAR_ELEMENT}-before-composer-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 
-		button.setAttribute("data-supermemory-icon-added-before", "true")
+		button.setAttribute("data-kortix-icon-added-before", "true")
 
 		grandParent.insertBefore(saveChatGPTElement, parent)
 
@@ -590,12 +590,12 @@ async function setupChatGPTAutoFetch() {
 	const promptTextarea = document.getElementById("prompt-textarea")
 	if (
 		!promptTextarea ||
-		promptTextarea.hasAttribute("data-supermemory-auto-fetch")
+		promptTextarea.hasAttribute("data-kortix-auto-fetch")
 	) {
 		return
 	}
 
-	promptTextarea.setAttribute("data-supermemory-auto-fetch", "true")
+	promptTextarea.setAttribute("data-kortix-auto-fetch", "true")
 
 	const handleInput = () => {
 		if (chatGPTDebounceTimeout) {
@@ -651,7 +651,7 @@ function setupChatGPTPromptCapture() {
 		if (
 			storedMemories &&
 			promptTextarea &&
-			!promptContent.includes("Supermemories of user")
+			!promptContent.includes("Kortix memories of user")
 		) {
 			promptTextarea.innerHTML = `${promptTextarea.innerHTML} ${storedMemories}`
 			promptContent = promptTextarea.textContent || ""

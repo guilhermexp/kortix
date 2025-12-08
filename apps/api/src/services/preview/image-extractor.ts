@@ -172,10 +172,14 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 				const ogImage = await this.extractOgImage(url)
 				if (ogImage) {
 					tracker.end(true)
+					// Skip metadata fetch for GitHub OpenGraph images to avoid 429 rate limiting
+					const isGitHubOg = ogImage.includes("opengraph.githubassets.com")
 					return {
 						imageUrl: ogImage,
 						source: "opengraph",
-						metadata: await this.getImageMetadata(ogImage),
+						metadata: isGitHubOg
+							? { url: ogImage, format: "png", isVector: false }
+							: await this.safeGetImageMetadata(ogImage),
 					}
 				}
 			}
@@ -188,7 +192,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 					return {
 						imageUrl: twitterImage,
 						source: "twitter",
-						metadata: await this.getImageMetadata(twitterImage),
+						metadata: await this.safeGetImageMetadata(twitterImage),
 					}
 				}
 			}
@@ -204,7 +208,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 					return {
 						imageUrl,
 						source: "html",
-						metadata: await this.getImageMetadata(imageUrl),
+						metadata: await this.safeGetImageMetadata(imageUrl),
 					}
 				}
 			}
@@ -453,6 +457,34 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 		} catch (error) {
 			tracker.end(false)
 			throw this.handleError(error, "getImageMetadata")
+		}
+	}
+
+	/**
+	 * Safe wrapper for getImageMetadata that returns default metadata on failure
+	 * This prevents 429 errors from breaking the entire preview generation
+	 */
+	private async safeGetImageMetadata(url: string): Promise<ImageMetadata> {
+		try {
+			return await this.getImageMetadata(url)
+		} catch (error) {
+			this.logger.warn("Failed to get image metadata, using defaults", {
+				url,
+				error: error instanceof Error ? error.message : String(error),
+			})
+			// Return default metadata - assume it's a valid image
+			const format = url.toLowerCase().endsWith(".svg")
+				? "svg"
+				: url.toLowerCase().endsWith(".webp")
+					? "webp"
+					: url.toLowerCase().endsWith(".gif")
+						? "gif"
+						: "png"
+			return {
+				url,
+				format,
+				isVector: format === "svg",
+			}
 		}
 	}
 

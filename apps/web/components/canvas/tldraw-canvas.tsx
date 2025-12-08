@@ -12,6 +12,7 @@ import {
   Plus,
   Edit3,
   FileText,
+  FolderIcon,
   Image as ImageIcon,
   Images as ImagesIcon,
   Film,
@@ -19,6 +20,7 @@ import {
   Type,
   Video,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import {
   useCallback,
@@ -123,7 +125,21 @@ export function TldrawCanvas() {
   const [documents, setDocuments] = useState<DocumentWithMemories[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
-  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const isPaletteOpen = useCanvasStore((s) => s.isPaletteOpen);
+  const setIsPaletteOpen = useCanvasStore((s) => s.setIsPaletteOpen);
+
+  // Fetch projects for palette selector
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: async () => {
+      const response = await $fetch("@get/projects");
+      if (response.error) {
+        throw new Error(response.error?.message || "Failed to load projects");
+      }
+      return response.data?.projects || [];
+    },
+    staleTime: 30 * 1000,
+  });
   const [isStylePanelOpen, setIsStylePanelOpen] = useState(false);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [selectedImage, setSelectedImage] = useState<{
@@ -333,15 +349,20 @@ export function TldrawCanvas() {
       const shapes = editor.getCurrentPageShapes();
       if (shapes.length === 0) return null;
 
-      // Export the entire canvas as an image
-      const exportResult = await editor.toImage(
-        shapes.map((s) => s.id),
-        {
-          format: "png",
-          scale: 0.25, // Small thumbnail
-          background: true,
-        },
-      );
+      // Filter out shapes that might cause fetch errors (bookmarks with external URLs)
+      const safeShapeIds = shapes
+        .filter((s) => s.type !== "bookmark" && s.type !== "embed")
+        .map((s) => s.id);
+
+      // Skip if no safe shapes to export
+      if (safeShapeIds.length === 0) return null;
+
+      // Export the canvas as an image (only safe shapes)
+      const exportResult = await editor.toImage(safeShapeIds, {
+        format: "png",
+        scale: 0.25, // Small thumbnail
+        background: true,
+      });
 
       const blob = exportResult.blob;
       return new Promise<string>((resolve, reject) => {
@@ -351,7 +372,8 @@ export function TldrawCanvas() {
         reader.readAsDataURL(blob);
       });
     } catch (error) {
-      console.error("[TldrawCanvas] Failed to generate thumbnail:", error);
+      // Silently fail - thumbnail generation is not critical
+      console.warn("[TldrawCanvas] Thumbnail generation skipped:", error);
       return null;
     }
   }, [editor]);
@@ -915,6 +937,7 @@ export function TldrawCanvas() {
   const [paletteError, setPaletteError] = useState<string | null>(null);
   const [palettePage, setPalettePage] = useState(1);
   const [paletteHasMore, setPaletteHasMore] = useState(true);
+  const [paletteProject, setPaletteProject] = useState<string>("all"); // "all" or project containerTag
 
   // Load documents
   const fetchDocuments = useCallback(async () => {
@@ -1010,8 +1033,8 @@ export function TldrawCanvas() {
     // Get existing document shape IDs (stored in meta)
     const existingDocIds = new Set(
       currentShapes
-        .filter((s) => s.meta?.supermemoryDocId)
-        .map((s) => s.meta.supermemoryDocId as string),
+        .filter((s) => s.meta?.kortixDocId)
+        .map((s) => s.meta.kortixDocId as string),
     );
 
     // Add new documents as native tldraw shapes
@@ -1043,8 +1066,8 @@ export function TldrawCanvas() {
             h: 225,
           },
           meta: {
-            supermemoryDocId: doc.id,
-            supermemoryTitle: doc.title,
+            kortixDocId: doc.id,
+            kortixTitle: doc.title,
           },
         });
       } else if (url) {
@@ -1059,8 +1082,8 @@ export function TldrawCanvas() {
             assetId: null,
           },
           meta: {
-            supermemoryDocId: doc.id,
-            supermemoryTitle: doc.title,
+            kortixDocId: doc.id,
+            kortixTitle: doc.title,
           },
         });
       } else {
@@ -1077,7 +1100,7 @@ export function TldrawCanvas() {
             color: "yellow",
           },
           meta: {
-            supermemoryDocId: doc.id,
+            kortixDocId: doc.id,
           },
         });
       }
@@ -1090,8 +1113,8 @@ export function TldrawCanvas() {
     const shapesToDelete = currentShapes
       .filter(
         (s) =>
-          s.meta?.supermemoryDocId &&
-          !docIds.has(s.meta.supermemoryDocId as string),
+          s.meta?.kortixDocId &&
+          !docIds.has(s.meta.kortixDocId as string),
       )
       .map((s) => s.id);
 
@@ -1107,8 +1130,8 @@ export function TldrawCanvas() {
     const handleChange = () => {
       const shapes = editor.getCurrentPageShapes();
       const docIds = shapes
-        .filter((s) => s.meta?.supermemoryDocId)
-        .map((s) => s.meta.supermemoryDocId as string);
+        .filter((s) => s.meta?.kortixDocId)
+        .map((s) => s.meta.kortixDocId as string);
 
       // Update scoped documents for chat
       setScopedDocumentIds(docIds);
@@ -1131,8 +1154,8 @@ export function TldrawCanvas() {
       setPaletteError(null);
       try {
         const containerTags =
-          selectedProject && selectedProject !== "sm_project_default"
-            ? [selectedProject]
+          paletteProject && paletteProject !== "all"
+            ? [paletteProject]
             : undefined;
         const response = await $fetch("@post/documents/documents", {
           body: {
@@ -1160,7 +1183,7 @@ export function TldrawCanvas() {
         setPaletteLoading(false);
       }
     },
-    [selectedProject],
+    [paletteProject],
   );
 
   useEffect(() => {
@@ -1385,38 +1408,6 @@ export function TldrawCanvas() {
         onSelect={handleCanvasProjectSelect}
         onClose={() => setShowProjectModal(false)}
       />
-      {/* Side controls */}
-      <div
-        className="absolute left-4 z-[100] flex flex-col gap-2"
-        style={{ top: 60 }}
-      >
-        <Tooltip content="Add documents to canvas" side="right">
-          <Button
-            className="bg-background/80 backdrop-blur-md hover:bg-foreground/10 border border-border hover:border-foreground/30 rounded-lg px-3 py-2 text-foreground/70 hover:text-foreground transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md group"
-            onClick={() => setIsSelectorOpen(true)}
-            size="sm"
-            variant="outline"
-          >
-            <Plus className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
-            Add Docs
-          </Button>
-        </Tooltip>
-        <Tooltip content="Toggle document palette" side="right">
-          <Button
-            className={`bg-background/80 backdrop-blur-md border rounded-lg px-3 py-2 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md group ${
-              isPaletteOpen
-                ? "bg-foreground/10 border-foreground/30 text-foreground"
-                : "hover:bg-foreground/10 border-border hover:border-foreground/30 text-foreground/70 hover:text-foreground"
-            }`}
-            onClick={() => setIsPaletteOpen((v) => !v)}
-            size="sm"
-            variant="outline"
-          >
-            <PaletteIcon className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
-            Palette
-          </Button>
-        </Tooltip>
-      </div>
 
       {/* Style panel toggle button - positioned in top right */}
       <div className="absolute right-4 z-[100]" style={{ top: 60 }}>
@@ -1457,6 +1448,8 @@ export function TldrawCanvas() {
             // Expose editor on window for testing
             (window as any).__TLDRAW_EDITOR__ = editor;
             setEditor(editor);
+            // Also set in global store for access from other components
+            useCanvasStore.getState().setEditor(editor);
 
             // Set theme based on app's theme system
             editor.user.updateUserPreferences({
@@ -1501,12 +1494,17 @@ export function TldrawCanvas() {
           }}
           tools={[TargetShapeTool, TargetAreaTool]}
           shapeUtils={[ResponseShapeUtil]}
+          components={{
+            // Remove actions from menu zone - moved to bottom bar
+            ActionsMenu: null,
+            QuickActions: null,
+          }}
         />
       </div>
 
       {/* Palette panel */}
       {isPaletteOpen && (
-        <div className="absolute top-16 right-4 bottom-4 w-[320px] z-[100] border border-border rounded-lg overflow-hidden backdrop-blur-md bg-background/95">
+        <div className="absolute top-16 right-4 bottom-4 w-[320px] z-[100] border border-border rounded-lg overflow-hidden bg-background">
           <div className="p-3 border-b border-border flex items-center justify-between">
             <p
               className="text-sm font-medium"
@@ -1522,7 +1520,25 @@ export function TldrawCanvas() {
               ×
             </Button>
           </div>
-          <div className="h-[calc(100%-60px)] overflow-y-auto p-2 space-y-2">
+          {/* Project selector */}
+          <div className="p-2 border-b border-border">
+            <select
+              value={paletteProject}
+              onChange={(e) => {
+                setPaletteProject(e.target.value);
+                setPalettePage(1);
+              }}
+              className="w-full px-3 py-2 text-sm bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-1 focus:ring-foreground/20"
+            >
+              <option value="all">All Projects</option>
+              {projects.map((project: { containerTag: string; name: string }) => (
+                <option key={project.containerTag} value={project.containerTag}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="h-[calc(100%-110px)] overflow-y-auto p-2 space-y-2">
             {paletteError && (
               <div className="text-xs text-red-500 p-2">{paletteError}</div>
             )}
@@ -1535,23 +1551,46 @@ export function TldrawCanvas() {
               .filter((d) => !placedDocumentIds.includes(d.id))
               .map((doc) => {
                 const url = getDocumentUrl(doc);
+                const previewImage = (doc as any).previewImage || (doc as any).preview_image;
+                const summary = (doc as any).summary;
                 return (
                   <div
                     key={doc.id}
-                    className="rounded-md border border-border bg-card p-3 hover:bg-accent/50 cursor-pointer transition-colors"
+                    className="rounded-md border border-border bg-card overflow-hidden hover:bg-accent/50 cursor-pointer transition-colors"
                     onClick={() => handleAddDocument(doc)}
                   >
-                    <p className="text-sm font-medium truncate">
-                      {doc.title || "Untitled"}
-                    </p>
-                    {url && (
-                      <p className="text-xs text-muted-foreground truncate mt-1">
-                        {new URL(url).hostname}
-                      </p>
+                    {/* Preview image */}
+                    {previewImage && (
+                      <div className="w-full h-24 bg-muted overflow-hidden">
+                        <img
+                          src={previewImage}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
                     )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {doc.type} • Click to add
-                    </p>
+                    <div className="p-3">
+                      <p className="text-sm font-medium truncate">
+                        {doc.title || "Untitled"}
+                      </p>
+                      {url && (
+                        <p className="text-xs text-muted-foreground truncate mt-1">
+                          {new URL(url).hostname}
+                        </p>
+                      )}
+                      {/* Summary */}
+                      {summary && (
+                        <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                          {summary}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {doc.type} • Click to add
+                      </p>
+                    </div>
                   </div>
                 );
               })}

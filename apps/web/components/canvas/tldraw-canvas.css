@@ -18,45 +18,17 @@
 }
 
 /* ============================================
-   Main Toolbar Position - Top Center
-   The main toolbar is in .tlui-layout__bottom__main by default
-   We reposition it to the top center
+   Main Toolbar - HIDDEN (tools are in CanvasAIBar)
    ============================================ */
 
-/* Move the main toolbar container to top center */
+/* Hide the main toolbar completely - we use custom buttons in CanvasAIBar */
 .tldraw-canvas-container .tlui-layout__bottom__main {
-  position: fixed !important;
-  top: 16px !important;
-  bottom: auto !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  width: auto !important;
-  z-index: 100 !important;
-}
-
-/* Hide navigation panel (zoom controls) from bottom - we don't need it there */
-.tldraw-canvas-container .tlui-navigation-panel {
   display: none !important;
 }
 
-/* Style the main toolbar */
-.tldraw-canvas-container .tlui-main-toolbar__inner {
-  min-width: 500px !important;
-}
-
-/* Force toolbar to show all items - override responsive collapse */
-.tldraw-canvas-container .tlui-main-toolbar__tools {
-  flex-wrap: nowrap !important;
-}
-
-.tldraw-canvas-container .tlui-main-toolbar__tools > * {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  position: static !important;
-  width: auto !important;
-  height: auto !important;
-  overflow: visible !important;
+/* Hide navigation panel (zoom controls) */
+.tldraw-canvas-container .tlui-navigation-panel {
+  display: none !important;
 }
 
 /* ============================================
@@ -116,25 +88,88 @@
 }
 
 /* ============================================
+   Minimal Toolbar Style - No Blue Background
+   ============================================ */
+
+/* Remove TLDraw's default blue selection background */
+.tldraw-canvas-container .tlui-button[data-state="selected"],
+.tldraw-canvas-container .tlui-button[aria-pressed="true"],
+.tldraw-canvas-container .tlui-button[aria-checked="true"] {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* Remove the blue ::after pseudo-element that TLDraw uses for selection */
+.tldraw-canvas-container .tlui-button::after,
+.tldraw-canvas-container .tlui-button[aria-pressed="true"]::after,
+.tldraw-canvas-container .tlui-button[data-state="selected"]::after {
+  background-color: transparent !important;
+  background: transparent !important;
+  display: none !important;
+}
+
+/* Toolbar container - minimal, no background */
+.tldraw-canvas-container .tlui-main-toolbar__inner {
+  background-color: transparent !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  gap: 2px !important;
+  padding: 4px !important;
+}
+
+/* Individual tool buttons - minimal style */
+.tldraw-canvas-container .tlui-main-toolbar .tlui-button {
+  background-color: transparent !important;
+  border-radius: 8px !important;
+  padding: 8px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+}
+
+/* Hover effect - subtle gray */
+.tldraw-canvas-container .tlui-main-toolbar .tlui-button:hover {
+  background-color: oklch(0.5 0 0 / 10%) !important;
+}
+
+/* Selected state - subtle background, no blue */
+.tldraw-canvas-container .tlui-main-toolbar .tlui-button[data-state="selected"],
+.tldraw-canvas-container .tlui-main-toolbar .tlui-button[aria-pressed="true"] {
+  background-color: oklch(0.5 0 0 / 15%) !important;
+}
+
+/* ============================================
    Light Theme - Integrated with App Variables
    ============================================ */
 .tldraw-theme-light .tlui-main-toolbar__inner,
 .tldraw-theme-light .tlui-main-toolbar {
-  background-color: oklch(1 0 0) !important;
-  border-color: oklch(0.92 0.004 286.32) !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
 }
 
 .tldraw-theme-light .tlui-button {
-  color: oklch(0.141 0.005 285.823) !important;
+  color: oklch(0.25 0 0) !important;
 }
 
 .tldraw-theme-light .tlui-button:hover {
-  background-color: oklch(0.967 0.001 286.375) !important;
+  background-color: oklch(0 0 0 / 8%) !important;
+  color: oklch(0.1 0 0) !important;
 }
 
 .tldraw-theme-light .tlui-button[data-state="selected"],
 .tldraw-theme-light .tlui-button[aria-pressed="true"] {
-  background-color: oklch(0.967 0.001 286.375) !important;
+  background-color: oklch(0 0 0 / 10%) !important;
+  color: oklch(0.1 0 0) !important;
+}
+
+/* Light mode icons - ensure visibility */
+.tldraw-theme-light .tlui-icon {
+  color: oklch(0.25 0 0) !important;
+}
+
+.tldraw-theme-light .tlui-button:hover .tlui-icon,
+.tldraw-theme-light .tlui-button[aria-pressed="true"] .tlui-icon {
+  color: oklch(0.1 0 0) !important;
 }
 
 /* Style panel light mode */
@@ -169,21 +204,22 @@
    ============================================ */
 .tldraw-theme-dark .tlui-main-toolbar__inner,
 .tldraw-theme-dark .tlui-main-toolbar {
-  background-color: oklch(0.1 0 0) !important;
-  border-color: oklch(1 0 0 / 10%) !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
 }
 
 .tldraw-theme-dark .tlui-button {
-  color: oklch(1 0 0) !important;
+  color: oklch(0.7 0 0) !important;
 }
 
 .tldraw-theme-dark .tlui-button:hover {
-  background-color: oklch(0.2 0 0) !important;
+  background-color: oklch(1 0 0 / 10%) !important;
 }
 
 .tldraw-theme-dark .tlui-button[data-state="selected"],
 .tldraw-theme-dark .tlui-button[aria-pressed="true"] {
-  background-color: oklch(0.2 0 0) !important;
+  background-color: oklch(1 0 0 / 15%) !important;
+  color: oklch(1 0 0) !important;
 }
 
 /* Style panel dark mode */
@@ -349,4 +385,261 @@
 .tldraw-theme-dark .tlui-kbd {
   background-color: oklch(0.2 0 0) !important;
   color: oklch(0.6 0 0) !important;
+}
+
+/* ============================================
+   Bookmark Cards - Minimalist Modern Design
+   ============================================ */
+
+/* Main container - clean rounded corners, subtle border */
+.tldraw-canvas-container .tl-bookmark__container {
+  border-radius: 12px !important;
+  border: 1px solid oklch(0.5 0 0 / 15%) !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 8px oklch(0 0 0 / 8%) !important;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease !important;
+}
+
+.tldraw-canvas-container .tl-bookmark__container:hover {
+  box-shadow: 0 4px 16px oklch(0 0 0 / 12%) !important;
+  border-color: oklch(0.5 0 0 / 25%) !important;
+}
+
+/* Image container - aspect ratio and smooth corners */
+.tldraw-canvas-container .tl-bookmark__image_container {
+  border-radius: 12px 12px 0 0 !important;
+  max-height: 140px !important;
+  overflow: hidden !important;
+}
+
+/* Image - cover entire area */
+.tldraw-canvas-container .tl-bookmark__image {
+  border-bottom: none !important;
+  object-fit: cover !important;
+}
+
+/* Placeholder when no image */
+.tldraw-canvas-container .tl-bookmark__placeholder {
+  background: linear-gradient(135deg, oklch(0.3 0 0 / 10%), oklch(0.5 0 0 / 15%)) !important;
+  border-bottom: none !important;
+}
+
+/* Content container - minimal padding */
+.tldraw-canvas-container .tl-bookmark__copy_container {
+  padding: 12px 14px !important;
+  gap: 6px !important;
+}
+
+/* Title - clean typography */
+.tldraw-canvas-container .tl-bookmark__heading {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+  padding-bottom: 0 !important;
+  letter-spacing: -0.01em !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+/* Description - subtle and compact */
+.tldraw-canvas-container .tl-bookmark__description {
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+  opacity: 0.7 !important;
+  max-height: calc(11px * 1.4 * 2) !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+/* Link/URL row - minimal style */
+.tldraw-canvas-container .tl-bookmark__link {
+  font-size: 10px !important;
+  opacity: 0.5 !important;
+  margin-top: 4px !important;
+}
+
+.tldraw-canvas-container .tl-bookmark__heading + .tl-bookmark__link,
+.tldraw-canvas-container .tl-bookmark__description + .tl-bookmark__link {
+  margin-top: 6px !important;
+}
+
+/* Favicon - smaller and subtle */
+.tldraw-canvas-container .tl-bookmark__link > .tl-bookmark__favicon {
+  width: 12px !important;
+  height: 12px !important;
+  margin-right: 6px !important;
+  opacity: 0.7 !important;
+}
+
+/* Hyperlink icon */
+.tldraw-canvas-container .tl-bookmark__link > .tl-hyperlink__icon {
+  margin-right: 6px !important;
+  opacity: 0.5 !important;
+}
+
+/* ============================================
+   Bookmark Cards - Light Theme
+   ============================================ */
+.tldraw-theme-light .tl-bookmark__container {
+  background-color: oklch(1 0 0) !important;
+  border-color: oklch(0.9 0 0) !important;
+}
+
+.tldraw-theme-light .tl-bookmark__copy_container {
+  background-color: oklch(1 0 0) !important;
+}
+
+.tldraw-theme-light .tl-bookmark__heading {
+  color: oklch(0.15 0 0) !important;
+}
+
+.tldraw-theme-light .tl-bookmark__description {
+  color: oklch(0.35 0 0) !important;
+}
+
+.tldraw-theme-light .tl-bookmark__link {
+  color: oklch(0.5 0 0) !important;
+}
+
+.tldraw-theme-light .tl-bookmark__placeholder {
+  background: linear-gradient(135deg, oklch(0.96 0 0), oklch(0.93 0 0)) !important;
+}
+
+/* ============================================
+   Bookmark Cards - Dark Theme
+   ============================================ */
+.tldraw-theme-dark .tl-bookmark__container {
+  background-color: oklch(0.12 0 0) !important;
+  border-color: oklch(1 0 0 / 10%) !important;
+  box-shadow: 0 2px 8px oklch(0 0 0 / 30%) !important;
+}
+
+.tldraw-theme-dark .tl-bookmark__container:hover {
+  box-shadow: 0 4px 16px oklch(0 0 0 / 40%) !important;
+  border-color: oklch(1 0 0 / 20%) !important;
+}
+
+.tldraw-theme-dark .tl-bookmark__copy_container {
+  background-color: oklch(0.12 0 0) !important;
+}
+
+.tldraw-theme-dark .tl-bookmark__heading {
+  color: oklch(0.95 0 0) !important;
+}
+
+.tldraw-theme-dark .tl-bookmark__description {
+  color: oklch(0.7 0 0) !important;
+}
+
+.tldraw-theme-dark .tl-bookmark__link {
+  color: oklch(0.5 0 0) !important;
+}
+
+.tldraw-theme-dark .tl-bookmark__placeholder {
+  background: linear-gradient(135deg, oklch(0.15 0 0), oklch(0.2 0 0)) !important;
+}
+
+/* ============================================
+   Embed Cards (YouTube etc) - Matching Style
+   ============================================ */
+.tldraw-canvas-container .tl-embed {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 8px oklch(0 0 0 / 10%) !important;
+}
+
+.tldraw-theme-dark .tl-embed {
+  box-shadow: 0 2px 8px oklch(0 0 0 / 30%) !important;
+}
+
+/* ============================================
+   Top Left Menu Zone - Page Menu styling
+   ============================================ */
+
+/* Main menu zone container - just page menu */
+.tldraw-canvas-container .tlui-menu-zone {
+  background-color: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--foreground) / 0.15) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+}
+
+/* All buttons in menu zone - clean style */
+.tldraw-canvas-container .tlui-menu-zone .tlui-button {
+  background-color: transparent !important;
+  border-radius: 6px !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.tldraw-canvas-container .tlui-menu-zone .tlui-button:hover {
+  background-color: hsl(var(--foreground) / 0.1) !important;
+}
+
+.tldraw-canvas-container .tlui-menu-zone .tlui-button[data-state="open"],
+.tldraw-canvas-container .tlui-menu-zone .tlui-button[aria-expanded="true"] {
+  background-color: hsl(var(--foreground) / 0.1) !important;
+}
+
+/* Remove blue highlight */
+.tldraw-canvas-container .tlui-menu-zone .tlui-button::after {
+  display: none !important;
+}
+
+/* Button text and icons */
+.tldraw-canvas-container .tlui-menu-zone .tlui-button {
+  color: hsl(var(--foreground) / 0.8) !important;
+}
+
+.tldraw-canvas-container .tlui-menu-zone .tlui-button:hover {
+  color: hsl(var(--foreground)) !important;
+}
+
+.tldraw-canvas-container .tlui-menu-zone .tlui-icon {
+  color: inherit !important;
+}
+
+/* ============================================
+   Dropdowns/Popovers - Consistent with App
+   ============================================ */
+.tldraw-canvas-container .tlui-popover__content,
+.tldraw-canvas-container .tlui-menu__content {
+  border-radius: 12px !important;
+  border: 1px solid oklch(0.5 0 0 / 15%) !important;
+  box-shadow: 0 4px 16px oklch(0 0 0 / 15%) !important;
+  padding: 4px !important;
+  overflow: hidden !important;
+}
+
+.tldraw-theme-light .tlui-popover__content,
+.tldraw-theme-light .tlui-menu__content {
+  background-color: oklch(1 0 0) !important;
+  border-color: oklch(0.92 0 0) !important;
+}
+
+.tldraw-theme-dark .tlui-popover__content,
+.tldraw-theme-dark .tlui-menu__content {
+  background-color: oklch(0.12 0 0) !important;
+  border-color: oklch(1 0 0 / 12%) !important;
+  box-shadow: 0 4px 16px oklch(0 0 0 / 40%) !important;
+}
+
+/* Menu items */
+.tldraw-canvas-container .tlui-menu__item,
+.tldraw-canvas-container .tlui-button__menu {
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.tldraw-theme-light .tlui-menu__item:hover,
+.tldraw-theme-light .tlui-button__menu:hover {
+  background-color: oklch(0 0 0 / 5%) !important;
+}
+
+.tldraw-theme-dark .tlui-menu__item:hover,
+.tldraw-theme-dark .tlui-button__menu:hover {
+  background-color: oklch(1 0 0 / 8%) !important;
 }

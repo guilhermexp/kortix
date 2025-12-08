@@ -60,7 +60,7 @@ export function LoginPage() {
 				<HeadingH1Medium>Sua memória, acessível e privada.</HeadingH1Medium>
 				<p className="text-white/70 max-w-lg">
 					Crie uma conta ou entre com seu email e senha para começar a usar o
-					supermemory self-hosted.
+					Kortix self-hosted.
 				</p>
 			</div>
 

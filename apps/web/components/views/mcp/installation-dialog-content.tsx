@@ -91,9 +91,9 @@ export function InstallationDialogContent({
   return (
     <DialogContent className="border border-white/10 bg-background text-foreground dark:text-white">
       <DialogHeader>
-        <DialogTitle>Install the supermemory MCP Server</DialogTitle>
+        <DialogTitle>Install the Kortix MCP Server</DialogTitle>
         <DialogDescription>
-          Select the app and project you want to install supermemory MCP to,
+          Select the app and project you want to install Kortix MCP to,
           then run the following command:
         </DialogDescription>
       </DialogHeader>
@@ -120,7 +120,7 @@ export function InstallationDialogContent({
           </div>
           <p className="text-xs text-muted-foreground">
             Keep this key safe. It authenticates your MCP client with your
-            Supermemory workspace.
+            Kortix workspace.
           </p>
         </div>
 

@@ -113,7 +113,7 @@ export function getDefaultExtractorConfig(): ExtractorServiceConfig {
 		defaultTimeout: ConfigLoader.getNumber("EXTRACTOR_DEFAULT_TIMEOUT", 30000),
 		userAgent: ConfigLoader.getString(
 			"USER_AGENT",
-			"SupermemorySelfHosted/1.0 (+self-hosted extractor)",
+			"KortixSelfHosted/1.0 (+self-hosted extractor)",
 		),
 	}
 }

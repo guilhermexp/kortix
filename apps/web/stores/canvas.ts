@@ -1,3 +1,4 @@
+import type { Editor } from "tldraw"
 import { create } from "zustand"
 
 // Types for canvas positioning
@@ -23,6 +24,15 @@ export interface CanvasState {
 	// Project modal state
 	showProjectModal: boolean
 	setShowProjectModal: (show: boolean) => void
+
+	// Palette state
+	isPaletteOpen: boolean
+	setIsPaletteOpen: (open: boolean) => void
+	togglePalette: () => void
+
+	// TLDraw editor reference
+	editor: Editor | null
+	setEditor: (editor: Editor | null) => void
 
 	// Document management actions
 	setPlacedDocumentIds: (ids: string[]) => void
@@ -53,6 +63,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 	selectedDocumentIds: [],
 	showProjectModal: true,
 	setShowProjectModal: (show: boolean) => set({ showProjectModal: show }),
+
+	isPaletteOpen: false,
+	setIsPaletteOpen: (open: boolean) => set({ isPaletteOpen: open }),
+	togglePalette: () => set((state) => ({ isPaletteOpen: !state.isPaletteOpen })),
+
+	editor: null,
+	setEditor: (editor: Editor | null) => set({ editor }),
 
 	// Document management actions
 	setPlacedDocumentIds: (ids: string[]) => {

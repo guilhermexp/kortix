@@ -1,7 +1,7 @@
 import { BACKEND_URL } from "@lib/env"
 
 /**
- * Upload an image file to SuperMemory storage
+ * Upload an image file to Kortix storage
  * @param file - The image file to upload
  * @returns The URL of the uploaded image
  */

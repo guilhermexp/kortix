@@ -1,1 +1,1 @@
-## supermemory Browser Extension
+## Kortix Browser Extension

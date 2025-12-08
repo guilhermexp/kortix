@@ -1,4 +1,4 @@
-# Railway Configuration for Supermemory API
+# Railway Configuration for Kortix API
 # This file tells Railway how to build and deploy the API service
 #
 # IMPORTANT: This is a shared monorepo - builds must install from root

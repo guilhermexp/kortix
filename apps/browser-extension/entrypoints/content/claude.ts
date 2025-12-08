@@ -26,7 +26,7 @@ export function initializeClaude() {
 	}
 
 	setTimeout(() => {
-		addSupermemoryIconToClaudeInput()
+		addKortixIconToClaudeInput()
 		setupClaudeAutoFetch()
 	}, 2000)
 
@@ -54,9 +54,9 @@ function setupClaudeRouteChangeDetection() {
 	const checkForRouteChange = () => {
 		if (window.location.href !== currentUrl) {
 			currentUrl = window.location.href
-			console.log("Claude route changed, re-adding supermemory icon")
+			console.log("Claude route changed, re-adding kortix icon")
 			setTimeout(() => {
-				addSupermemoryIconToClaudeInput()
+				addKortixIconToClaudeInput()
 				setupClaudeAutoFetch()
 			}, 1000)
 		}
@@ -92,7 +92,7 @@ function setupClaudeRouteChangeDetection() {
 			claudeObserverThrottle = setTimeout(() => {
 				try {
 					claudeObserverThrottle = null
-					addSupermemoryIconToClaudeInput()
+					addKortixIconToClaudeInput()
 					setupClaudeAutoFetch()
 				} catch (error) {
 					console.error("Error in Claude observer callback:", error)
@@ -115,13 +115,13 @@ function setupClaudeRouteChangeDetection() {
 	}
 }
 
-function addSupermemoryIconToClaudeInput() {
+function addKortixIconToClaudeInput() {
 	const targetContainers = document.querySelectorAll(
 		".relative.flex-1.flex.items-center.gap-2.shrink.min-w-0",
 	)
 
 	targetContainers.forEach((container) => {
-		if (container.hasAttribute("data-supermemory-icon-added")) {
+		if (container.hasAttribute("data-kortix-icon-added")) {
 			return
 		}
 
@@ -129,21 +129,21 @@ function addSupermemoryIconToClaudeInput() {
 			`#${ELEMENT_IDS.CLAUDE_INPUT_BAR_ELEMENT}`,
 		)
 		if (existingIcon) {
-			container.setAttribute("data-supermemory-icon-added", "true")
+			container.setAttribute("data-kortix-icon-added", "true")
 			return
 		}
 
-		const supermemoryIcon = createClaudeInputBarElement(async () => {
+		const kortixIcon = createClaudeInputBarElement(async () => {
 			await getRelatedMemoriesForClaude(
 				POSTHOG_EVENT_KEY.CLAUDE_CHAT_MEMORIES_SEARCHED,
 			)
 		})
 
-		supermemoryIcon.id = `${ELEMENT_IDS.CLAUDE_INPUT_BAR_ELEMENT}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+		kortixIcon.id = `${ELEMENT_IDS.CLAUDE_INPUT_BAR_ELEMENT}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 
-		container.setAttribute("data-supermemory-icon-added", "true")
+		container.setAttribute("data-kortix-icon-added", "true")
 
-		container.insertBefore(supermemoryIcon, container.firstChild)
+		container.insertBefore(kortixIcon, container.firstChild)
 	})
 }
 
@@ -151,12 +151,12 @@ async function getRelatedMemoriesForClaude(actionSource: string) {
 	try {
 		let userQuery = ""
 
-		const supermemoryContainer = document.querySelector(
-			'[data-supermemory-icon-added="true"]',
+		const kortixContainer = document.querySelector(
+			'[data-kortix-icon-added="true"]',
 		)
-		if (supermemoryContainer?.parentElement?.previousElementSibling) {
+		if (kortixContainer?.parentElement?.previousElementSibling) {
 			const pTag =
-				supermemoryContainer.parentElement.previousElementSibling.querySelector(
+				kortixContainer.parentElement.previousElementSibling.querySelector(
 					"p",
 				)
 			userQuery = pTag?.innerText || pTag?.textContent || ""
@@ -227,7 +227,7 @@ async function getRelatedMemoriesForClaude(actionSource: string) {
 			) as HTMLElement
 
 			if (textareaElement) {
-				textareaElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${response.data}</div>`
+				textareaElement.dataset.supermemories = `<div>Kortix memories of user (only for the reference): ${response.data}</div>`
 				console.log(
 					"Text element dataset:",
 					textareaElement.dataset.supermemories,
@@ -439,7 +439,7 @@ function updateClaudeIconFeedback(
 					'div[contenteditable="true"]',
 				) as HTMLElement
 				if (textareaElement) {
-					textareaElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${updatedMemories}</div>`
+					textareaElement.dataset.supermemories = `<div>Kortix memories of user (only for the reference): ${updatedMemories}</div>`
 				}
 
 				content
@@ -509,7 +509,7 @@ function setupClaudePromptCapture() {
 		if (
 			storedMemories &&
 			contentEditableDiv &&
-			!promptContent.includes("Supermemories of user")
+			!promptContent.includes("Kortix memories of user")
 		) {
 			contentEditableDiv.innerHTML = `${contentEditableDiv.innerHTML} ${storedMemories}`
 			promptContent =
@@ -604,12 +604,12 @@ async function setupClaudeAutoFetch() {
 
 	if (
 		!textareaElement ||
-		textareaElement.hasAttribute("data-supermemory-auto-fetch")
+		textareaElement.hasAttribute("data-kortix-auto-fetch")
 	) {
 		return
 	}
 
-	textareaElement.setAttribute("data-supermemory-auto-fetch", "true")
+	textareaElement.setAttribute("data-kortix-auto-fetch", "true")
 
 	const handleInput = () => {
 		if (claudeDebounceTimeout) {

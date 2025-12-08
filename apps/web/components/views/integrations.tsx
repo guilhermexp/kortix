@@ -152,8 +152,9 @@ export function IntegrationsView() {
       const result = response.data as { data: Connection[] } | Connection[];
       return Array.isArray(result) ? result : (result?.data ?? []);
     },
-    staleTime: 30 * 1000,
-    refetchInterval: 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes - connections rarely change
+    refetchInterval: false, // Disable polling - use refetchOnWindowFocus instead
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
@@ -212,7 +213,7 @@ export function IntegrationsView() {
     onSuccess: () => {
       analytics.connectionDeleted();
       toast.success(
-        "Connection removal has started. supermemory will permanently delete all documents related to the connection in the next few minutes.",
+        "Connection removal has started. Kortix will permanently delete all documents related to the connection in the next few minutes.",
       );
       queryClient.invalidateQueries({ queryKey: ["connections"] });
     },
@@ -364,7 +365,7 @@ export function IntegrationsView() {
                   className="text-foreground dark:text-foreground dark:text-foreground dark:text-white bg-secondary w-fit"
                   onClick={() => {
                     window.open(
-                      "https://chromewebstore.google.com/detail/supermemory/afpgkkipfdpeaflnpoaffkcankadgjfc",
+                      "https://chromewebstore.google.com/detail/kortix/afpgkkipfdpeaflnpoaffkcankadgjfc",
                       "_blank",
                       "noopener,noreferrer",
                     );
@@ -379,7 +380,7 @@ export function IntegrationsView() {
               </div>
               <p className="text-xs text-orange-400/90 bg-orange-500/10 px-3 py-2 rounded-lg border border-orange-500/20 mb-3">
                 🔗 This will open the Chrome Web Store where you can install the
-                official Supermemory extension
+                official Kortix extension
               </p>
             </div>
           </div>
@@ -387,7 +388,7 @@ export function IntegrationsView() {
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-1.5 bg-orange-400 rounded-full flex-shrink-0" />
               <p className="text-foreground dark:text-foreground dark:text-white/80 text-sm">
-                Save any webpage to supermemory
+                Save any webpage to Kortix
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -399,7 +400,7 @@ export function IntegrationsView() {
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-1.5 bg-orange-400 rounded-full flex-shrink-0" />
               <p className="text-foreground dark:text-foreground dark:text-white/80 text-sm">
-                Bring all your chatGPT memories to Supermemory
+                Bring all your chatGPT memories to Kortix
               </p>
             </div>
           </div>
@@ -432,7 +433,7 @@ export function IntegrationsView() {
               </h3>
               <p className="text-foreground dark:text-foreground dark:text-white/70 text-sm leading-relaxed mb-2">
                 Connect your cloud storage accounts to automatically sync
-                documents to Supermemory.
+                documents to Kortix.
               </p>
               {isProUser && (
                 <p className="text-xs text-green-400/90 bg-green-500/10 px-3 py-2 rounded-lg border border-green-500/20">
@@ -614,7 +615,7 @@ export function IntegrationsView() {
           on{" "}
           <a
             className="text-orange-500 hover:text-orange-400 underline"
-            href="https://x.com/supermemoryai"
+            href="https://x.com/kortixai"
             rel="noopener noreferrer"
             target="_blank"
           >

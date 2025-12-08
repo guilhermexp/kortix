@@ -23,8 +23,8 @@ export function initializeT3() {
 	}
 
 	setTimeout(() => {
-		console.log("Adding supermemory icon to T3 input")
-		addSupermemoryIconToT3Input()
+		console.log("Adding kortix icon to T3 input")
+		addKortixIconToT3Input()
 		setupT3AutoFetch()
 	}, 2000)
 
@@ -52,9 +52,9 @@ function setupT3RouteChangeDetection() {
 	const checkForRouteChange = () => {
 		if (window.location.href !== currentUrl) {
 			currentUrl = window.location.href
-			console.log("T3 route changed, re-adding supermemory icon")
+			console.log("T3 route changed, re-adding kortix icon")
 			setTimeout(() => {
-				addSupermemoryIconToT3Input()
+				addKortixIconToT3Input()
 				setupT3AutoFetch()
 			}, 1000)
 		}
@@ -90,7 +90,7 @@ function setupT3RouteChangeDetection() {
 			t3ObserverThrottle = setTimeout(() => {
 				try {
 					t3ObserverThrottle = null
-					addSupermemoryIconToT3Input()
+					addKortixIconToT3Input()
 					setupT3AutoFetch()
 				} catch (error) {
 					console.error("Error in T3 observer callback:", error)
@@ -113,13 +113,13 @@ function setupT3RouteChangeDetection() {
 	}
 }
 
-function addSupermemoryIconToT3Input() {
+function addKortixIconToT3Input() {
 	const targetContainers = document.querySelectorAll(
 		".flex.min-w-0.items-center.gap-2.overflow-hidden",
 	)
 
 	targetContainers.forEach((container) => {
-		if (container.hasAttribute("data-supermemory-icon-added")) {
+		if (container.hasAttribute("data-kortix-icon-added")) {
 			return
 		}
 
@@ -127,19 +127,19 @@ function addSupermemoryIconToT3Input() {
 			`#${ELEMENT_IDS.T3_INPUT_BAR_ELEMENT}`,
 		)
 		if (existingIcon) {
-			container.setAttribute("data-supermemory-icon-added", "true")
+			container.setAttribute("data-kortix-icon-added", "true")
 			return
 		}
 
-		const supermemoryIcon = createT3InputBarElement(async () => {
+		const kortixIcon = createT3InputBarElement(async () => {
 			await getRelatedMemoriesForT3(POSTHOG_EVENT_KEY.T3_CHAT_MEMORIES_SEARCHED)
 		})
 
-		supermemoryIcon.id = `${ELEMENT_IDS.T3_INPUT_BAR_ELEMENT}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+		kortixIcon.id = `${ELEMENT_IDS.T3_INPUT_BAR_ELEMENT}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 
-		container.setAttribute("data-supermemory-icon-added", "true")
+		container.setAttribute("data-kortix-icon-added", "true")
 
-		container.insertBefore(supermemoryIcon, container.firstChild)
+		container.insertBefore(kortixIcon, container.firstChild)
 	})
 }
 
@@ -147,14 +147,14 @@ async function getRelatedMemoriesForT3(actionSource: string) {
 	try {
 		let userQuery = ""
 
-		const supermemoryContainer = document.querySelector(
-			'[data-supermemory-icon-added="true"]',
+		const kortixContainer = document.querySelector(
+			'[data-kortix-icon-added="true"]',
 		)
 		if (
-			supermemoryContainer?.parentElement?.parentElement?.previousElementSibling
+			kortixContainer?.parentElement?.parentElement?.previousElementSibling
 		) {
 			const textareaElement =
-				supermemoryContainer.parentElement.parentElement.previousElementSibling.querySelector(
+				kortixContainer.parentElement.parentElement.previousElementSibling.querySelector(
 					"textarea",
 				)
 			userQuery = textareaElement?.value || ""
@@ -217,15 +217,15 @@ async function getRelatedMemoriesForT3(actionSource: string) {
 
 		if (response?.success && response?.data) {
 			let textareaElement = null
-			const supermemoryContainer = document.querySelector(
-				'[data-supermemory-icon-added="true"]',
+			const kortixContainer = document.querySelector(
+				'[data-kortix-icon-added="true"]',
 			)
 			if (
-				supermemoryContainer?.parentElement?.parentElement
+				kortixContainer?.parentElement?.parentElement
 					?.previousElementSibling
 			) {
 				textareaElement =
-					supermemoryContainer.parentElement.parentElement.previousElementSibling.querySelector(
+					kortixContainer.parentElement.parentElement.previousElementSibling.querySelector(
 						"textarea",
 					)
 			}
@@ -239,10 +239,10 @@ async function getRelatedMemoriesForT3(actionSource: string) {
 			if (textareaElement) {
 				if (textareaElement.tagName === "TEXTAREA") {
 					;(textareaElement as HTMLTextAreaElement).dataset.supermemories =
-						`<br>Supermemories of user (only for the reference): ${response.data}</br>`
+						`<br>Kortix memories of user (only for the reference): ${response.data}</br>`
 				} else {
 					;(textareaElement as HTMLElement).dataset.supermemories =
-						`<br>Supermemories of user (only for the reference): ${response.data}</br>`
+						`<br>Kortix memories of user (only for the reference): ${response.data}</br>`
 				}
 
 				iconElement.dataset.memoriesData = response.data
@@ -449,7 +449,7 @@ function updateT3IconFeedback(
 					(document.querySelector("textarea") as HTMLTextAreaElement) ||
 					(document.querySelector('div[contenteditable="true"]') as HTMLElement)
 				if (textareaElement) {
-					textareaElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${updatedMemories}</div>`
+					textareaElement.dataset.supermemories = `<div>Kortix memories of user (only for the reference): ${updatedMemories}</div>`
 				}
 
 				content
@@ -523,7 +523,7 @@ function setupT3PromptCapture() {
 		if (
 			storedMemories &&
 			textareaElement &&
-			!promptContent.includes("Supermemories of user")
+			!promptContent.includes("Kortix memories of user")
 		) {
 			if (textareaElement.tagName === "TEXTAREA") {
 				;(textareaElement as HTMLTextAreaElement).value =
@@ -643,12 +643,12 @@ async function setupT3AutoFetch() {
 
 	if (
 		!textareaElement ||
-		textareaElement.hasAttribute("data-supermemory-auto-fetch")
+		textareaElement.hasAttribute("data-kortix-auto-fetch")
 	) {
 		return
 	}
 
-	textareaElement.setAttribute("data-supermemory-auto-fetch", "true")
+	textareaElement.setAttribute("data-kortix-auto-fetch", "true")
 
 	const handleInput = () => {
 		if (t3DebounceTimeout) {

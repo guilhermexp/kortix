@@ -1,4 +1,4 @@
-# Railway Configuration for Supermemory Web
+# Railway Configuration for Kortix Web
 # This file tells Railway how to build and deploy the Next.js web service
 #
 # IMPORTANT: This is a shared monorepo - builds must install from root

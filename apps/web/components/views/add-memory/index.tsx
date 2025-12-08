@@ -34,9 +34,9 @@ import {
   Sparkles,
   UploadIcon,
 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 // Removed dropdown; inline toggle buttons are used instead
 import { z } from "zod";
@@ -536,16 +536,18 @@ export function AddMemoryView({
       return processingPromise;
     },
     onMutate: async ({ project, url }) => {
-      // Cancel any outgoing refetches
+      // Cancel any outgoing refetches (partial match to include queries with search param)
       await queryClient.cancelQueries({
         queryKey: ["documents-with-memories", project],
+        exact: false,
       });
 
-      // Snapshot the previous value
-      const previousMemories = queryClient.getQueryData<DocumentsQueryData>([
-        "documents-with-memories",
-        project,
-      ]);
+      // Snapshot all matching queries for potential rollback
+      const matchingQueries = queryClient.getQueriesData<DocumentsQueryData>({
+        queryKey: ["documents-with-memories", project],
+        exact: false,
+      });
+      const previousMemories = matchingQueries.length > 0 ? matchingQueries[0][1] : undefined;
 
       // Create optimistic memory
       const getLinkHostname = (linkUrl: string) => {
@@ -575,20 +577,22 @@ export function AddMemoryView({
         isOptimistic: true,
       };
 
-      // Optimistically update to include the new memory
-      queryClient.setQueryData<DocumentsQueryData | undefined>(
-        ["documents-with-memories", project],
+      // Optimistically update ALL matching queries (partial match)
+      queryClient.setQueriesData<DocumentsQueryData | undefined>(
+        { queryKey: ["documents-with-memories", project], exact: false },
         (oldData) => mergeOptimisticMemory(oldData, optimisticMemory),
       );
 
-      return { previousMemories, optimisticId: optimisticMemory.id };
+      return { previousMemories, optimisticId: optimisticMemory.id, matchingQueries };
     },
     onError: (_error, variables, context) => {
-      if (context?.previousMemories) {
-        queryClient.setQueryData(
-          ["documents-with-memories", variables.project],
-          context.previousMemories,
-        );
+      // Restore all matching queries to their previous state
+      if (context?.matchingQueries) {
+        for (const [queryKey, data] of context.matchingQueries) {
+          if (data) {
+            queryClient.setQueryData(queryKey, data);
+          }
+        }
       }
       toast.error("Falha ao salvar memória", {
         description: _error instanceof Error ? _error.message : "Unknown error",
@@ -613,11 +617,13 @@ export function AddMemoryView({
       let successDescription: string | undefined;
 
       if (dedup) {
-        if (context?.previousMemories) {
-          queryClient.setQueryData(
-            ["documents-with-memories", variables.project],
-            context.previousMemories,
-          );
+        // Restore all matching queries for duplicate handling
+        if (context?.matchingQueries) {
+          for (const [queryKey, data] of context.matchingQueries) {
+            if (data) {
+              queryClient.setQueryData(queryKey, data);
+            }
+          }
         }
         // Show duplicate modal instead of toast
         setDuplicateModal({
@@ -628,9 +634,10 @@ export function AddMemoryView({
           url: variables.content,
         });
       } else {
+        // Update optimistic entry with real data in ALL matching queries
         if (context?.optimisticId && documentId) {
-          queryClient.setQueryData<DocumentsQueryData | undefined>(
-            ["documents-with-memories", variables.project],
+          queryClient.setQueriesData<DocumentsQueryData | undefined>(
+            { queryKey: ["documents-with-memories", variables.project], exact: false },
             (current) =>
               promoteOptimisticMemory(current, context.optimisticId!, {
                 id: documentId,
@@ -693,6 +700,9 @@ export function AddMemoryView({
     },
   });
 
+  // Track if mutation is already in progress to prevent double execution (using ref for synchronous check)
+  const isMutatingRef = useRef(false);
+
   const addContentMutation = useMutation({
     mutationFn: async ({
       content,
@@ -703,8 +713,17 @@ export function AddMemoryView({
       project: string;
       contentType: "note" | "link";
     }) => {
+      console.log("🔄 mutationFn called, isMutatingRef:", isMutatingRef.current);
+      // Prevent double execution using synchronous ref check
+      if (isMutatingRef.current) {
+        console.log("⚠️ Mutation already in progress, skipping...");
+        return;
+      }
+      isMutatingRef.current = true;
+      console.log("✅ Mutation guard set, proceeding...");
+
       // close the modal
-      onClose?.();
+      setShowAddDialog(false);
 
       const processingPromise = (async () => {
         // First, create the memory
@@ -811,17 +830,23 @@ export function AddMemoryView({
     onMutate: async ({ content, project, contentType }) => {
       console.log("🚀 onMutate starting...");
 
-      // Cancel any outgoing refetches
+      // Cancel any outgoing refetches (partial match to include queries with search param)
       await queryClient.cancelQueries({
         queryKey: ["documents-with-memories", project],
+        exact: false,
       });
       console.log("✅ Cancelled queries");
 
-      // Snapshot the previous value
-      const previousMemories = queryClient.getQueryData<DocumentsQueryData>([
-        "documents-with-memories",
-        project,
-      ]);
+      // Snapshot the previous value - get all matching queries since queryKey includes search param
+      // The actual key is ["documents-with-memories", project, searchTerm]
+      const matchingQueries = queryClient.getQueriesData<DocumentsQueryData>({
+        queryKey: ["documents-with-memories", project],
+        exact: false,
+      });
+      console.log("📸 Matching queries:", matchingQueries);
+
+      // Store the first matching query's data for rollback
+      const previousMemories = matchingQueries.length > 0 ? matchingQueries[0][1] : undefined;
       console.log("📸 Previous memories:", previousMemories);
 
       // Create optimistic memory
@@ -856,22 +881,24 @@ export function AddMemoryView({
       };
       console.log("🎯 Created optimistic memory:", optimisticMemory);
 
-      // Optimistically update to include the new memory
-      queryClient.setQueryData<DocumentsQueryData | undefined>(
-        ["documents-with-memories", project],
+      // Optimistically update ALL matching queries (partial match)
+      queryClient.setQueriesData<DocumentsQueryData | undefined>(
+        { queryKey: ["documents-with-memories", project], exact: false },
         (oldData) => mergeOptimisticMemory(oldData, optimisticMemory),
       );
 
       console.log("✅ onMutate completed");
-      return { previousMemories, optimisticId: optimisticMemory.id };
+      return { previousMemories, optimisticId: optimisticMemory.id, matchingQueries };
     },
     // If the mutation fails, roll back to the previous value
     onError: (_error, variables, context) => {
-      if (context?.previousMemories) {
-        queryClient.setQueryData(
-          ["documents-with-memories", variables.project],
-          context.previousMemories,
-        );
+      // Restore all matching queries to their previous state
+      if (context?.matchingQueries) {
+        for (const [queryKey, data] of context.matchingQueries) {
+          if (data) {
+            queryClient.setQueryData(queryKey, data);
+          }
+        }
       }
     },
     onSuccess: (_data, variables, context) => {
@@ -896,10 +923,14 @@ export function AddMemoryView({
       if (dedup) {
         // Revert optimistic update for duplicates
         if (context?.previousMemories) {
-          queryClient.setQueryData(
-            ["documents-with-memories", variables.project],
-            context.previousMemories,
-          );
+          // Restore all matching queries for duplicate handling
+          if (context?.matchingQueries) {
+            for (const [queryKey, data] of context.matchingQueries) {
+              if (data) {
+                queryClient.setQueryData(queryKey, data);
+              }
+            }
+          }
         }
 
         // Show duplicate modal instead of toast
@@ -911,10 +942,10 @@ export function AddMemoryView({
           url: variables.contentType === "link" ? variables.content : undefined,
         });
       } else {
-        // Update optimistic entry with real data
+        // Update optimistic entry with real data in ALL matching queries
         if (context?.optimisticId && documentId) {
-          queryClient.setQueryData<DocumentsQueryData | undefined>(
-            ["documents-with-memories", variables.project],
+          queryClient.setQueriesData<DocumentsQueryData | undefined>(
+            { queryKey: ["documents-with-memories", variables.project], exact: false },
             (current) =>
               promoteOptimisticMemory(current, context.optimisticId!, {
                 id: documentId,
@@ -933,8 +964,14 @@ export function AddMemoryView({
       // No immediate invalidation needed - the polling effect in page.tsx will handle it
       // This prevents the optimistic card from disappearing before backend persists the document
 
+      // Reset mutation ref and close modal
+      isMutatingRef.current = false;
       setShowAddDialog(false);
       onClose?.();
+    },
+    onError: () => {
+      // Reset mutation ref on error
+      isMutatingRef.current = false;
     },
   });
 
@@ -992,16 +1029,18 @@ export function AddMemoryView({
     },
     // Optimistic update
     onMutate: async ({ file, title, description, project }) => {
-      // Cancel any outgoing refetches
+      // Cancel any outgoing refetches (partial match to include queries with search param)
       await queryClient.cancelQueries({
         queryKey: ["documents-with-memories", project],
+        exact: false,
       });
 
-      // Snapshot the previous value
-      const previousMemories = queryClient.getQueryData<DocumentsQueryData>([
-        "documents-with-memories",
-        project,
-      ]);
+      // Snapshot all matching queries for potential rollback
+      const matchingQueries = queryClient.getQueriesData<DocumentsQueryData>({
+        queryKey: ["documents-with-memories", project],
+        exact: false,
+      });
+      const previousMemories = matchingQueries.length > 0 ? matchingQueries[0][1] : undefined;
 
       // Create optimistic memory for the file
       const optimisticId = `temp-file-${Date.now()}`;
@@ -1025,22 +1064,24 @@ export function AddMemoryView({
         isOptimistic: true,
       };
 
-      // Optimistically update to include the new memory
-      queryClient.setQueryData<DocumentsQueryData | undefined>(
-        ["documents-with-memories", project],
+      // Optimistically update ALL matching queries (partial match)
+      queryClient.setQueriesData<DocumentsQueryData | undefined>(
+        { queryKey: ["documents-with-memories", project], exact: false },
         (oldData) => mergeOptimisticMemory(oldData, optimisticMemory),
       );
 
       // Return a context object with the snapshotted value
-      return { previousMemories, optimisticId, project };
+      return { previousMemories, optimisticId, project, matchingQueries };
     },
     // If the mutation fails, roll back to the previous value
     onError: (error, variables, context) => {
-      if (context?.previousMemories) {
-        queryClient.setQueryData(
-          ["documents-with-memories", variables.project],
-          context.previousMemories,
-        );
+      // Restore all matching queries to their previous state
+      if (context?.matchingQueries) {
+        for (const [queryKey, data] of context.matchingQueries) {
+          if (data) {
+            queryClient.setQueryData(queryKey, data);
+          }
+        }
       }
       toast.error("Failed to upload file", {
         description: error instanceof Error ? error.message : "Unknown error",
@@ -1058,12 +1099,13 @@ export function AddMemoryView({
         Boolean((data as any)?.data?.addedToProject);
 
       if (dedup) {
-        // Revert optimistic update for duplicates
-        if (context?.previousMemories) {
-          queryClient.setQueryData(
-            ["documents-with-memories", projectKey],
-            context.previousMemories,
-          );
+        // Revert optimistic update for duplicates - restore all matching queries
+        if (context?.matchingQueries) {
+          for (const [queryKey, queryData] of context.matchingQueries) {
+            if (queryData) {
+              queryClient.setQueryData(queryKey, queryData);
+            }
+          }
         }
 
         // Show duplicate modal instead of toast
@@ -1079,10 +1121,10 @@ export function AddMemoryView({
         return;
       }
 
-      // Not a duplicate - proceed with normal flow
+      // Not a duplicate - proceed with normal flow, update ALL matching queries
       if (context?.optimisticId) {
-        queryClient.setQueryData<DocumentsQueryData | undefined>(
-          ["documents-with-memories", projectKey],
+        queryClient.setQueriesData<DocumentsQueryData | undefined>(
+          { queryKey: ["documents-with-memories", projectKey], exact: false },
           (current) =>
             promoteOptimisticMemory(current, context.optimisticId!, {
               id: data?.id,
@@ -1145,7 +1187,7 @@ export function AddMemoryView({
   });
 
   return (
-    <AnimatePresence mode="wait">
+    <>
       {showAddDialog && (
         <Dialog
           key="add-memory-dialog"
@@ -1156,7 +1198,7 @@ export function AddMemoryView({
           open={showAddDialog}
         >
           <DialogContent
-            className="w-[95vw] max-w-3xl sm:max-w-3xl text-foreground z-[80] max-h-[90vh] overflow-y-auto border border-border bg-background"
+            className="w-[95vw] max-w-3xl sm:max-w-3xl text-foreground z-[10001] max-h-[90vh] overflow-y-auto border border-border bg-background"
             showCloseButton={false}
           >
             <motion.div
@@ -1666,7 +1708,7 @@ export function AddMemoryView({
           onOpenChange={setShowCreateProjectDialog}
           open={showCreateProjectDialog}
         >
-          <DialogContent className="w-[95vw] max-w-2xl sm:max-w-2xl bg-black/90 backdrop-blur-xl border-white/10 text-foreground dark:text-white z-[80] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] max-w-2xl sm:max-w-2xl bg-black/90 backdrop-blur-xl border-white/10 text-foreground dark:text-white z-[10002] max-h-[90vh] overflow-y-auto">
             <motion.div
               animate={{ opacity: 1, scale: 1 }}
               initial={{ opacity: 0, scale: 0.95 }}
@@ -1754,7 +1796,7 @@ export function AddMemoryView({
           }
         }}
       >
-        <DialogContent className="w-[95vw] max-w-md sm:max-w-md bg-background border-border text-foreground z-[90] overflow-hidden">
+        <DialogContent className="w-[95vw] max-w-md sm:max-w-md bg-background border-border text-foreground z-[10003] overflow-hidden">
           <motion.div
             animate={{ opacity: 1, scale: 1 }}
             initial={{ opacity: 0, scale: 0.95 }}
@@ -1832,7 +1874,7 @@ export function AddMemoryView({
           </motion.div>
         </DialogContent>
       </Dialog>
-    </AnimatePresence>
+    </>
   );
 }
 

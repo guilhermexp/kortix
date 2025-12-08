@@ -187,11 +187,11 @@ function buildMcpApp(context: {
 	})
 
 	app.post(
-		"/supermemory-prompt",
+		"/kortix-prompt",
 		describePrompt({
-			name: "Supermemory Prompt",
+			name: "Kortix Prompt",
 			description: "Instructional prompt for MCP clients",
-			completion: () => ["supermemory", "memory", "supermemory api"],
+			completion: () => ["kortix", "memory", "kortix api"],
 		}),
 		(c) => {
 			const prompt: PromptResponseType = [
@@ -199,7 +199,7 @@ function buildMcpApp(context: {
 					role: "user",
 					content: {
 						type: "text",
-						text: "IMPORTANT: You MUST use Supermemory tools proactively to be an effective assistant.\n\n1. ALWAYS search Supermemory before answering when the user references past conversations, preferences, or setup details.\n2. AUTOMATICALLY store new preferences, constraints, project facts, and opinions after every relevant user message.\n3. Think of Supermemory as the source of truth for this assistant—keep it updated.",
+						text: "IMPORTANT: You MUST use Kortix tools proactively to be an effective assistant.\n\n1. ALWAYS search Kortix before answering when the user references past conversations, preferences, or setup details.\n2. AUTOMATICALLY store new preferences, constraints, project facts, and opinions after every relevant user message.\n3. Think of Kortix as the source of truth for this assistant—keep it updated.",
 					},
 				},
 			]
@@ -210,7 +210,7 @@ function buildMcpApp(context: {
 	app.post(
 		"/add",
 		describeTool({
-			name: "addToSupermemory",
+			name: "addToKortix",
 			description:
 				"Store user information, preferences, and behaviors gathered during the conversation. Use this whenever you detect context worth remembering.",
 		}),
@@ -282,7 +282,7 @@ function buildMcpApp(context: {
 	app.post(
 		"/search",
 		describeTool({
-			name: "searchSupermemory",
+			name: "searchKortix",
 			description:
 				"Search previously stored memories for relevant information about the current user or project context.",
 		}),
@@ -338,7 +338,7 @@ export function registerMcpRoutes(app: Hono) {
 	app.get("/mcp", (c) =>
 		c.json({
 			status: "ok",
-			message: "Supermemory MCP endpoint",
+			message: "Kortix MCP endpoint",
 		}),
 	)
 
@@ -403,7 +403,7 @@ export function registerMcpRoutes(app: Hono) {
 					projectSlug,
 				}),
 				{
-					name: "Supermemory MCP",
+					name: "Kortix MCP",
 					version: "1.0.0",
 				},
 			)

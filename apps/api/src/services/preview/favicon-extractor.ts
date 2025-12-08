@@ -427,7 +427,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 			signal: AbortSignal.timeout(timeout),
 			headers: {
 				"User-Agent":
-					"Mozilla/5.0 (compatible; SupermemoryBot/1.0; +https://supermemory.ai)",
+					"Mozilla/5.0 (compatible; KortixBot/1.0)",
 			},
 		})
 

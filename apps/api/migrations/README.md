@@ -1,6 +1,6 @@
 # Database Migrations
 
-This directory contains SQL migration files for the Supermemory API.
+This directory contains SQL migration files for the Kortix API.
 
 ## Applying Migrations
 

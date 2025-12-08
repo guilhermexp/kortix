@@ -132,7 +132,7 @@ export const MARKDOWN_SECTIONS = {
 
 export const HTTP_CONFIG = {
 	/** User agent for external HTTP requests */
-	USER_AGENT: "SupermemorySelfHosted/1.0 (+self-hosted extractor)",
+	USER_AGENT: "KortixSelfHosted/1.0 (+self-hosted extractor)",
 
 	/** Default request timeout (30 seconds) */
 	DEFAULT_TIMEOUT_MS: 30_000,

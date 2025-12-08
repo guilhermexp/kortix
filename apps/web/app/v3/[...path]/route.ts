@@ -61,8 +61,8 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
 		"content-type",
 		"authorization",
 		"cookie",
-		"x-supermemory-organization",
-		"x-supermemory-user",
+		"x-kortix-organization",
+		"x-kortix-user",
 	]
 
 	for (const header of headersToForward) {

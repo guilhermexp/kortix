@@ -134,7 +134,7 @@ export function RichEditorWrapper({
 			// Validate the file
 			validateImageFile(file)
 
-			// Upload to SuperMemory storage
+			// Upload to Kortix storage
 			const url = await uploadImage(file)
 			return url
 		} catch (error) {

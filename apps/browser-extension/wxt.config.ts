@@ -4,8 +4,8 @@ import { defineConfig, type WxtViteConfig } from "wxt"
 const DEFAULT_APP_URL = "https://repoweb-production.up.railway.app"
 const DEFAULT_API_URL = "https://repoapi-production-d4f7.up.railway.app"
 
-const APP_URL = process.env.SUPERMEMORY_APP_URL ?? DEFAULT_APP_URL
-const API_URL = process.env.SUPERMEMORY_API_URL ?? DEFAULT_API_URL
+const APP_URL = process.env.KORTIX_APP_URL ?? DEFAULT_APP_URL
+const API_URL = process.env.KORTIX_API_URL ?? DEFAULT_API_URL
 
 const appOrigin = new URL(APP_URL)
 const apiOrigin = new URL(API_URL)
@@ -18,7 +18,7 @@ export default defineConfig({
 			plugins: [tailwindcss()],
 		}) as WxtViteConfig,
 	manifest: {
-		name: "supermemory",
+		name: "Kortix",
 		homepage_url: APP_URL,
 		version: "6.0.003",
 		permissions: ["contextMenus", "storage", "activeTab", "webRequest", "tabs"],

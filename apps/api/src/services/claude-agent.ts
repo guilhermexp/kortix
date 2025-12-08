@@ -11,7 +11,7 @@ import {
 } from "../config/providers"
 import { env } from "../env"
 import { ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
-import { createSupermemoryTools } from "./claude-agent-tools"
+import { createKortixTools } from "./claude-agent-tools"
 import { type ClaudeMessage, EventStorageService } from "./event-storage"
 
 // Content block types for Claude messages
@@ -330,7 +330,7 @@ export async function executeClaudeAgent(
 			content: message,
 		}
 		const prompt = createPromptStream([userMessage])
-		const toolsServer = createSupermemoryTools(client, orgId, context)
+		const toolsServer = createKortixTools(client, orgId, context)
 		const toolNames =
 			Array.isArray(allowedTools) && allowedTools.length > 0
 				? allowedTools
@@ -365,7 +365,7 @@ export async function executeClaudeAgent(
 		// an external binary that may not be installed, causing "Stream closed" errors.
 		// To enable: set SEQ_MCP_ENABLED=true and SEQ_MCP_COMMAND to the binary path
 		const mcpServers: Record<string, unknown> = {
-			"supermemory-tools": toolsServer,
+			"kortix-tools": toolsServer,
 		}
 
 		// Only add deepwiki if we want external research capabilities
@@ -828,7 +828,7 @@ function buildAssistantResponse(events: unknown[]): {
 					rawPreview: raw.substring(0, 200),
 				})
 
-				if (toolName === "mcp__supermemory-tools__searchDatabase") {
+				if (toolName === "mcp__kortix-tools__searchDatabase") {
 					toolParts.push(
 						buildSearchMemoriesPart(raw, isError ? raw : undefined),
 					)
@@ -900,7 +900,7 @@ function buildAssistantResponse(events: unknown[]): {
 							rawPreview: raw.substring(0, 100),
 						})
 
-						if (toolName === "mcp__supermemory-tools__searchDatabase") {
+						if (toolName === "mcp__kortix-tools__searchDatabase") {
 							toolParts.push(
 								buildSearchMemoriesPart(raw, isError ? raw : undefined),
 							)

@@ -1,6 +1,6 @@
 # API Middleware
 
-This directory contains middleware components for the Supermemory API.
+This directory contains middleware components for the Kortix API.
 
 ## Rate Limiter
 
@@ -19,7 +19,7 @@ The rate limiter middleware protects the API against abuse and DoS attacks using
 
 ### Configuration
 
-Rate limits are defined in `/Users/guilhermevarela/Public/supermemory/apps/api/src/config/constants.ts`:
+Rate limits are defined in `/Users/guilhermevarela/Public/kortix/apps/api/src/config/constants.ts`:
 
 ```typescript
 export const RATE_LIMITS = {

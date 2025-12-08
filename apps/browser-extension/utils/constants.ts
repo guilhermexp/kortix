@@ -1,19 +1,19 @@
 const DEFAULT_API_URL = "http://localhost:4000"
 const DEFAULT_APP_URL = "http://localhost:3000"
 
-const SUPERMEMORY_API =
-	(import.meta.env.VITE_SUPERMEMORY_API as string | undefined) ??
+const KORTIX_API =
+	(import.meta.env.VITE_KORTIX_API as string | undefined) ??
 	DEFAULT_API_URL
-const SUPERMEMORY_WEB =
-	(import.meta.env.VITE_SUPERMEMORY_APP as string | undefined) ??
+const KORTIX_WEB =
+	(import.meta.env.VITE_KORTIX_APP as string | undefined) ??
 	DEFAULT_APP_URL
 
 /**
  * API Endpoints
  */
 export const API_ENDPOINTS = {
-	SUPERMEMORY_API,
-	SUPERMEMORY_WEB,
+	KORTIX_API,
+	KORTIX_WEB,
 } as const
 
 /**
@@ -35,8 +35,8 @@ export const STORAGE_KEYS = {
  */
 export const ELEMENT_IDS = {
 	TWITTER_IMPORT_BUTTON: "sm-twitter-import-button",
-	SUPERMEMORY_TOAST: "sm-toast",
-	SUPERMEMORY_SAVE_BUTTON: "sm-save-button",
+	KORTIX_TOAST: "sm-toast",
+	KORTIX_SAVE_BUTTON: "sm-save-button",
 	SAVE_TWEET_ELEMENT: "sm-save-tweet-element",
 	CHATGPT_INPUT_BAR_ELEMENT: "sm-chatgpt-input-bar-element",
 	CLAUDE_INPUT_BAR_ELEMENT: "sm-claude-input-bar-element",
@@ -65,7 +65,7 @@ export const DOMAINS = {
 	CHATGPT: ["chatgpt.com", "chat.openai.com"],
 	CLAUDE: ["claude.ai"],
 	T3: ["t3.chat"],
-	SUPERMEMORY: ["localhost", new URL(SUPERMEMORY_WEB).hostname],
+	KORTIX: ["localhost", new URL(KORTIX_WEB).hostname],
 } as const
 
 /**
@@ -90,7 +90,7 @@ export const MESSAGE_TYPES = {
 } as const
 
 export const CONTEXT_MENU_IDS = {
-	SAVE_TO_SUPERMEMORY: "sm-save-to-supermemory",
+	SAVE_TO_KORTIX: "sm-save-to-kortix",
 } as const
 
 export const POSTHOG_EVENT_KEY = {

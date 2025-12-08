@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { env } from "./src/env"
-import { createSupermemoryTools } from "./src/services/claude-agent-tools"
+import { createKortixTools } from "./src/services/claude-agent-tools"
 
 // Mock Supabase client for testing
 const mockClient = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY)
@@ -12,7 +12,7 @@ async function testToolsRegistration() {
 
 	try {
 		// Create tools server
-		const toolsServerConfig = createSupermemoryTools(
+		const toolsServerConfig = createKortixTools(
 			mockClient,
 			"test-org-id",
 			{},

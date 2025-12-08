@@ -4,7 +4,7 @@
   "scripts": {
     "build": "turbo run build",
     "build:web": "cd apps/web && bun run build",
-    "dev": "turbo run dev --filter='!@repo/docs'",
+    "dev": "turbo run dev",
     "dev:all": "turbo run dev",
     "test": "turbo run test",
     "format-lint": "bunx biome check --write",
@@ -17,7 +17,6 @@
   "workspaces": [
     "apps/api",
     "apps/web",
-    "apps/docs",
     "packages/*"
   ],
   "dependencies": {

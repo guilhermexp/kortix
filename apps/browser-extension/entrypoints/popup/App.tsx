@@ -199,12 +199,12 @@ function App() {
 			<div className="w-80 p-0 font-[Space_Grotesk,-apple-system,BlinkMacSystemFont,Segoe_UI,Roboto,sans-serif] bg-white rounded-lg relative overflow-hidden">
 				<div className="flex items-center justify-between gap-3 p-2.5 border-b border-gray-200 relative">
 					<img
-						alt="supermemory"
+						alt="Kortix"
 						className="w-8 h-8 flex-shrink-0"
 						src="/icon-48.png"
 					/>
 					<h1 className="m-0 text-lg font-semibold text-black flex-1">
-						supermemory
+						Kortix
 					</h1>
 				</div>
 				<div className="p-4">
@@ -218,7 +218,7 @@ function App() {
 		<div className="w-80 p-0 font-[Space_Grotesk,-apple-system,BlinkMacSystemFont,Segoe_UI,Roboto,sans-serif] bg-white rounded-lg relative overflow-hidden">
 			<div className="flex items-center justify-between gap-3 p-2.5 border-b border-gray-200 relative">
 				<img
-					alt="supermemory"
+					alt="Kortix"
 					className="w-8 h-8 flex-shrink-0"
 					src="/icon-128.png"
 					style={{ width: "80%", height: "45px", objectFit: "contain" }}
@@ -380,7 +380,7 @@ function App() {
 											<div className="text-left">
 												<p>Import ChatGPT Memories</p>
 												<p className="m-0 text-[10px] text-gray-500 leading-tight">
-													open 'manage', save your memories to supermemory
+													open 'manage', save your memories to Kortix
 												</p>
 											</div>
 										</button>
@@ -420,7 +420,7 @@ function App() {
 											<div className="text-left">
 												<p>Import X/Twitter Bookmarks</p>
 												<p className="m-0 text-[10px] text-gray-500 leading-tight">
-													Click on supermemory on top right to import bookmarks
+													Click on Kortix on top right to import bookmarks
 												</p>
 											</div>
 										</button>
@@ -484,7 +484,7 @@ function App() {
 										</label>
 									</div>
 									<p className="text-xs text-gray-500 mt-2">
-										When enabled, supermemory will search your memories as you
+										When enabled, Kortix will search your memories as you
 										type in ChatGPT, Claude, and T3.chat
 									</p>
 								</div>
@@ -560,7 +560,7 @@ function App() {
 
 								<ul className="list-none p-0 m-0 text-left">
 									<li className="py-1.5 text-sm text-black relative pl-5 before:content-['•'] before:absolute before:left-0 before:text-black before:font-bold">
-										Save any page to your supermemory
+										Save any page to your Kortix
 									</li>
 									<li className="py-1.5 text-sm text-black relative pl-5 before:content-['•'] before:absolute before:left-0 before:text-black before:font-bold">
 										Import all your Twitter / X Bookmarks
@@ -578,7 +578,7 @@ function App() {
 								<button
 									className="bg-transparent border-none text-blue-500 cursor-pointer underline text-sm p-0 hover:text-blue-700"
 									onClick={() => {
-										window.open("mailto:dhravya@supermemory.com", "_blank")
+										window.open("mailto:support@kortix.ai", "_blank")
 									}}
 									type="button"
 								>
@@ -589,7 +589,7 @@ function App() {
 							<button
 								className="w-full py-3 px-6 bg-gray-700 text-white border-none rounded-3xl text-base font-medium cursor-pointer transition-colors duration-200 hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
 								onClick={() => {
-									const baseUrl = API_ENDPOINTS.SUPERMEMORY_WEB
+									const baseUrl = API_ENDPOINTS.KORTIX_WEB
 									const loginUrl = new URL("/login", baseUrl)
 									loginUrl.searchParams.set("extension-auth-success", "1")
 									chrome.tabs.create({ url: loginUrl.toString() })

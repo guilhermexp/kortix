@@ -130,7 +130,7 @@ export async function safeFetch(
 		...options,
 		headers: {
 			...options?.headers,
-			"User-Agent": "SupermemorySelfHosted/1.0 (+self-hosted extractor)",
+			"User-Agent": "KortixSelfHosted/1.0 (+self-hosted extractor)",
 		},
 		// Prevent following redirects to potentially malicious URLs
 		redirect: "manual",

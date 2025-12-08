@@ -1,5 +1,5 @@
 /**
- * Supermemory Data Model Types & Validation
+ * Kortix Data Model Types & Validation
  *
  * This is the SINGLE SOURCE OF TRUTH for:
  * - TypeScript type definitions
