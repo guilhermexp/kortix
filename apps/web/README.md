@@ -1,1 +1,1 @@
-# supermemory Consumer
+# Kortix Consumer

@@ -21,4 +21,4 @@ exports.TOUR_STEP_IDS = {
 	LEGEND: "tour-legend",
 }
 // Tour storage key for localStorage
-exports.TOUR_STORAGE_KEY = "supermemory-tour-completed"
+exports.TOUR_STORAGE_KEY = "kortix-tour-completed"

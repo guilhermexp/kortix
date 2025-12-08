@@ -14,9 +14,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@repo/ui/components/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@repo/ui/components/dialog";
+import { Button } from "@repo/ui/components/button";
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api";
 import {
 	Brain,
+	ExternalLink,
+	Expand,
 	Loader,
 	Play,
 	Trash2,
@@ -549,14 +559,120 @@ interface MemoryListViewProps {
   onDocumentDeleted?: (id: string) => void;
 }
 
+// Document Preview Modal
+function DocumentPreviewModal({
+  document,
+  onClose,
+}: {
+  document: DocumentWithMemories;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const preview = useMemo(() => getDocumentPreview(document), [document]);
+  const activeMemories = document.memoryEntries.filter((m) => !m.isForgotten);
+  const displayText = getDocumentSnippet(document);
+  const cleanedTitle = (() => {
+    const raw = document.title || "";
+    const isData = raw.startsWith("data:");
+    const cleaned = stripMarkdown(raw)
+      .trim()
+      .replace(/^['"""''`]+|['"""''`]+$/g, "");
+    return isData || !cleaned ? "Untitled Document" : cleaned;
+  })();
+
+  const originalUrl =
+    document.url ||
+    (document.metadata as any)?.originalUrl ||
+    (document.metadata as any)?.source_url;
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="!max-w-[85vw] !w-[1000px] max-h-[90vh] overflow-hidden p-0 sm:!max-w-[85vw]">
+        {/* Expand button - top right */}
+        <Button
+          variant="secondary"
+          size="sm"
+          className="absolute top-4 right-12 z-20 gap-2"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            router.push(`/memory/${document.id}/edit`);
+          }}
+        >
+          <Expand className="w-4 h-4" />
+          Expandir
+        </Button>
+
+        {/* Scrollable container */}
+        <div className="h-[85vh] overflow-y-auto">
+          {/* Preview Image - Sticky at top */}
+          {preview?.src && (
+            <div className="sticky top-0 w-full h-[50vh] min-h-[300px] overflow-hidden z-0">
+              <img
+                src={preview.src}
+                alt={cleanedTitle}
+                className="w-full h-full object-contain bg-muted/50"
+              />
+              {/* Gradient overlay at bottom of image */}
+              <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent" />
+            </div>
+          )}
+
+          {/* Content area - scrolls over image */}
+          <div className={cn(
+            "relative z-10 bg-background/60 backdrop-blur-md rounded-t-3xl p-8 min-h-[50vh]",
+            preview?.src ? "-mt-16" : ""
+          )}>
+            {/* Title */}
+            <DialogHeader className="mb-2">
+              <DialogTitle className="text-2xl leading-tight">{cleanedTitle}</DialogTitle>
+            </DialogHeader>
+
+            {/* Original URL */}
+            {originalUrl && (
+              <a
+                href={originalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span className="truncate max-w-[600px]">{new URL(originalUrl).hostname}</span>
+              </a>
+            )}
+
+            {/* Full Summary/Description */}
+            {displayText && !displayText.startsWith("data:") && (
+              <p className="text-muted-foreground text-base leading-relaxed mt-6 whitespace-pre-wrap">
+                {stripMarkdown(displayText)}
+              </p>
+            )}
+
+            {/* Memory Count */}
+            {activeMemories.length > 0 && (
+              <div className="flex items-center gap-2 mt-8 text-sm text-muted-foreground">
+                <Brain className="w-4 h-4" />
+                {activeMemories.length} {activeMemories.length === 1 ? "memory" : "memories"}
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Pinterest-style masonry card
 const MasonryCard = memo(
   ({
     document,
     onDelete,
+    onPreview,
   }: {
     document: DocumentWithMemories;
     onDelete: (document: DocumentWithMemories) => void;
+    onPreview: (document: DocumentWithMemories) => void;
   }) => {
     const router = useRouter();
     const hasPrefetchedRef = useRef(false);
@@ -575,9 +691,26 @@ const MasonryCard = memo(
       return preview;
     }, [preview, document.url]);
 
-    const isProcessing = document.status
+    // Check if document is still being processed
+    const statusIsProcessing = document.status
       ? PROCESSING_STATUSES.has(String(document.status).toLowerCase())
       : false;
+
+    // Check if this is an optimistic (pending) document
+    const isOptimisticDoc = !!(document as any).isOptimistic;
+
+    // Also consider as "processing" if content is not ready yet:
+    // - No memory entries AND title looks like just a domain (incomplete extraction)
+    const titleLooksIncomplete = (() => {
+      const title = (document.title || "").trim().toLowerCase();
+      if (!title) return true;
+      // If title is just a domain like "github.com" or "youtube.com", content isn't ready
+      if (/^[a-z0-9-]+\.(com|org|net|io|xyz|dev|co|ai)$/i.test(title)) return true;
+      return false;
+    })();
+
+    const contentNotReady = activeMemories.length === 0 && titleLooksIncomplete;
+    const isProcessing = statusIsProcessing || contentNotReady || isOptimisticDoc;
 
     const [stickyPreview, setStickyPreview] = useState<PreviewData | null>(
       null,
@@ -606,87 +739,37 @@ const MasonryCard = memo(
       ? (stickyPreview ?? sanitizedPreview)
       : sanitizedPreview;
 
-    // Dynamic progress per stage
-    const stageForStatus = (stRaw: string) => {
-      const st = stRaw.toLowerCase();
+    // Get human-readable status label from backend status
+    const getStatusLabel = (status: string | null | undefined): string => {
+      if (!status) return "Processing";
+      const st = String(status).toLowerCase();
       switch (st) {
         case "queued":
-          return { label: "Queued", from: 2, to: 10, duration: 6000 };
+          return "Queued";
         case "fetching":
+          return "Fetching";
         case "extracting":
-          return { label: "Extracting", from: 10, to: 40, duration: 12000 };
+          return "Extracting";
         case "chunking":
-          return { label: "Chunking", from: 40, to: 65, duration: 8000 };
+          return "Chunking";
         case "embedding":
-        case "processing":
-          return { label: "Embedding", from: 65, to: 90, duration: 16000 };
+          return "Embedding";
         case "indexing":
-          return { label: "Indexing", from: 90, to: 98, duration: 8000 };
+          return "Indexing";
+        case "processing":
+          return "Processing";
         default:
-          return { label: "Processing", from: 5, to: 15, duration: 6000 };
+          return "Processing";
       }
     };
-    const stageRef = useRef<string>(String(document.status || "unknown"));
-    const startRef = useRef<number>(0);
-    const [progressPct, setProgressPct] = useState<number>(
-      () => stageForStatus(stageRef.current).from,
-    );
-    const [progressLabel, setProgressLabel] = useState<string>(
-      () => stageForStatus(stageRef.current).label,
-    );
 
-    useEffect(() => {
-      const currentStage = String(document.status || "unknown");
-      if (currentStage !== stageRef.current) {
-        stageRef.current = currentStage;
-        const s = stageForStatus(currentStage);
-        setProgressLabel(s.label);
-        setProgressPct(s.from);
-        startRef.current = performance.now();
-      }
-    }, [document.status]);
-
-    useEffect(() => {
-      if (!isProcessing) return;
-      let rafId = 0;
-      startRef.current = performance.now();
-      const tick = () => {
-        const s = stageForStatus(stageRef.current);
-        const duration = Math.max(1200, s.duration);
-        const elapsed = (performance.now() - startRef.current) % duration;
-        const t = elapsed / duration;
-        const eased = 1 - (1 - t) ** 3;
-        const wiggle = Math.sin(performance.now() / 650) * 1.5;
-        const next = s.from + (s.to - s.from) * eased + wiggle;
-        setProgressPct(next);
-        setProgressLabel(s.label);
-        rafId = requestAnimationFrame(tick);
-      };
-      rafId = requestAnimationFrame(tick);
-      return () => cancelAnimationFrame(rafId);
-    }, [isProcessing]);
+    const progressLabel = getStatusLabel(document.status);
 
     const handlePrefetchEdit = useCallback(() => {
       if (hasPrefetchedRef.current) return;
       router.prefetch(`/memory/${document.id}/edit`);
       hasPrefetchedRef.current = true;
     }, [router, document.id]);
-
-    const clampedProgress = Math.max(0, Math.min(100, progressPct));
-    const progressDisplay = Math.max(
-      1,
-      Math.min(99, Math.round(clampedProgress)),
-    );
-    const shimmerTextStyle = isProcessing
-      ? {
-          backgroundImage:
-            "linear-gradient(110deg, rgba(255,255,255,0.25) 20%, rgba(255,255,255,0.9) 50%, rgba(255,255,255,0.25) 80%)",
-          backgroundSize: "200% 100%",
-          WebkitBackgroundClip: "text",
-          color: "transparent",
-          animation: "shimmer 1.8s linear infinite",
-        }
-      : undefined;
     const hasPreviewImage = previewToRender?.src && !imageError;
     const displayText = getDocumentSnippet(document);
     const cleanedTitle = (() => {
@@ -703,50 +786,22 @@ const MasonryCard = memo(
         className="group relative mb-4 break-inside-avoid cursor-pointer rounded-xl overflow-hidden bg-card border border-border/50 hover:border-border transition-all duration-300 hover:shadow-lg hover:shadow-black/10"
         onClick={() => {
           analytics.documentCardClicked();
-          router.push(`/memory/${document.id}/edit`);
+          onPreview(document);
         }}
         onFocus={handlePrefetchEdit}
         onMouseEnter={handlePrefetchEdit}
         onTouchStart={handlePrefetchEdit}
       >
-        {/* Processing overlay (keep simple, progress still loops) */}
-        {isProcessing && (
-          <div className="absolute inset-0 z-30 bg-background/80 backdrop-blur-sm flex items-center justify-center pointer-events-none">
-            <div className="flex flex-col items-center gap-2">
-              <svg
-                className="animate-spin h-6 w-6 text-primary"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  fill="none"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                />
-                <path
-                  className="opacity-75"
-                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                  fill="currentColor"
-                />
-              </svg>
-              <div className="text-xs text-muted-foreground font-medium">
-                {progressLabel} • {progressDisplay}%
-              </div>
-              <div className="h-1.5 w-24 rounded-full bg-muted">
-                <div
-                  className="h-1.5 rounded-full bg-primary transition-all duration-300"
-                  style={{
-                    width: `${Math.max(6, clampedProgress)}%`,
-                  }}
-                />
-              </div>
+        {/* Processing state - show ONLY the processing indicator, no content behind */}
+        {isProcessing ? (
+          <div className="p-6 flex flex-col items-center justify-center min-h-[120px]">
+            <Loader className="h-6 w-6 text-primary animate-spin mb-3" />
+            <div className="text-xs text-muted-foreground font-medium">
+              {progressLabel}...
             </div>
           </div>
-        )}
-
+        ) : (
+          <>
         {/* Image/Preview area - Pinterest style variable height */}
         {hasPreviewImage && (
           <div className="relative w-full overflow-hidden bg-muted">
@@ -782,15 +837,13 @@ const MasonryCard = memo(
 
         {/* Content area */}
         <div className={cn("p-3", hasPreviewImage && "pt-2")}>
-          {/* Title - hide when processing */}
-          {!isProcessing && (
-            <h3 className="text-sm font-medium text-foreground line-clamp-2 leading-snug mb-1.5">
-              {cleanedTitle}
-            </h3>
-          )}
+          {/* Title */}
+          <h3 className="text-sm font-medium text-foreground line-clamp-2 leading-snug mb-1.5">
+            {cleanedTitle}
+          </h3>
 
-          {/* Snippet - only if no preview image or short snippet, hide when processing */}
-          {!isProcessing && displayText && !displayText.startsWith("data:") && (
+          {/* Snippet - only if no preview image or short snippet */}
+          {displayText && !displayText.startsWith("data:") && (
             <p
               className={cn(
                 "text-xs text-muted-foreground line-clamp-3 leading-relaxed",
@@ -799,6 +852,25 @@ const MasonryCard = memo(
             >
               {stripMarkdown(displayText).slice(0, 200)}
             </p>
+          )}
+
+          {/* Tags */}
+          {Array.isArray((document as any).tags) && (document as any).tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {((document as any).tags as string[]).slice(0, 4).map((tag, idx) => (
+                <span
+                  key={`${tag}-${idx}`}
+                  className="px-1.5 py-0.5 text-[10px] rounded bg-primary/10 text-primary/80 border border-primary/20"
+                >
+                  {tag}
+                </span>
+              ))}
+              {(document as any).tags.length > 4 && (
+                <span className="px-1.5 py-0.5 text-[10px] rounded bg-muted text-muted-foreground">
+                  +{(document as any).tags.length - 4}
+                </span>
+              )}
+            </div>
           )}
 
           {/* Footer with memory count and delete */}
@@ -869,6 +941,8 @@ const MasonryCard = memo(
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
     );
   },
@@ -890,6 +964,7 @@ export const MemoryListView = ({
   const isMobile = useIsMobile();
   const { selectedProject } = useProject();
   const deleteDocumentMutation = useDeleteDocument(selectedProject);
+  const [previewDocument, setPreviewDocument] = useState<DocumentWithMemories | null>(null);
 
   const handleDeleteDocument = useCallback(
     (document: DocumentWithMemories) => {
@@ -983,6 +1058,7 @@ export const MemoryListView = ({
                 document={document}
                 key={document.id}
                 onDelete={handleDeleteDocument}
+                onPreview={setPreviewDocument}
               />
             ))}
           </div>
@@ -999,6 +1075,14 @@ export const MemoryListView = ({
             </div>
           )}
         </div>
+      )}
+
+      {/* Document Preview Modal */}
+      {previewDocument && (
+        <DocumentPreviewModal
+          document={previewDocument}
+          onClose={() => setPreviewDocument(null)}
+        />
       )}
     </div>
   );

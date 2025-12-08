@@ -53,19 +53,13 @@ const isMobileDevice = () => {
 };
 
 export function ViewModeProvider({ children }: { children: ReactNode }) {
-  // Start with "list" as default for SSR and initial state
+  // Always start with "list" view - ignore saved preference on initial load
   const [viewMode, setViewModeState] = useState<ViewMode>("list");
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load preferences on the client side
+  // Mark as initialized on mount (no longer loading from localStorage)
   useEffect(() => {
     if (!isInitialized) {
-      // Read saved preference from localStorage
-      const savedMode = readStoredViewMode();
-      if (savedMode) {
-        setViewModeState(savedMode);
-      }
-      // If no saved preference, keep default "list"
       setIsInitialized(true);
     }
   }, [isInitialized]);

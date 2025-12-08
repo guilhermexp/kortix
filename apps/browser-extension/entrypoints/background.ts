@@ -22,8 +22,8 @@ export default defineBackground(() => {
 
 	browser.runtime.onInstalled.addListener(async (details) => {
 		browser.contextMenus.create({
-			id: CONTEXT_MENU_IDS.SAVE_TO_SUPERMEMORY,
-			title: "sync to supermemory",
+			id: CONTEXT_MENU_IDS.SAVE_TO_KORTIX,
+			title: "sync to Kortix",
 			contexts: ["selection", "page", "link"],
 		})
 
@@ -50,7 +50,7 @@ export default defineBackground(() => {
 
 	// Handle context menu clicks.
 	browser.contextMenus.onClicked.addListener(async (info, tab) => {
-		if (info.menuItemId === CONTEXT_MENU_IDS.SAVE_TO_SUPERMEMORY) {
+		if (info.menuItemId === CONTEXT_MENU_IDS.SAVE_TO_KORTIX) {
 			if (tab?.id) {
 				try {
 					await browser.tabs.sendMessage(tab.id, {
@@ -95,9 +95,9 @@ export default defineBackground(() => {
 	}
 
 	/**
-	 * Save memory to supermemory API
+	 * Save memory to Kortix API
 	 */
-	const saveMemoryToSupermemory = async (
+	const saveMemoryToKortix = async (
 		data: MemoryData,
 		actionSource: string,
 	): Promise<{ success: boolean; data?: unknown; error?: string }> => {
@@ -186,7 +186,7 @@ export default defineBackground(() => {
 			if (message.action === MESSAGE_TYPES.SAVE_MEMORY) {
 				;(async () => {
 					try {
-						const result = await saveMemoryToSupermemory(
+						const result = await saveMemoryToKortix(
 							message.data as MemoryData,
 							message.actionSource || "unknown",
 						)
@@ -235,7 +235,7 @@ export default defineBackground(() => {
 							content: messageData.prompt,
 						}
 
-						const result = await saveMemoryToSupermemory(
+						const result = await saveMemoryToKortix(
 							memoryData,
 							`prompt_capture_${messageData.platform}`,
 						)

@@ -65,4 +65,4 @@ As imagens são extraídas dos seguintes campos nos metadados do documento:
 - **Todas as telas**: Grid de 2 colunas (layout 2x2 consistente)
 - **Modal**: Adapta-se a qualquer tamanho de tela
 
-Esta implementação segue o padrão visual e de UX já estabelecido no SuperMemory, integrando-se perfeitamente com o design system existente.
+Esta implementação segue o padrão visual e de UX já estabelecido no Kortix, integrando-se perfeitamente com o design system existente.

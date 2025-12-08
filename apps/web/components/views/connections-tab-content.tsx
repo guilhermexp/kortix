@@ -106,8 +106,9 @@ export function ConnectionsTabContent() {
 			}
 			return []
 		},
-		staleTime: 30 * 1000,
-		refetchInterval: 60 * 1000,
+		staleTime: 5 * 60 * 1000, // 5 minutes - connections rarely change
+		refetchInterval: false, // Disable polling - use refetchOnWindowFocus instead
+		refetchOnWindowFocus: true,
 	})
 
 	// Show error toast if connections fail to load
@@ -171,7 +172,7 @@ export function ConnectionsTabContent() {
 		onSuccess: () => {
 			analytics.connectionDeleted()
 			toast.success(
-				"Connection removal has started. supermemory will permanently delete the documents in the next few minutes.",
+				"Connection removal has started. Kortix will permanently delete the documents in the next few minutes.",
 			)
 			queryClient.invalidateQueries({ queryKey: ["connections"] })
 		},

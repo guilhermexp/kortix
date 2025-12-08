@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next"
 
 export default function manifest(): MetadataRoute.Manifest {
 	return {
-		name: "Supermemory",
-		short_name: "supermemory",
+		name: "Kortix",
+		short_name: "kortix",
 		description: "Your memories, wherever you are",
 		start_url: "/",
 		display: "standalone",

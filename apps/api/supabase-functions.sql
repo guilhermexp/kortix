@@ -1,5 +1,5 @@
 -- ============================================================================
--- Supermemory - Funções SQL para Busca Híbrida (FTS + Vetorial)
+-- Kortix - Funções SQL para Busca Híbrida (FTS + Vetorial)
 -- ============================================================================
 -- Execute este arquivo no SQL Editor do Supabase
 --

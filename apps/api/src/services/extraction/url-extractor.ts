@@ -363,7 +363,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 					const response = await safeFetch(url, {
 						headers: {
 							"User-Agent":
-								"Mozilla/5.0 (compatible; SupermemoryBot/1.0; +https://supermemory.ai)",
+								"Mozilla/5.0 (compatible; KortixBot/1.0)",
 						},
 						signal: AbortSignal.timeout(options?.timeout ?? 30000),
 					})
@@ -432,7 +432,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		const response = await safeFetch(url, {
 			headers: {
 				"User-Agent":
-					"Mozilla/5.0 (compatible; SupermemoryBot/1.0; +https://supermemory.ai)",
+					"Mozilla/5.0 (compatible; KortixBot/1.0)",
 			},
 			signal: AbortSignal.timeout(options?.timeout ?? 30000),
 		})

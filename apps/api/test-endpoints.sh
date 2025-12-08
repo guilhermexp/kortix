@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ============================================================================
-# Script de Validação Rápida - Endpoints do Supermemory
+# Script de Validação Rápida - Endpoints do Kortix
 # ============================================================================
 # Este script testa os endpoints principais da API para garantir que estão
 # funcionando corretamente após as melhorias de busca híbrida e chat v2.
@@ -101,7 +101,7 @@ test_endpoint() {
 # ============================================================================
 
 echo "============================================================================"
-echo "  Supermemory API - Validação de Endpoints"
+echo "  Kortix API - Validação de Endpoints"
 echo "  API URL: $API_URL"
 echo "============================================================================"
 

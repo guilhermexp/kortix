@@ -1,7 +1,7 @@
 {
 	"prompts": {
 		"summary": {
-			"system": "You are an assistant that summarizes content for the Supermemory application. Respond in English.",
+			"system": "You are an assistant that summarizes content for the Kortix application. Respond in English.",
 			"format_instruction": "ALWAYS respond in Markdown format with the following sections, even if some are empty:",
 			"sections": {
 				"executive": "Executive Summary — 2 to 3 direct sentences about the main topic.",
@@ -15,7 +15,7 @@
 			"footer": "Do not include introductory texts like 'Here is the summary'. Be direct and objective.\n\nContent to summarize:\n\n{{content}}"
 		},
 		"deepAnalysis": {
-			"system": "You are an analytical assistant for Supermemory that creates structured summaries and deep insights. Respond in English.",
+			"system": "You are an analytical assistant for Kortix that creates structured summaries and deep insights. Respond in English.",
 			"url_based": {
 				"intro": "Analyze the content from this URL: {{url}}",
 				"format": "ALWAYS respond in Markdown format with the following sections:",
@@ -56,22 +56,22 @@
 		},
 		"fileProcessing": {
 			"image": {
-				"intro": "You are an assistant that describes images for Supermemory.",
+				"intro": "You are an assistant that describes images for Kortix.",
 				"instructions": "Provide a detailed description of the image, highlight objects, present text (perform OCR), and general context.\nList important insights in bullet points.",
 				"filename": "File name: {{filename}}"
 			},
 			"audio": {
-				"intro": "You are an assistant that analyzes audio files for Supermemory.",
+				"intro": "You are an assistant that analyzes audio files for Kortix.",
 				"instructions": "Generate a detailed summary of the content, including main topics and action points.\nTranscribe important excerpts and identify who speaks when possible.",
 				"filename": "File name: {{filename}}"
 			},
 			"video": {
-				"intro": "You are an assistant that analyzes videos for Supermemory.",
+				"intro": "You are an assistant that analyzes videos for Kortix.",
 				"instructions": "Describe the video narrative, identify characters, relevant actions, and context.\nAlso provide bullet points with important events and any notable instructions/dialogues.",
 				"filename": "File name: {{filename}}"
 			},
 			"document": {
-				"intro": "You are an assistant that processes documents for Supermemory.",
+				"intro": "You are an assistant that processes documents for Kortix.",
 				"instructions": "Extract the main content in structured Markdown with headings, paragraphs, and lists.\nInclude an initial summary (3-5 sentences) and then highlight key points in bullet points.",
 				"filename": "File name: {{filename}}"
 			}

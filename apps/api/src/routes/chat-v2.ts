@@ -142,7 +142,7 @@ type ContentBlockTracker =
 			buffer: string
 	  }
 
-const SEARCH_TOOL_NAME = "mcp__supermemory-tools__searchDatabase"
+const SEARCH_TOOL_NAME = "mcp__kortix-tools__searchDatabase"
 
 function unwrapStreamEvents(event: unknown): Array<Record<string, unknown>> {
 	const queue: unknown[] = [event]

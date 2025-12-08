@@ -52,9 +52,9 @@ export function setupStorageListener() {
 		const bearerToken = event.data.token
 		const userData = event.data.userData
 		if (bearerToken && userData) {
-			if (!DOMAINS.SUPERMEMORY.includes(window.location.hostname)) {
+			if (!DOMAINS.KORTIX.includes(window.location.hostname)) {
 				console.log(
-					"Bearer token and user data can only be used on trusted Supermemory origins",
+					"Bearer token and user data can only be used on trusted Kortix origins",
 				)
 				return
 			}

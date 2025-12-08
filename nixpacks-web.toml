@@ -5,7 +5,7 @@ nixPkgs = ["nodejs_22"]
 cmds = [
   "corepack enable",
   "corepack prepare bun@latest --activate",
-  "bun install --filter='!supermemory-browser-extension'"
+  "bun install --filter='!kortix-browser-extension'"
 ]
 
 [phases.build]

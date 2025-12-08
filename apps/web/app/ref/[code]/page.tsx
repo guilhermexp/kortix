@@ -42,7 +42,7 @@ export default function ReferralPage() {
 				// For now, we'll assume it's valid - in the future this should call an API
 				setReferralData({
 					valid: true,
-					referrerName: "A supermemory user", // Placeholder - should come from API
+					referrerName: "A Kortix user", // Placeholder - should come from API
 				})
 			} catch (error) {
 				console.error("Error checking referral:", error)
@@ -69,8 +69,8 @@ export default function ReferralPage() {
 	const handleShare = () => {
 		if (navigator.share) {
 			navigator.share({
-				title: "Join supermemory",
-				text: "I'm excited about supermemory - it's going to change how we store and interact with our memories!",
+				title: "Join Kortix",
+				text: "I'm excited about Kortix - it's going to change how we store and interact with our memories!",
 				url: referralLink,
 			})
 		} else {
@@ -104,7 +104,7 @@ export default function ReferralPage() {
 					<CardContent>
 						<div className="text-center">
 							<Button asChild className="w-full">
-								<Link href={APP_URL}>Go to supermemory</Link>
+								<Link href={APP_URL}>Go to Kortix</Link>
 							</Button>
 						</div>
 					</CardContent>
@@ -123,7 +123,7 @@ export default function ReferralPage() {
 							<ShareIcon className="w-8 h-8 text-orange-500" />
 						</div>
 						<CardTitle className="text-2xl font-bold text-white">
-							You're invited to supermemory!
+							You're invited to Kortix!
 						</CardTitle>
 						<CardDescription className="text-white/60 mt-2">
 							{referralData.referrerName} invited you to join the future of
@@ -134,10 +134,10 @@ export default function ReferralPage() {
 						<div className="space-y-4">
 							<div className="bg-background rounded-lg p-4 border border-white/10">
 								<h3 className="text-white font-semibold mb-2">
-									What is supermemory?
+									What is Kortix?
 								</h3>
 								<p className="text-white/70 text-sm leading-relaxed">
-									supermemory is an AI-powered personal knowledge base that
+									Kortix is an AI-powered personal knowledge base that
 									helps you store, organize, and interact with all your digital
 									memories - from documents and links to conversations and
 									ideas.
@@ -149,7 +149,7 @@ export default function ReferralPage() {
 									className="text-orange-500 hover:text-orange-400 text-sm underline"
 									href={APP_URL}
 								>
-									Learn more about supermemory
+									Learn more about Kortix
 								</Link>
 							</div>
 						</div>
@@ -163,7 +163,7 @@ export default function ReferralPage() {
 							Share with friends
 						</CardTitle>
 						<CardDescription className="text-white/60">
-							Help others discover supermemory and earn priority access.
+							Help others discover Kortix and earn priority access.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>

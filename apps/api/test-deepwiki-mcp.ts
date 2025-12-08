@@ -89,7 +89,7 @@ async function connectAndInspectTools() {
 
 	const client = new Client(
 		{
-			name: "supermemory-deepwiki-tester",
+			name: "kortix-deepwiki-tester",
 			version: "0.1.0",
 		},
 		{

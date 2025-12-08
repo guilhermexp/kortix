@@ -14,7 +14,7 @@ function safeString(value: unknown) {
 	return typeof value === "string" ? value : undefined
 }
 
-export function createSupermemoryTools(
+export function createKortixTools(
 	client: SupabaseClient,
 	orgId: string,
 	context: ToolContext = {},
@@ -175,7 +175,7 @@ export function createSupermemoryTools(
 	])
 
 	return createSdkMcpServer({
-		name: "supermemory-tools",
+		name: "kortix-tools",
 		version: "1.0.0",
 		tools: [
 			tool(

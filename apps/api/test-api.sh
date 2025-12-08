@@ -6,7 +6,7 @@ API_URL="http://localhost:4000"
 BACKEND_URL="${BACKEND_URL:-$API_URL}"
 
 echo "========================================"
-echo "🧪 Testando API do Supermemory"
+echo "🧪 Testando API do Kortix"
 echo "========================================"
 echo ""
 

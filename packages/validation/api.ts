@@ -1159,6 +1159,15 @@ export const DocumentsWithMemoriesQuerySchema = z
 				"Whether to include heavy content fields (content, raw, processing_metadata, summary_embedding). Default false for better performance",
 			example: false,
 		}),
+		search: z
+			.string()
+			.max(200)
+			.optional()
+			.meta({
+				description:
+					"Text to search in document title, summary, and tags. Case-insensitive.",
+				example: "claude code",
+			}),
 	})
 	.meta({
 		description: "Query parameters for listing documents with memory entries",

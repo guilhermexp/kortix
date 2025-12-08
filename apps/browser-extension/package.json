@@ -1,6 +1,6 @@
 {
-	"name": "supermemory-browser-extension",
-	"description": "Browser extension for the supermemory app",
+	"name": "kortix-browser-extension",
+	"description": "Browser extension for the Kortix app",
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",

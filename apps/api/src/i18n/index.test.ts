@@ -23,13 +23,13 @@ describe("i18n Translation System", () => {
 	describe("t() - Basic Translation", () => {
 		it("should translate simple paths in pt-BR (default)", () => {
 			const result = t("prompts.summary.system")
-			expect(result).toContain("Supermemory")
+			expect(result).toContain("Kortix")
 			expect(result).toContain("português do Brasil")
 		})
 
 		it("should translate simple paths in en-US", () => {
 			const result = t("prompts.summary.system", undefined, "en-US")
-			expect(result).toContain("Supermemory")
+			expect(result).toContain("Kortix")
 			expect(result).toContain("English")
 		})
 
@@ -134,7 +134,7 @@ describe("i18n Translation System", () => {
 	describe("buildSummaryPrompt()", () => {
 		it("should build basic summary prompt", () => {
 			const prompt = buildSummaryPrompt("Test content here")
-			expect(prompt).toContain("Supermemory")
+			expect(prompt).toContain("Kortix")
 			expect(prompt).toContain("Resumo Executivo")
 			expect(prompt).toContain("Pontos-Chave")
 			expect(prompt).toContain("Casos de Uso")
@@ -274,7 +274,7 @@ describe("i18n Translation System", () => {
 		it("should build image processing prompt", () => {
 			const prompt = buildFilePrompt("image/png", "test.png")
 			expect(prompt).toContain("imagens")
-			expect(prompt).toContain("Supermemory")
+			expect(prompt).toContain("Kortix")
 			expect(prompt).toContain("test.png")
 		})
 

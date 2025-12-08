@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-O Supermemory agora implementa um sistema de fallback transparente entre provedores de AI. Quando o Gemini API atinge o limite de quota (erro 429), o sistema automaticamente alterna para OpenRouter sem interromper o serviço.
+O Kortix agora implementa um sistema de fallback transparente entre provedores de AI. Quando o Gemini API atinge o limite de quota (erro 429), o sistema automaticamente alterna para OpenRouter sem interromper o serviço.
 
 ## Como Funciona
 

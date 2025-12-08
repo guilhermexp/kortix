@@ -22,8 +22,8 @@ export function createScopedSupabase(
 		auth: { persistSession: false },
 		global: {
 			headers: {
-				"x-supermemory-organization": organizationId,
-				...(userId ? { "x-supermemory-user": userId } : {}),
+				"x-kortix-organization": organizationId,
+				...(userId ? { "x-kortix-user": userId } : {}),
 			},
 		},
 	})

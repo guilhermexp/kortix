@@ -203,7 +203,7 @@ exports.usePersistentChatStore = (0, zustand_1.create)()(
 			},
 		}),
 		{
-			name: "supermemory-chats",
+			name: "kortix-chats",
 		},
 	),
 )

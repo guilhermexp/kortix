@@ -17,7 +17,7 @@ const useViewModeStore = create<ViewModeState>()(
 			setViewMode: (mode) => set({ viewMode: mode }),
 		}),
 		{
-			name: "supermemory-view-mode",
+			name: "kortix-view-mode",
 		},
 	),
 )

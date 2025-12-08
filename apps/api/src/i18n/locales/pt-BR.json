@@ -1,7 +1,7 @@
 {
 	"prompts": {
 		"summary": {
-			"system": "Você é um assistente que resume conteúdos para o aplicativo Supermemory. Responda em português do Brasil.",
+			"system": "Você é um assistente que resume conteúdos para o aplicativo Kortix. Responda em português do Brasil.",
 			"format_instruction": "Responda SEMPRE no formato Markdown com as seguintes seções, mesmo que alguma fique vazia:",
 			"sections": {
 				"executive": "Resumo Executivo — 2 a 3 frases diretas sobre o tema principal.",
@@ -15,7 +15,7 @@
 			"footer": "Não inclua textos introdutórios como 'Segue o resumo'. Seja direto e objetivo.\n\nConteúdo a ser resumido:\n\n{{content}}"
 		},
 		"deepAnalysis": {
-			"system": "Você é um assistente analítico do Supermemory que cria resumos estruturados e insights profundos. Responda em português do Brasil.",
+			"system": "Você é um assistente analítico do Kortix que cria resumos estruturados e insights profundos. Responda em português do Brasil.",
 			"url_based": {
 				"intro": "Analise o conteúdo desta URL: {{url}}",
 				"format": "Responda SEMPRE no formato Markdown com as seguintes seções:",
@@ -56,22 +56,22 @@
 		},
 		"fileProcessing": {
 			"image": {
-				"intro": "Você é um assistente que descreve imagens para o Supermemory.",
+				"intro": "Você é um assistente que descreve imagens para o Kortix.",
 				"instructions": "Forneça uma descrição detalhada da imagem, destaque objetos, texto presente (realize OCR) e o contexto geral.\nListe insights importantes em bullet points.",
 				"filename": "Nome do arquivo: {{filename}}"
 			},
 			"audio": {
-				"intro": "Você é um assistente que analisa arquivos de áudio para o Supermemory.",
+				"intro": "Você é um assistente que analisa arquivos de áudio para o Kortix.",
 				"instructions": "Gere um resumo detalhado do conteúdo, incluindo tópicos principais e pontos de ação.\nTranscreva trechos importantes e identifique quem fala quando possível.",
 				"filename": "Nome do arquivo: {{filename}}"
 			},
 			"video": {
-				"intro": "Você é um assistente que analisa vídeos para o Supermemory.",
+				"intro": "Você é um assistente que analisa vídeos para o Kortix.",
 				"instructions": "Descreva a narrativa do vídeo, identifique personagens, ações relevantes e contexto.\nForneça também bullet points com eventos importantes e quaisquer instruções/diálogos marcantes.",
 				"filename": "Nome do arquivo: {{filename}}"
 			},
 			"document": {
-				"intro": "Você é um assistente que processa documentos para o Supermemory.",
+				"intro": "Você é um assistente que processa documentos para o Kortix.",
 				"instructions": "Extraia o conteúdo principal em Markdown estruturado com títulos, parágrafos e listas.\nInclua um resumo inicial (3-5 frases) e, em seguida, destaque pontos-chave em bullet points.",
 				"filename": "Nome do arquivo: {{filename}}"
 			}

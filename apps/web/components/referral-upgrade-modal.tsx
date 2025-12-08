@@ -95,8 +95,8 @@ export function ReferralUpgradeModal({
 		if (navigator.share) {
 			try {
 				await navigator.share({
-					title: "Join Supermemory",
-					text: "Check out Supermemory - the best way to organize and search your digital memories!",
+					title: "Join Kortix",
+					text: "Check out Kortix - the best way to organize and search your digital memories!",
 					url: referralLink,
 				})
 			} catch (error) {

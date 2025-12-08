@@ -31,10 +31,10 @@ export default function ReferralHomePage() {
 					<div className="space-y-4">
 						<div className="bg-background rounded-lg p-4 border border-white/10">
 							<h3 className="text-white font-semibold mb-2">
-								What is supermemory?
+								What is Kortix?
 							</h3>
 							<p className="text-white/70 text-sm leading-relaxed">
-								supermemory is an AI-powered personal knowledge base that helps
+								Kortix is an AI-powered personal knowledge base that helps
 								you store, organize, and interact with all your digital
 								memories.
 							</p>
@@ -45,7 +45,7 @@ export default function ReferralHomePage() {
 								className="text-orange-500 hover:text-orange-400 text-sm underline"
 								href={APP_URL}
 							>
-								Learn more about supermemory
+								Learn more about Kortix
 							</Link>
 						</div>
 					</div>

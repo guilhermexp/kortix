@@ -1,6 +1,6 @@
 # Claude Agent SDK Configuration
 
-This directory contains configuration files for the Claude Agent SDK used by Supermemory.
+This directory contains configuration files for the Claude Agent SDK used by Kortix.
 
 ## Directory Structure
 
@@ -50,4 +50,4 @@ If CLAUDE.md is not found or cannot be loaded, the SDK falls back to the inline 
 
 - [Claude Agent SDK Documentation](https://docs.claude.com/en/api/agent-sdk/overview)
 - [Migration Guide](https://docs.claude.com/en/docs/claude-code/sdk/migration-guide)
-- [Supermemory System Prompt Source](../src/prompts/chat.ts)
+- [Kortix System Prompt Source](../src/prompts/chat.ts)

@@ -18,6 +18,14 @@ import {
 	Square,
 	Eye,
 	Plus,
+	MousePointer2,
+	Hand,
+	Pencil,
+	Eraser,
+	ArrowUpRight,
+	Type,
+	StickyNote,
+	RectangleHorizontal,
 } from "lucide-react"
 import { useRef, useState, useCallback, useEffect } from "react"
 import { useValue, toRichText } from "tldraw"
@@ -82,6 +90,36 @@ interface StreamEvent {
 	text?: string
 	content?: string
 	updates?: Record<string, unknown>
+}
+
+// ============================================================
+// TOOL BUTTON COMPONENT
+// ============================================================
+
+interface ToolButtonProps {
+	icon: React.ReactNode
+	tool: string
+	editor: Editor
+	title: string
+}
+
+function ToolButton({ icon, tool, editor, title }: ToolButtonProps) {
+	const currentTool = useValue("current tool", () => editor.getCurrentToolId(), [editor])
+	const isActive = currentTool === tool
+
+	return (
+		<button
+			onClick={() => editor.setCurrentTool(tool)}
+			className={`p-2 rounded-lg transition-colors ${
+				isActive
+					? "bg-foreground/15 text-foreground"
+					: "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+			}`}
+			title={title}
+		>
+			{icon}
+		</button>
+	)
 }
 
 // ============================================================
@@ -677,7 +715,7 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 			/>
 
 			{/* Unified container */}
-			<div className="bg-background/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-border dark:border-neutral-700/50 rounded-2xl shadow-2xl overflow-hidden">
+			<div className="bg-background border border-border rounded-2xl shadow-2xl overflow-hidden">
 
 				{/* Chat messages */}
 				{messages.length > 0 && (
@@ -853,6 +891,60 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 								Current Viewport
 							</button>
 						</div>
+					</div>
+				)}
+
+				{/* Tldraw Tools Row */}
+				{editor && (
+					<div className="flex items-center justify-center gap-1 px-4 py-2 border-b border-border/50">
+						<ToolButton
+							icon={<MousePointer2 className="w-4 h-4" />}
+							tool="select"
+							editor={editor}
+							title="Selecionar"
+						/>
+						<ToolButton
+							icon={<Hand className="w-4 h-4" />}
+							tool="hand"
+							editor={editor}
+							title="Mover"
+						/>
+						<ToolButton
+							icon={<Pencil className="w-4 h-4" />}
+							tool="draw"
+							editor={editor}
+							title="Desenhar"
+						/>
+						<ToolButton
+							icon={<Eraser className="w-4 h-4" />}
+							tool="eraser"
+							editor={editor}
+							title="Apagar"
+						/>
+						<ToolButton
+							icon={<ArrowUpRight className="w-4 h-4" />}
+							tool="arrow"
+							editor={editor}
+							title="Seta"
+						/>
+						<ToolButton
+							icon={<Type className="w-4 h-4" />}
+							tool="text"
+							editor={editor}
+							title="Texto"
+						/>
+						<ToolButton
+							icon={<StickyNote className="w-4 h-4" />}
+							tool="note"
+							editor={editor}
+							title="Nota"
+						/>
+							<ToolButton
+							icon={<RectangleHorizontal className="w-4 h-4" />}
+							tool="geo"
+							editor={editor}
+							title="Forma"
+						/>
 					</div>
 				)}
 

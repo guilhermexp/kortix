@@ -31,7 +31,7 @@ export interface MemoryData {
 }
 
 /**
- * Supermemory API payload for storing memories
+ * Kortix API payload for storing memories
  */
 export interface MemoryPayload {
 	containerTags?: string[]
@@ -124,10 +124,10 @@ export class TwitterAPIError extends ExtensionError {
 	}
 }
 
-export class SupermemoryAPIError extends ExtensionError {
+export class KortixAPIError extends ExtensionError {
 	constructor(message: string, statusCode?: number) {
-		super(message, "SUPERMEMORY_API_ERROR", statusCode)
-		this.name = "SupermemoryAPIError"
+		super(message, "KORTIX_API_ERROR", statusCode)
+		this.name = "KortixAPIError"
 	}
 }
 

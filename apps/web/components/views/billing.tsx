@@ -107,7 +107,7 @@ export function BillingView() {
 						</span>
 					</HeadingH3Bold>
 					<p className="text-sm text-foreground dark:text-white/70">
-						You're enjoying expanded memory capacity with supermemory Pro!
+						You're enjoying expanded memory capacity with Kortix Pro!
 					</p>
 				</div>
 

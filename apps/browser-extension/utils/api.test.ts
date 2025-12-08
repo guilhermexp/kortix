@@ -7,7 +7,7 @@ import {
 	AuthenticationError,
 	type MemoryPayload,
 	type Project,
-	SupermemoryAPIError,
+	KortixAPIError,
 } from "./types"
 
 /**
@@ -157,7 +157,7 @@ async function makeAuthenticatedRequest<T>(
 ): Promise<T> {
 	const token = await getBearerToken()
 
-	const response = await fetch(`${API_ENDPOINTS.SUPERMEMORY_API}${endpoint}`, {
+	const response = await fetch(`${API_ENDPOINTS.KORTIX_API}${endpoint}`, {
 		...options,
 		credentials: "omit",
 		headers: {
@@ -171,7 +171,7 @@ async function makeAuthenticatedRequest<T>(
 		if (response.status === 401) {
 			throw new AuthenticationError("Invalid or expired token")
 		}
-		throw new SupermemoryAPIError(
+		throw new KortixAPIError(
 			`API request failed: ${response.statusText}`,
 			response.status,
 		)
@@ -374,15 +374,15 @@ describe("Browser Extension API", () => {
 
 			expect(async () => {
 				await fetchProjects()
-			}).toThrow(SupermemoryAPIError)
+			}).toThrow(KortixAPIError)
 		})
 	})
 })
 
 describe("Extension Constants", () => {
 	it("should have correct API endpoint", () => {
-		expect(API_ENDPOINTS.SUPERMEMORY_API).toBeDefined()
-		expect(typeof API_ENDPOINTS.SUPERMEMORY_API).toBe("string")
+		expect(API_ENDPOINTS.KORTIX_API).toBeDefined()
+		expect(typeof API_ENDPOINTS.KORTIX_API).toBe("string")
 	})
 
 	it("should have storage keys defined", () => {

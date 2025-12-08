@@ -133,8 +133,8 @@ app.use(
     allowHeaders: [
       "Content-Type",
       "Authorization",
-      "X-Supermemory-Organization",
-      "X-Supermemory-User",
+      "X-Kortix-Organization",
+      "X-Kortix-User",
     ],
     exposeHeaders: ["Set-Cookie"],
   }),
@@ -147,7 +147,7 @@ app.get("/health", healthHandler);
 
 app.get("/", (c) =>
   c.json({
-    message: "Supermemory API",
+    message: "Kortix API",
     docs: "Pending",
   }),
 );

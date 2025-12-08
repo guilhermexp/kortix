@@ -13,7 +13,7 @@ import type { ToastState } from "./types"
  */
 export function createToast(state: ToastState): HTMLElement {
 	const toast = document.createElement("div")
-	toast.id = ELEMENT_IDS.SUPERMEMORY_TOAST
+	toast.id = ELEMENT_IDS.KORTIX_TOAST
 
 	toast.style.cssText = `
     position: fixed;
@@ -36,9 +36,9 @@ export function createToast(state: ToastState): HTMLElement {
   `
 
 	// Add keyframe animations and fonts if not already present
-	if (!document.getElementById("supermemory-toast-styles")) {
+	if (!document.getElementById("kortix-toast-styles")) {
 		const style = document.createElement("style")
-		style.id = "supermemory-toast-styles"
+		style.id = "kortix-toast-styles"
 		style.textContent = `
       @font-face {
         font-family: 'Space Grotesk';
@@ -312,7 +312,7 @@ export function createClaudeInputBarElement(onClick: () => void): HTMLElement {
 	const iconFileName = "/icon-16.png"
 	const iconUrl = browser.runtime.getURL(iconFileName)
 	iconButton.innerHTML = `
-    <img src="${iconUrl}" width="20" height="20" alt="Get Related Memories from supermemory" style="border-radius: 4px;" />
+    <img src="${iconUrl}" width="20" height="20" alt="Get Related Memories from Kortix" style="border-radius: 4px;" />
   `
 
 	iconButton.addEventListener("mouseenter", () => {
@@ -356,7 +356,7 @@ export function createT3InputBarElement(onClick: () => void): HTMLElement {
 	const iconFileName = "/icon-16.png"
 	const iconUrl = browser.runtime.getURL(iconFileName)
 	iconButton.innerHTML = `
-    <img src="${iconUrl}" width="20" height="20" alt="Get Related Memories from supermemory" style="border-radius: 4px;" />
+    <img src="${iconUrl}" width="20" height="20" alt="Get Related Memories from Kortix" style="border-radius: 4px;" />
   `
 
 	iconButton.addEventListener("mouseenter", () => {
@@ -429,7 +429,7 @@ export const DOMUtils = {
 		state: ToastState,
 		duration: number = UI_CONFIG.TOAST_DURATION,
 	): HTMLElement {
-		const existingToast = document.getElementById(ELEMENT_IDS.SUPERMEMORY_TOAST)
+		const existingToast = document.getElementById(ELEMENT_IDS.KORTIX_TOAST)
 
 		if ((state === "success" || state === "error") && existingToast) {
 			const icon = existingToast.querySelector("div")
@@ -488,7 +488,7 @@ export const DOMUtils = {
 		}
 
 		const existingToasts = document.querySelectorAll(
-			`#${ELEMENT_IDS.SUPERMEMORY_TOAST}`,
+			`#${ELEMENT_IDS.KORTIX_TOAST}`,
 		)
 		existingToasts.forEach((toast) => {
 			toast.remove()

@@ -1,5 +1,5 @@
 /**
- * API service for supermemory browser extension
+ * API service for Kortix browser extension
  */
 import { API_ENDPOINTS, STORAGE_KEYS } from "./constants"
 import {
@@ -7,7 +7,7 @@ import {
 	type MemoryPayload,
 	type Project,
 	type ProjectsResponse,
-	SupermemoryAPIError,
+	KortixAPIError,
 } from "./types"
 
 /**
@@ -33,7 +33,7 @@ async function makeAuthenticatedRequest<T>(
 ): Promise<T> {
 	const token = await getBearerToken()
 
-	const response = await fetch(`${API_ENDPOINTS.SUPERMEMORY_API}${endpoint}`, {
+	const response = await fetch(`${API_ENDPOINTS.KORTIX_API}${endpoint}`, {
 		...options,
 		credentials: "omit",
 		headers: {
@@ -47,7 +47,7 @@ async function makeAuthenticatedRequest<T>(
 		if (response.status === 401) {
 			throw new AuthenticationError("Invalid or expired token")
 		}
-		throw new SupermemoryAPIError(
+		throw new KortixAPIError(
 			`API request failed: ${response.statusText}`,
 			response.status,
 		)
@@ -129,7 +129,7 @@ export async function getUserData(): Promise<{ email?: string } | null> {
 }
 
 /**
- * Save memory to Supermemory API
+ * Save memory to Kortix API
  */
 export async function saveMemory(payload: MemoryPayload): Promise<unknown> {
 	try {
@@ -145,7 +145,7 @@ export async function saveMemory(payload: MemoryPayload): Promise<unknown> {
 }
 
 /**
- * Search memories using Supermemory API
+ * Search memories using Kortix API
  */
 export async function searchMemories(query: string): Promise<unknown> {
 	try {
@@ -161,7 +161,7 @@ export async function searchMemories(query: string): Promise<unknown> {
 }
 
 /**
- * Save tweet to Supermemory API (specific for Twitter imports)
+ * Save tweet to Kortix API (specific for Twitter imports)
  */
 export async function saveAllTweets(
 	documents: MemoryPayload[],
@@ -182,7 +182,7 @@ export async function saveAllTweets(
 		)
 		return response
 	} catch (error) {
-		if (error instanceof SupermemoryAPIError && error.statusCode === 409) {
+		if (error instanceof KortixAPIError && error.statusCode === 409) {
 			// Skip if already exists (409 Conflict)
 			return
 		}

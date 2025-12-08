@@ -38,8 +38,9 @@ export const fetchSubscriptionStatus = (
 			return statusMap
 		},
 		queryKey: ["subscription-status"],
-		refetchInterval: 5000, // Refetch every 5 seconds
-		staleTime: 4000, // Consider data stale after 4 seconds
+		refetchInterval: false, // Disable automatic polling - use refetchOnWindowFocus instead
+		staleTime: 5 * 60 * 1000, // 5 minutes - subscription status rarely changes
+		refetchOnWindowFocus: true, // Only refresh when user returns to tab
 	})
 
 // Feature checks

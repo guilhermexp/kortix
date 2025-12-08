@@ -7,14 +7,14 @@ function Welcome() {
 				{/* Header */}
 				<div className="mb-12">
 					<img
-						alt="supermemory"
+						alt="Kortix"
 						className="h-16 mb-6 mx-auto"
 						src="/icon-128.png"
 						style={{ objectFit: "contain" }}
 					/>
 					<p className="text-gray-600 text-lg font-normal max-w-2xl mx-auto">
 						Your AI second brain for saving and organizing everything that
-						matters. Supermemory learns and remembers everything you save, your
+						matters. Kortix learns and remembers everything you save, your
 						preferences, and understands you.
 					</p>
 				</div>
@@ -22,7 +22,7 @@ function Welcome() {
 				{/* Features Section */}
 				<div className="mb-12">
 					<h2 className="text-2xl font-semibold text-black mb-8">
-						What can you do with supermemory ?
+						What can you do with Kortix?
 					</h2>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -76,7 +76,7 @@ function Welcome() {
 					<button
 						className="min-w-[200px] px-8 py-4 bg-gray-700 text-white border-none rounded-3xl text-base font-semibold cursor-pointer transition-colors duration-200 mb-4 outline-none hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
 						onClick={() => {
-							const baseUrl = API_ENDPOINTS.SUPERMEMORY_WEB
+							const baseUrl = API_ENDPOINTS.KORTIX_WEB
 							const loginUrl = new URL("/login", baseUrl)
 							loginUrl.searchParams.set("extension-auth-success", "1")
 							chrome.tabs.create({ url: loginUrl.toString() })
@@ -93,11 +93,11 @@ function Welcome() {
 						Learn more at{" "}
 						<a
 							className="text-blue-500 no-underline hover:underline hover:text-blue-700"
-							href={API_ENDPOINTS.SUPERMEMORY_WEB}
+							href={API_ENDPOINTS.KORTIX_WEB}
 							rel="noopener noreferrer"
 							target="_blank"
 						>
-							{new URL(API_ENDPOINTS.SUPERMEMORY_WEB).hostname}
+							{new URL(API_ENDPOINTS.KORTIX_WEB).hostname}
 						</a>
 					</p>
 				</div>

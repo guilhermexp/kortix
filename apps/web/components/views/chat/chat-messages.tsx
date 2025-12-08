@@ -955,7 +955,7 @@ function useClaudeChat({
 						const resolvedToolName =
 							toolName ?? (toolUseId ? toolUseId : "tool")
 						const isSearchTool =
-							resolvedToolName === "mcp__supermemory-tools__searchDatabase"
+							resolvedToolName === "mcp__kortix-tools__searchDatabase"
 
 						if (isSearchTool) {
 							const existingIndex = existingParts.findIndex(

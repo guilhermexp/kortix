@@ -674,7 +674,7 @@ export async function listDocumentsWithMemories(
 	const sortColumn = resolveSortColumn(query.sort)
 
 	// Check cache first (only for non-content requests to keep cache size manageable)
-	if (!query.includeContent) {
+	if (!query.includeContent && !query.search) {
 		const cacheKey = generateCacheKey("doclist", {
 			orgId: organizationId,
 			page,
@@ -759,18 +759,26 @@ export async function listDocumentsWithMemories(
 			})
 		}
 
+		// Build query with optional search filter
+		let queryBuilder = client
+			.from("documents")
+			.select(selectFields, { count: "planned" })
+			.eq("org_id", organizationId)
+			.in("id", docIds)
+
+		// Apply search filter if provided
+		if (query.search && query.search.trim()) {
+			const searchTerm = `%${query.search.trim()}%`
+			queryBuilder = queryBuilder.or(
+				`title.ilike.${searchTerm},summary.ilike.${searchTerm}`,
+			)
+		}
+
 		const {
 			data: docs,
 			error: docsErr,
 			count: docsCount,
-		} = await client
-			.from("documents")
-			.select(
-				selectFields,
-				{ count: "planned" }, // Changed from "exact" to "planned" for better performance
-			)
-			.eq("org_id", organizationId)
-			.in("id", docIds)
+		} = await queryBuilder
 			.order(sortColumn, { ascending: (query.order ?? "desc") === "asc" })
 			.range(offset, offset + limit - 1)
 
@@ -778,17 +786,25 @@ export async function listDocumentsWithMemories(
 		data = docs ?? []
 		count = docsCount ?? data.length
 	} else {
+		// Build query with optional search filter
+		let queryBuilder = client
+			.from("documents")
+			.select(selectFields, { count: "planned" })
+			.eq("org_id", organizationId)
+
+		// Apply search filter if provided
+		if (query.search && query.search.trim()) {
+			const searchTerm = `%${query.search.trim()}%`
+			queryBuilder = queryBuilder.or(
+				`title.ilike.${searchTerm},summary.ilike.${searchTerm}`,
+			)
+		}
+
 		const {
 			data: docs,
 			error,
 			count: docsCount,
-		} = await client
-			.from("documents")
-			.select(
-				selectFields,
-				{ count: "planned" }, // Changed from "exact" to "planned" for better performance
-			)
-			.eq("org_id", organizationId)
+		} = await queryBuilder
 			.order(sortColumn, { ascending: (query.order ?? "desc") === "asc" })
 			.range(offset, offset + limit - 1)
 
@@ -1033,6 +1049,7 @@ export async function listDocumentsWithMemoriesByIds(
 	const memoryByDoc = new Map<string, MemoryRow[]>()
 
 	if (docIds.length > 0) {
+		// Limit memories query to prevent database overload with large IN() clauses
 		const { data: memoryRows, error: memoryError } = await client
 			.from("memories")
 			.select(
@@ -1040,6 +1057,8 @@ export async function listDocumentsWithMemoriesByIds(
 			)
 			.eq("org_id", organizationId)
 			.in("document_id", docIds)
+			.order("created_at", { ascending: false })
+			.limit(Math.min(docIds.length * 5, 250)) // Max 5 memories per doc, cap at 250 total
 
 		if (memoryError && !isPermissionDenied(memoryError)) throw memoryError
 

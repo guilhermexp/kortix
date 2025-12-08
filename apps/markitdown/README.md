@@ -85,7 +85,7 @@ curl -X POST http://localhost:5000/convert/url \
 
 ## Railway Deployment
 
-This service is designed to run as part of the Supermemory monorepo on Railway.
+This service is designed to run as part of the Kortix monorepo on Railway.
 
 ### Setup
 1. Create new Railway service pointing to this directory
@@ -108,4 +108,4 @@ Or publicly via the generated Railway URL.
 
 ## License
 
-Part of the Supermemory project.
+Part of the Kortix project.

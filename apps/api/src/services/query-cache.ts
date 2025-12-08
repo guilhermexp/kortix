@@ -128,7 +128,7 @@ class QueryCache {
 		}
 	}
 
-	
+
 	/**
 	 * Clean up expired entries (should be called periodically)
 	 */
@@ -163,8 +163,9 @@ export const searchCache = new QueryCache({
 	ttl: 5 * 60 * 1000, // 5 minutes TTL for search results
 })
 
-// Cleanup interval - run every 5 minutes in development, 2 minutes in production
-const cleanupInterval = process.env.NODE_ENV === 'production' ? 2 * 60 * 1000 : 5 * 60 * 1000
+// Cleanup interval - run every 15 minutes in production, 30 minutes in development
+// Increased to reduce CPU overhead from frequent cache iterations
+const cleanupInterval = process.env.NODE_ENV === 'production' ? 15 * 60 * 1000 : 30 * 60 * 1000
 setInterval(() => {
 	const removedDocs = documentListCache.cleanup()
 	const removedLists = documentCache.cleanup()

@@ -113,9 +113,9 @@ export async function requestPasswordReset(c: Context) {
 	const resetUrl = buildResetUrl(token)
 	await sendEmail({
 		to: email,
-		subject: "Redefinir senha do supermemory",
+		subject: "Redefinir senha do Kortix",
 		text: `Use o link a seguir para redefinir sua senha. Ele expira em 30 minutos. ${resetUrl}`,
-		html: `<p>Você solicitou a redefinição da sua senha no supermemory.</p><p><a href="${resetUrl}">Clique aqui para redefinir sua senha</a>. Este link expira em 30 minutos.</p><p>Se você não solicitou, ignore este email.</p>`,
+		html: `<p>Você solicitou a redefinição da sua senha no Kortix.</p><p><a href="${resetUrl}">Clique aqui para redefinir sua senha</a>. Este link expira em 30 minutos.</p><p>Se você não solicitou, ignore este email.</p>`,
 	})
 
 	return c.json({ message: "If an account exists, an email will be sent" })
