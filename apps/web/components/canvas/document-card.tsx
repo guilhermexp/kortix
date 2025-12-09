@@ -40,11 +40,23 @@ import {
 	stripMarkdown,
 } from "../memories"
 import { MarkdownContent } from "@/components/markdown-content"
+import {
+	asRecord,
+	safeHttpUrl,
+	pickFirstUrl,
+	pickFirstUrlSameHost,
+	sameHostOrTrustedCdn,
+	formatPreviewLabel,
+	isYouTubeUrl,
+	getYouTubeId,
+	getYouTubeThumbnail,
+	isInlineSvgDataUrl,
+	PROCESSING_STATUSES,
+	type BaseRecord,
+} from "@lib/utils"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
-
-type BaseRecord = Record<string, unknown>
 
 type PreviewData =
 	| {
@@ -66,11 +78,6 @@ type PreviewData =
 			href: string
 	  }
 
-const isInlineSvgDataUrl = (value?: string | null): boolean => {
-	if (!value) return false
-	return value.trim().toLowerCase().startsWith("data:image/svg+xml")
-}
-
 const previewsEqual = (
 	a: PreviewData | null,
 	b: PreviewData | null,
@@ -83,168 +90,6 @@ const previewsEqual = (
 		a.href === b.href &&
 		a.label === b.label
 	)
-}
-
-const PROCESSING_STATUSES = new Set([
-	"queued",
-	"fetching",
-	"extracting",
-	"chunking",
-	"embedding",
-	"processing",
-])
-
-const asRecord = (value: unknown): BaseRecord | null => {
-	if (!value || typeof value !== "object" || Array.isArray(value)) {
-		return null
-	}
-	return value as BaseRecord
-}
-
-/**
- * Sanitize and validate URLs for image previews
- * Security: Prevents XSS via javascript:, data:text/html, and other malicious URLs
- */
-const safeHttpUrl = (value: unknown, baseUrl?: string): string | undefined => {
-	if (typeof value !== "string") return undefined
-	const trimmed = value.trim()
-	if (!trimmed) return undefined
-
-	// Handle data: URLs - only allow image types
-	if (trimmed.startsWith("data:")) {
-		// Only allow data:image/ URLs
-		if (
-			trimmed.startsWith("data:image/svg+xml") ||
-			trimmed.startsWith("data:image/png") ||
-			trimmed.startsWith("data:image/jpeg") ||
-			trimmed.startsWith("data:image/jpg") ||
-			trimmed.startsWith("data:image/gif") ||
-			trimmed.startsWith("data:image/webp")
-		) {
-			// Limit data URL size to prevent DoS (2MB max)
-			if (trimmed.length > 2 * 1024 * 1024) {
-				console.warn("Data URL too large, ignoring")
-				return undefined
-			}
-			return trimmed
-		}
-		// Reject any other data: URLs (text/html, application/javascript, etc.)
-		return undefined
-	}
-
-	try {
-		const url = new URL(trimmed)
-		// Only allow http: and https: protocols (blocks javascript:, file:, etc.)
-		if (url.protocol === "http:" || url.protocol === "https:") {
-			return url.toString()
-		}
-	} catch {
-		if (baseUrl) {
-			try {
-				const url = new URL(trimmed, baseUrl)
-				if (url.protocol === "http:" || url.protocol === "https:") {
-					return url.toString()
-				}
-			} catch {}
-		}
-	}
-	return undefined
-}
-
-const pickFirstUrl = (
-	record: BaseRecord | null,
-	keys: string[],
-	baseUrl?: string,
-): string | undefined => {
-	if (!record) return undefined
-	for (const key of keys) {
-		const candidate = record[key]
-		const url = safeHttpUrl(candidate, baseUrl)
-		if (url) return url
-	}
-	return undefined
-}
-
-// Prefer images from the same host as the original URL (avoid cross-site OG leaks)
-const sameHostOrTrustedCdn = (
-	candidate?: string,
-	baseUrl?: string,
-): boolean => {
-	if (!candidate) return false
-	if (candidate.startsWith("data:image/")) return true
-	if (!baseUrl) return true // no base to compare — allow
-	try {
-		const c = new URL(candidate)
-		const b = new URL(baseUrl)
-		if (c.hostname === b.hostname) return true
-		// Allow GitHub CDN for GitHub pages
-		if (
-			/(^|\.)github\.com$/i.test(b.hostname) &&
-			/(^|\.)githubassets\.com$/i.test(c.hostname)
-		)
-			return true
-	} catch {}
-	return false
-}
-
-const pickFirstUrlSameHost = (
-	record: BaseRecord | null,
-	keys: string[],
-	baseUrl?: string,
-): string | undefined => {
-	if (!record) return undefined
-	for (const key of keys) {
-		const candidate = record[key]
-		const url = safeHttpUrl(candidate, baseUrl)
-		if (url && sameHostOrTrustedCdn(url, baseUrl)) return url
-	}
-	return undefined
-}
-
-const formatPreviewLabel = (type?: string | null): string => {
-	if (!type) return "Link"
-	return type
-		.split(/[_-]/g)
-		.filter(Boolean)
-		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-		.join(" ")
-}
-
-const isYouTubeUrl = (value?: string): boolean => {
-	if (!value) return false
-	try {
-		const parsed = new URL(value)
-		const host = parsed.hostname.toLowerCase()
-		if (!host.includes("youtube.com") && !host.includes("youtu.be"))
-			return false
-		return true
-	} catch {
-		return false
-	}
-}
-
-const getYouTubeId = (value?: string): string | undefined => {
-	if (!value) return undefined
-	try {
-		const parsed = new URL(value)
-		if (parsed.hostname.includes("youtu.be")) {
-			return parsed.pathname.replace(/^\//, "") || undefined
-		}
-		if (parsed.searchParams.has("v")) {
-			return parsed.searchParams.get("v") ?? undefined
-		}
-		const pathSegments = parsed.pathname.split("/").filter(Boolean)
-		if (pathSegments[0] === "embed" && pathSegments[1]) {
-			return pathSegments[1]
-		}
-	} catch {}
-	return undefined
-}
-
-const getYouTubeThumbnail = (value?: string): string | undefined => {
-	const videoId = getYouTubeId(value)
-	if (!videoId) return undefined
-	return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
 }
 
 const getDocumentPreview = (

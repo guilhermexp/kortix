@@ -27,6 +27,17 @@ import {
 	deleteMemoryEntry,
 	getMemoryEntriesForDocument,
 } from "@/lib/api/memory-entries"
+import {
+	asRecord,
+	safeHttpUrl,
+	pickFirstUrl,
+	pickFirstUrlSameHost,
+	sameHostOrTrustedCdn,
+	formatPreviewLabel,
+	getYouTubeId,
+	isInlineSvgDataUrl,
+	type BaseRecord,
+} from "@lib/utils"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type MemoryEntry = DocumentsResponse["documents"][0]["memoryEntries"][0]
@@ -191,15 +202,6 @@ export function MemoryEntriesSidebar({
 		return date.toLocaleDateString()
 	}
 
-	type BaseRecord = Record<string, unknown>
-
-	const asRecord = (value: unknown): BaseRecord | null => {
-		if (!value || typeof value !== "object" || Array.isArray(value)) {
-			return null
-		}
-		return value as BaseRecord
-	}
-
 	const autoSummaryMemory = useMemo(() => {
 		if (memories.length > 0 || !document) return null
 
@@ -259,113 +261,6 @@ export function MemoryEntriesSidebar({
 		return autoSummaryMemory ? [autoSummaryMemory] : []
 	}, [autoSummaryMemory, memories])
 
-	const safeHttpUrl = (
-		value: unknown,
-		baseUrl?: string,
-	): string | undefined => {
-		if (typeof value !== "string") return undefined
-		const trimmed = value.trim()
-		if (!trimmed) return undefined
-		if (trimmed.startsWith("data:")) {
-			if (trimmed.startsWith("data:image/")) {
-				return trimmed
-			}
-			return undefined
-		}
-
-		try {
-			const parsed = new URL(trimmed)
-			if (parsed.protocol === "http:" || parsed.protocol === "https:") {
-				return parsed.toString()
-			}
-		} catch {
-			if (baseUrl) {
-				try {
-					const parsed = new URL(trimmed, baseUrl)
-					if (parsed.protocol === "http:" || parsed.protocol === "https:") {
-						return parsed.toString()
-					}
-				} catch {}
-			}
-		}
-		return undefined
-	}
-
-	const pickFirstUrl = (
-		record: BaseRecord | null,
-		keys: string[],
-		baseUrl?: string,
-	): string | undefined => {
-		if (!record) return undefined
-		for (const key of keys) {
-			const candidate = record[key]
-			const resolved = safeHttpUrl(candidate, baseUrl)
-			if (resolved) return resolved
-		}
-		return undefined
-	}
-
-	const sameHostOrTrustedCdn = (
-		candidate?: string,
-		baseUrl?: string,
-	): boolean => {
-		if (!candidate) return false
-		if (candidate.startsWith("data:image/")) return true
-		if (!baseUrl) return true
-		try {
-			const c = new URL(candidate)
-			const b = new URL(baseUrl)
-			if (c.hostname === b.hostname) return true
-			if (
-				/(^|\.)github\.com$/i.test(b.hostname) &&
-				/((^|\.)githubassets\.com$)/i.test(c.hostname)
-			)
-				return true
-		} catch {}
-		return false
-	}
-
-	const pickFirstUrlSameHost = (
-		record: BaseRecord | null,
-		keys: string[],
-		baseUrl?: string,
-	): string | undefined => {
-		if (!record) return undefined
-		for (const key of keys) {
-			const candidate = record[key]
-			const url = safeHttpUrl(candidate, baseUrl)
-			if (url && sameHostOrTrustedCdn(url, baseUrl)) return url
-		}
-		return undefined
-	}
-
-	const formatPreviewLabel = (type?: string | null): string => {
-		if (!type) return "Link"
-		return type
-			.split(/[_-]/g)
-			.filter(Boolean)
-			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-			.join(" ")
-	}
-
-	const getYouTubeId = (value?: string): string | undefined => {
-		if (!value) return undefined
-		try {
-			const parsed = new URL(value)
-			if (parsed.hostname.includes("youtu.be")) {
-				return parsed.pathname.replace(/^\//, "") || undefined
-			}
-			if (parsed.searchParams.has("v")) {
-				return parsed.searchParams.get("v") ?? undefined
-			}
-			const segments = parsed.pathname.split("/").filter(Boolean)
-			if (segments[0] === "embed" && segments[1]) {
-				return segments[1]
-			}
-		} catch {}
-		return undefined
-	}
-
 	const buildYouTubeEmbedUrl = (value?: string): string | undefined => {
 		const id = getYouTubeId(value)
 		if (!id) return undefined
@@ -392,11 +287,6 @@ export function MemoryEntriesSidebar({
 				url: string
 				thumbnail?: string
 		  }
-
-	const isInlineSvgDataUrl = (value?: string | null): boolean => {
-		if (!value) return false
-		return value.trim().toLowerCase().startsWith("data:image/svg+xml")
-	}
 
 	const previewsEqual = (
 		a: DocumentPreviewData | null,
