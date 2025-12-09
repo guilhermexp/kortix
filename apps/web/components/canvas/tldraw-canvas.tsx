@@ -39,6 +39,7 @@ import {
   type TLComponents,
   type TLEditorSnapshot,
   type TLShapeId,
+  type TLUiOverrides,
 } from "tldraw";
 import "tldraw/tldraw.css";
 import type { z } from "zod";
