@@ -50,18 +50,25 @@ async function resolveSupabaseAuthSession(
 		if (authHeader?.startsWith("Bearer ")) {
 			accessToken = authHeader.slice(7)
 		} else {
-			// Try to find Supabase auth cookies
-			// Supabase stores tokens in cookies like sb-<project-ref>-auth-token
-			for (const [key, value] of Object.entries(cookies)) {
-				if (key.startsWith(SUPABASE_AUTH_COOKIE_PREFIX) && key.includes("-auth-token")) {
-					try {
-						const parsed = JSON.parse(value)
-						accessToken = parsed.access_token || parsed[0]?.access_token
-						if (accessToken) break
-					} catch {
-						// Not JSON, try as raw token
-						accessToken = value
-						break
+			// First, check kortix_session cookie (may contain JWT token)
+			const kortixSession = cookies[SESSION_COOKIE]
+			if (kortixSession && kortixSession.startsWith("eyJ")) {
+				// Looks like a JWT token (starts with base64 encoded JSON header)
+				accessToken = kortixSession
+			} else {
+				// Try to find Supabase auth cookies
+				// Supabase stores tokens in cookies like sb-<project-ref>-auth-token
+				for (const [key, value] of Object.entries(cookies)) {
+					if (key.startsWith(SUPABASE_AUTH_COOKIE_PREFIX) && key.includes("-auth-token")) {
+						try {
+							const parsed = JSON.parse(value)
+							accessToken = parsed.access_token || parsed[0]?.access_token
+							if (accessToken) break
+						} catch {
+							// Not JSON, try as raw token
+							accessToken = value
+							break
+						}
 					}
 				}
 			}

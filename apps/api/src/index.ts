@@ -116,6 +116,25 @@ try {
   // ignore
 }
 
+// Handle preflight OPTIONS requests explicitly first
+app.options("*", (c) => {
+  const origin = c.req.header("origin");
+  const allowedOrigin = origin && (allowedOrigins.has(origin) || origin.startsWith("http://localhost"))
+    ? origin
+    : env.ALLOWED_ORIGINS[0] ?? "http://localhost:3000";
+
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": allowedOrigin,
+      "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Kortix-Organization, X-Kortix-User",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Max-Age": "86400",
+    },
+  });
+});
+
 app.use(
   "*",
   cors({
@@ -871,10 +890,10 @@ app.get("/v3/waitlist/status", (c) => c.json(getWaitlistStatus()));
 
 // Canvas Projects endpoints (like Figma projects)
 app.get("/v3/canvas-projects", async (c) => {
-  const { organizationId, userId } = c.var.session;
+  const { organizationId, internalUserId } = c.var.session;
   const supabase = createClientForSession(c.var.session);
   try {
-    const projects = await listCanvasProjects(supabase, userId, organizationId);
+    const projects = await listCanvasProjects(supabase, internalUserId, organizationId);
     return c.json({ projects });
   } catch (error) {
     console.error("Failed to list canvas projects", error);
@@ -886,13 +905,13 @@ app.get("/v3/canvas-projects", async (c) => {
 });
 
 app.post("/v3/canvas-projects", async (c) => {
-  const { organizationId, userId } = c.var.session;
+  const { organizationId, internalUserId } = c.var.session;
   const body = await c.req.json();
   const supabase = createClientForSession(c.var.session);
   try {
     const project = await createCanvasProject(
       supabase,
-      userId,
+      internalUserId,
       organizationId,
       body,
     );
@@ -907,14 +926,14 @@ app.post("/v3/canvas-projects", async (c) => {
 });
 
 app.patch("/v3/canvas-projects/:projectId", async (c) => {
-  const { organizationId, userId } = c.var.session;
+  const { organizationId, internalUserId } = c.var.session;
   const projectId = c.req.param("projectId");
   const body = await c.req.json();
   const supabase = createClientForSession(c.var.session);
   try {
     const project = await updateCanvasProject(
       supabase,
-      userId,
+      internalUserId,
       projectId,
       body,
     );
@@ -929,11 +948,11 @@ app.patch("/v3/canvas-projects/:projectId", async (c) => {
 });
 
 app.delete("/v3/canvas-projects/:projectId", async (c) => {
-  const { organizationId, userId } = c.var.session;
+  const { organizationId, internalUserId } = c.var.session;
   const projectId = c.req.param("projectId");
   const supabase = createClientForSession(c.var.session);
   try {
-    const result = await deleteCanvasProject(supabase, userId, projectId);
+    const result = await deleteCanvasProject(supabase, internalUserId, projectId);
     return c.json(result);
   } catch (error) {
     console.error("Failed to delete canvas project", error);
@@ -946,13 +965,13 @@ app.delete("/v3/canvas-projects/:projectId", async (c) => {
 
 // Canvas state endpoints
 app.get("/v3/canvas/:projectId?", async (c) => {
-  const { organizationId, userId } = c.var.session;
+  const { organizationId, internalUserId } = c.var.session;
   const projectId = c.req.param("projectId") || "default";
   const supabase = createClientForSession(c.var.session);
   try {
     const result = await getCanvasState(
       supabase,
-      userId,
+      internalUserId,
       organizationId,
       projectId,
     );
@@ -964,14 +983,14 @@ app.get("/v3/canvas/:projectId?", async (c) => {
 });
 
 app.post("/v3/canvas/:projectId?", async (c) => {
-  const { organizationId, userId } = c.var.session;
+  const { organizationId, internalUserId } = c.var.session;
   const projectId = c.req.param("projectId") || "default";
   const body = await c.req.json();
   const supabase = createClientForSession(c.var.session);
   try {
     const result = await saveCanvasState(
       supabase,
-      userId,
+      internalUserId,
       organizationId,
       projectId,
       body.state,
@@ -984,11 +1003,11 @@ app.post("/v3/canvas/:projectId?", async (c) => {
 });
 
 app.delete("/v3/canvas/:projectId?", async (c) => {
-  const { organizationId, userId } = c.var.session;
+  const { organizationId, internalUserId } = c.var.session;
   const projectId = c.req.param("projectId") || "default";
   const supabase = createClientForSession(c.var.session);
   try {
-    const result = await deleteCanvasState(supabase, userId, projectId);
+    const result = await deleteCanvasState(supabase, internalUserId, projectId);
     return c.json(result);
   } catch (error) {
     console.error("Failed to delete canvas state", error);
