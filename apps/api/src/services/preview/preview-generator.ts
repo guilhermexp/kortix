@@ -26,7 +26,8 @@ import {
 	type FaviconExtractor,
 } from "./favicon-extractor"
 import { createImageExtractor, type ImageExtractor } from "./image-extractor"
-import { createSVGGenerator, type SVGGenerator } from "./svg-generator"
+// NOTE: SVG generator is lazily imported to avoid runtime parse issues
+type SVGGenerator = any
 
 // ============================================================================
 // Constants
@@ -58,6 +59,7 @@ export class PreviewGeneratorService
 	private svgGenerator?: SVGGenerator
 	private faviconExtractor?: FaviconExtractor
 	private readonly metricsMap: Map<string, PreviewMetrics>
+	private readonly cache: Map<string, any>
 
 	constructor(config?: Partial<PreviewGeneratorConfig>) {
 		super("PreviewGeneratorService")
@@ -74,6 +76,7 @@ export class PreviewGeneratorService
 		}
 
 		this.metricsMap = new Map()
+		this.cache = new Map()
 	}
 
 	// ========================================================================
@@ -108,7 +111,8 @@ export class PreviewGeneratorService
 
 		// SVG generator
 		if (this.config.enableSvgGeneration) {
-			this.svgGenerator = createSVGGenerator()
+			const mod = await import("./svg-generator")
+			this.svgGenerator = mod.createSVGGenerator()
 			await this.svgGenerator.initialize()
 			this.logger.debug("SVG generator initialized")
 		}
@@ -248,6 +252,173 @@ export class PreviewGeneratorService
 		} catch (error) {
 			tracker.end(false)
 			throw this.handleError(error, "generate")
+		}
+	}
+
+	async generatePreview(documentInput: any, options?: any): Promise<{
+		success: boolean
+		data?: { previewType: string; content: string; metadata?: any; generatedAt: string }
+		error?: { code: string; message: string }
+	}> {
+		this.assertInitialized()
+		const key = documentInput?.id || documentInput?.url || documentInput?.title || "__unknown__"
+		if (this.cache.has(key) && !(options && options.force)) {
+			return { success: true, data: this.cache.get(key) }
+		}
+		const chain = (options && options.fallbackChain && options.fallbackChain.length > 0)
+			? options.fallbackChain
+			: this.config.fallbackChain
+		const start = Date.now()
+		for (const strategy of chain) {
+			try {
+				if (strategy === "favicon") {
+					const r = await this.extractFavicon(documentInput)
+					if (r.success && r.data) {
+						this.metricsMap.set(key, { totalTime: Date.now() - start, generator: "favicon", cached: false, fallbackUsed: strategy !== chain[0] })
+						this.cache.set(key, r.data)
+						return r
+					}
+				}
+				if (strategy === "image") {
+					const r = await this.generateImagePreview(documentInput)
+					if (r.success && r.data) {
+						this.metricsMap.set(key, { totalTime: Date.now() - start, generator: "image", cached: false, fallbackUsed: strategy !== chain[0] })
+						this.cache.set(key, r.data)
+						return r
+					}
+				}
+				if (strategy === "svg") {
+					const r = await this.generateSVGPreview(documentInput, options)
+					if (r.success && r.data) {
+						this.metricsMap.set(key, { totalTime: Date.now() - start, generator: "svg", cached: false, fallbackUsed: strategy !== chain[0] })
+						this.cache.set(key, r.data)
+						return r
+					}
+				}
+			} catch {}
+		}
+		const now = new Date().toISOString()
+		const fallback = { previewType: "svg", content: this.svgToDataUrl("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 200 200\"><rect width=\"200\" height=\"200\" fill=\"#4b5563\"/></svg>"), metadata: { source: "fallback" }, generatedAt: now }
+		this.cache.set(key, fallback)
+		return { success: true, data: fallback }
+	}
+
+	async generateImagePreview(documentInput: any): Promise<{
+		success: boolean
+		data?: { previewType: string; content: string; metadata?: any; generatedAt: string }
+		error?: { code: string; message: string }
+	}> {
+		try {
+			if (!this.imageExtractor) return { success: false, error: { code: "NO_IMAGE_EXTRACTOR", message: "Image extractor not available" } }
+			const extraction: ExtractionResult = {
+				text: documentInput?.content || "",
+				title: documentInput?.title || null,
+				source: documentInput?.source || "document",
+				url: documentInput?.url || null,
+				contentType: documentInput?.contentType || null,
+				raw: documentInput?.raw || null,
+				wordCount: (documentInput?.content || "").split(/\s+/).filter(Boolean).length,
+			}
+			const imageUrl = await this.imageExtractor.extract(extraction)
+			if (!imageUrl) return { success: false, error: { code: "NO_IMAGES_FOUND", message: "No images found" } }
+			const meta = await this.imageExtractor.getImageMetadata(imageUrl)
+			return {
+				success: true,
+				data: {
+					previewType: "image",
+					content: imageUrl,
+					metadata: { source: "extracted-image", format: meta.format, dimensions: { width: meta.width as any, height: meta.height as any } },
+					generatedAt: new Date().toISOString(),
+				},
+			}
+		} catch (e) {
+			return { success: false, error: { code: "IMAGE_EXTRACTION_FAILED", message: e instanceof Error ? e.message : String(e) } }
+		}
+	}
+
+	async generateSVGPreview(documentInput: any, opts?: any): Promise<{
+		success: boolean
+		data?: { previewType: string; content: string; metadata?: any; generatedAt: string }
+		error?: { code: string; message: string }
+	}> {
+		try {
+			if (!this.svgGenerator) return { success: false, error: { code: "NO_SVG_GENERATOR", message: "SVG generator not available" } }
+			const extraction: ExtractionResult = {
+				text: documentInput?.content || "",
+				title: documentInput?.title || null,
+				source: documentInput?.source || "document",
+				url: documentInput?.url || null,
+				contentType: documentInput?.contentType || null,
+				raw: documentInput?.raw || null,
+				wordCount: (documentInput?.content || "").split(/\s+/).filter(Boolean).length,
+			}
+			const svg = await this.svgGenerator.generate(extraction, { width: opts?.width, height: opts?.height })
+			return {
+				success: true,
+				data: {
+					previewType: "svg",
+					content: svg,
+					metadata: { source: "svg-generated" },
+					generatedAt: new Date().toISOString(),
+				},
+			}
+		} catch (e) {
+			return { success: false, error: { code: "PREVIEW_GENERATION_FAILED", message: e instanceof Error ? e.message : String(e) } }
+		}
+	}
+
+	async extractFavicon(documentInput: any): Promise<{
+		success: boolean
+		data?: { previewType: string; content: string; metadata?: any; generatedAt: string }
+		error?: { code: string; message: string }
+	}> {
+		try {
+			if (!this.faviconExtractor) return { success: false, error: { code: "NO_FAVICON_EXTRACTOR", message: "Favicon extractor not available" } }
+			const url = documentInput?.url
+			if (!url) return { success: false, error: { code: "NO_URL_AVAILABLE", message: "No URL provided" } }
+			const fav = await this.faviconExtractor.getBestFavicon(url)
+			if (!fav) return { success: false, error: { code: "NO_FAVICON", message: "No favicon found" } }
+			const meta = await this.faviconExtractor.getMetadata(fav)
+			return {
+				success: true,
+				data: {
+					previewType: "favicon",
+					content: fav,
+					metadata: { source: "favicon", format: meta.type, url: fav, size: meta.width || meta.height || undefined },
+					generatedAt: new Date().toISOString(),
+				},
+			}
+		} catch (e) {
+			return { success: false, error: { code: "EXTRACTION_FAILED", message: e instanceof Error ? e.message : String(e) } }
+		}
+	}
+
+	updateConfiguration(newOptions: any): void {
+		Object.assign(this.config, newOptions || {})
+	}
+
+	clearCache(): void {
+		this.cache.clear()
+	}
+
+	getMetrics(): {
+		totalPreviews: number
+		averageGenerationTime: number
+		cacheHitRate: number
+		successRates: { favicon: number; image: number; svg: number }
+	} {
+		const entries = Array.from(this.metricsMap.values())
+		const total = entries.length
+		const avg = total === 0 ? 0 : entries.reduce((a, b) => a + (b.totalTime || 0), 0) / total
+		const genCounts: Record<string, number> = { favicon: 0, image: 0, svg: 0 }
+		for (const m of entries) {
+			if (genCounts[m.generator] !== undefined) genCounts[m.generator]++
+		}
+		return {
+			totalPreviews: total,
+			averageGenerationTime: avg,
+			cacheHitRate: 0,
+			successRates: { favicon: genCounts.favicon, image: genCounts.image, svg: genCounts.svg },
 		}
 	}
 

@@ -637,6 +637,20 @@ export class IngestionOrchestratorService
 				await breaker.initialize()
 			}
 		}
+
+		// Initialize dependent services
+		if (this.extractorService) {
+			await this.extractorService.initialize()
+			this.logger.info("Extractor service initialized")
+		}
+		if (this.processorService) {
+			await this.processorService.initialize()
+			this.logger.info("Processor service initialized")
+		}
+		if (this.previewService) {
+			await this.previewService.initialize()
+			this.logger.info("Preview service initialized")
+		}
 	}
 
 	protected async onHealthCheck(): Promise<boolean> {

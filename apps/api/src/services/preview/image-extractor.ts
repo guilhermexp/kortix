@@ -68,6 +68,33 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 		}
 	}
 
+	async extractImages(document: { id?: string; title?: string; content?: string; url?: string; images?: Array<{ url: string; alt?: string }> }): Promise<{ success: boolean; data?: { images: any[] }; error?: { code: string; message: string } }> {
+		try {
+			const res = await (this as any).extractImagesFromDocument(document)
+			return { success: true, data: { images: res?.images || [] } }
+		} catch (e) {
+			return { success: false, error: { code: "EXTRACTION_FAILED", message: e instanceof Error ? e.message : String(e) } }
+		}
+	}
+
+	private async extractImagesFromDocument(document: { id?: string; title?: string; content?: string; url?: string; images?: Array<{ url: string; alt?: string }> }): Promise<{ images: any[]; extractionTime?: number }> {
+		const start = Date.now()
+		const out: any[] = []
+		if (document.images && Array.isArray(document.images)) {
+			for (const img of document.images) {
+				out.push({ id: img.url, url: img.url, data: img.url, metadata: { alt: img.alt } })
+			}
+			return { images: out, extractionTime: Date.now() - start }
+		}
+		if (document.url) {
+			const result = await this.extractFromUrl(document.url)
+			if (result.imageUrl) {
+				out.push({ id: result.imageUrl, url: result.imageUrl, data: result.imageUrl, metadata: result.metadata })
+			}
+		}
+		return { images: out, extractionTime: Date.now() - start }
+	}
+
 	// ========================================================================
 	// Public API
 	// ========================================================================
@@ -666,7 +693,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
  * Create image extractor service with optional configuration
  */
 export function createImageExtractor(
-	options?: Partial<ImageExtractionOptions>,
+    options?: Partial<ImageExtractionOptions>,
 ): ImageExtractor {
-	return new ImageExtractor(options)
+    return new ImageExtractor(options)
 }

@@ -1,6 +1,9 @@
 import postgres from "postgres"
 
-const databaseUrl = process.env.SUPABASE_DATABASE_URL!
+const databaseUrl = process.env.SUPABASE_DATABASE_URL
+if (!databaseUrl) {
+  throw new Error("Missing SUPABASE_DATABASE_URL")
+}
 const sql = postgres(databaseUrl)
 
 async function checkFunction() {

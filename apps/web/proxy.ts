@@ -24,7 +24,7 @@ export default async function proxy(request: NextRequest) {
 	console.debug("[PROXY] Path:", url.pathname)
 	console.debug("[PROXY] Method:", request.method)
 
-	const sessionCookie = request.cookies.get("sm_session")?.value ?? null
+	const sessionCookie = request.cookies.get("kortix_session")?.value ?? null
 	console.debug("[PROXY] Session cookie exists:", !!sessionCookie)
 
 	if (isPublicPath(url.pathname)) {

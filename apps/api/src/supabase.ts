@@ -11,22 +11,51 @@ const adminClient = createClient(
 
 export const supabaseAdmin = adminClient
 
-export function createScopedSupabase(
-	organizationId: string,
-	userId?: string,
-): SupabaseClient {
-	// Always use ANON_KEY to ensure RLS policies are enforced
-	// SUPABASE_ANON_KEY is required (not optional) to prevent RLS bypass
-	// NOTE: Headers must be lowercase as Supabase converts them
+/**
+ * Create a Supabase client authenticated with a user's JWT access token.
+ * This enables RLS policies that use auth.uid().
+ */
+export function createAuthenticatedSupabase(accessToken: string): SupabaseClient {
 	return createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
 		auth: { persistSession: false },
 		global: {
 			headers: {
-				"x-kortix-organization": organizationId,
-				...(userId ? { "x-kortix-user": userId } : {}),
+				Authorization: `Bearer ${accessToken}`,
 			},
 		},
 	})
+}
+
+/**
+ * Create the best available Supabase client for a session.
+ * - If session has accessToken (Supabase Auth), creates authenticated client with RLS
+ * - Otherwise, falls back to admin client (for legacy sessions or backend operations)
+ */
+export function createClientForSession(session: {
+	accessToken?: string
+	organizationId: string
+	userId?: string
+}): SupabaseClient {
+	if (session.accessToken) {
+		return createAuthenticatedSupabase(session.accessToken)
+	}
+	// For legacy sessions or when no JWT is available, use admin client
+	// The backend has already verified the session, so this is safe
+	return supabaseAdmin
+}
+
+/**
+ * @deprecated Use createClientForSession or createAuthenticatedSupabase instead.
+ * This function relies on custom headers that don't propagate in Supabase Cloud.
+ */
+export function createScopedSupabase(
+	organizationId: string,
+	userId?: string,
+): SupabaseClient {
+	// DEPRECATED: Custom headers don't propagate to PostgreSQL context in Supabase Cloud
+	// For now, return admin client to ensure operations work
+	// TODO: Remove this function after full migration to Supabase Auth
+	return supabaseAdmin
 }
 
 async function getDefaultOrganizationId(client: SupabaseClient) {

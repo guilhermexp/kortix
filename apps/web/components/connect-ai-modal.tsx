@@ -73,7 +73,7 @@ interface Project {
 }
 
 interface ConnectAIModalProps {
-	children: React.ReactNode
+	children?: React.ReactNode
 	open?: boolean
 	onOpenChange?: (open: boolean) => void
 	initialTab?: "mcp" | "integrations"
@@ -215,9 +215,12 @@ export function ConnectAIModal({
 		toast.success("Copied to clipboard!")
 	}
 
+	// When controlled externally (open prop provided), don't render DialogTrigger
+	const isControlled = open !== undefined
+
 	return (
 		<Dialog onOpenChange={setIsOpen} open={isOpen}>
-			<DialogTrigger asChild>{children}</DialogTrigger>
+			{!isControlled && <DialogTrigger asChild>{children}</DialogTrigger>}
 			<DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
 				<DialogHeader className="flex-shrink-0">
 					<DialogTitle>Connections & Integrations</DialogTitle>
@@ -596,58 +599,7 @@ export function ConnectAIModal({
 						</div>
 					)}
 
-					<div className="gap-2 hidden">
-						<div>
-							<label
-								className="text-sm font-medium text-foreground block mb-2"
-								htmlFor="mcp-server-url-desktop"
-							>
-								MCP Server URL
-							</label>
-							<p className="text-xs text-muted-foreground mt-2">
-								Use this URL to configure Kortix in your AI assistant
-							</p>
-						</div>
-						<div className="p-1 bg-white/5 rounded-lg border border-white/10 items-center flex px-2">
-							<CopyableCell
-								className="font-mono text-xs text-blue-400"
-								value={MCP_SERVER_BASE}
-							/>
-						</div>
-					</div>
-
-					<div>
-						<h3 className="text-sm font-medium mb-3">What You Can Do</h3>
-						<ul className="space-y-2 text-sm text-muted-foreground">
-							<li>• Ask your AI to save important information as memories</li>
-							<li>• Search through your saved memories during conversations</li>
-							<li>• Get contextual information from your knowledge base</li>
-							<li>• Seamlessly integrate with your existing AI workflow</li>
-						</ul>
-					</div>
-
-					<div className="flex justify-between items-center pt-4 border-t">
-						<div className="flex items-center gap-4">
-							<Button
-								onClick={() =>
-									window.open(
-										`${DOCS_URL.replace(/\/$/, "")}/kortix-mcp/introduction`,
-										"_blank",
-									)
-								}
-								variant="outline"
-							>
-								<ExternalLink className="w-2 h-2 mr-2" />
-								Learn More
-							</Button>
-
-							<Button
-								onClick={() => setIsMigrateDialogOpen(true)}
-								variant="outline"
-							>
-								Migrate from v1
-							</Button>
-						</div>
+					<div className="flex justify-end items-center pt-4 border-t">
 						<Button onClick={() => setIsOpen(false)}>Done</Button>
 					</div>
 						</div>

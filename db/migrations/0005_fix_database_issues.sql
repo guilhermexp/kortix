@@ -38,7 +38,7 @@ DECLARE
   raw text;
   org_id uuid;
 BEGIN
-  raw := current_setting('request.headers.x-supermemory-organization', true);
+  raw := current_setting('request.headers.x-kortix-organization', true);
   IF raw IS NULL OR raw = '' THEN
     RETURN NULL;
   END IF;
@@ -62,7 +62,7 @@ DECLARE
   raw text;
   user_id uuid;
 BEGIN
-  raw := current_setting('request.headers.x-supermemory-user', true);
+  raw := current_setting('request.headers.x-kortix-user', true);
   IF raw IS NULL OR raw = '' THEN
     RETURN NULL;
   END IF;

@@ -82,6 +82,8 @@ const ALLOWED_DOCUMENT_TYPES = new Set([
 	"notion_doc",
 	"webpage",
 	"onedrive",
+	"url", // URL-based content (legacy type from database)
+	"document-summary", // AI-generated document summaries
 ])
 
 const invalidateDocumentCaches = () => {

@@ -1,14 +1,8 @@
 import { z } from "zod"
 
-export const MetadataSchema = z.record(
-	z.string(),
-	z.union([
-		z.string(),
-		z.number(),
-		z.boolean(),
-		z.array(z.union([z.string(), z.number(), z.boolean()])),
-	]),
-)
+// Flexible metadata schema that accepts nested objects and arrays
+// This is needed because legacy data may contain complex structures like metaTags, extractionResult, etc.
+export const MetadataSchema = z.record(z.string(), z.unknown())
 export type Metadata = z.infer<typeof MetadataSchema>
 
 export const VisibilityEnum = z.enum(["public", "private", "unlisted"])
@@ -27,6 +21,8 @@ export const DocumentTypeEnum = z.enum([
 	"notion_doc",
 	"webpage",
 	"onedrive",
+	"url", // URL-based content (legacy type from database)
+	"document-summary", // AI-generated document summaries
 ])
 export type DocumentType = z.infer<typeof DocumentTypeEnum>
 

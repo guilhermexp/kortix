@@ -1,5 +1,5 @@
 -- ================================================
--- SUPERMEMORY COMPLETE SCHEMA
+-- KORTIX COMPLETE SCHEMA
 -- Initial migration for Supabase Local
 -- ================================================
 

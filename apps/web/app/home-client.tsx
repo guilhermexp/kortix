@@ -592,11 +592,7 @@ const MemoryGraphPage = () => {
     [setViewMode],
   );
 
-  useEffect(() => {
-    if ((allDocuments?.length ?? 0) === 0) {
-      setShowConnectAIModal(true);
-    }
-  }, [allDocuments?.length]);
+
 
   // Prevent body scrolling
   useEffect(() => {
@@ -632,18 +628,18 @@ const MemoryGraphPage = () => {
               {/* Project Selector - hidden in canvas/infinity mode */}
               {viewMode !== "infinity" && (
                 <div
-                  className="flex items-center gap-2 pointer-events-auto"
+                  className="flex items-center gap-2 pointer-events-auto flex-1"
                   id={TOUR_STEP_IDS.MENU_PROJECTS}
                 >
                   <ProjectSelector className="pointer-events-auto" />
                 </div>
               )}
               {/* Empty spacer when in canvas mode */}
-              {viewMode === "infinity" && <div />}
+              {viewMode === "infinity" && <div className="flex-1" />}
 
-              {/* Search Input - only visible in list view */}
+              {/* Search Input - only visible in list view, centered */}
               {viewMode === "list" && (
-                <div className="relative pointer-events-auto">
+                <div className="relative pointer-events-auto flex-shrink-0">
                   <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/60 pointer-events-none" />
                   <input
                     type="text"
@@ -668,7 +664,7 @@ const MemoryGraphPage = () => {
                 </div>
               )}
               <div
-                className="flex items-center gap-2 pointer-events-auto"
+                className="flex items-center gap-2 pointer-events-auto flex-1 justify-end"
                 id={TOUR_STEP_IDS.VIEW_TOGGLE}
               >
                 {isRateLimited ? (

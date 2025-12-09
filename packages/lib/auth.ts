@@ -5,14 +5,48 @@ import useSWR, { mutate } from "swr"
 import { BACKEND_URL } from "./env"
 
 const API_BASE = BACKEND_URL
+const AUTH_TOKEN_KEY = "kortix_auth_token"
+const AUTH_REFRESH_KEY = "kortix_refresh_token"
+
+// Store tokens in localStorage for persistence
+function storeTokens(accessToken: string, refreshToken?: string) {
+	if (typeof window !== "undefined") {
+		localStorage.setItem(AUTH_TOKEN_KEY, accessToken)
+		if (refreshToken) {
+			localStorage.setItem(AUTH_REFRESH_KEY, refreshToken)
+		}
+	}
+}
+
+function clearTokens() {
+	if (typeof window !== "undefined") {
+		localStorage.removeItem(AUTH_TOKEN_KEY)
+		localStorage.removeItem(AUTH_REFRESH_KEY)
+	}
+}
+
+export function getStoredToken(): string | null {
+	if (typeof window !== "undefined") {
+		return localStorage.getItem(AUTH_TOKEN_KEY)
+	}
+	return null
+}
 
 async function request(path: string, init: RequestInit = {}) {
+	const token = getStoredToken()
+	const headers: Record<string, string> = {
+		"Content-Type": "application/json",
+		...(init.headers as Record<string, string> ?? {}),
+	}
+
+	// Add Authorization header if we have a token
+	if (token) {
+		headers.Authorization = `Bearer ${token}`
+	}
+
 	const response = await fetch(`${API_BASE}${path}`, {
 		...init,
-		headers: {
-			"Content-Type": "application/json",
-			...(init.headers ?? {}),
-		},
+		headers,
 		credentials: "include",
 	})
 
@@ -33,28 +67,54 @@ async function request(path: string, init: RequestInit = {}) {
 	return text ? JSON.parse(text) : null
 }
 
+type AuthResponse = {
+	ok: boolean
+	session?: {
+		access_token: string
+		refresh_token: string
+		expires_at?: number
+	}
+	user?: {
+		id: string
+		email: string
+	}
+}
+
 export async function signUp(input: {
 	email: string
 	password: string
 	name?: string
 }) {
-	await request("/api/auth/sign-up", {
+	const response = await request("/api/auth/sign-up", {
 		method: "POST",
 		body: JSON.stringify(input),
-	})
+	}) as AuthResponse
+
+	// Store tokens from Supabase Auth response
+	if (response?.session?.access_token) {
+		storeTokens(response.session.access_token, response.session.refresh_token)
+	}
+
 	await mutateSession()
 }
 
 export async function signIn(input: { email: string; password: string }) {
-	await request("/api/auth/sign-in", {
+	const response = await request("/api/auth/sign-in", {
 		method: "POST",
 		body: JSON.stringify(input),
-	})
+	}) as AuthResponse
+
+	// Store tokens from Supabase Auth response
+	if (response?.session?.access_token) {
+		storeTokens(response.session.access_token, response.session.refresh_token)
+	}
+
 	await mutateSession()
 }
 
 export async function signOut() {
 	await request("/api/auth/sign-out", { method: "POST" })
+	clearTokens()
 	await mutateSession()
 }
 

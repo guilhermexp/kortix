@@ -79,10 +79,10 @@ type ThemeName = keyof typeof THEMES
 /**
  * Service for generating SVG preview images
  */
-export class SVGGenerator extends BaseService implements ISVGGenerator {
-	constructor() {
-		super("SVGGenerator")
-	}
+export class SVGGenerator extends BaseService {
+    constructor() {
+        super("SVGGenerator")
+    }
 
 	// ========================================================================
 	// Public API
@@ -91,10 +91,7 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	/**
 	 * Generate SVG preview for extraction result
 	 */
-	async generate(
-		extraction: ExtractionResult,
-		options?: SVGGenerationOptions,
-	): Promise<string> {
+	async generate(extraction: ExtractionResult, options?: SVGGenerationOptions) {
 		this.assertInitialized()
 
 		const tracker = this.performanceMonitor.startOperation("generate")
@@ -140,13 +137,14 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 		} catch (error) {
 			tracker.end(false)
 			throw this.handleError(error, "generate")
-		}
-	}
+    }
+
+
 
 	/**
 	 * Generate gradient background
 	 */
-	generateGradientBackground(colors?: string[]): string {
+	generateGradientBackground(colors) {
 		const gradientColors = colors || THEMES.default.gradient
 
 		if (gradientColors.length < 2) {
@@ -170,7 +168,7 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	/**
 	 * Generate text-based SVG
 	 */
-	generateTextSVG(text: string, options?: TextSVGOptions): string {
+	generateTextSVG(text, options) {
 		const fontSize = options?.fontSize ?? 20
 		const color = options?.color ?? "#ffffff"
 		const fontWeight = options?.fontWeight ?? "normal"
@@ -215,7 +213,7 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	/**
 	 * Generate icon-based SVG
 	 */
-	generateIconSVG(iconType: string, options?: IconSVGOptions): string {
+	generateIconSVG(iconType, options) {
 		const size = options?.size ?? 48
 		const color = options?.color ?? "#ffffff"
 		const style = options?.style ?? "outline"
@@ -238,10 +236,7 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	/**
 	 * Generate custom SVG from template
 	 */
-	generateFromTemplate(
-		template: string,
-		data: Record<string, unknown>,
-	): string {
+	generateFromTemplate(template, data) {
 		let result = template
 
 		// Replace placeholders with data
@@ -257,7 +252,7 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	/**
 	 * Optimize SVG
 	 */
-	optimizeSVG(svg: string): string {
+	optimizeSVG(svg) {
 		// Remove unnecessary whitespace
 		let optimized = svg.replace(/\s+/g, " ").trim()
 
@@ -277,17 +272,7 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	/**
 	 * Build complete document SVG
 	 */
-	private buildDocumentSVG(params: {
-		heading: string
-		subheading?: string
-		body?: string
-		theme: ThemeName
-		width: number
-		height: number
-		backgroundColor?: string | string[]
-		textColor?: string
-		fontFamily?: string
-	}): string {
+	private buildDocumentSVG(params) {
 		const themeConfig = THEMES[params.theme]
 		const gradient = Array.isArray(params.backgroundColor)
 			? params.backgroundColor
@@ -333,15 +318,7 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	/**
 	 * Generate body text with foreignObject for proper text wrapping
 	 */
-	private generateBodyText(
-		text: string,
-		x: number,
-		y: number,
-		width: number,
-		height: number,
-		color: string,
-		fontFamily: string,
-	): string {
+	private generateBodyText(text, x, y, width, height, color, fontFamily) {
 		return `
 	<foreignObject x='${x}' y='${y}' width='${width}' height='${height}'>
 		<div xmlns='http://www.w3.org/1999/xhtml' style='color:${color};opacity:0.92;font:14px ${fontFamily};line-height:1.35;white-space:normal;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:8;-webkit-box-orient:vertical;'>
@@ -358,7 +335,7 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	/**
 	 * Determine theme from extraction
 	 */
-	private determineTheme(extraction: ExtractionResult): ThemeName {
+	private determineTheme(extraction: any): ThemeName {
 		const contentType = (extraction.contentType || "").toLowerCase()
 		const source = (extraction.source || "").toLowerCase()
 
@@ -412,7 +389,7 @@ export class SVGGenerator extends BaseService implements ISVGGenerator {
 	/**
 	 * Generate subheading from extraction
 	 */
-	private generateSubheading(extraction: ExtractionResult): string | undefined {
+	private generateSubheading(extraction: any): string | undefined {
 		// Try to get meaningful subheading from metadata
 		if (extraction.metadata?.author) {
 			return `by ${extraction.metadata.author}`
