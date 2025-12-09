@@ -10,7 +10,7 @@ import {
 import { Sparkles } from "lucide-react"
 import { useEffect, useState } from "react"
 
-export type ProviderId = "glm" | "minimax" | "anthropic" | "kimi"
+export type ProviderId = "glm"
 
 interface ProviderConfig {
 	id: ProviderId
@@ -23,26 +23,8 @@ const PROVIDERS: ProviderConfig[] = [
 	{
 		id: "glm",
 		name: "Z.AI",
-		displayName: "GLM-4.6",
-		description: "Fast and balanced general-purpose model",
-	},
-	{
-		id: "minimax",
-		name: "MiniMax",
-		displayName: "MiniMax-M2",
-		description: "Advanced reasoning and creative tasks",
-	},
-	{
-		id: "anthropic",
-		name: "Anthropic",
-		displayName: "Haiku 4.5",
-		description: "Claude's fastest model with frontier intelligence",
-	},
-	{
-		id: "kimi",
-		name: "Kimi",
-		displayName: "Kimi K2 Thinking",
-		description: "Advanced coding and reasoning with thinking mode",
+		displayName: "GLM-4.6V",
+		description: "Fast and balanced general-purpose model with vision",
 	},
 ]
 
@@ -58,7 +40,7 @@ export function ProviderSelector({
 	disabled = false,
 }: ProviderSelectorProps) {
 	const [selectedProvider, setSelectedProvider] = useState<ProviderId>(
-		value || "kimi",
+		value || "glm",
 	)
 
 	useEffect(() => {
@@ -126,7 +108,7 @@ export function ProviderSelector({
  * Hook to manage provider selection with persistence
  */
 export function useProviderSelection() {
-	const [provider, setProvider] = useState<ProviderId>("kimi")
+	const [provider, setProvider] = useState<ProviderId>("glm")
 
 	// Load from localStorage on mount
 	useEffect(() => {
@@ -134,13 +116,7 @@ export function useProviderSelection() {
 			const saved = localStorage.getItem(
 				"preferred_provider",
 			) as ProviderId | null
-			if (
-				saved &&
-				(saved === "glm" ||
-					saved === "minimax" ||
-					saved === "anthropic" ||
-					saved === "kimi")
-			) {
+			if (saved && saved === "glm") {
 				setProvider(saved)
 			}
 		}
