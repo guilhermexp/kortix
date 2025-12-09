@@ -42,11 +42,24 @@ import {
 	getDocumentSnippet,
 	stripMarkdown,
 } from "./memories"
+import {
+	asRecord,
+	safeHttpUrl,
+	pickFirstUrl,
+	pickFirstUrlSameHost,
+	sameHostOrTrustedCdn,
+	formatPreviewLabel,
+	isYouTubeUrl,
+	getYouTubeId,
+	getYouTubeThumbnail,
+	isLowResolutionImage,
+	isInlineSvgDataUrl,
+	PROCESSING_STATUSES,
+	type BaseRecord,
+} from "@lib/utils"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>;
 type DocumentWithMemories = DocumentsResponse["documents"][0];
-
-type BaseRecord = Record<string, unknown>;
 
 type PreviewData =
   | {
@@ -68,11 +81,6 @@ type PreviewData =
       href: string;
     };
 
-const isInlineSvgDataUrl = (value?: string | null): boolean => {
-  if (!value) return false;
-  return value.trim().toLowerCase().startsWith("data:image/svg+xml");
-};
-
 const previewsEqual = (
   a: PreviewData | null,
   b: PreviewData | null,
@@ -87,173 +95,11 @@ const previewsEqual = (
   );
 };
 
-const PROCESSING_STATUSES = new Set([
-  "queued",
-  "fetching",
-  "extracting",
-  "chunking",
-  "embedding",
-  "processing",
-]);
-
 const shimmerStyle: CSSProperties = {
   backgroundImage:
     "linear-gradient(110deg, rgba(255,255,255,0.04) 20%, rgba(255,255,255,0.16) 50%, rgba(255,255,255,0.04) 80%)",
   backgroundSize: "200% 100%",
   animation: "shimmer 1.8s linear infinite",
-};
-
-const asRecord = (value: unknown): BaseRecord | null => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-  return value as BaseRecord;
-};
-
-const safeHttpUrl = (value: unknown, baseUrl?: string): string | undefined => {
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  // Only accept data URLs that are images, not text or other types
-  if (trimmed.startsWith("data:")) {
-    if (trimmed.startsWith("data:image/")) {
-      return trimmed;
-    }
-    return undefined;
-  }
-
-  // Try absolute URL first
-  try {
-    const url = new URL(trimmed);
-    if (url.protocol === "http:" || url.protocol === "https:") {
-      return url.toString();
-    }
-  } catch {
-    // If it fails, try as relative URL with baseUrl
-    if (baseUrl) {
-      try {
-        const url = new URL(trimmed, baseUrl);
-        if (url.protocol === "http:" || url.protocol === "https:") {
-          return url.toString();
-        }
-      } catch {}
-    }
-  }
-  return undefined;
-};
-
-const pickFirstUrl = (
-  record: BaseRecord | null,
-  keys: string[],
-  baseUrl?: string,
-): string | undefined => {
-  if (!record) return undefined;
-  for (const key of keys) {
-    const candidate = record[key];
-    const url = safeHttpUrl(candidate, baseUrl);
-    if (url) return url;
-  }
-  return undefined;
-};
-
-const sameHostOrTrustedCdn = (
-  candidate?: string,
-  baseUrl?: string,
-): boolean => {
-  if (!candidate) return false;
-  if (candidate.startsWith("data:image/")) return true;
-  if (!baseUrl) return true;
-  try {
-    const c = new URL(candidate);
-    const b = new URL(baseUrl);
-    if (c.hostname === b.hostname) return true;
-    if (
-      /(^|\.)github\.com$/i.test(b.hostname) &&
-      /((^|\.)githubassets\.com$)/i.test(c.hostname)
-    )
-      return true;
-  } catch {}
-  return false;
-};
-
-const pickFirstUrlSameHost = (
-  record: BaseRecord | null,
-  keys: string[],
-  baseUrl?: string,
-): string | undefined => {
-  if (!record) return undefined;
-  for (const key of keys) {
-    const candidate = record[key];
-    const url = safeHttpUrl(candidate, baseUrl);
-    if (url && sameHostOrTrustedCdn(url, baseUrl)) return url;
-  }
-  return undefined;
-};
-
-const formatPreviewLabel = (type?: string | null): string => {
-  if (!type) return "Link";
-  return type
-    .split(/[_-]/g)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-};
-
-const isYouTubeUrl = (value?: string): boolean => {
-  if (!value) return false;
-  try {
-    const parsed = new URL(value);
-    const host = parsed.hostname.toLowerCase();
-    if (!host.includes("youtube.com") && !host.includes("youtu.be"))
-      return false;
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-const getYouTubeId = (value?: string): string | undefined => {
-  if (!value) return undefined;
-  try {
-    const parsed = new URL(value);
-    if (parsed.hostname.includes("youtu.be")) {
-      return parsed.pathname.replace(/^\//, "") || undefined;
-    }
-    if (parsed.searchParams.has("v")) {
-      return parsed.searchParams.get("v") ?? undefined;
-    }
-    const pathSegments = parsed.pathname.split("/").filter(Boolean);
-    if (pathSegments[0] === "embed" && pathSegments[1]) {
-      return pathSegments[1];
-    }
-  } catch {}
-  return undefined;
-};
-
-const getYouTubeThumbnail = (value?: string): string | undefined => {
-  const videoId = getYouTubeId(value);
-  if (!videoId) return undefined;
-  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-};
-
-const isLowResolutionImage = (url?: string): boolean => {
-  if (!url) return false;
-  try {
-    const lower = url.toLowerCase();
-    if (lower.endsWith(".ico") || lower.includes("favicon")) return true;
-    if (/(apple-touch-icon|android-chrome)/.test(lower)) return true;
-    const sizeMatch = lower.match(/(\d{1,3})x(\d{1,3})/);
-    if (sizeMatch) {
-      const width = Number(sizeMatch[1]);
-      const height = Number(sizeMatch[2]);
-      if (Number.isFinite(width) && Number.isFinite(height)) {
-        if (Math.max(width, height) <= 160) return true;
-      }
-    }
-  } catch {
-    // ignore parsing errors
-  }
-  return false;
 };
 
 const getDocumentPreview = (
