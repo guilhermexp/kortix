@@ -11,17 +11,12 @@
 
 import { env } from "../env"
 
-// Hardcoded fallback key (for backward compatibility)
-const FALLBACK_KEYS = {
-	glm: "REMOVED_API_KEY",
-}
-
 export const PROVIDER_CONFIGS = {
 	glm: {
 		id: "glm" as const,
 		name: "Z.AI (GLM)",
 		displayName: "GLM-4.6V",
-		apiKey: env.GLM_API_KEY || FALLBACK_KEYS.glm,
+		apiKey: env.GLM_API_KEY,
 		baseURL: "https://api.z.ai/api/anthropic",
 		models: {
 			fast: "GLM-4.6V",
