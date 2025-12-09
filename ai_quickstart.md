@@ -1,491 +1,323 @@
-# AI Quickstart: Supermemory
+# AI Quickstart: Kortix
 
-**Last Analysis Date:** 2025-12-08 04:50:00 UTC
+**Last Analysis Date:** 2025-12-08
 **Git Branch:** main
-**Git Status:** clean
-**Fork Status:** Fork of `supermemoryai/supermemory` (upstream tracked)
+**Last Commit:** d1646182 - fix(database): optimize Supabase performance and security
+**Project Name:** Kortix (fork of supermemory)
+
+---
 
 ## Project Overview
 
-Supermemory is an AI-powered personal knowledge management system that ingests documents, URLs, and files, extracts structured memories, and enables semantic search with Claude AI agents. It features an infinity canvas for visual knowledge organization and integrates with third-party services (Google Drive, Notion, OneDrive).
+Kortix is an AI-powered personal knowledge management system. Users can save URLs, files, and notes, which are processed into searchable memories with semantic vector search. Features include Claude AI chat integration and an infinity canvas for visual organization.
 
-**Core Value Proposition:** Save anything, search semantically, chat with your knowledge base using Claude AI.
+---
 
-## Architecture Overview
-
-```
-                                    [Browser Extension]
-                                           |
-[Next.js Frontend] <----> [Hono API Backend] <----> [Supabase PostgreSQL]
-      |                          |                         |
-      |                    [Claude Agent SDK]        [pgvector embeddings]
-      |                          |
-      |                    [Ingestion Worker]
-      |                          |
-      +----------------> [MarkItDown Service]
-                         (Python Flask - Doc conversion)
-```
-
-### Monorepo Structure
+## Monorepo Structure
 
 ```
-supermemory/
+kortix/
   apps/
-    api/              # Hono backend (TypeScript) - Port 4000
-    web/              # Next.js 16 frontend - Port 3001
-    browser-extension/ # WXT browser extension
-    markitdown/       # Python Flask document converter - Port 5000
+    api/              # Hono backend (Port 4000)
+    web/              # Next.js 16 frontend (Port 3001)
+    browser-extension/ # WXT browser extension (kortix-browser-extension)
+    markitdown/       # Python Flask doc converter (Port 5000)
   packages/
-    lib/              # Shared utilities, React Query hooks, API client
-    ui/               # Shadcn/Radix UI components
-    validation/       # Zod schemas (SINGLE SOURCE OF TRUTH for types)
-  supabase/
-    migrations/       # Database migrations
-  db/                 # Database utilities and backfill scripts
+    lib/              # React Query hooks, API client, utilities
+    ui/               # Shadcn/Radix components
+    validation/       # Zod schemas (SINGLE SOURCE OF TRUTH)
+    hooks/            # Shared React hooks
 ```
 
-## Data Model
+---
 
-```mermaid
-erDiagram
-    organizations ||--o{ organization_members : has
-    organizations ||--o{ spaces : contains
-    organizations ||--o{ documents : owns
-    organizations ||--o{ connections : has
-    organizations ||--o{ conversations : tracks
+## Tech Stack
 
-    users ||--o{ organization_members : belongs_to
-    users ||--o{ documents : creates
-    users ||--o{ sessions : has
+| Component | Technology | Version |
+|-----------|------------|---------|
+| Runtime | Bun | 1.2.17 |
+| Monorepo | Turborepo | 2.6.0 |
+| Backend | Hono | 4.10.2 |
+| Frontend | Next.js | 16.0.0 |
+| UI | React | 19.1.0 |
+| Database | Supabase (PostgreSQL + pgvector) | 2.76.1 |
+| State | Zustand | 5.0.7 |
+| Data Fetching | TanStack React Query | 5.81.2 |
+| Validation | Zod | 4.1.12 |
+| AI Agent | Claude Agent SDK | 0.1.14 |
 
-    spaces ||--o{ documents : contains
-    spaces ||--o{ memories : groups
+---
 
-    documents ||--o{ document_chunks : split_into
-    documents ||--o{ memories : generates
-    documents ||--o{ ingestion_jobs : processed_by
-    documents ||--o{ canvas_positions : positioned_on
+## Database Schema (17 Tables)
 
-    conversations ||--o{ events : logs
+All tables have **RLS enabled** with policies using `org_id = get_request_org_id()` (custom header-based auth).
 
-    connections ||--o{ documents : syncs
-```
+### Core Tables
 
-### Core Entities
-
-| Entity | Purpose | Key Fields |
-|--------|---------|------------|
-| **organizations** | Multi-tenant isolation | `id`, `slug`, `name`, `metadata` |
-| **users** | User accounts | `id`, `email`, `password_hash`, `name` |
-| **organization_members** | User-org relationship | `organization_id`, `user_id`, `role`, `is_owner` |
-| **spaces** | Projects/knowledge containers | `id`, `org_id`, `container_tag`, `name`, `visibility` |
-| **documents** | Ingested content | `id`, `org_id`, `title`, `content`, `status`, `summary`, `url`, `type`, `summary_embedding` |
-| **document_chunks** | Document fragments for RAG | `id`, `document_id`, `content`, `embedding`, `chunk_index` |
-| **memories** | Extracted knowledge/inferences | `id`, `document_id`, `content`, `memory_embedding`, `is_inference`, `is_latest` |
-| **conversations** | Claude Agent chat sessions | `id`, `org_id`, `sdk_session_id`, `title` |
-| **events** | Conversation event logs | `id`, `conversation_id`, `event_type`, `role`, `content`, `tool_use_id` |
-| **connections** | Third-party integrations | `id`, `org_id`, `provider`, `email`, `container_tags`, `expires_at` |
-| **ingestion_jobs** | Async processing queue | `id`, `document_id`, `status`, `attempts`, `error_message` |
-| **canvas_positions** | Infinity canvas layout | `id`, `document_id`, `x`, `y` |
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `organizations` | Multi-tenant isolation | id, slug, name |
+| `users` | User accounts | id, email, password_hash |
+| `organization_members` | User-org relationship | organization_id, user_id, role, is_owner |
+| `sessions` | Auth sessions | user_id, session_token, expires_at |
+| `spaces` | Projects/folders | org_id, container_tag, name |
+| `documents` | Ingested content | org_id, title, content, status, summary, url, summary_embedding |
+| `document_chunks` | RAG chunks | document_id, content, embedding, chunk_index |
+| `memories` | Extracted knowledge | document_id, content, memory_embedding, is_inference |
+| `connections` | Third-party integrations | org_id, provider (google-drive/notion/onedrive), metadata |
+| `ingestion_jobs` | Processing queue | document_id, status, attempts, error_message |
+| `conversations` | Chat sessions | org_id, sdk_session_id, title |
+| `events` | Chat event log | conversation_id, event_type, role, content |
+| `conversation_events` | Typed events | conversation_id, type, content (jsonb) |
+| `tool_results` | Tool call results | event_id, tool_name, input, output |
+| `canvas_projects` | Canvas projects | org_id, name, thumbnail, color, state |
+| `canvas_states` | Canvas state backup | org_id, project_id, state (jsonb) |
+| `canvas_positions` | Document positions | document_id, x, y |
 
 ### Document Status Flow
 
 ```
 unknown -> queued -> extracting -> chunking -> embedding -> indexing -> done
-                                                                    \-> failed
+                                                                     \-> failed
 ```
 
-### Embedding Dimensions
+### Embeddings
 
-- All embeddings use **1536 dimensions** (OpenAI text-embedding-ada-002 compatible)
-- Vector index: `ivfflat` with cosine similarity (`vector_cosine_ops`)
+- **Dimension:** 1536 (Google text-embedding-004)
+- **Index:** ivfflat with cosine similarity
+- **Columns:** `document_chunks.embedding`, `documents.summary_embedding`, `memories.memory_embedding`
 
-## Tech Stack
+---
 
-| Layer | Technology | Version |
-|-------|------------|---------|
-| **Runtime** | Bun | 1.2.17 |
-| **Package Manager** | Bun | 1.2.17 |
-| **Monorepo** | Turborepo | 2.6.0 |
-| **Backend Framework** | Hono | 4.10.2 |
-| **Frontend Framework** | Next.js | 16.0.0 |
-| **UI Library** | React | 19.1.0 |
-| **Database** | Supabase (PostgreSQL + pgvector) | - |
-| **ORM** | Raw Supabase client | 2.76.1 |
-| **State Management** | Zustand | 5.0.7 |
-| **Data Fetching** | TanStack React Query | 5.81.2 |
-| **Validation** | Zod | 4.1.12 |
-| **Styling** | TailwindCSS | 3.4.0 |
-| **UI Components** | Radix UI + Shadcn | - |
-| **AI SDK** | Claude Agent SDK | 0.1.14 |
-| **Embeddings** | Google text-embedding-004 (default) | - |
-| **Document Processing** | MarkItDown (Python) | 0.1.3 |
-| **Browser Extension** | WXT | - |
+## Recent Optimizations (2025-12-08)
 
-## Setup
+### Frontend Polling Reduction (~95%)
 
-### Prerequisites
+| Component | Before | After |
+|-----------|--------|-------|
+| `queries.ts` - subscription status | 5s polling | Window focus only |
+| `connections-tab-content.tsx` | 60s polling | Window focus only |
+| `integrations.tsx` | 60s polling | Window focus only |
+| `home-client.tsx` - documents | 15s refetch | 60s refetch |
+| `home-client.tsx` - timer | 1s interval | 5s interval |
+| `offline-support.ts` | 5s polling | Storage event listener |
+| `query-client.ts` (extension) | refetchOnMount: true | refetchOnMount: "stale" |
+| `query-cache.ts` (API) | 2min cleanup | 15min cleanup |
 
-```bash
-# Required
-node >= 20
-bun >= 1.2.17
-python >= 3.11  # For markitdown service
+### Database Migrations Applied
 
-# Database
-# Supabase project (cloud or local via supabase CLI)
+```sql
+-- Key migrations from 2025-12-08
+remove_duplicate_indexes
+remove_unused_indexes_batch1/2/3
+add_essential_indexes
+enable_rls_all_tables
+fix_rls_recursion               -- Fixed infinite recursion in organization_members
+fix_header_functions_to_kortix  -- Updated x-supermemory-* to x-kortix-*
+simplify_rls_policies           -- Uses org_id = get_request_org_id()
+add_foreign_key_indexes         -- 26 FK indexes added
 ```
 
-### Environment Variables
+### Security Fixes
 
-Create `.env.local` in root or app-specific directories:
+- RLS enabled on all 14 tables
+- Custom auth using `x-kortix-organization` and `x-kortix-user` headers
+- Policies use `get_request_org_id()` function (header-based, not Supabase Auth)
+- Functions fixed with `SET search_path = public` and `SECURITY DEFINER`
+- Materialized views protected from anon/authenticated access
 
-```bash
-# Required - Supabase
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-SUPABASE_ANON_KEY=your-anon-key  # REQUIRED for RLS enforcement
+---
 
-# Required - AI
-ANTHROPIC_API_KEY=your-anthropic-key
-
-# Optional - Embeddings
-GOOGLE_API_KEY=your-google-key
-EMBEDDING_MODEL=text-embedding-004
-EMBEDDING_DIMENSION=1536
-
-# Optional - Enhanced Features
-COHERE_API_KEY=your-cohere-key      # For reranking
-EXA_API_KEY=your-exa-key            # For web search
-OPENROUTER_API_KEY=your-key         # Fallback LLM provider
-VOYAGE_API_KEY=your-voyage-key      # Alternative embeddings
-
-# Frontend
-NEXT_PUBLIC_APP_URL=http://localhost:3001
-NEXT_PUBLIC_API_URL=http://localhost:4000
-
-# CORS
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
-```
-
-### Installation
-
-```bash
-# Clone and install
-git clone https://github.com/guilhermexp/supermemory.git
-cd supermemory
-bun install
-
-# Set up database (run migrations)
-# Option 1: Via Supabase CLI
-supabase db push
-
-# Option 2: Manually apply migrations from supabase/migrations/
-
-# Start development
-bun run dev
-```
-
-### Running Individual Services
-
-```bash
-# API (Hono backend)
-cd apps/api && bun run dev
-
-# Web (Next.js frontend)
-cd apps/web && bun run dev
-
-# Ingestion Worker (separate process)
-cd apps/api && bun run ingest:worker
-
-# MarkItDown (Python document converter)
-cd apps/markitdown
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python server.py
-```
-
-## Key Workflows
-
-### 1. Authentication Flow
-
-```
-[User] -> POST /api/auth/sign-in -> [Session created in sessions table]
-       -> Cookie: sm_session=<token>
-       -> All subsequent requests include cookie
-       -> Middleware resolves session via resolveSession()
-       -> Sets c.var.session = { organizationId, userId }
-```
-
-**Key Files:**
-- `/apps/api/src/session.ts` - Session resolution
-- `/apps/api/src/middleware/auth.ts` - requireAuth middleware
-- `/apps/api/src/routes/auth.ts` - Auth endpoints
-
-### 2. Document Ingestion Pipeline
-
-```
-[Add Document] -> POST /v3/documents
-    |
-    v
-[Create document with status='queued']
-    |
-    v
-[Ingestion Worker polls ingestion_jobs table]
-    |
-    v
-[Extraction Phase]
-    |- URL: Fetch + parse HTML (Puppeteer/muppet)
-    |- File: Convert via MarkItDown service
-    |- Text: Direct processing
-    |
-    v
-[Chunking Phase] -> Split into ~500 token chunks
-    |
-    v
-[Embedding Phase] -> Generate embeddings (Google/Voyage)
-    |
-    v
-[Summarization Phase] -> Generate summary + memory
-    |
-    v
-[Status = 'done'] -> Document searchable
-```
-
-**Key Files:**
-- `/apps/api/src/services/ingestion.ts` - Main ingestion logic
-- `/apps/api/src/services/orchestration/` - Orchestrator pattern
-- `/apps/api/src/worker/ingestion-worker.ts` - Background worker
-- `/apps/api/src/services/markitdown.ts` - Document conversion client
-
-### 3. Search Flow (Hybrid Search)
-
-```
-[User Query] -> POST /v3/search/hybrid
-    |
-    v
-[Generate query embedding]
-    |
-    v
-[Parallel Search]
-    |- Vector search (cosine similarity on document_chunks.embedding)
-    |- Keyword search (PostgreSQL full-text search)
-    |
-    v
-[Merge & Rerank] (optional Cohere reranking)
-    |
-    v
-[Return results with scores]
-```
-
-**Key Files:**
-- `/apps/api/src/services/hybrid-search.ts`
-- `/apps/api/src/routes/search.ts`
-
-### 4. Chat with Claude Agent
-
-```
-[User Message] -> POST /chat/v2
-    |
-    v
-[Load conversation history from events table]
-    |
-    v
-[Create Claude Agent SDK session]
-    |- Tools: search_memories, get_document, add_memory, etc.
-    |- System prompt with org context
-    |
-    v
-[Stream response back to client]
-    |
-    v
-[Store events in events table]
-```
-
-**Key Files:**
-- `/apps/api/src/services/claude-agent.ts`
-- `/apps/api/src/services/claude-agent-tools.ts`
-- `/apps/api/src/routes/chat-v2.ts`
-
-### 5. RLS (Row Level Security) Pattern
-
-**Critical Security Pattern:**
+## RLS Pattern (CRITICAL)
 
 ```typescript
-// ALWAYS use scoped client for user-facing queries
+// apps/api/src/supabase.ts
+
+// For user-facing queries - ALWAYS use this
 const supabase = createScopedSupabase(organizationId, userId);
 
-// This sets headers that RLS policies check:
+// Sets headers that RLS policies check:
 // x-kortix-organization: <org_id>
 // x-kortix-user: <user_id>
+
+// For admin operations only (bypasses RLS)
+import { supabaseAdmin } from "./supabase";
 ```
 
-**RLS Policy Example (from migrations):**
+**RLS Functions (in database):**
 ```sql
-CREATE POLICY "Users can only see their org's documents"
-ON documents FOR SELECT
-USING (org_id = current_setting('request.headers')::json->>'x-kortix-organization');
+-- Gets org_id from x-kortix-organization header
+CREATE FUNCTION public.get_request_org_id() RETURNS uuid AS $$
+  SELECT NULLIF(current_setting('request.headers.x-kortix-organization', true), '')::uuid
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+
+-- Gets user_id from x-kortix-user header
+CREATE FUNCTION public.current_user_id() RETURNS uuid AS $$
+  SELECT NULLIF(current_setting('request.headers.x-kortix-user', true), '')::uuid
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
 ```
 
-**Key File:** `/apps/api/src/supabase.ts`
+**Policy Pattern:**
+```sql
+-- Most tables use org_id comparison
+CREATE POLICY "Users can manage own documents" ON public.documents
+  FOR ALL USING (org_id = public.get_request_org_id());
+
+-- User-specific tables use user_id comparison
+CREATE POLICY "Users can view own profile" ON public.users
+  FOR SELECT USING (id = public.current_user_id());
+```
+
+---
+
+## Key Files Reference
+
+### Backend (apps/api)
+
+| File | Purpose |
+|------|---------|
+| `src/index.ts` | Hono app entry point |
+| `src/supabase.ts` | Supabase clients (admin + scoped) |
+| `src/session.ts` | Session resolution from cookie |
+| `src/middleware/auth.ts` | requireAuth middleware |
+| `src/routes/documents.ts` | Document CRUD endpoints |
+| `src/routes/chat-v2.ts` | Claude chat endpoint |
+| `src/services/claude-agent.ts` | Claude Agent SDK integration |
+| `src/services/claude-agent-tools.ts` | Agent tools (search, get_document, etc.) |
+| `src/services/ingestion.ts` | Document processing pipeline |
+| `src/services/hybrid-search.ts` | Vector + keyword search |
+| `src/worker/ingestion-worker.ts` | Background processing worker |
+| `src/services/query-cache.ts` | In-memory query cache (15min cleanup) |
+
+### Frontend (apps/web)
+
+| File | Purpose |
+|------|---------|
+| `app/home-client.tsx` | Main document list (60s refetch) |
+| `components/views/connections-tab-content.tsx` | Integrations list |
+| `components/views/chat/` | Chat interface |
+| `components/canvas/` | Infinity canvas (tldraw) |
+| `components/editor/` | Rich text editor |
+| `stores/canvas.ts` | Canvas Zustand store |
+| `stores/chat.js` | Chat Zustand store |
+
+### Shared Packages
+
+| File | Purpose |
+|------|---------|
+| `packages/lib/queries.ts` | React Query hooks (optimized staleTime) |
+| `packages/lib/api.ts` | $fetch API client |
+| `packages/validation/data-model.ts` | Zod schemas (types source of truth) |
+| `packages/validation/api.ts` | API request/response schemas |
+
+---
 
 ## API Endpoints (v3)
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| POST | `/api/auth/sign-in` | Authentication |
-| POST | `/api/auth/sign-up` | Registration |
-| GET | `/api/auth/session` | Get current session |
-| GET | `/v3/projects` | List spaces/projects |
-| POST | `/v3/projects` | Create space |
+| POST | `/api/auth/sign-in` | Login |
+| POST | `/api/auth/sign-up` | Register |
+| GET | `/api/auth/session` | Get session |
 | POST | `/v3/documents` | Add document |
 | POST | `/v3/documents/file` | Upload file |
-| POST | `/v3/documents/list` | List documents |
+| POST | `/v3/documents/list` | List documents (with pagination) |
 | GET | `/v3/documents/:id` | Get document |
 | PATCH | `/v3/documents/:id` | Update document |
 | DELETE | `/v3/documents/:id` | Delete document |
-| POST | `/v3/search` | Vector search |
-| POST | `/v3/search/hybrid` | Hybrid search (vector + keyword) |
+| POST | `/v3/search/hybrid` | Hybrid search |
 | POST | `/chat/v2` | Chat with Claude |
 | GET | `/v3/conversations` | List conversations |
-| GET | `/v3/conversations/:id` | Get conversation |
-| POST | `/v3/connections/list` | List integrations |
-| POST | `/v3/canvas/:projectId` | Save canvas state |
-| GET | `/v3/canvas/:projectId` | Get canvas state |
-
-## Important Patterns
-
-### 1. Validation Schemas (Single Source of Truth)
-
-All types are defined in `packages/validation/data-model.ts`:
-
-```typescript
-import { DocumentSchema, MemorySchema } from '@repo/validation/data-model';
-
-// Use for runtime validation
-const doc = DocumentSchema.parse(data);
-
-// Use for TypeScript types
-type Document = z.infer<typeof DocumentSchema>;
-```
-
-### 2. React Query Hooks
-
-```typescript
-// From packages/lib/queries.ts
-import { useDeleteDocument, fetchSubscriptionStatus } from '@repo/lib/queries';
-
-// Optimistic updates built-in
-const deleteDoc = useDeleteDocument(selectedProject);
-```
-
-### 3. API Client
-
-```typescript
-// From packages/lib/api.ts
-import { $fetch } from '@repo/lib/api';
-
-// Automatic error handling, auth headers
-const response = await $fetch('@get/documents/:id', { id: docId });
-```
-
-### 4. Zustand Stores
-
-```typescript
-// From apps/web/stores/
-import { useChatStore } from '@/stores/chat';
-import { useCanvasStore } from '@/stores/canvas';
-```
-
-## Database Indexes (Performance Critical)
-
-Recent optimizations added these composite indexes:
-
-```sql
--- Most common query pattern
-CREATE INDEX idx_documents_org_status_created
-ON documents(org_id, status, created_at DESC NULLS LAST);
-
--- Memory retrieval per document
-CREATE INDEX idx_memories_document_created
-ON memories(document_id, created_at DESC NULLS LAST);
-
--- Vector similarity search (ivfflat)
-CREATE INDEX idx_chunks_embedding
-ON document_chunks USING ivfflat (embedding vector_cosine_ops);
-
--- Materialized view for dashboard stats
-CREATE MATERIALIZED VIEW mv_org_document_stats AS
-SELECT org_id, COUNT(*) as total_documents, ...
-```
-
-## Local Modifications (Fork-Specific)
-
-This is a fork of `supermemoryai/supermemory`. Key modifications:
-
-1. **Database Performance (d1646182):**
-   - Reduced frontend polling by ~95% (longer staleTime, refetchOnWindowFocus)
-   - Added RLS policies to all tables
-   - Optimized database indexes with composite indexes
-   - Added materialized views for hot queries
-
-2. **RLS Security Enforcement:**
-   - Made `SUPABASE_ANON_KEY` required (not optional)
-   - All user-facing queries use scoped client with org/user headers
-
-3. **AI Actions Context Menu:**
-   - Added canvas AI actions for right-click context menu
-
-## Testing
-
-```bash
-# API tests
-cd apps/api && bun test
-
-# Web tests
-cd apps/web && bun test
-
-# Run specific test file
-bun test src/routes/documents.test.ts
-```
-
-## Deployment
-
-The project is configured for Railway deployment:
-
-- `railway.toml` and `nixpacks.toml` in root and apps
-- Each service deploys independently
-- MarkItDown runs as separate Python service
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"Unauthorized" on all requests:**
-   - Check `sm_session` cookie is being sent
-   - Verify session exists in `sessions` table
-   - Check `expires_at` hasn't passed
-
-2. **RLS blocking queries:**
-   - Ensure using `createScopedSupabase()` not `supabaseAdmin`
-   - Check headers are set correctly
-   - Verify RLS policies in Supabase dashboard
-
-3. **Documents stuck in "processing":**
-   - Check ingestion worker is running (`bun run ingest:worker`)
-   - Check `ingestion_jobs` table for errors
-   - Document timeout monitor auto-cancels after 1 hour
-
-4. **Embeddings failing:**
-   - Check `GOOGLE_API_KEY` or `VOYAGE_API_KEY` is set
-   - Verify embedding dimension matches (1536)
-
-## Change Log
-
-| Date | Summary |
-|------|---------|
-| 2025-12-08 | Initial ai_quickstart.md created with full codebase analysis |
+| POST | `/v3/canvas/:projectId` | Save canvas |
+| GET | `/v3/canvas/:projectId` | Get canvas |
 
 ---
 
-*Generated by AI Codebase Analyzer*
+## Environment Variables
+
+```bash
+# Required
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=xxx
+SUPABASE_ANON_KEY=xxx              # REQUIRED for RLS
+
+# AI
+ANTHROPIC_API_KEY=xxx              # Claude chat
+GOOGLE_API_KEY=xxx                 # Embeddings (text-embedding-004)
+
+# Optional
+COHERE_API_KEY=xxx                 # Reranking
+EXA_API_KEY=xxx                    # Web search
+VOYAGE_API_KEY=xxx                 # Alternative embeddings
+OPENROUTER_API_KEY=xxx             # Fallback LLM
+
+# URLs
+NEXT_PUBLIC_APP_URL=http://localhost:3001
+NEXT_PUBLIC_API_URL=http://localhost:4000
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+```
+
+---
+
+## Development Commands
+
+```bash
+# Install
+bun install
+
+# Run all services (API + Worker + Web)
+bun run dev
+
+# Individual services
+cd apps/api && bun run dev:server    # API only
+cd apps/api && bun run dev:worker    # Ingestion worker
+cd apps/web && bun run dev           # Frontend
+
+# MarkItDown (Python)
+cd apps/markitdown
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python server.py
+
+# Tests
+cd apps/api && bun test
+cd apps/web && bun test
+```
+
+---
+
+## Supabase Advisor Status
+
+| Type | Count | Notes |
+|------|-------|-------|
+| Errors | 0 | All fixed |
+| Warnings | 1 | vector extension in public (cannot move safely) |
+| Info | ~30 | New FK indexes (will show as "used" with traffic) |
+
+---
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| "Unauthorized" on requests | Check `kortix_session` cookie, verify session in DB |
+| Documents not loading after rename | Clear browser cookies, logout/login (cookie name changed) |
+| RLS blocking queries | Use `createScopedSupabase()`, not `supabaseAdmin` |
+| RLS infinite recursion | Check policies don't self-reference (use SECURITY DEFINER functions) |
+| Documents stuck processing | Check worker is running, check `ingestion_jobs` errors |
+| Embeddings failing | Verify `GOOGLE_API_KEY` or `VOYAGE_API_KEY` |
+
+---
+
+## Important: Naming Convention
+
+The project was renamed from `supermemory` to `kortix`:
+- Cookie: `sm_session` → `kortix_session`
+- Headers: `x-supermemory-*` → `x-kortix-*`
+- Package: `supermemory-browser-extension` → `kortix-browser-extension`
+
+If migrating from old version, users must **clear cookies and login again**.
+
+---
+
+*Generated 2025-12-08 - Kortix (fork of supermemory)*

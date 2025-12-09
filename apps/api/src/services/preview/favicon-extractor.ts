@@ -117,6 +117,36 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 		}
 	}
 
+	async extractFavicon(url: string, options?: { generateDefault?: boolean }): Promise<{ success: boolean; data?: { favicons: Array<{ url: string; format?: string; size?: number }>; extractionTime?: number }; error?: { code: string; message: string } }> {
+		try {
+			const res = await (this as any).fetchFaviconFromURL(url)
+			if (res.favicons.length === 0 && options?.generateDefault) {
+				const def = await (this as any).generateDefaultFavicon()
+				return { success: true, data: { favicons: def.favicons } }
+			}
+			return { success: true, data: res }
+		} catch (e) {
+			return { success: false, error: { code: "EXTRACTION_FAILED", message: e instanceof Error ? e.message : String(e) } }
+		}
+	}
+
+	private async fetchFaviconFromURL(url: string): Promise<{ favicons: Array<{ url: string; format?: string; size?: number }>; extractionTime?: number }> {
+		const start = Date.now()
+		const collection = await this.getAllFavicons(url)
+		const list: Array<{ url: string; format?: string; size?: number }> = []
+		for (const icon of [...collection.highRes, ...collection.standard]) {
+			list.push({ url: icon })
+		}
+		if (collection.primary) list.unshift({ url: collection.primary })
+		return { favicons: list, extractionTime: Date.now() - start }
+	}
+
+	private async generateDefaultFavicon(): Promise<{ favicons: Array<{ url: string; format?: string; size?: number }> }> {
+		const svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\"><rect width=\"32\" height=\"32\" fill=\"#4b5563\"/></svg>"
+		const dataUrl = "data:image/svg+xml;base64," + Buffer.from(svg).toString("base64")
+		return { favicons: [{ url: dataUrl, format: "svg", size: 32 }] }
+	}
+
 	/**
 	 * Get all available favicon URLs
 	 */
@@ -541,7 +571,40 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
  * Create favicon extractor service with optional configuration
  */
 export function createFaviconExtractor(
-	options?: Partial<FaviconExtractionOptions>,
+    options?: Partial<FaviconExtractionOptions>,
 ): FaviconExtractor {
-	return new FaviconExtractor(options)
+    return new FaviconExtractor(options)
+}
+
+export interface FaviconOptions { generateDefault?: boolean }
+
+export class FaviconExtractorFacade {
+    constructor(private readonly inner: FaviconExtractor) {}
+    async extractFavicon(url: string, options?: FaviconOptions): Promise<{ success: boolean; data?: { favicons: Array<{ url: string; format?: string; size?: number }>; extractionTime?: number }; error?: { code: string; message: string } }> {
+        try {
+            const res = await (this as any).fetchFaviconFromURL(url)
+            if (res.favicons.length === 0 && options?.generateDefault) {
+                const def = await (this as any).generateDefaultFavicon()
+                return { success: true, data: { favicons: def.favicons } }
+            }
+            return { success: true, data: res }
+        } catch (e) {
+            return { success: false, error: { code: "EXTRACTION_FAILED", message: e instanceof Error ? e.message : String(e) } }
+        }
+    }
+    private async fetchFaviconFromURL(url: string): Promise<{ favicons: Array<{ url: string; format?: string; size?: number }>; extractionTime?: number }> {
+        const start = Date.now()
+        const collection = await this.inner.getAllFavicons(url)
+        const list: Array<{ url: string; format?: string; size?: number }> = []
+        for (const icon of [...collection.highRes, ...collection.standard]) {
+            list.push({ url: icon })
+        }
+        if (collection.primary) list.unshift({ url: collection.primary })
+        return { favicons: list, extractionTime: Date.now() - start }
+    }
+    private async generateDefaultFavicon(): Promise<{ favicons: Array<{ url: string; format?: string; size?: number }> }> {
+        const svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\"><rect width=\"32\" height=\"32\" fill=\"#4b5563\"/></svg>"
+        const dataUrl = "data:image/svg+xml;base64," + Buffer.from(svg).toString("base64")
+        return { favicons: [{ url: dataUrl, format: "svg", size: 32 }] }
+    }
 }

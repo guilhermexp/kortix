@@ -583,13 +583,42 @@ export function InfinityCanvas() {
 			if (response.data?.documents) {
 				const fetched: DocumentWithMemories[] = response.data.documents
 				// Preserve any existing docs that are in placedDocumentIds but missing from fetch
+				// BUT filter out stale optimistic documents (temp IDs that weren't found by API)
+				const STALE_OPTIMISTIC_THRESHOLD_MS = 2 * 60 * 1000 // 2 minutes
+				const now = Date.now()
+
 				setDocuments((prev) => {
 					const byIdFetched = new Map(fetched.map((d) => [d.id, d]))
 					const byIdPrev = new Map(prev.map((d) => [d.id, d]))
 					const ordered: DocumentWithMemories[] = []
 					for (const id of placedDocumentIds) {
-						const doc = byIdFetched.get(id) || byIdPrev.get(id)
-						if (doc) ordered.push(doc)
+						const fetchedDoc = byIdFetched.get(id)
+						const prevDoc = byIdPrev.get(id)
+
+						if (fetchedDoc) {
+							// Prefer fresh data from API
+							ordered.push(fetchedDoc)
+						} else if (prevDoc) {
+							// Check if this is a stale optimistic document
+							const isOptimistic =
+								id.startsWith("temp-") || (prevDoc as any).isOptimistic
+							if (isOptimistic) {
+								// Parse timestamp from temp ID or use createdAt
+								const timestamp = id.startsWith("temp-")
+									? Number.parseInt(id.replace("temp-", ""), 10)
+									: new Date(prevDoc.createdAt).getTime()
+								const isStale = now - timestamp > STALE_OPTIMISTIC_THRESHOLD_MS
+
+								if (!isStale) {
+									// Keep recent optimistic documents (still processing)
+									ordered.push(prevDoc)
+								}
+								// Drop stale optimistic documents - they failed or timed out
+							} else {
+								// Keep non-optimistic documents
+								ordered.push(prevDoc)
+							}
+						}
 					}
 					return ordered
 				})
@@ -642,10 +671,22 @@ export function InfinityCanvas() {
 					Array.isArray(parsedDocs) &&
 					parsedDocs.every((v) => typeof v === "string")
 				) {
-					if (parsedDocs.length > 0) {
+					// Filter out stale temp IDs (older than 2 minutes)
+					const STALE_TEMP_THRESHOLD_MS = 2 * 60 * 1000
+					const now = Date.now()
+					const validDocs = parsedDocs.filter((id: string) => {
+						if (!id.startsWith("temp-")) return true
+						const timestamp = Number.parseInt(id.replace("temp-", ""), 10)
+						return now - timestamp <= STALE_TEMP_THRESHOLD_MS
+					})
+					if (validDocs.length > 0) {
 						hydratedFromStorageRef.current = true
 					}
-					setPlacedDocumentIds(parsedDocs)
+					setPlacedDocumentIds(validDocs)
+					// Update localStorage if we filtered out stale IDs
+					if (validDocs.length !== parsedDocs.length) {
+						window.localStorage.setItem(keyDocs, JSON.stringify(validDocs))
+					}
 				}
 			}
 		} catch {}

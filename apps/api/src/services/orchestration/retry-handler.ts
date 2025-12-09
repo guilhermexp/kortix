@@ -181,7 +181,7 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 	/**
 	 * Execute operation with retry logic
 	 */
-	private async executeWithRetry<T>(
+	async executeWithRetry<T>(
 		operation: () => Promise<T>,
 		options: Required<RetryOptions> & Partial<ExtendedRetryOptions>,
 		context: RetryExecutionContext,
@@ -276,6 +276,10 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 
 		// Should never reach here, but satisfy TypeScript
 		throw lastError || new Error("Max retry attempts reached")
+	}
+
+	getMetrics(): RetryStatistics {
+		return this.getStats()
 	}
 
 	/**

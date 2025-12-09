@@ -11,7 +11,7 @@ export async function getDocumentById(
 ): Promise<DocumentWithMemories | null> {
 	try {
 		const cookieStore = await cookies()
-		const sessionCookie = cookieStore.get("sm_session")
+		const sessionCookie = cookieStore.get("kortix_session")
 
 		const response = await fetch(
 			`${BACKEND_URL_SSR.replace(/\/$/, "")}/v3/documents/documents/by-ids`,

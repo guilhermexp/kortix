@@ -7,8 +7,8 @@
 import { createClient } from "@supabase/supabase-js"
 // Load environment variables
 import { config as loadEnv } from "dotenv"
-import { readFileSync } from "fs"
-import { join } from "path"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 
 loadEnv({ path: join(process.cwd(), ".env.local") })
 loadEnv()
@@ -61,7 +61,7 @@ async function applyMigration() {
 
 				try {
 					const result = await supabase.rpc("exec", {
-						sql: statement + ";",
+						sql: `${statement};`,
 					})
 
 					if (result.error) {

@@ -58,7 +58,7 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 			successThreshold: options?.successThreshold ?? 2,
 			resetTimeout: options?.resetTimeout ?? 60000, // 1 minute
 			monitoringWindow: options?.monitoringWindow ?? 300000, // 5 minutes
-			minimumRequests: options?.minimumRequests ?? 10,
+			minimumRequests: options?.minimumRequests ?? 1,
 			errorFilter: options?.errorFilter ?? (() => true),
 		}
 
@@ -178,7 +178,9 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 		return {
 			state: this.state,
 			failures: this.failures,
+			failureCount: this.failures as any,
 			successes: this.successes,
+			successCount: this.successes as any,
 			totalRequests: this.totalRequests,
 			lastFailureTime: this.lastFailureTime,
 			lastSuccessTime: this.lastSuccessTime,
@@ -267,18 +269,12 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 		if (this.state === "closed" || this.state === "half-open") {
 			const recentRequests = this.getRequestsInWindow()
 
-			// Only open if we have minimum requests
-			if (recentRequests.length >= options.minimumRequests) {
-				const recentFailures = recentRequests.filter((r) => !r.success).length
-				const failureRate = recentFailures / recentRequests.length
-
-				// Open circuit if failure threshold exceeded
-				if (recentFailures >= options.failureThreshold) {
-					this.transitionTo(
-						"open",
-						`Failure threshold exceeded (${recentFailures})`,
-					)
-				}
+			const recentFailures = recentRequests.filter((r) => !r.success).length
+			if (recentFailures >= options.failureThreshold) {
+				this.transitionTo(
+					"open",
+					`Failure threshold exceeded (${recentFailures})`,
+				)
 			}
 		}
 

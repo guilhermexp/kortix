@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
 	// Transpile monorepo packages to ensure shared module instances
 	transpilePackages: ["@repo/lib", "@repo/ui", "@repo/validation", "@repo/hooks"],
 	turbopack: {}, // Empty config to silence warning
+	outputFileTracingRoot: workspaceRoot,
 	experimental: {
 		viewTransition: true,
 		// Optimize preloading to prevent unused resource warnings

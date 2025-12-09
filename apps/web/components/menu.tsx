@@ -20,7 +20,7 @@ import { GlassMenuEffect } from "@ui/other/glass-effect"
 import { LayoutGrid, List, MessageSquareMore, Network, Plus, Puzzle, User, X } from "lucide-react"
 import { AnimatePresence, LayoutGroup, motion } from "motion/react"
 import { useRouter, useSearchParams } from "next/navigation"
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { Drawer } from "vaul"
 import { useMobilePanel } from "@/lib/mobile-panel-context"
 import { TOUR_STEP_IDS } from "@/lib/tour-constants"
@@ -84,6 +84,8 @@ function Menu({
 	const [showAddMemoryView, setShowAddMemoryView] = useState(false)
 	const [showConnectAIModal, setShowConnectAIModal] = useState(false)
 	const [showProfileModal, setShowProfileModal] = useState(false)
+	const isClickProcessingRef = useRef(false)
+	const buttonClickedRef = useRef(false)
 	const isMobile = useIsMobile()
 	const { activePanel, setActivePanel } = useMobilePanel()
 	const autumn = useCustomer()
@@ -176,11 +178,22 @@ function Menu({
 	const handleMenuItemClick = (
 		key: "chat" | "addUrl" | "connections" | "projects" | "profile" | "canvas" | "list" | "graph",
 	) => {
+		// Prevent multiple rapid clicks
+		if (isClickProcessingRef.current) {
+			console.log("[Menu] Click blocked - already processing")
+			return
+		}
+		isClickProcessingRef.current = true
+		setTimeout(() => {
+			isClickProcessingRef.current = false
+		}, 300)
+
 		console.log("[Menu] handleMenuItemClick called with key:", key)
 		if (key === "chat") {
-			setIsOpen(true)
+			// Toggle chat panel
+			setIsOpen(!isChatPanelOpen)
 			setIsMobileMenuOpen(false)
-			if (isMobile) {
+			if (isMobile && !isChatPanelOpen) {
 				setActivePanel("chat")
 			}
 		} else if (key === "list") {
@@ -202,19 +215,24 @@ function Menu({
 			setIsMobileMenuOpen(false)
 			setExpandedView(null)
 		} else if (key === "connections") {
-			// Open ConnectAIModal (combined MCP + Integrations)
+			// Mark that button was clicked (prevents Dialog's onOpenChange from reopening)
+			buttonClickedRef.current = true
+			setTimeout(() => { buttonClickedRef.current = false }, 100)
 			setIsMobileMenuOpen(false)
 			setExpandedView(null)
-			setShowConnectAIModal(true)
+			setShowConnectAIModal(!showConnectAIModal)
 		} else if (key === "profile") {
-			// Open Profile modal
+			// Mark that button was clicked (prevents Dialog's onOpenChange from reopening)
+			buttonClickedRef.current = true
+			setTimeout(() => { buttonClickedRef.current = false }, 100)
 			setIsMobileMenuOpen(false)
 			setExpandedView(null)
-			setShowProfileModal(true)
+			setShowProfileModal(!showProfileModal)
 		} else if (key === "addUrl") {
-			setShowAddMemoryView(true)
+			// Toggle Add Memory view
 			setExpandedView(null)
 			setIsMobileMenuOpen(false)
+			setShowAddMemoryView((prev) => !prev)
 		} else {
 			if (expandedView === key) {
 				setIsCollapsing(true)
@@ -318,7 +336,11 @@ function Menu({
 													aria-label={item.text}
 													className="flex items-center justify-center w-9 h-9 rounded-lg text-foreground/70 hover:text-foreground hover:bg-foreground/10 transition-all duration-150 cursor-pointer"
 													id={menuItemTourIds[item.key]}
-													onClick={() => handleMenuItemClick(item.key)}
+													onClick={(e) => {
+														e.stopPropagation()
+														e.preventDefault()
+														handleMenuItemClick(item.key)
+													}}
 													type="button"
 													whileHover={{ scale: 1.05 }}
 													whileTap={{ scale: 0.95 }}
@@ -555,14 +577,23 @@ function Menu({
 			)}
 
 			<ConnectAIModal
-				onOpenChange={setShowConnectAIModal}
+				onOpenChange={(open) => {
+					// Only update if the button wasn't just clicked
+					// This prevents the dialog from reopening after button click closes it
+					if (!buttonClickedRef.current) {
+						setShowConnectAIModal(open)
+					}
+				}}
 				open={showConnectAIModal}
-			>
-				<Button className="hidden">Connect AI Assistant</Button>
-			</ConnectAIModal>
+			/>
 
 			{/* Profile Modal */}
-			<Dialog onOpenChange={setShowProfileModal} open={showProfileModal}>
+			<Dialog onOpenChange={(open) => {
+				// Only update if the button wasn't just clicked
+				if (!buttonClickedRef.current) {
+					setShowProfileModal(open)
+				}
+			}} open={showProfileModal}>
 				<DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden">
 					<DialogHeader>
 						<DialogTitle>Profile</DialogTitle>

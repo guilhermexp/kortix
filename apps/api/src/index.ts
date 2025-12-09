@@ -100,7 +100,7 @@ import {
 } from "./services/document-timeout-monitor";
 import { hybridSearch } from "./services/hybrid-search";
 import type { SessionContext } from "./session";
-import { createScopedSupabase } from "./supabase";
+import { createClientForSession, supabaseAdmin } from "./supabase";
 
 const app = new Hono<{ Variables: { session: SessionContext } }>();
 
@@ -186,7 +186,7 @@ app.use("/chat/*", requireAuth);
 
 app.get("/v3/projects", async (c) => {
   const { organizationId, userId } = c.var.session;
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
 
   try {
     const projects = await listProjects(supabase, organizationId);
@@ -200,7 +200,7 @@ app.get("/v3/projects", async (c) => {
 app.post("/v3/projects", zValidator("json", CreateProjectSchema), async (c) => {
   const { organizationId, userId } = c.var.session;
   const body = c.req.valid("json");
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
 
   try {
     const project = await createProject(supabase, {
@@ -222,7 +222,7 @@ app.delete(
     const { organizationId } = c.var.session;
     const projectId = c.req.param("projectId");
     const body = c.req.valid("json") ?? { action: "delete" as const };
-    const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+    const supabase = createClientForSession(c.var.session);
 
     try {
       const result = await deleteProject(supabase, {
@@ -241,7 +241,7 @@ app.delete(
 app.post("/v3/documents", zValidator("json", MemoryAddSchema), async (c) => {
   const { organizationId, userId } = c.var.session;
   const payload = c.req.valid("json");
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
 
   try {
     const doc = await addDocument({
@@ -371,7 +371,7 @@ app.post("/v3/documents/file", async (c) => {
       },
     };
 
-    const supabase = createScopedSupabase(organizationId, userId);
+    const supabase = createClientForSession(c.var.session);
     const doc = await addDocument({
       organizationId,
       userId,
@@ -400,7 +400,7 @@ app.post(
   async (c) => {
     const { organizationId } = c.var.session;
     const filters = c.req.valid("json") ?? {};
-    const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+    const supabase = createClientForSession(c.var.session);
 
     try {
       const response = await listDocuments(supabase, organizationId, filters);
@@ -467,7 +467,7 @@ app.post(
   async (c) => {
     const { organizationId } = c.var.session;
     const query = c.req.valid("json");
-    const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+    const supabase = createClientForSession(c.var.session);
 
     try {
       const docs = await listDocumentsWithMemories(
@@ -508,7 +508,7 @@ app.post(
 app.get("/v3/documents/:id", async (c) => {
   const { organizationId } = c.var.session;
   const documentId = c.req.param("id");
-  const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+  const supabase = createClientForSession(c.var.session);
 
   try {
     const document = await getDocument(supabase, organizationId, documentId);
@@ -558,7 +558,7 @@ app.patch(
     const documentId = c.req.param("id");
     const { content, title, containerTag, containerTags, metadata } =
       c.req.valid("json");
-    const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+    const supabase = createClientForSession(c.var.session);
 
     try {
       const normalizedTags =
@@ -597,7 +597,7 @@ app.post(
   async (c) => {
     const { organizationId } = c.var.session;
     const query = c.req.valid("json");
-    const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+    const supabase = createClientForSession(c.var.session);
 
     try {
       const docs = await listDocumentsWithMemoriesByIds(
@@ -633,7 +633,7 @@ app.post(
 app.post("/v3/documents/:id/cancel", async (c) => {
   const { organizationId } = c.var.session;
   const documentId = c.req.param("id");
-  const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+  const supabase = createClientForSession(c.var.session);
 
   try {
     await cancelDocument(supabase, { organizationId, documentId });
@@ -648,7 +648,7 @@ app.post("/v3/documents/:id/cancel", async (c) => {
 app.post("/v3/documents/:id/related-links", async (c) => {
   const { organizationId } = c.var.session;
   const documentId = c.req.param("id");
-  const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+  const supabase = createClientForSession(c.var.session);
 
   try {
     const result = await findDocumentRelatedLinks(
@@ -673,7 +673,7 @@ app.post("/v3/documents/:id/related-links", async (c) => {
 app.delete("/v3/documents/:id", async (c) => {
   const { organizationId } = c.var.session;
   const documentId = c.req.param("id");
-  const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+  const supabase = createClientForSession(c.var.session);
 
   try {
     await deleteDocument(supabase, { organizationId, documentId });
@@ -687,7 +687,7 @@ app.delete("/v3/documents/:id", async (c) => {
 app.post("/v3/search", zValidator("json", SearchRequestSchema), async (c) => {
   const { organizationId } = c.var.session;
   const body = c.req.valid("json");
-  const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+  const supabase = createClientForSession(c.var.session);
 
   try {
     const response = await searchDocuments(supabase, organizationId, body);
@@ -715,7 +715,7 @@ app.post(
   async (c) => {
     const { organizationId } = c.var.session;
     const body = c.req.valid("json");
-    const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+    const supabase = createClientForSession(c.var.session);
 
     try {
       const results = await hybridSearch(supabase, {
@@ -758,7 +758,7 @@ app.post(
   async (c) => {
     const { organizationId, userId } = c.var.session;
     const { containerTags } = c.req.valid("json");
-    const supabase = createScopedSupabase(organizationId, userId);
+    const supabase = createClientForSession(c.var.session);
 
     try {
       const connections = await listConnections(
@@ -783,7 +783,7 @@ app.post(
     const { organizationId, userId } = c.var.session;
     const provider = c.req.param("provider");
     const payload = c.req.valid("json");
-    const supabase = createScopedSupabase(organizationId, userId);
+    const supabase = createClientForSession(c.var.session);
 
     try {
       const result = await createConnection(supabase, {
@@ -804,7 +804,7 @@ app.post(
 app.get("/v3/connections/:connectionId", requireAuth, async (c) => {
   const { organizationId, userId } = c.var.session;
   const connectionId = c.req.param("connectionId");
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
 
   try {
     const connection = await getConnection(
@@ -826,7 +826,7 @@ app.get("/v3/connections/:connectionId", requireAuth, async (c) => {
 app.delete("/v3/connections/:connectionId", requireAuth, async (c) => {
   const { organizationId, userId } = c.var.session;
   const connectionId = c.req.param("connectionId");
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
 
   try {
     await deleteConnection(supabase, organizationId, connectionId);
@@ -839,7 +839,7 @@ app.delete("/v3/connections/:connectionId", requireAuth, async (c) => {
 
 app.get("/v3/settings", async (c) => {
   const { organizationId } = c.var.session;
-  const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+  const supabase = createClientForSession(c.var.session);
   try {
     const settings = await getSettings(supabase, organizationId);
     return c.json(settings);
@@ -855,7 +855,7 @@ app.patch(
   async (c) => {
     const { organizationId } = c.var.session;
     const payload = c.req.valid("json") ?? {};
-    const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+    const supabase = createClientForSession(c.var.session);
 
     try {
       const response = await updateSettings(supabase, organizationId, payload);
@@ -872,7 +872,7 @@ app.get("/v3/waitlist/status", (c) => c.json(getWaitlistStatus()));
 // Canvas Projects endpoints (like Figma projects)
 app.get("/v3/canvas-projects", async (c) => {
   const { organizationId, userId } = c.var.session;
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
   try {
     const projects = await listCanvasProjects(supabase, userId, organizationId);
     return c.json({ projects });
@@ -888,7 +888,7 @@ app.get("/v3/canvas-projects", async (c) => {
 app.post("/v3/canvas-projects", async (c) => {
   const { organizationId, userId } = c.var.session;
   const body = await c.req.json();
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
   try {
     const project = await createCanvasProject(
       supabase,
@@ -910,7 +910,7 @@ app.patch("/v3/canvas-projects/:projectId", async (c) => {
   const { organizationId, userId } = c.var.session;
   const projectId = c.req.param("projectId");
   const body = await c.req.json();
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
   try {
     const project = await updateCanvasProject(
       supabase,
@@ -931,7 +931,7 @@ app.patch("/v3/canvas-projects/:projectId", async (c) => {
 app.delete("/v3/canvas-projects/:projectId", async (c) => {
   const { organizationId, userId } = c.var.session;
   const projectId = c.req.param("projectId");
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
   try {
     const result = await deleteCanvasProject(supabase, userId, projectId);
     return c.json(result);
@@ -948,7 +948,7 @@ app.delete("/v3/canvas-projects/:projectId", async (c) => {
 app.get("/v3/canvas/:projectId?", async (c) => {
   const { organizationId, userId } = c.var.session;
   const projectId = c.req.param("projectId") || "default";
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
   try {
     const result = await getCanvasState(
       supabase,
@@ -967,7 +967,7 @@ app.post("/v3/canvas/:projectId?", async (c) => {
   const { organizationId, userId } = c.var.session;
   const projectId = c.req.param("projectId") || "default";
   const body = await c.req.json();
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
   try {
     const result = await saveCanvasState(
       supabase,
@@ -986,7 +986,7 @@ app.post("/v3/canvas/:projectId?", async (c) => {
 app.delete("/v3/canvas/:projectId?", async (c) => {
   const { organizationId, userId } = c.var.session;
   const projectId = c.req.param("projectId") || "default";
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
   try {
     const result = await deleteCanvasState(supabase, userId, projectId);
     return c.json(result);
@@ -999,7 +999,7 @@ app.delete("/v3/canvas/:projectId?", async (c) => {
 app.post("/chat", async (c) => {
   const { organizationId } = c.var.session;
   const body = await c.req.json();
-  const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+  const supabase = createClientForSession(c.var.session);
   return handleChat({ orgId: organizationId, client: supabase, body });
 });
 
@@ -1007,7 +1007,7 @@ app.post("/chat", async (c) => {
 app.post("/chat/v2", async (c) => {
   const { organizationId, userId } = c.var.session;
   const body = await c.req.json();
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
   return handleChatV2({
     orgId: organizationId,
     userId,
@@ -1031,7 +1031,7 @@ app.post("/chat/title", async (c) => {
 app.post("/v3/conversations", async (c) => {
   const { organizationId, userId } = c.var.session;
   const body = await c.req.json();
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
   return handleCreateConversation({
     client: supabase,
     orgId: organizationId,
@@ -1042,7 +1042,7 @@ app.post("/v3/conversations", async (c) => {
 
 app.get("/v3/conversations", async (c) => {
   const { organizationId } = c.var.session;
-  const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+  const supabase = createClientForSession(c.var.session);
   return handleListConversations({
     client: supabase,
     orgId: organizationId,
@@ -1053,21 +1053,21 @@ app.get("/v3/conversations", async (c) => {
 app.get("/v3/conversations/:id", async (c) => {
   const { organizationId } = c.var.session;
   const conversationId = c.req.param("id");
-  const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+  const supabase = createClientForSession(c.var.session);
   return handleGetConversation({ client: supabase, conversationId });
 });
 
 app.get("/v3/conversations/:id/events", async (c) => {
   const { organizationId } = c.var.session;
   const conversationId = c.req.param("id");
-  const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+  const supabase = createClientForSession(c.var.session);
   return handleGetConversationEvents({ client: supabase, conversationId });
 });
 
 app.get("/v3/conversations/:id/history", async (c) => {
   const { organizationId } = c.var.session;
   const conversationId = c.req.param("id");
-  const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+  const supabase = createClientForSession(c.var.session);
   return handleGetConversationHistory({ client: supabase, conversationId });
 });
 
@@ -1075,21 +1075,21 @@ app.patch("/v3/conversations/:id", async (c) => {
   const { organizationId } = c.var.session;
   const conversationId = c.req.param("id");
   const body = await c.req.json();
-  const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+  const supabase = createClientForSession(c.var.session);
   return handleUpdateConversation({ client: supabase, conversationId, body });
 });
 
 app.delete("/v3/conversations/:id", async (c) => {
   const { organizationId } = c.var.session;
   const conversationId = c.req.param("id");
-  const supabase = createScopedSupabase(organizationId, c.var.session.userId);
+  const supabase = createClientForSession(c.var.session);
   return handleDeleteConversation({ client: supabase, conversationId });
 });
 
 app.post("/v3/graph/connections", async (c) => {
   const { organizationId, userId } = c.var.session;
   const body = await c.req.json();
-  const supabase = createScopedSupabase(organizationId, userId);
+  const supabase = createClientForSession(c.var.session);
   return handleGraphConnections({
     client: supabase,
     payload: body,
