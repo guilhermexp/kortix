@@ -72,6 +72,9 @@ export async function signUp(c: Context) {
 	// Wait a moment for the trigger to complete
 	await new Promise((resolve) => setTimeout(resolve, 100))
 
+	// Set session cookie for Next.js middleware compatibility
+	setSessionCookie(c, authData.session.access_token)
+
 	// Return session info
 	return c.json({
 		ok: true,
@@ -158,6 +161,9 @@ export async function signIn(c: Context) {
 			return c.json({ error: { message: "Failed to sign in" } }, 500)
 		}
 
+		// Set session cookie for Next.js middleware compatibility
+		setSessionCookie(c, authData.session.access_token)
+
 		return c.json({
 			ok: true,
 			session: {
@@ -186,6 +192,9 @@ export async function signIn(c: Context) {
 	if (!authData.session) {
 		return c.json({ error: { message: "Failed to sign in" } }, 500)
 	}
+
+	// Set session cookie for Next.js middleware compatibility
+	setSessionCookie(c, authData.session.access_token)
 
 	return c.json({
 		ok: true,
@@ -255,16 +264,23 @@ export async function getSession(c: Context) {
 	if (authHeader?.startsWith("Bearer ")) {
 		accessToken = authHeader.slice(7)
 	} else {
-		// Look for Supabase auth cookies
-		for (const [key, value] of Object.entries(cookies)) {
-			if (key.startsWith("sb-") && key.includes("-auth-token")) {
-				try {
-					const parsed = JSON.parse(value)
-					accessToken = parsed.access_token || parsed[0]?.access_token
-					if (accessToken) break
-				} catch {
-					accessToken = value
-					break
+		// First check kortix_session cookie for JWT token
+		const kortixSession = cookies[SESSION_COOKIE]
+		if (kortixSession && kortixSession.startsWith("eyJ")) {
+			// Looks like a JWT token (starts with base64 encoded JSON header)
+			accessToken = kortixSession
+		} else {
+			// Look for Supabase auth cookies
+			for (const [key, value] of Object.entries(cookies)) {
+				if (key.startsWith("sb-") && key.includes("-auth-token")) {
+					try {
+						const parsed = JSON.parse(value)
+						accessToken = parsed.access_token || parsed[0]?.access_token
+						if (accessToken) break
+					} catch {
+						accessToken = value
+						break
+					}
 				}
 			}
 		}

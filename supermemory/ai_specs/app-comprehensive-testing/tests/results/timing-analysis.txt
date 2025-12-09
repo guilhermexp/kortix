@@ -1,7 +1,0 @@
-  DNS Lookup:        0.000010s
-  TCP Connection:    0.000426s
-  TLS Handshake:     0.000000s
-  Pre-transfer:      0.000451s
-  Start Transfer:    0.005172s
-  Total Time:        0.005292s
-  Download Speed:    3590 bytes/sec
