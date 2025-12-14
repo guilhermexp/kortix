@@ -203,7 +203,8 @@ const MemoryGraphPage = () => {
   const IS_DEV = process.env.NODE_ENV === "development";
   const PAGE_SIZE = IS_DEV ? 100 : 100;
   const MAX_TOTAL = 1000;
-  const REFETCH_MS = 60_000; // 60 seconds - reduced from 15s to prevent database overload
+  const REFETCH_MS = 10_000; // 10 seconds - balanced between responsiveness and database load
+  const REFETCH_MS_PROCESSING = 3_000; // 3 seconds when documents are being processed
   const RATE_LIMIT_BACKOFF_MS = 90_000; // backoff after 429 responses
 
   useEffect(() => {
@@ -229,12 +230,16 @@ const MemoryGraphPage = () => {
     ? Math.max(0, Math.ceil((rateLimitedUntil - now) / 1000))
     : 0;
 
+  // State to track if there are processing documents (updated after data fetch)
+  const [hasProcessingDocs, setHasProcessingDocs] = useState(false);
+
   const effectiveRefetchInterval = useMemo(() => {
     if (pausePolling) return false;
     if (!isWindowVisible) return false;
     if (isRateLimited) return false;
-    return REFETCH_MS;
-  }, [isWindowVisible, pausePolling, isRateLimited]);
+    // Use faster polling when documents are being processed
+    return hasProcessingDocs ? REFETCH_MS_PROCESSING : REFETCH_MS;
+  }, [isWindowVisible, pausePolling, isRateLimited, hasProcessingDocs]);
 
   const {
     data,
@@ -342,18 +347,32 @@ const MemoryGraphPage = () => {
   });
 
   // Pause polling when optimistic documents are present so they stay visible until replaced
+  // Also track if there are processing documents for faster polling
   useEffect(() => {
     if (!data) {
       setPausePolling(false);
+      setHasProcessingDocs(false);
       return;
     }
 
-    const hasOptimisticDocs = data.pages.some((page) =>
-      (page.documents ?? []).some(
-        (doc) => (doc as { isOptimistic?: boolean }).isOptimistic,
-      ),
-    );
-    setPausePolling(hasOptimisticDocs);
+    const processingStatuses = new Set(["queued", "fetching", "extracting", "chunking", "embedding", "processing", "indexing"]);
+    let hasOptimistic = false;
+    let hasProcessing = false;
+
+    for (const page of data.pages) {
+      for (const doc of page.documents ?? []) {
+        if ((doc as { isOptimistic?: boolean }).isOptimistic) {
+          hasOptimistic = true;
+        }
+        const status = String(doc.status ?? "").toLowerCase();
+        if (processingStatuses.has(status)) {
+          hasProcessing = true;
+        }
+      }
+    }
+
+    setPausePolling(hasOptimistic);
+    setHasProcessingDocs(hasProcessing);
   }, [data]);
 
   const baseDocuments = useMemo(() => {

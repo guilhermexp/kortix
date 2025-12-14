@@ -33,6 +33,8 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import type { CSSProperties } from "react"
 import type { z } from "zod"
 import { analytics } from "@/lib/analytics"
@@ -42,6 +44,7 @@ import {
 	getDocumentSnippet,
 	stripMarkdown,
 } from "./memories"
+import { MarkdownContent } from "./markdown-content"
 import {
 	asRecord,
 	safeHttpUrl,
@@ -466,7 +469,7 @@ function DocumentPreviewModal({
 
           {/* Content area - scrolls over image */}
           <div className={cn(
-            "relative z-10 bg-background/60 backdrop-blur-md rounded-t-3xl p-8 min-h-[50vh]",
+            "relative z-10 bg-background rounded-t-3xl p-8 min-h-[50vh]",
             preview?.src ? "-mt-16" : ""
           )}>
             {/* Title */}
@@ -490,9 +493,9 @@ function DocumentPreviewModal({
 
             {/* Full Summary/Description */}
             {displayText && !displayText.startsWith("data:") && (
-              <p className="text-muted-foreground text-base leading-relaxed mt-6 whitespace-pre-wrap">
-                {stripMarkdown(displayText)}
-              </p>
+              <div className="text-muted-foreground text-base mt-6 prose prose-sm dark:prose-invert max-w-none">
+                <MarkdownContent content={displayText} />
+              </div>
             )}
 
             {/* Memory Count */}
@@ -510,7 +513,7 @@ function DocumentPreviewModal({
 }
 
 // Pinterest-style masonry card
-const MasonryCard = memo(
+  const MasonryCard = memo(
   ({
     document,
     onDelete,
@@ -556,7 +559,8 @@ const MasonryCard = memo(
     })();
 
     const contentNotReady = activeMemories.length === 0 && titleLooksIncomplete;
-    const isProcessing = statusIsProcessing || contentNotReady || isOptimisticDoc;
+    const [forcedStop, setForcedStop] = useState(false);
+    const isProcessing = !forcedStop && (statusIsProcessing || contentNotReady || isOptimisticDoc);
 
     const [stickyPreview, setStickyPreview] = useState<PreviewData | null>(
       null,
@@ -585,31 +589,77 @@ const MasonryCard = memo(
       ? (stickyPreview ?? sanitizedPreview)
       : sanitizedPreview;
 
-    // Get human-readable status label from backend status
-    const getStatusLabel = (status: string | null | undefined): string => {
-      if (!status) return "Processing";
+    // Get progress configuration for each status - realistic progression
+    const getProgressConfig = (status: string | null | undefined) => {
+      if (!status) return { label: "Processing", from: 5, to: 20, duration: 3000 };
       const st = String(status).toLowerCase();
       switch (st) {
         case "queued":
-          return "Queued";
+          return { label: "Na fila", from: 0, to: 10, duration: 2000 };
         case "fetching":
-          return "Fetching";
+          return { label: "Buscando", from: 10, to: 25, duration: 3000 };
         case "extracting":
-          return "Extracting";
+          return { label: "Extraindo", from: 25, to: 50, duration: 5000 };
         case "chunking":
-          return "Chunking";
+          return { label: "Processando", from: 50, to: 60, duration: 2000 };
         case "embedding":
-          return "Embedding";
-        case "indexing":
-          return "Indexing";
+          return { label: "Gerando embeddings", from: 60, to: 75, duration: 4000 };
         case "processing":
-          return "Processing";
+          return { label: "Analisando", from: 50, to: 80, duration: 8000 };
+        case "indexing":
+          return { label: "Indexando", from: 80, to: 95, duration: 3000 };
         default:
-          return "Processing";
+          return { label: "Processando", from: 5, to: 20, duration: 3000 };
       }
     };
 
-    const progressLabel = getStatusLabel(document.status);
+    // Animated progress state
+    const stageRef = useRef<string>(String(document.status || "unknown"));
+    const startTimeRef = useRef<number>(performance.now());
+    const [progressPct, setProgressPct] = useState<number>(() => getProgressConfig(document.status).from);
+    const [progressLabel, setProgressLabel] = useState<string>(() =>
+      forcedStop ? "Cancelled" : getProgressConfig(document.status).label
+    );
+
+    // Update progress when status changes
+    useEffect(() => {
+      const currentStage = String(document.status || "unknown");
+      if (currentStage !== stageRef.current) {
+        stageRef.current = currentStage;
+        const config = getProgressConfig(document.status);
+        setProgressLabel(forcedStop ? "Cancelled" : config.label);
+        setProgressPct(config.from);
+        startTimeRef.current = performance.now();
+      }
+    }, [document.status, forcedStop]);
+
+    // Animate progress smoothly
+    useEffect(() => {
+      if (!isProcessing || forcedStop) return;
+
+      let rafId = 0;
+      startTimeRef.current = performance.now();
+
+      const tick = () => {
+        const config = getProgressConfig(document.status);
+        const elapsed = performance.now() - startTimeRef.current;
+        const t = Math.min(1, elapsed / Math.max(1, config.duration));
+        // Ease-out cubic for smooth deceleration
+        const eased = 1 - (1 - t) ** 3;
+        const nextPct = config.from + (config.to - config.from) * eased;
+        setProgressPct(nextPct);
+        setProgressLabel(config.label);
+
+        if (t < 1 && isProcessing) {
+          rafId = requestAnimationFrame(tick);
+        }
+      };
+
+      rafId = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(rafId);
+    }, [isProcessing, forcedStop, document.status]);
+    const queryClient = useQueryClient();
+    const { selectedProject } = useProject();
 
     const handlePrefetchEdit = useCallback(() => {
       if (hasPrefetchedRef.current) return;
@@ -638,13 +688,46 @@ const MasonryCard = memo(
         onMouseEnter={handlePrefetchEdit}
         onTouchStart={handlePrefetchEdit}
       >
-        {/* Processing state - show ONLY the processing indicator, no content behind */}
+        {/* Processing state - show progress bar with percentage */}
         {isProcessing ? (
-          <div className="p-6 flex flex-col items-center justify-center min-h-[120px]">
-            <Loader className="h-6 w-6 text-primary animate-spin mb-3" />
-            <div className="text-xs text-muted-foreground font-medium">
-              {progressLabel}...
+          <div className="p-6 flex flex-col items-center justify-center min-h-[140px] gap-3">
+            <Loader className="h-6 w-6 text-primary animate-spin" />
+            <div className="w-full max-w-[200px] space-y-2">
+              {/* Progress bar */}
+              <div className="relative h-2 w-full bg-muted rounded-full overflow-hidden">
+                <div
+                  className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${Math.round(progressPct)}%` }}
+                />
+              </div>
+              {/* Label and percentage */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">
+                  {progressLabel}
+                </span>
+                <span className="text-primary font-semibold tabular-nums">
+                  {Math.round(progressPct)}%
+                </span>
+              </div>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-1"
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  await cancelDocument(document.id);
+                  setForcedStop(true);
+                  toast.success("Processamento cancelado");
+                  queryClient.invalidateQueries({ queryKey: ["documents-with-memories", selectedProject], exact: false });
+                } catch (error) {
+                  toast.error("Falha ao cancelar", { description: error instanceof Error ? error.message : String(error) });
+                }
+              }}
+            >
+              Cancelar
+            </Button>
           </div>
         ) : (
           <>
