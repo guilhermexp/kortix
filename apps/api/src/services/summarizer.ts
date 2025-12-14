@@ -20,7 +20,6 @@ import {
 	getSectionHeader,
 } from "../i18n"
 import { getGoogleClient, getGoogleModel } from "./google-genai"
-import { convertUrlWithMarkItDown } from "./markitdown"
 import { openRouterChat } from "./openrouter"
 import { summarizeWithOpenRouter } from "./summarizer-fallback"
 
@@ -203,13 +202,38 @@ export async function summarizeYoutubeVideo(
 	url: string,
 ): Promise<string | null> {
 	try {
-		// 1) Extract transcript/content with MarkItDown
-		const md = await convertUrlWithMarkItDown(url)
-		const text = (md.markdown || "").trim()
-		if (!text) return null
+		// Import fetchYouTubeTranscriptFallback dynamically to avoid circular dependency
+		const { fetchYouTubeTranscriptFallback } = await import("./markitdown")
+
+		// 1) Try to get transcript directly from YouTube timedtext API first
+		// This is more reliable than MarkItDown for YouTube videos
+		const transcriptResult = await fetchYouTubeTranscriptFallback(url)
+
+		let text = ""
+		let title: string | null = null
+
+		if (transcriptResult && transcriptResult.markdown) {
+			text = transcriptResult.markdown.trim()
+			title = transcriptResult.metadata?.title || null
+			console.log("[summarizeYoutubeVideo] Using transcript from timedtext API", {
+				length: text.length,
+				title,
+			})
+		}
+
+		// If no transcript or too short, we can't generate a good summary
+		// Don't fallback to MarkItDown for YouTube as it only extracts page footer
+		if (!text || text.length < 200) {
+			console.warn("[summarizeYoutubeVideo] No valid transcript available", {
+				hasText: !!text,
+				length: text?.length || 0,
+			})
+			return null
+		}
+
 		// 2) Summarize with OpenRouter (Grok)
 		const viaOpenRouter = await summarizeWithOpenRouter(text, {
-			title: md.metadata.title || null,
+			title,
 			url,
 			contentType: "video/youtube",
 		})

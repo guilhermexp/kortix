@@ -204,7 +204,7 @@ app.use("/chat", requireAuth);
 app.use("/chat/*", requireAuth);
 
 app.get("/v3/projects", async (c) => {
-  const { organizationId, userId } = c.var.session;
+  const { organizationId, internalUserId } = c.var.session;
   const supabase = createClientForSession(c.var.session);
 
   try {
@@ -258,14 +258,14 @@ app.delete(
 );
 
 app.post("/v3/documents", zValidator("json", MemoryAddSchema), async (c) => {
-  const { organizationId, userId } = c.var.session;
+  const { organizationId, internalUserId } = c.var.session;
   const payload = c.req.valid("json");
   const supabase = createClientForSession(c.var.session);
 
   try {
     const doc = await addDocument({
       organizationId,
-      userId,
+      userId: internalUserId,
       payload,
       client: supabase,
     });
@@ -286,7 +286,7 @@ app.post("/v3/documents", zValidator("json", MemoryAddSchema), async (c) => {
 });
 
 app.post("/v3/documents/file", async (c) => {
-  const { organizationId, userId } = c.var.session;
+  const { organizationId, internalUserId } = c.var.session;
 
   try {
     const body = await c.req.parseBody();
@@ -393,7 +393,7 @@ app.post("/v3/documents/file", async (c) => {
     const supabase = createClientForSession(c.var.session);
     const doc = await addDocument({
       organizationId,
-      userId,
+      userId: internalUserId,
       payload,
       client: supabase,
     });
@@ -736,8 +736,8 @@ app.post(
     const body = c.req.valid("json");
     const supabase = createClientForSession(c.var.session);
 
-    try {
-      const results = await hybridSearch(supabase, {
+  try {
+    const results = await hybridSearch(supabase, {
         query: body.q,
         orgId: organizationId,
         limit: body.limit,
@@ -758,7 +758,16 @@ app.post(
       });
     } catch (error) {
       console.error("Hybrid search failed", error);
-      return c.json({ error: { message: "Hybrid search failed" } }, 500);
+      try {
+        const fallback = await searchDocuments(
+          supabase,
+          organizationId,
+          body,
+        );
+        return c.json(fallback, 200);
+      } catch (e) {
+        return c.json({ error: { message: "Hybrid search failed" } }, 500);
+      }
     }
   },
 );

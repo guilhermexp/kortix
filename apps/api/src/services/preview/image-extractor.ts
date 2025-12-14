@@ -42,6 +42,45 @@ const IMAGE_META_TAGS = [
 	"image_src",
 ]
 
+// YouTube URL patterns for video ID extraction
+const YOUTUBE_PATTERNS = [
+	/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
+	/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+]
+
+/**
+ * Extract YouTube video ID from URL
+ */
+function extractYouTubeVideoId(url: string): string | null {
+	for (const pattern of YOUTUBE_PATTERNS) {
+		const match = url.match(pattern)
+		if (match && match[1]) {
+			return match[1]
+		}
+	}
+	return null
+}
+
+/**
+ * Check if URL is a YouTube video URL
+ */
+function isYouTubeUrl(url: string): boolean {
+	return url.includes("youtube.com") || url.includes("youtu.be")
+}
+
+/**
+ * Get YouTube thumbnail URL - tries maxresdefault first, falls back to hqdefault
+ */
+function getYouTubeThumbnailUrl(videoId: string, quality: "maxres" | "hq" | "mq" | "sd" = "maxres"): string {
+	const qualityMap = {
+		maxres: "maxresdefault",
+		hq: "hqdefault",
+		mq: "mqdefault",
+		sd: "sddefault",
+	}
+	return `https://img.youtube.com/vi/${videoId}/${qualityMap[quality]}.jpg`
+}
+
 // ============================================================================
 // Image Extractor Service Implementation
 // ============================================================================
@@ -118,6 +157,25 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 				source: extraction.source,
 			})
 
+			// Strategy 0: Handle YouTube URLs directly (most reliable)
+			if (extraction.url && isYouTubeUrl(extraction.url)) {
+				const videoId = extractYouTubeVideoId(extraction.url)
+				if (videoId) {
+					// Try maxresdefault first
+					const maxresThumbnail = getYouTubeThumbnailUrl(videoId, "maxres")
+					if (await this.validateImageUrl(maxresThumbnail)) {
+						tracker.end(true)
+						this.logger.info("YouTube maxres thumbnail found", { imageUrl: maxresThumbnail })
+						return maxresThumbnail
+					}
+					// Fallback to hqdefault (always exists)
+					const hqThumbnail = getYouTubeThumbnailUrl(videoId, "hq")
+					tracker.end(true)
+					this.logger.info("YouTube hq thumbnail used", { imageUrl: hqThumbnail })
+					return hqThumbnail
+				}
+			}
+
 			// Strategy 1: Check if extraction already has an image URL in metadata
 			if (extraction.metadata?.image) {
 				const imageUrl = extraction.metadata.image as string
@@ -192,6 +250,41 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			// Validate URL
 			if (!this.isValidUrl(url)) {
 				throw this.createError("INVALID_URL", `Invalid URL: ${url}`)
+			}
+
+			// Handle YouTube URLs directly (most reliable)
+			if (isYouTubeUrl(url)) {
+				const videoId = extractYouTubeVideoId(url)
+				if (videoId) {
+					// Try maxresdefault first
+					const maxresThumbnail = getYouTubeThumbnailUrl(videoId, "maxres")
+					if (await this.validateImageUrl(maxresThumbnail)) {
+						tracker.end(true)
+						this.logger.info("YouTube maxres thumbnail found", { imageUrl: maxresThumbnail })
+						return {
+							imageUrl: maxresThumbnail,
+							source: "youtube",
+							metadata: {
+								url: maxresThumbnail,
+								format: "jpg",
+								isVector: false,
+							},
+						}
+					}
+					// Fallback to hqdefault (always exists for any valid video)
+					const hqThumbnail = getYouTubeThumbnailUrl(videoId, "hq")
+					tracker.end(true)
+					this.logger.info("YouTube hq thumbnail used", { imageUrl: hqThumbnail })
+					return {
+						imageUrl: hqThumbnail,
+						source: "youtube",
+						metadata: {
+							url: hqThumbnail,
+							format: "jpg",
+							isVector: false,
+						},
+					}
+				}
 			}
 
 			// Try OpenGraph first if preferred
