@@ -255,6 +255,7 @@ export const PROCESSING_STATUSES = new Set([
   "chunking",
   "embedding",
   "processing",
+  "indexing",
 ])
 
 /**

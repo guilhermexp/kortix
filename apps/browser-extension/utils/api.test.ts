@@ -135,13 +135,14 @@ const mockFetch = mock(async (url: string, options?: RequestInit) => {
 })
 
 // Setup global mocks
-global.chrome = mockStorage as unknown as typeof chrome
-global.fetch = mockFetch as unknown as typeof fetch
+globalThis.chrome = mockStorage as unknown as typeof chrome
+globalThis.fetch = mockFetch as unknown as typeof fetch
+const storage = mockStorage.local
 
 // Import functions after mocks are set up
 // Since we can't import dynamically here, we'll redefine the functions
 async function getBearerToken(): Promise<string> {
-	const result = await chrome.storage.local.get([STORAGE_KEYS.BEARER_TOKEN])
+    const result = await storage.get([STORAGE_KEYS.BEARER_TOKEN])
 	const token = result[STORAGE_KEYS.BEARER_TOKEN]
 
 	if (!token) {
