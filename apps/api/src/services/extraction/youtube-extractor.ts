@@ -22,6 +22,25 @@ import { fetchYouTubeTranscriptFallback } from "../markitdown"
 import { summarizeYoutubeVideo } from "../summarizer"
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Fetch video title using YouTube oEmbed API (free, no auth required)
+ */
+async function fetchTitleFromOEmbed(videoId: string): Promise<string | null> {
+	try {
+		const url = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
+		const response = await fetch(url, { signal: AbortSignal.timeout(5000) })
+		if (!response.ok) return null
+		const data = await response.json()
+		return data.title || null
+	} catch {
+		return null
+	}
+}
+
+// ============================================================================
 // YouTube Extractor Implementation
 // ============================================================================
 
@@ -247,9 +266,19 @@ export class YouTubeExtractor extends BaseService implements IYouTubeExtractor {
 				title = lines[0]?.replace(/^#\s*/i, "") || undefined
 			}
 
+			// Second fallback: use oEmbed API
+			if (!title || title === "Unknown") {
+				this.logger.debug("Trying oEmbed fallback for title", { videoId })
+				const oEmbedTitle = await fetchTitleFromOEmbed(videoId)
+				if (oEmbedTitle) {
+					title = oEmbedTitle
+					this.logger.info("Got title from oEmbed", { videoId, title })
+				}
+			}
+
 			// Final fallback
 			if (!title) {
-				title = "Unknown"
+				title = `YouTube Video ${videoId}`
 			}
 
 			return {
@@ -262,19 +291,23 @@ export class YouTubeExtractor extends BaseService implements IYouTubeExtractor {
 				thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
 			}
 		} catch (error) {
-			this.logger.warn("Failed to extract metadata", {
+			this.logger.warn("Failed to extract metadata, trying oEmbed", {
 				videoId,
 				error: (error as Error).message,
 			})
 
-			// Return minimal metadata
+			// Try oEmbed as fallback
+			const oEmbedTitle = await fetchTitleFromOEmbed(videoId)
+
+			// Return minimal metadata with oEmbed title if available
 			return {
 				videoId,
-				title: `YouTube Video ${videoId}`,
+				title: oEmbedTitle || `YouTube Video ${videoId}`,
 				channelName: "Unknown",
 				description: "",
 				duration: 0,
 				availableLanguages: [],
+				thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
 			}
 		}
 	}

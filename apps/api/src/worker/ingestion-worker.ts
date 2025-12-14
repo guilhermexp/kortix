@@ -247,12 +247,28 @@ async function fetchQueuedJobs(): Promise<IngestionJobRow[]> {
   return data ?? [];
 }
 
+// Helper to update document status in real-time
+async function updateDocumentStatus(documentId: string, status: string) {
+  try {
+    await supabaseAdmin
+      .from("documents")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", documentId);
+    console.log(`[ingestion-worker] Status updated to: ${status}`, { documentId });
+  } catch (error) {
+    console.warn("[ingestion-worker] Failed to update status", { documentId, status, error });
+  }
+}
+
 async function hydrateDocument(
   jobId: string,
   documentId: string,
   orgId: string,
   payload: unknown,
 ) {
+  // Update status: fetching document data
+  await updateDocumentStatus(documentId, "fetching");
+
   const { data: document, error: docError } = await supabaseAdmin
     .from("documents")
     .select(
@@ -279,6 +295,9 @@ async function hydrateDocument(
       `[ingestion-worker] No user found for job ${jobId}, processing without user_id`,
     );
   }
+
+  // Update status: extracting content
+  await updateDocumentStatus(documentId, "extracting");
 
   // Use the new orchestrator instead of deprecated processDocument
   const result = await orchestrator.processDocument({
@@ -307,8 +326,163 @@ async function hydrateDocument(
       documentId,
       result: result.documentId,
       status: result.status,
+      hasExtraction: !!result.metadata?.extraction,
+      hasProcessed: !!result.metadata?.processed,
     },
   );
+
+  // Update status: processing/saving data
+  await updateDocumentStatus(documentId, "processing");
+
+  // Extract the processed data from the orchestrator result
+  const extraction = result.metadata?.extraction;
+  const processed = result.metadata?.processed;
+  const preview = result.metadata?.preview;
+
+  // Prepare document update with extracted content
+  const documentUpdate: Record<string, unknown> = {
+    status: "done",
+    updated_at: new Date().toISOString(),
+  };
+
+  // Save extracted content (ExtractionResult uses 'text' not 'content')
+  if (extraction?.text) {
+    documentUpdate.content = extraction.text;
+    console.log("[ingestion-worker] Saving extracted content", {
+      documentId,
+      contentLength: extraction.text.length,
+    });
+  }
+
+  // Save extracted title
+  if (extraction?.title) {
+    documentUpdate.title = extraction.title;
+    console.log("[ingestion-worker] Saving title", {
+      documentId,
+      title: extraction.title,
+    });
+  } else {
+    console.log("[ingestion-worker] No title in extraction result", {
+      documentId,
+      extractionKeys: extraction ? Object.keys(extraction) : [],
+    });
+  }
+
+  // Save summary from processing
+  if (processed?.summary) {
+    documentUpdate.summary = processed.summary;
+    console.log("[ingestion-worker] Saving summary", {
+      documentId,
+      summaryLength: processed.summary.length,
+    });
+  }
+
+  // Save preview image URL
+  if (preview?.url) {
+    documentUpdate.preview_image = preview.url;
+  }
+
+  // Update metadata with processing results
+  const updatedMetadata = {
+    ...document.metadata,
+    processingCompleted: true,
+    extractedAt: new Date().toISOString(),
+    ...(extraction?.extractionMetadata ?? {}),
+    ...(processed?.tags ? { tags: processed.tags } : {}),
+  };
+  documentUpdate.metadata = updatedMetadata;
+
+  // Save word count if available
+  if (extraction?.wordCount) {
+    documentUpdate.word_count = extraction.wordCount;
+  }
+
+  // Save tags to the tags column
+  if (processed?.tags && processed.tags.length > 0) {
+    documentUpdate.tags = processed.tags;
+  }
+
+  // Update document with extracted data
+  const { error: docUpdateError } = await supabaseAdmin
+    .from("documents")
+    .update(documentUpdate)
+    .eq("id", documentId);
+
+  if (docUpdateError) {
+    console.error("[ingestion-worker] Failed to update document with extracted data", {
+      documentId,
+      error: docUpdateError.message,
+    });
+  }
+
+  // Save chunks/embeddings if available
+  if (processed?.chunks && processed.chunks.length > 0) {
+    // Update status: indexing (saving embeddings)
+    await updateDocumentStatus(documentId, "indexing");
+
+    console.log("[ingestion-worker] Saving chunks", {
+      documentId,
+      chunkCount: processed.chunks.length,
+      firstChunkKeys: Object.keys(processed.chunks[0] ?? {}),
+    });
+
+    // Filter out chunks without content and map to db schema
+    // Note: chunks can have either 'content' or 'text' property depending on the processor
+    const validChunks = processed.chunks.filter(chunk => chunk.content || (chunk as any).text);
+    const documentChunks = validChunks.map((chunk, index) => {
+      const chunkContent = chunk.content || (chunk as any).text || "";
+      return {
+        document_id: documentId,
+        org_id: orgId,
+        content: chunkContent,
+        embedding: chunk.embedding,
+        chunk_index: chunk.position ?? (chunk as any).index ?? index,
+        token_count: (chunk as any).tokenCount ?? Math.ceil(chunkContent.length / 4),
+        embedding_model: "voyage-3-lite",
+        metadata: chunk.metadata ?? {},
+        created_at: new Date().toISOString(),
+      };
+    });
+
+    const { error: chunksError } = await supabaseAdmin
+      .from("document_chunks")
+      .insert(documentChunks);
+
+    if (chunksError) {
+      console.error("[ingestion-worker] Failed to save chunks", {
+        documentId,
+        error: chunksError.message,
+      });
+    } else {
+      console.log("[ingestion-worker] Chunks saved successfully", {
+        documentId,
+        chunkCount: documentChunks.length,
+      });
+
+      // Update document with chunk count
+      await supabaseAdmin
+        .from("documents")
+        .update({ chunk_count: documentChunks.length })
+        .eq("id", documentId);
+    }
+  }
+
+  // Mark job as completed
+  await supabaseAdmin
+    .from("ingestion_jobs")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString()
+    })
+    .eq("id", jobId);
+
+  console.log("[ingestion-worker] Job and document marked as completed", {
+    jobId,
+    documentId,
+    hasContent: !!extraction?.content,
+    hasSummary: !!processed?.summary,
+    chunkCount: processed?.chunks?.length ?? 0,
+  });
 }
 
 async function handleJobFailure(
