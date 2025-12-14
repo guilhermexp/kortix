@@ -90,7 +90,7 @@ The cleanup branch also removed **54 files** totaling 6,173 lines:
 - `.claude/agents/kfc/*` - Old KFC agent configurations (9 files)
 - `.github/workflows/` - Deprecated CI/CD workflows (2 files)
 - `supabase/migrations.backup/` - Backup migrations (9 files)
-- `supermemory/` - Old project specs and test results
+- Legacy project specs and test results removed
 - Root-level test files - Obsolete test scripts (15+ Python/TypeScript test files)
 - `playwright.config.ts` - Unused testing configuration
 - `LICENSE`, `RAILWAY_QUICKSTART.md`, `guia-b-roll-ai-saas.md` - Obsolete documentation
