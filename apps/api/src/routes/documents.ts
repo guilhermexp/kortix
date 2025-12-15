@@ -33,12 +33,12 @@ import { z } from "zod"
 // NOTE: Using legacy processDocument for backward compatibility
 // TODO (Phase 6): Replace with IngestionOrchestratorService
 import { processDocument } from "../services/ingestion"
-import { findRelatedLinks, type RelatedLink } from "../services/related-links"
 import {
 	documentCache,
 	documentListCache,
 	generateCacheKey,
 } from "../services/query-cache"
+import { findRelatedLinks, type RelatedLink } from "../services/related-links"
 
 const defaultContainerTag = "sm_project_default"
 
@@ -152,7 +152,9 @@ function extractSpaceIds(relation: unknown): string[] {
 	if (!relation || typeof relation !== "object") return []
 	const rel = relation as DocumentSpaceRelation
 	const spaceId = rel.space_id
-	return spaceId && typeof spaceId === "string" && spaceId.length > 0 ? [spaceId] : []
+	return spaceId && typeof spaceId === "string" && spaceId.length > 0
+		? [spaceId]
+		: []
 }
 
 function normalizeProcessingMetadata(value: unknown):
@@ -324,6 +326,22 @@ export async function addDocument({
 		throw new Error("Content is required to create a document")
 	}
 
+	// Guardrail: local filesystem paths pasted into the URL/text box are not fetchable by the server.
+	// They often look like "/var/folders/.../file.png" or "file:///...".
+	// If the user intended to upload a file, they should use `/v3/documents/file`.
+	const looksLikeLocalFilePath =
+		!rawContent.includes("\n") &&
+		rawContent.length <= 500 &&
+		(/^(file:\/\/|\/|~\/|[a-zA-Z]:\\)/.test(rawContent) ||
+			rawContent.includes("/var/folders/")) &&
+		/\.[a-z0-9]{2,8}$/i.test(rawContent) &&
+		!/^https?:\/\//i.test(rawContent)
+	if (looksLikeLocalFilePath) {
+		throw new Error(
+			"Looks like a local file path. Upload the file instead (POST /v3/documents/file).",
+		)
+	}
+
 	const [containerTag] =
 		parsed.containerTags && parsed.containerTags.length > 0
 			? parsed.containerTags
@@ -370,7 +388,7 @@ export async function addDocument({
 	async function ensureDocumentInSpace(
 		documentId: string,
 		targetSpaceId: string,
-	) {
+	): Promise<boolean> {
 		// Check current space_id
 		const { data: doc, error: fetchErr } = await client
 			.from("documents")
@@ -379,10 +397,20 @@ export async function addDocument({
 			.eq("org_id", organizationId)
 			.maybeSingle()
 
-		if (fetchErr) throw fetchErr
+		if (fetchErr) {
+			console.error(
+				"[ensureDocumentInSpace] Failed to fetch document",
+				fetchErr,
+			)
+			throw fetchErr
+		}
+
+		if (!doc) {
+			throw new Error(`Document ${documentId} not found`)
+		}
 
 		// If already in the target space, no action needed
-		if (doc?.space_id === targetSpaceId) {
+		if (doc.space_id === targetSpaceId) {
 			return false
 		}
 
@@ -393,23 +421,59 @@ export async function addDocument({
 			.eq("id", documentId)
 			.eq("org_id", organizationId)
 
-		if (updateErr) throw updateErr
+		if (updateErr) {
+			console.error(
+				"[ensureDocumentInSpace] Failed to update document space",
+				updateErr,
+			)
+			throw updateErr
+		}
 		return true
 	}
 
-	// Deduplicate by URL: if a document for the same URL already exists in this org,
-	// reuse it instead of creating duplicates. If it's failed, requeue it.
-	if (isUrl && inferredUrl) {
-		const { data: existing, error: existingError } = await client
-			.from("documents")
-			.select("id, status")
-			.eq("org_id", organizationId)
-			.eq("url", inferredUrl)
-			.order("created_at", { ascending: false })
-			.limit(1)
-			.maybeSingle()
+	// Deduplicate: check for existing documents with same URL or content hash
+	// For URLs: check by URL
+	// For text: check by content hash (if content is short enough to be exact match)
+	const shouldCheckDuplicates = isUrl || (initialContent && initialContent.length < 1000)
+	
+	if (shouldCheckDuplicates) {
+		let existing: { id: string; status: string | null; space_id: string | null } | null = null
+		
+		if (isUrl && inferredUrl) {
+			// Check by URL
+			const { data: urlDoc, error: urlError } = await client
+				.from("documents")
+				.select("id, status, space_id")
+				.eq("org_id", organizationId)
+				.eq("url", inferredUrl)
+				.order("created_at", { ascending: false })
+				.limit(1)
+				.maybeSingle()
+			
+			if (!urlError && urlDoc) {
+				existing = urlDoc
+			}
+		} else if (initialContent) {
+			// For short text documents, check by exact content match
+			// Only check recent documents (last 7 days) to avoid performance issues
+			const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+			const { data: contentDoc, error: contentError } = await client
+				.from("documents")
+				.select("id, status, space_id")
+				.eq("org_id", organizationId)
+				.eq("content", initialContent)
+				.eq("type", inferredType)
+				.gte("created_at", sevenDaysAgo)
+				.order("created_at", { ascending: false })
+				.limit(1)
+				.maybeSingle()
+			
+			if (!contentError && contentDoc) {
+				existing = contentDoc
+			}
+		}
 
-		if (!existingError && existing) {
+		if (existing) {
 			const currentStatus = String(existing.status ?? "unknown").toLowerCase()
 			const processingStates = new Set([
 				"queued",
@@ -420,18 +484,21 @@ export async function addDocument({
 				"processing",
 			])
 
+			// Always ensure document is mapped to requested space
+			let addedToProject = false
+			try {
+				addedToProject = await ensureDocumentInSpace(existing.id, spaceId)
+			} catch (e) {
+				console.error("[addDocument] Failed mapping doc to project", {
+					documentId: existing.id,
+					spaceId,
+					error: e instanceof Error ? e.message : String(e),
+				})
+				// Don't fail the request, but log the error
+			}
+
 			if (processingStates.has(currentStatus) || currentStatus === "done") {
-				// Map existing doc to requested project if not already mapped
-				let addedToProject = false
-				try {
-					addedToProject = await ensureDocumentInSpace(existing.id, spaceId)
-				} catch (e) {
-					console.warn("[addDocument] Failed mapping doc to project", {
-						documentId: existing.id,
-						spaceId,
-						error: e instanceof Error ? e.message : String(e),
-					})
-				}
+				// Document already exists and is processing or done
 				return {
 					id: existing.id,
 					status: existing.status ?? "queued",
@@ -447,37 +514,41 @@ export async function addDocument({
 					.update({ status: "queued" })
 					.eq("id", existing.id)
 					.eq("org_id", organizationId)
-				if (updateError) throw updateError
-
-				const { error: jobError } = await client.from("ingestion_jobs").insert({
-					document_id: existing.id,
-					org_id: organizationId,
-					status: "queued",
-					payload: {
-						containerTags: parsed.containerTags ?? [containerTag],
-						content: rawContent,
-						metadata,
-						url: inferredUrl,
-						type: inferredType,
-						source: inferredSource,
-					},
-				})
-				if (jobError) throw jobError
-
-				// Ensure mapping to requested project
-				let addedToProject = false
-				try {
-					addedToProject = await ensureDocumentInSpace(existing.id, spaceId)
-				} catch (e) {
-					console.warn(
-						"[addDocument] Failed mapping (requeue) doc to project",
-						{
-							documentId: existing.id,
-							spaceId,
-							error: e instanceof Error ? e.message : String(e),
-						},
-					)
+				if (updateError) {
+					console.error("[addDocument] Failed to requeue document", updateError)
+					throw updateError
 				}
+
+				// Check if there's already a queued job for this document
+				const { data: existingJob } = await client
+					.from("ingestion_jobs")
+					.select("id")
+					.eq("document_id", existing.id)
+					.eq("status", "queued")
+					.maybeSingle()
+
+				if (!existingJob) {
+					const { error: jobError } = await client
+						.from("ingestion_jobs")
+						.insert({
+							document_id: existing.id,
+							org_id: organizationId,
+							status: "queued",
+							payload: {
+								containerTags: parsed.containerTags ?? [containerTag],
+								content: rawContent,
+								metadata,
+								url: inferredUrl,
+								type: inferredType,
+								source: inferredSource,
+							},
+						})
+					if (jobError) {
+						console.error("[addDocument] Failed to create job", jobError)
+						throw jobError
+					}
+				}
+
 				return {
 					id: existing.id,
 					status: "queued",
@@ -488,7 +559,7 @@ export async function addDocument({
 		}
 	}
 
-	const { data: document, error: insertError} = await client
+	const { data: document, error: insertError } = await client
 		.from("documents")
 		.insert({
 			org_id: organizationId,
@@ -506,33 +577,87 @@ export async function addDocument({
 		.select("id, status")
 		.single()
 
-	if (insertError) throw insertError
+	if (insertError) {
+		console.error("[addDocument] Failed to insert document", insertError)
+		// Check if it's a duplicate key error (race condition)
+		if (insertError.code === "23505" || insertError.message.includes("duplicate")) {
+			// Document was created by another request - try to find it
+			if (isUrl && inferredUrl) {
+				const { data: existing } = await client
+					.from("documents")
+					.select("id, status")
+					.eq("org_id", organizationId)
+					.eq("url", inferredUrl)
+					.order("created_at", { ascending: false })
+					.limit(1)
+					.maybeSingle()
+				
+				if (existing) {
+					// Try to ensure it's in the right space
+					try {
+						await ensureDocumentInSpace(existing.id, spaceId)
+					} catch {
+						// Ignore errors here
+					}
+					return {
+						id: existing.id,
+						status: existing.status ?? "queued",
+						alreadyExists: true,
+						addedToProject: false,
+					}
+				}
+			}
+		}
+		throw insertError
+	}
 
 	const docId = document.id
 
 	// NOTE: No longer using documents_to_spaces junction table
 	// Space is set via space_id in the document INSERT above
 
-	const { data: jobRecord, error: jobError } = await client
+	// Check if job already exists (race condition protection)
+	const { data: existingJob } = await client
 		.from("ingestion_jobs")
-		.insert({
-			document_id: docId,
-			org_id: organizationId,
-			status: "queued",
-			payload: {
-				containerTags: parsed.containerTags ?? [containerTag],
-				content: rawContent,
-				metadata,
-				url: inferredUrl,
-				type: inferredType,
-				source: inferredSource,
-			},
-		})
 		.select("id")
-		.single()
-	if (jobError) throw jobError
+		.eq("document_id", docId)
+		.eq("status", "queued")
+		.maybeSingle()
 
-	const jobId = jobRecord?.id
+	let jobId: string | undefined
+	if (!existingJob) {
+		const { data: jobRecord, error: jobError } = await client
+			.from("ingestion_jobs")
+			.insert({
+				document_id: docId,
+				org_id: organizationId,
+				status: "queued",
+				payload: {
+					containerTags: parsed.containerTags ?? [containerTag],
+					content: rawContent,
+					metadata,
+					url: inferredUrl,
+					type: inferredType,
+					source: inferredSource,
+				},
+			})
+			.select("id")
+			.single()
+		
+		if (jobError) {
+			console.error("[addDocument] Failed to create job", jobError)
+			// If job creation fails, try to clean up the document
+			// But don't fail the request - the document exists and can be processed later
+			console.warn("[addDocument] Document created but job creation failed", {
+				documentId: docId,
+				error: jobError.message,
+			})
+		} else {
+			jobId = jobRecord?.id
+		}
+	} else {
+		jobId = existingJob.id
+	}
 
 	if (RUN_SYNC_INGESTION && jobId) {
 		console.log("[addDocument] Starting synchronous ingestion", {
@@ -1402,13 +1527,20 @@ export async function findDocumentRelatedLinks(
 		.single()
 
 	if (fetchError || !document) {
-		console.error("[findDocumentRelatedLinks] Failed to fetch document:", fetchError)
+		console.error(
+			"[findDocumentRelatedLinks] Failed to fetch document:",
+			fetchError,
+		)
 		return { success: false, relatedLinks: [], error: "Document not found" }
 	}
 
 	const content = document.content || ""
 	if (content.length < 100) {
-		return { success: false, relatedLinks: [], error: "Content too short for analysis" }
+		return {
+			success: false,
+			relatedLinks: [],
+			error: "Content too short for analysis",
+		}
 	}
 
 	// Find related links
@@ -1420,7 +1552,9 @@ export async function findDocumentRelatedLinks(
 		return { success: true, relatedLinks: [] }
 	}
 
-	console.log(`[findDocumentRelatedLinks] Found ${relatedLinks.length} related links`)
+	console.log(
+		`[findDocumentRelatedLinks] Found ${relatedLinks.length} related links`,
+	)
 
 	// Update document raw with related links
 	const existingRaw = (document.raw as Record<string, unknown>) || {}
@@ -1435,8 +1569,15 @@ export async function findDocumentRelatedLinks(
 		.eq("id", documentId)
 
 	if (updateError) {
-		console.error("[findDocumentRelatedLinks] Failed to update document:", updateError)
-		return { success: false, relatedLinks, error: "Failed to save related links" }
+		console.error(
+			"[findDocumentRelatedLinks] Failed to update document:",
+			updateError,
+		)
+		return {
+			success: false,
+			relatedLinks,
+			error: "Failed to save related links",
+		}
 	}
 
 	console.log("[findDocumentRelatedLinks] Successfully saved related links")

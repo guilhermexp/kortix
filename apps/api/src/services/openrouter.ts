@@ -11,6 +11,7 @@ export async function openRouterChat(
 		model?: string
 		temperature?: number
 		maxTokens?: number
+		timeoutMs?: number
 		refererUrl?: string
 		siteTitle?: string
 	},
@@ -24,6 +25,7 @@ export async function openRouterChat(
 	const model = options?.model || env.OPENROUTER_MODEL || "x-ai/grok-4-fast"
 	const temperature = options?.temperature ?? env.OPENROUTER_TEMPERATURE ?? 0.2
 	const maxTokens = options?.maxTokens ?? env.OPENROUTER_MAX_TOKENS ?? 1024
+	const timeoutMs = options?.timeoutMs ?? 12_000
 
 	try {
 		const headers: Record<string, string> = {
@@ -46,6 +48,7 @@ export async function openRouterChat(
 			method: "POST",
 			headers,
 			body: JSON.stringify(body),
+			signal: AbortSignal.timeout(timeoutMs),
 		})
 
 		if (!res.ok) {

@@ -321,7 +321,23 @@ export class PreviewGeneratorService
 			}
 			const imageUrl = await this.imageExtractor.extract(extraction)
 			if (!imageUrl) return { success: false, error: { code: "NO_IMAGES_FOUND", message: "No images found" } }
-			const meta = await this.imageExtractor.getImageMetadata(imageUrl)
+			const meta = await (async () => {
+				try {
+					return await this.imageExtractor.getImageMetadata(imageUrl)
+				} catch {
+					const url = imageUrl.toLowerCase()
+					const format = url.endsWith(".svg")
+						? "svg"
+						: url.endsWith(".webp")
+							? "webp"
+							: url.endsWith(".gif")
+								? "gif"
+								: url.endsWith(".jpg") || url.endsWith(".jpeg")
+									? "jpeg"
+									: "png"
+					return { url: imageUrl, format, isVector: format === "svg" } as any
+				}
+			})()
 			return {
 				success: true,
 				data: {
@@ -553,8 +569,24 @@ export class PreviewGeneratorService
 				return null
 			}
 
-			// Get image metadata
-			const metadata = await this.imageExtractor.getImageMetadata(imageUrl)
+			// Get image metadata (best-effort) — a 429 here shouldn't fail the entire preview chain
+			const metadata = await (async () => {
+				try {
+					return await this.imageExtractor.getImageMetadata(imageUrl)
+				} catch {
+					const url = imageUrl.toLowerCase()
+					const format = url.endsWith(".svg")
+						? "svg"
+						: url.endsWith(".webp")
+							? "webp"
+							: url.endsWith(".gif")
+								? "gif"
+								: url.endsWith(".jpg") || url.endsWith(".jpeg")
+									? "jpeg"
+									: "png"
+					return { url: imageUrl, format, isVector: format === "svg" } as any
+				}
+			})()
 
 			return {
 				url: imageUrl,

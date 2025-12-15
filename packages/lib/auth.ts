@@ -8,6 +8,10 @@ const API_BASE = BACKEND_URL
 const AUTH_TOKEN_KEY = "kortix_auth_token"
 const AUTH_REFRESH_KEY = "kortix_refresh_token"
 
+// Track if we're currently refreshing to avoid multiple simultaneous refreshes
+let isRefreshing = false
+let refreshPromise: Promise<boolean> | null = null
+
 // Store tokens in localStorage for persistence
 function storeTokens(accessToken: string, refreshToken?: string) {
 	if (typeof window !== "undefined") {
@@ -32,11 +36,70 @@ export function getStoredToken(): string | null {
 	return null
 }
 
-async function request(path: string, init: RequestInit = {}) {
+function getStoredRefreshToken(): string | null {
+	if (typeof window !== "undefined") {
+		return localStorage.getItem(AUTH_REFRESH_KEY)
+	}
+	return null
+}
+
+/**
+ * Attempt to refresh the session using the stored refresh token.
+ * Returns true if successful, false otherwise.
+ */
+async function tryRefreshSession(): Promise<boolean> {
+	// If already refreshing, wait for that to complete
+	if (isRefreshing && refreshPromise) {
+		return refreshPromise
+	}
+
+	const refreshToken = getStoredRefreshToken()
+	if (!refreshToken) {
+		return false
+	}
+
+	isRefreshing = true
+	refreshPromise = (async () => {
+		try {
+			const response = await fetch(`${API_BASE}/api/auth/refresh`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ refresh_token: refreshToken }),
+				credentials: "include",
+			})
+
+			if (!response.ok) {
+				// Refresh failed - clear tokens and redirect to login
+				clearTokens()
+				return false
+			}
+
+			const data = await response.json()
+			if (data?.session?.access_token) {
+				storeTokens(data.session.access_token, data.session.refresh_token)
+				return true
+			}
+			return false
+		} catch {
+			return false
+		} finally {
+			isRefreshing = false
+			refreshPromise = null
+		}
+	})()
+
+	return refreshPromise
+}
+
+async function request(
+	path: string,
+	init: RequestInit = {},
+	retryOnAuthError = true,
+) {
 	const token = getStoredToken()
 	const headers: Record<string, string> = {
 		"Content-Type": "application/json",
-		...(init.headers as Record<string, string> ?? {}),
+		...((init.headers as Record<string, string>) ?? {}),
 	}
 
 	// Add Authorization header if we have a token
@@ -49,6 +112,22 @@ async function request(path: string, init: RequestInit = {}) {
 		headers,
 		credentials: "include",
 	})
+
+	// If we get a 401 or 403, try to refresh the token and retry
+	if (
+		(response.status === 401 || response.status === 403) &&
+		retryOnAuthError
+	) {
+		const refreshed = await tryRefreshSession()
+		if (refreshed) {
+			// Retry the request with the new token
+			return request(path, init, false)
+		}
+		// Refresh failed - redirect to login
+		if (typeof window !== "undefined" && !path.includes("/auth/")) {
+			window.location.href = "/login"
+		}
+	}
 
 	if (!response.ok) {
 		let message = "Request failed"
@@ -85,10 +164,10 @@ export async function signUp(input: {
 	password: string
 	name?: string
 }) {
-	const response = await request("/api/auth/sign-up", {
+	const response = (await request("/api/auth/sign-up", {
 		method: "POST",
 		body: JSON.stringify(input),
-	}) as AuthResponse
+	})) as AuthResponse
 
 	// Store tokens from Supabase Auth response
 	if (response?.session?.access_token) {
@@ -99,10 +178,10 @@ export async function signUp(input: {
 }
 
 export async function signIn(input: { email: string; password: string }) {
-	const response = await request("/api/auth/sign-in", {
+	const response = (await request("/api/auth/sign-in", {
 		method: "POST",
 		body: JSON.stringify(input),
-	}) as AuthResponse
+	})) as AuthResponse
 
 	// Store tokens from Supabase Auth response
 	if (response?.session?.access_token) {

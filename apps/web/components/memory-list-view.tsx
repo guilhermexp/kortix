@@ -947,9 +947,17 @@ export const MemoryListView = ({
     <div className="h-full overflow-hidden relative bg-background">
       {error ? (
         <div className="h-full flex items-center justify-center p-4">
-          <div className="rounded-xl overflow-hidden">
+          <div className="rounded-xl overflow-hidden max-w-md">
             <div className="relative z-10 px-6 py-4 text-foreground">
-              Error loading documents: {error.message}
+              <div className="text-lg font-semibold mb-2">Error loading documents</div>
+              <div className="text-sm text-muted-foreground mb-4">
+                {error.message || "An unexpected error occurred"}
+              </div>
+              {(error as any)?.status === 401 || (error as any)?.status === 403 ? (
+                <div className="text-xs text-muted-foreground">
+                  Please refresh the page or sign in again.
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

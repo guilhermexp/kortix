@@ -301,6 +301,16 @@ const MemoryGraphPage = () => {
 
         if (response.error) {
           const { status, message } = parseStatusAndMessage(response.error);
+          
+          // Handle authentication errors
+          if (status === 401 || status === 403) {
+            const authError = new Error(
+              message || "Authentication failed. Please sign in again.",
+            );
+            (authError as any).status = status;
+            throw authError;
+          }
+          
           if (isRateLimitError(status, message)) {
             markRateLimited();
             const rateError = new Error(
@@ -312,9 +322,25 @@ const MemoryGraphPage = () => {
           throw new Error(message || "Failed to fetch documents");
         }
 
+        // Validate response structure
+        if (!response.data || !response.data.documents) {
+          console.error("Invalid response structure:", response);
+          throw new Error("Invalid response from server");
+        }
+
         return response.data;
       } catch (err) {
         const { status, message } = parseStatusAndMessage(err);
+        
+        // Handle authentication errors - don't retry
+        if (status === 401 || status === 403) {
+          console.error("Authentication error:", message);
+          // Don't mark as rate limited for auth errors
+          const authError = new Error(message || "Authentication failed");
+          (authError as any).status = status;
+          throw authError;
+        }
+        
         if (isRateLimitError(status, message)) {
           markRateLimited();
         }
@@ -334,16 +360,22 @@ const MemoryGraphPage = () => {
       }
       return undefined;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes
     refetchInterval: effectiveRefetchInterval, // Avoid hammering the API; pause in background/when optimistic docs exist
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
     retry: (failureCount, error) => {
       const status = (error as any)?.status ?? (error as any)?.statusCode;
-      if (status === 429) return false;
+      // Don't retry on authentication errors (401, 403) or rate limits (429)
+      if (status === 401 || status === 403 || status === 429) {
+        return false;
+      }
+      // Limit retries to prevent infinite loading
       return failureCount < 2;
     },
     retryDelay: (attemptIndex) => Math.min(5000, 1000 * (attemptIndex + 1)),
+    // Add timeout to prevent infinite loading
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
   });
 
   // Pause polling when optimistic documents are present so they stay visible until replaced

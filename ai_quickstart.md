@@ -337,16 +337,14 @@ update_rls_policies_for_supabase_auth
 
 ```typescript
 // apps/api/src/supabase.ts
+import { createClientForSession, supabaseAdmin } from "./supabase";
 
-// For user-facing queries - ALWAYS use this
-const supabase = createScopedSupabase(organizationId, userId);
+// For request-scoped (user-facing) queries - use this
+const supabase = createClientForSession(session);
 
-// Sets headers that RLS policies check:
-// x-kortix-organization: <org_id>
-// x-kortix-user: <user_id>
-
-// For admin operations only (bypasses RLS)
-import { supabaseAdmin } from "./supabase";
+// For admin/maintenance operations only (bypasses RLS)
+// ⚠️ Avoid in request handlers unless absolutely required.
+const admin = supabaseAdmin;
 ```
 
 **RLS Functions (in database):**
@@ -436,7 +434,8 @@ VOYAGE_API_KEY=xxx                 # Alternative embeddings
 
 # URLs
 NEXT_PUBLIC_APP_URL=http://localhost:3001
-NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_BACKEND_URL=http://localhost:4000
+BACKEND_URL_INTERNAL=http://localhost:4000
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
 ```
 
@@ -501,7 +500,7 @@ The Claude Agent SDK integration provides these tools:
 |-------|----------|
 | "Unauthorized" on requests | Check `kortix_session` cookie, verify session in DB |
 | Documents not loading after rename | Clear browser cookies, logout/login |
-| RLS blocking queries | Use `createScopedSupabase()`, not `supabaseAdmin` |
+| RLS blocking queries | Prefer `createClientForSession()` (avoid `supabaseAdmin` in request handlers) |
 | RLS infinite recursion | Check policies don't self-reference (use SECURITY DEFINER functions) |
 | Documents stuck processing | Check worker is running, check `ingestion_jobs` errors, monitor timeout |
 | Embeddings failing | Verify `GOOGLE_API_KEY` or `VOYAGE_API_KEY` |

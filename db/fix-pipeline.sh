@@ -4,8 +4,13 @@ set -e
 echo "🔍 VERIFICANDO PIPELINE DE INGESTÃO"
 echo "===================================="
 
-# Database URL
-DB_URL="postgresql://postgres:81883311varela0045@db.lrqjdzqyaoiovnzfbnrj.supabase.co:5432/postgres"
+# Database URL (never hardcode credentials in repo)
+DB_URL="${DB_URL:-${DATABASE_URL:-}}"
+if [ -z "${DB_URL}" ]; then
+  echo "❌ Missing DB connection string."
+  echo "   Set DB_URL or DATABASE_URL (e.g. postgresql://user:pass@host:5432/dbname)"
+  exit 1
+fi
 
 echo ""
 echo "1️⃣ Verificando função RPC finalize_document_atomic..."
@@ -59,7 +64,7 @@ fi
 
 echo ""
 echo "5️⃣ Verificando MarkItDown..."
-MARKITDOWN_PATH="/Users/guilhermevarela/Public/kortix/apps/markitdown/.venv/bin/python"
+MARKITDOWN_PATH="${MARKITDOWN_PATH:-"$(pwd)/apps/markitdown/.venv/bin/python"}"
 if [ -f "$MARKITDOWN_PATH" ]; then
     VERSION=$("$MARKITDOWN_PATH" -m markitdown --version 2>&1 | grep -o "markitdown [0-9.]*")
     echo "✅ MarkItDown instalado: $VERSION"

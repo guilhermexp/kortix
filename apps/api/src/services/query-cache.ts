@@ -7,6 +7,7 @@
 
 interface CacheEntry<T> {
 	data: T
+	/** Last access time (used for TTL + LRU ordering) */
 	timestamp: number
 	hits: number
 }
@@ -41,7 +42,8 @@ class QueryCache {
 			return null
 		}
 
-		const age = Date.now() - entry.timestamp
+		const now = Date.now()
+		const age = now - entry.timestamp
 
 		// Check if expired
 		if (age > this.ttl) {
@@ -50,8 +52,11 @@ class QueryCache {
 			return null
 		}
 
-		// Update hit count and return data
+		// Update hit count + access time, and move to the end (MRU)
 		entry.hits++
+		entry.timestamp = now
+		this.cache.delete(key)
+		this.cache.set(key, entry)
 		this.hits++
 		return entry.data as T
 	}
@@ -60,6 +65,11 @@ class QueryCache {
 	 * Store data in cache
 	 */
 	set<T>(key: string, data: T): void {
+		// Ensure key is treated as most-recently-used
+		if (this.cache.has(key)) {
+			this.cache.delete(key)
+		}
+
 		// If cache is full, remove least recently used entry
 		if (this.cache.size >= this.maxSize) {
 			this.evictLRU()
@@ -105,27 +115,8 @@ class QueryCache {
 	 * Evict least recently used entry
 	 */
 	private evictLRU(): void {
-		let oldestKey: string | null = null
-		let oldestTime = Number.POSITIVE_INFINITY
-		let lowestHits = Number.POSITIVE_INFINITY
-
-		for (const [key, entry] of this.cache.entries()) {
-			// Prioritize entries with fewer hits and older timestamp
-			const score = entry.hits * 1000 + (Date.now() - entry.timestamp)
-
-			if (
-				score < oldestTime ||
-				(score === oldestTime && entry.hits < lowestHits)
-			) {
-				oldestKey = key
-				oldestTime = score
-				lowestHits = entry.hits
-			}
-		}
-
-		if (oldestKey) {
-			this.cache.delete(oldestKey)
-		}
+		const oldestKey = this.cache.keys().next().value as string | undefined
+		if (oldestKey !== undefined) this.cache.delete(oldestKey)
 	}
 
 
@@ -163,43 +154,54 @@ export const searchCache = new QueryCache({
 	ttl: 5 * 60 * 1000, // 5 minutes TTL for search results
 })
 
-// Cleanup interval - run every 15 minutes in production, 30 minutes in development
-// Increased to reduce CPU overhead from frequent cache iterations
-const cleanupInterval = process.env.NODE_ENV === 'production' ? 15 * 60 * 1000 : 30 * 60 * 1000
-setInterval(() => {
-	const removedDocs = documentListCache.cleanup()
-	const removedLists = documentCache.cleanup()
-	const removedSearch = searchCache.cleanup()
+declare global {
+	// eslint-disable-next-line no-var
+	var __KORTIX_QUERY_CACHE_INTERVALS_STARTED: boolean | undefined
+}
 
-	// Only log if we actually removed something
-	if (removedDocs + removedLists + removedSearch > 0) {
-		console.log(
-			`[Cache] Cleaned up ${removedDocs + removedLists + removedSearch} expired entries`,
+if (!globalThis.__KORTIX_QUERY_CACHE_INTERVALS_STARTED) {
+	globalThis.__KORTIX_QUERY_CACHE_INTERVALS_STARTED = true
+
+	// Cleanup interval - run every 15 minutes in production, 30 minutes in development
+	// Increased to reduce CPU overhead from frequent cache iterations
+	const cleanupInterval =
+		process.env.NODE_ENV === "production" ? 15 * 60 * 1000 : 30 * 60 * 1000
+	setInterval(() => {
+		const removedLists = documentListCache.cleanup()
+		const removedDocs = documentCache.cleanup()
+		const removedSearch = searchCache.cleanup()
+
+		// Only log if we actually removed something
+		if (removedDocs + removedLists + removedSearch > 0) {
+			console.log(
+				`[Cache] Cleaned up ${removedDocs + removedLists + removedSearch} expired entries`,
+			)
+		}
+	}, cleanupInterval)
+
+	// Log cache stats only in production and only when there's activity
+	if (process.env.NODE_ENV === "production") {
+		setInterval(
+			() => {
+				const stats = {
+					documentList: documentListCache.getStats(),
+					document: documentCache.getStats(),
+					search: searchCache.getStats(),
+				}
+
+				// Only log if cache has been used (hits + misses > 0)
+				const hasActivity =
+					stats.documentList.hits + stats.documentList.misses > 0 ||
+					stats.document.hits + stats.document.misses > 0 ||
+					stats.search.hits + stats.search.misses > 0
+
+				if (hasActivity) {
+					console.log("[Cache] Stats:", stats)
+				}
+			},
+			10 * 60 * 1000, // Every 10 minutes in production
 		)
 	}
-}, cleanupInterval)
-
-// Log cache stats only in production and only when there's activity
-if (process.env.NODE_ENV === 'production') {
-	setInterval(
-		() => {
-			const stats = {
-				documentList: documentListCache.getStats(),
-				document: documentCache.getStats(),
-				search: searchCache.getStats(),
-			}
-
-			// Only log if cache has been used (hits + misses > 0)
-			const hasActivity = stats.documentList.hits + stats.documentList.misses > 0 ||
-				stats.document.hits + stats.document.misses > 0 ||
-				stats.search.hits + stats.search.misses > 0
-
-			if (hasActivity) {
-				console.log("[Cache] Stats:", stats)
-			}
-		},
-		10 * 60 * 1000, // Every 10 minutes in production
-	)
 }
 
 /**
