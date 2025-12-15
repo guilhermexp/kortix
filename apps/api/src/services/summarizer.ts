@@ -215,10 +215,13 @@ export async function summarizeYoutubeVideo(
 		if (transcriptResult && transcriptResult.markdown) {
 			text = transcriptResult.markdown.trim()
 			title = transcriptResult.metadata?.title || null
-			console.log("[summarizeYoutubeVideo] Using transcript from timedtext API", {
-				length: text.length,
-				title,
-			})
+			console.log(
+				"[summarizeYoutubeVideo] Using transcript from timedtext API",
+				{
+					length: text.length,
+					title,
+				},
+			)
 		}
 
 		// If no transcript or too short, we can't generate a good summary
@@ -349,10 +352,13 @@ export async function generateCategoryTags(
 
 		const raw =
 			(
-				await openRouterChat([
-					{ role: "system", content: "You generate concise topical tags." },
-					{ role: "user", content: prompt },
-				])
+				await openRouterChat(
+					[
+						{ role: "system", content: "You generate concise topical tags." },
+						{ role: "user", content: prompt },
+					],
+					{ maxTokens: 160, timeoutMs: 8_000 },
+				)
 			)?.trim() || ""
 		if (!raw) return fallback()
 

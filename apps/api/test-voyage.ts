@@ -7,7 +7,7 @@ const API_URL = "https://api.voyageai.com/v1/embeddings"
 
 async function testVoyageAI() {
 	console.log("Testing Voyage AI API...")
-	console.log("API Key:", VOYAGE_API_KEY.substring(0, 15) + "...")
+	console.log("API Key set:", Boolean(VOYAGE_API_KEY))
 
 	try {
 		const response = await fetch(API_URL, {

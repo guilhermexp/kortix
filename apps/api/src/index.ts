@@ -35,6 +35,7 @@ import { rateLimiter } from "./middleware/rate-limiter";
 import { CreateApiKeySchema, createApiKeyHandler } from "./routes/api-keys";
 import {
   getSession as getSessionInfo,
+  refreshSession,
   signIn,
   signOut,
   signUp,
@@ -174,6 +175,7 @@ app.get("/", (c) =>
 app.post("/api/auth/sign-up", async (c) => signUp(c));
 app.post("/api/auth/sign-in", async (c) => signIn(c));
 app.post("/api/auth/sign-out", async (c) => signOut(c));
+app.post("/api/auth/refresh", async (c) => refreshSession(c));
 app.get("/api/auth/session", async (c) => getSessionInfo(c));
 app.post("/api/auth/password/reset/request", async (c) =>
   requestPasswordReset(c),

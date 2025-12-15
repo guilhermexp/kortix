@@ -1,6 +1,17 @@
 import type { NextRequest } from "next/server"
 
-const API_URL = process.env.API_INTERNAL_URL || "http://localhost:4000"
+function normalizeBaseUrl(value: string | undefined): string | null {
+	const trimmed = value?.trim()
+	if (!trimmed) return null
+	return trimmed.replace(/\/$/, "")
+}
+
+// Prefer internal service URL for SSR/server routes (avoid NEXT_PUBLIC_* empty-string config).
+const API_URL =
+	normalizeBaseUrl(process.env.BACKEND_URL_INTERNAL) ??
+	normalizeBaseUrl(process.env.API_INTERNAL_URL) ??
+	normalizeBaseUrl(process.env.NEXT_PUBLIC_BACKEND_URL) ??
+	"http://localhost:4000"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -52,7 +63,9 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
 
 	const url = `${API_URL}/v3/${path}${queryString}`
 
-	console.log(`[V3 PROXY] ${request.method} /v3/${path} -> ${url}`)
+	if (process.env.DEBUG_V3_PROXY === "1") {
+		console.debug(`[V3 PROXY] ${request.method} /v3/${path} -> ${url}`)
+	}
 
 	const headers = new Headers()
 

@@ -16,6 +16,109 @@ const SESSION_COOKIE = "kortix_session"
 const SUPABASE_AUTH_COOKIE_PREFIX = "sb-"
 
 /**
+ * Extract access token from request headers and cookies
+ * Shared utility to avoid duplication between auth.ts and session.ts
+ */
+export function extractAccessToken(
+	request: Request,
+	cookies: Record<string, string>,
+): string | null {
+	const authHeader = request.headers.get("authorization")
+	if (authHeader?.startsWith("Bearer ")) {
+		return authHeader.slice(7)
+	}
+
+	// Check kortix_session cookie for JWT token
+	const kortixSession = cookies[SESSION_COOKIE]
+	if (kortixSession && kortixSession.startsWith("eyJ")) {
+		// Looks like a JWT token (starts with base64 encoded JSON header)
+		return kortixSession
+	}
+
+	// Try to find Supabase auth cookies
+	// Supabase stores tokens in cookies like sb-<project-ref>-auth-token
+	for (const [key, value] of Object.entries(cookies)) {
+		if (
+			key.startsWith(SUPABASE_AUTH_COOKIE_PREFIX) &&
+			key.includes("-auth-token")
+		) {
+			try {
+				const parsed = JSON.parse(value)
+				return parsed.access_token || parsed[0]?.access_token || null
+			} catch {
+				// Not JSON, try as raw token
+				return value
+			}
+		}
+	}
+
+	return null
+}
+
+type CachedAuthSession = {
+	session: SessionContext
+	expiresAtMs: number
+}
+
+// In-memory cache to avoid calling Supabase Auth on every request during polling-heavy UIs.
+// Keyed by access token; short TTL only (security-sensitive).
+const authSessionCache = new Map<string, CachedAuthSession>()
+const AUTH_CACHE_MAX_SIZE = 2000
+const AUTH_CACHE_MAX_TTL_MS = 60_000
+
+function base64UrlDecode(input: string): string {
+	const normalized = input.replace(/-/g, "+").replace(/_/g, "/")
+	const pad =
+		normalized.length % 4 === 0 ? "" : "=".repeat(4 - (normalized.length % 4))
+	return Buffer.from(normalized + pad, "base64").toString("utf8")
+}
+
+function getJwtExpMs(token: string): number | null {
+	try {
+		const parts = token.split(".")
+		if (parts.length < 2) return null
+		const payloadJson = base64UrlDecode(parts[1] ?? "")
+		const payload = JSON.parse(payloadJson) as { exp?: number }
+		if (typeof payload.exp !== "number") return null
+		return payload.exp * 1000
+	} catch {
+		return null
+	}
+}
+
+function getCachedSession(accessToken: string): SessionContext | null {
+	const cached = authSessionCache.get(accessToken)
+	if (!cached) return null
+	if (Date.now() >= cached.expiresAtMs) {
+		authSessionCache.delete(accessToken)
+		return null
+	}
+	return cached.session
+}
+
+function setCachedSession(accessToken: string, session: SessionContext): void {
+	// Basic LRU: refresh insertion order
+	if (authSessionCache.has(accessToken)) {
+		authSessionCache.delete(accessToken)
+	}
+	const now = Date.now()
+	const jwtExp = getJwtExpMs(accessToken)
+	const ttlMs = Math.min(
+		AUTH_CACHE_MAX_TTL_MS,
+		typeof jwtExp === "number"
+			? Math.max(0, jwtExp - now)
+			: AUTH_CACHE_MAX_TTL_MS,
+	)
+	authSessionCache.set(accessToken, { session, expiresAtMs: now + ttlMs })
+
+	// Evict oldest if needed
+	if (authSessionCache.size > AUTH_CACHE_MAX_SIZE) {
+		const oldestKey = authSessionCache.keys().next().value as string | undefined
+		if (oldestKey) authSessionCache.delete(oldestKey)
+	}
+}
+
+/**
  * Resolve session from request - supports both:
  * 1. Supabase Auth (JWT in cookies) - NEW
  * 2. Legacy custom session (kortix_session cookie) - DEPRECATED
@@ -43,40 +146,18 @@ async function resolveSupabaseAuthSession(
 	cookies: Record<string, string>,
 ): Promise<SessionContext | null> {
 	try {
-		// Look for Supabase auth token in Authorization header or cookies
-		const authHeader = request.headers.get("authorization")
-		let accessToken: string | null = null
+		const debugAuth = process.env.DEBUG_AUTH === "1"
 
-		if (authHeader?.startsWith("Bearer ")) {
-			accessToken = authHeader.slice(7)
-		} else {
-			// First, check kortix_session cookie (may contain JWT token)
-			const kortixSession = cookies[SESSION_COOKIE]
-			if (kortixSession && kortixSession.startsWith("eyJ")) {
-				// Looks like a JWT token (starts with base64 encoded JSON header)
-				accessToken = kortixSession
-			} else {
-				// Try to find Supabase auth cookies
-				// Supabase stores tokens in cookies like sb-<project-ref>-auth-token
-				for (const [key, value] of Object.entries(cookies)) {
-					if (key.startsWith(SUPABASE_AUTH_COOKIE_PREFIX) && key.includes("-auth-token")) {
-						try {
-							const parsed = JSON.parse(value)
-							accessToken = parsed.access_token || parsed[0]?.access_token
-							if (accessToken) break
-						} catch {
-							// Not JSON, try as raw token
-							accessToken = value
-							break
-						}
-					}
-				}
-			}
-		}
+		// Extract access token using shared utility
+		const accessToken = extractAccessToken(request, cookies)
 
 		if (!accessToken) {
 			return null
 		}
+
+		// Fast path: reuse recently-validated auth/session mapping.
+		const cached = getCachedSession(accessToken)
+		if (cached) return cached
 
 		// Verify the token with Supabase
 		const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
@@ -86,14 +167,22 @@ async function resolveSupabaseAuthSession(
 			},
 		})
 
-		const { data: { user }, error } = await supabase.auth.getUser()
+		const {
+			data: { user },
+			error,
+		} = await supabase.auth.getUser()
 
 		if (error || !user) {
-			console.log("[resolveSupabaseAuthSession] getUser failed:", error?.message || "no user")
+			if (debugAuth)
+				console.debug(
+					"[resolveSupabaseAuthSession] getUser failed:",
+					error?.message || "no user",
+				)
 			return null
 		}
 
-		console.log("[resolveSupabaseAuthSession] User found:", user.id, user.email)
+		if (debugAuth)
+			console.debug("[resolveSupabaseAuthSession] User authenticated:", user.id)
 
 		// Get internal user and organization
 		const { data: internalUser, error: userError } = await supabaseAdmin
@@ -119,24 +208,28 @@ async function resolveSupabaseAuthSession(
 					.eq("id", userByEmail.id)
 
 				const organizationId = await ensureMembershipForUser(userByEmail.id)
-				return {
+				const session = {
 					organizationId,
 					userId: user.id,
 					accessToken,
 					internalUserId: userByEmail.id,
 				}
+				setCachedSession(accessToken, session)
+				return session
 			}
 			return null
 		}
 
 		const organizationId = await ensureMembershipForUser(internalUser.id)
 
-		return {
+		const session = {
 			organizationId,
 			userId: user.id,
 			accessToken,
 			internalUserId: internalUser.id,
 		}
+		setCachedSession(accessToken, session)
+		return session
 	} catch (error) {
 		console.warn("resolveSupabaseAuthSession failed", error)
 		return null

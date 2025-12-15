@@ -4,6 +4,7 @@ import type { Context } from "hono"
 import { z } from "zod"
 import { env } from "../env"
 import { ensureMembershipForUser, supabaseAdmin } from "../supabase"
+import { extractAccessToken } from "../session"
 import { parseCookies, serializeCookie } from "../utils/cookies"
 import { hashPassword, verifyPassword } from "../utils/password"
 
@@ -229,6 +230,55 @@ async function legacySignIn(c: Context, user: { id: string; password_hash: strin
 	return c.json({ ok: true })
 }
 
+/**
+ * Refresh session using refresh token
+ */
+export async function refreshSession(c: Context) {
+	let body: { refresh_token?: string } = {}
+	try {
+		body = await c.req.json()
+	} catch {
+		// Body is optional - we can also get refresh token from stored session
+	}
+
+	const refreshToken = body.refresh_token
+
+	if (!refreshToken) {
+		return c.json({ error: { message: "Refresh token required" } }, 400)
+	}
+
+	// Create auth client for this request
+	const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+		auth: { persistSession: false },
+	})
+
+	// Use refresh token to get new session
+	const { data, error } = await supabase.auth.refreshSession({
+		refresh_token: refreshToken,
+	})
+
+	if (error || !data.session) {
+		console.error("refreshSession: failed", error)
+		return c.json({ error: { message: "Failed to refresh session" } }, 401)
+	}
+
+	// Set new session cookie
+	setSessionCookie(c, data.session.access_token)
+
+	return c.json({
+		ok: true,
+		session: {
+			access_token: data.session.access_token,
+			refresh_token: data.session.refresh_token,
+			expires_at: data.session.expires_at,
+		},
+		user: data.user ? {
+			id: data.user.id,
+			email: data.user.email,
+		} : null,
+	})
+}
+
 export async function signOut(c: Context) {
 	const cookies = parseCookies(c.req.header("cookie"))
 
@@ -256,35 +306,9 @@ export async function signOut(c: Context) {
 
 export async function getSession(c: Context) {
 	const cookies = parseCookies(c.req.header("cookie"))
-	const authHeader = c.req.header("authorization")
 
-	// Try Supabase Auth first
-	let accessToken: string | null = null
-
-	if (authHeader?.startsWith("Bearer ")) {
-		accessToken = authHeader.slice(7)
-	} else {
-		// First check kortix_session cookie for JWT token
-		const kortixSession = cookies[SESSION_COOKIE]
-		if (kortixSession && kortixSession.startsWith("eyJ")) {
-			// Looks like a JWT token (starts with base64 encoded JSON header)
-			accessToken = kortixSession
-		} else {
-			// Look for Supabase auth cookies
-			for (const [key, value] of Object.entries(cookies)) {
-				if (key.startsWith("sb-") && key.includes("-auth-token")) {
-					try {
-						const parsed = JSON.parse(value)
-						accessToken = parsed.access_token || parsed[0]?.access_token
-						if (accessToken) break
-					} catch {
-						accessToken = value
-						break
-					}
-				}
-			}
-		}
-	}
+	// Try Supabase Auth first - use shared utility to extract token
+	const accessToken = extractAccessToken(c.req.raw, cookies)
 
 	if (accessToken) {
 		const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {

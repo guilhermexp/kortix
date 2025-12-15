@@ -39,14 +39,17 @@ export async function summarizeWithOpenRouter(
 				model: "x-ai/grok-4-fast",
 			},
 		)
-		const answer = await openRouterChat([
-			{
-				role: "system",
-				content:
-					"Você é um assistente que gera resumos estruturados em Markdown.",
-			},
-			{ role: "user", content: textPrompt },
-		])
+		const answer = await openRouterChat(
+			[
+				{
+					role: "system",
+					content:
+						"Você é um assistente que gera resumos estruturados em Markdown.",
+				},
+				{ role: "user", content: textPrompt },
+			],
+			{ maxTokens: 640, timeoutMs: 10_000 },
+		)
 		if (answer && answer.trim()) {
 			console.log(
 				"[OpenRouterFallback] Text-based summary generated successfully",
@@ -71,14 +74,17 @@ export async function summarizeWithOpenRouter(
 				model: "x-ai/grok-4-fast",
 			},
 		)
-		const answer = await openRouterChat([
-			{
-				role: "system",
-				content:
-					"Você é um assistente que gera resumos estruturados em Markdown.",
-			},
-			{ role: "user", content: urlPrompt },
-		])
+		const answer = await openRouterChat(
+			[
+				{
+					role: "system",
+					content:
+						"Você é um assistente que gera resumos estruturados em Markdown.",
+				},
+				{ role: "user", content: urlPrompt },
+			],
+			{ maxTokens: 640, timeoutMs: 10_000 },
+		)
 		if (answer && answer.trim()) {
 			console.log(
 				"[OpenRouterFallback] URL-based summary generated successfully",
