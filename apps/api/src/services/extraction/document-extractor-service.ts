@@ -278,12 +278,12 @@ export class DocumentExtractorService
 	 * Register all configured extractors
 	 */
 	private async registerExtractors(): Promise<void> {
-		// URL extractor (uses MarkItDown and Puppeteer)
+		// URL extractor (uses MarkItDown)
 		if (this.config.url?.enabled !== false) {
 			const extractor = createURLExtractor()
 			await extractor.initialize()
 			this.extractors.set("url", extractor)
-			this.logger.debug("Registered URL extractor (MarkItDown + Puppeteer)")
+			this.logger.debug("Registered URL extractor (MarkItDown)")
 		}
 
 		// YouTube extractor
@@ -554,7 +554,7 @@ export function createDocumentExtractorService(
 ): DocumentExtractorService {
 	const defaultConfig: ExtractorServiceConfig = {
 		url: {
-			enabled: true, // URL extractor using MarkItDown and Puppeteer
+			enabled: true, // URL extractor using MarkItDown
 			timeout: 30000,
 		},
 		youtube: {

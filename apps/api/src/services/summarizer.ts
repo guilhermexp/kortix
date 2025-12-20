@@ -371,10 +371,25 @@ export async function generateCategoryTags(
 			.map((s) => s.replace(/\s{2,}/g, " "))
 			.filter(Boolean)
 
-		// Deduplicate and clamp
+		// Helper to validate tags
+		const isValidTag = (tag: string): boolean => {
+			if (!tag || tag.length < 2 || tag.length > 30) return false
+			// Reject tags that look like URL parts or repo namespaces
+			if (tag.startsWith("/") || tag.endsWith(":") || tag.endsWith("/")) return false
+			// Reject tags with only special characters
+			if (/^[^a-z0-9]+$/i.test(tag)) return false
+			// Reject common URL/path fragments
+			if (/^(http|https|www|com|org|io|github|google|hugging|huggingface)$/i.test(tag)) return false
+			// Reject tags containing URL patterns
+			if (/^[a-z0-9-]+\.(com|org|io|net|co|ai)$/i.test(tag)) return false
+			return true
+		}
+
+		// Deduplicate, validate, and clamp
 		const uniq: string[] = []
 		for (const p of parts) {
 			if (!p) continue
+			if (!isValidTag(p)) continue
 			if (uniq.includes(p)) continue
 			uniq.push(p)
 			if (uniq.length >= MAX_TAGS) break

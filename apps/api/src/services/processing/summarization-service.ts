@@ -132,6 +132,33 @@ export class SummarizationService
 			contentType: extraction.contentType,
 		}
 
+		// Handle short content gracefully - use title/description as summary
+		const textLength = extraction.text?.length || 0
+		if (textLength < 100) {
+			this.logger.info("Content too short for AI summarization, using fallback", {
+				textLength,
+				hasTitle: !!extraction.title,
+			})
+
+			// Build a simple summary from available metadata
+			const fallbackSummary = extraction.title
+				? `${extraction.title}${extraction.description ? `. ${extraction.description}` : ""}`
+				: extraction.text || "No content available for summarization."
+
+			return {
+				summary: fallbackSummary.slice(0, 500),
+				provider: "fallback",
+				quality: "low" as const,
+				wordCount: this.countWords(fallbackSummary),
+				metadata: {
+					originalLength: textLength,
+					truncated: false,
+					style: this.style,
+					fallbackReason: "content_too_short",
+				},
+			}
+		}
+
 		return await this.summarize(extraction.text, { context })
 	}
 

@@ -1,21 +1,10 @@
 /**
  * Documents API Routes
  *
- * STATUS: Active - Uses legacy ingestion pipeline for backward compatibility
- *
- * Architecture Notes:
- * - Currently uses processDocument() from services/ingestion.ts (legacy)
- * - The ingestion service has been refactored with deprecation warnings
- * - All legacy services (ingestion, extractor, preview) now have deprecation notices
- *
- * Migration Path (Phase 6):
- * 1. Replace processDocument() with IngestionOrchestratorService
- * 2. Use DocumentExtractorService for extraction
- * 3. Use DocumentProcessorService for processing
- * 4. Use PreviewGeneratorService for previews
- * 5. Add comprehensive input validation throughout
- *
- * TODO (Phase 6): Migrate to new architecture services
+ * Architecture: Async-first document ingestion
+ * - Documents are created with status="queued"
+ * - Worker polls ingestion_jobs and processes asynchronously
+ * - Preview image extracted immediately for fast UI feedback
  */
 
 import {
@@ -30,45 +19,81 @@ import {
 } from "@repo/validation/api"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { z } from "zod"
-// NOTE: Using legacy processDocument for backward compatibility
-// TODO (Phase 6): Replace with IngestionOrchestratorService
-import { processDocument } from "../services/ingestion"
 import {
 	documentCache,
 	documentListCache,
 	generateCacheKey,
 } from "../services/query-cache"
 import { findRelatedLinks, type RelatedLink } from "../services/related-links"
+import { sanitizeString, sanitizeJson } from "../services/ingestion/utils"
 
 const defaultContainerTag = "sm_project_default"
 
-// Sanitization functions to prevent Unicode surrogate errors (22P02)
-function sanitizeString(value: string): string {
-	// Remove unpaired surrogates or replace with the Unicode replacement char
-	return value.replace(
-		/([\uD800-\uDBFF])(?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])([\uDC00-\uDFFF])/g,
-		"\uFFFD",
-	)
+/**
+ * Quick OG image extraction for immediate preview loading
+ * Fetches first 50KB of HTML to find og:image meta tag
+ */
+async function extractOgImageQuick(url: string, timeoutMs = 3000): Promise<string | null> {
+	try {
+		const controller = new AbortController()
+		const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+		const response = await fetch(url, {
+			method: "GET",
+			signal: controller.signal,
+			headers: {
+				"User-Agent": "Mozilla/5.0 (compatible; KortixBot/1.0; +https://kortix.ai)",
+				"Accept": "text/html,application/xhtml+xml",
+			},
+			redirect: "follow",
+		})
+
+		clearTimeout(timeoutId)
+		if (!response.ok) return null
+
+		const reader = response.body?.getReader()
+		if (!reader) return null
+
+		let html = ""
+		const decoder = new TextDecoder()
+		const maxBytes = 50 * 1024
+		let totalBytes = 0
+
+		while (totalBytes < maxBytes) {
+			const { done, value } = await reader.read()
+			if (done) break
+			html += decoder.decode(value, { stream: true })
+			totalBytes += value?.length ?? 0
+			if (html.includes("</head>")) break
+		}
+
+		reader.cancel().catch(() => {})
+
+		const patterns = [
+			/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,
+			/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i,
+			/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i,
+			/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i,
+		]
+
+		for (const pattern of patterns) {
+			const match = html.match(pattern)
+			if (match?.[1]) {
+				let imageUrl = match[1]
+				if (imageUrl.startsWith("/")) {
+					try {
+						imageUrl = new URL(imageUrl, new URL(url).origin).toString()
+					} catch {}
+				}
+				return imageUrl
+			}
+		}
+		return null
+	} catch {
+		return null
+	}
 }
 
-function sanitizeJson(value: unknown): unknown {
-	if (value == null) return value
-	const t = typeof value
-	if (t === "string") return sanitizeString(value as string)
-	if (t === "number" || t === "boolean") return value
-	if (Array.isArray(value)) return value.map((v) => sanitizeJson(v))
-	if (t === "object") {
-		const out: Record<string, unknown> = {}
-		for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-			if (v === undefined || typeof v === "function") continue
-			out[k] = sanitizeJson(v)
-		}
-		return out
-	}
-	// Drop unsupported types
-	return null
-}
-const RUN_SYNC_INGESTION = (process.env.INGESTION_MODE ?? "sync") === "sync"
 const ALLOWED_DOCUMENT_TYPES = new Set([
 	"text",
 	"pdf",
@@ -435,10 +460,10 @@ export async function addDocument({
 	// For URLs: check by URL
 	// For text: check by content hash (if content is short enough to be exact match)
 	const shouldCheckDuplicates = isUrl || (initialContent && initialContent.length < 1000)
-	
+
 	if (shouldCheckDuplicates) {
 		let existing: { id: string; status: string | null; space_id: string | null } | null = null
-		
+
 		if (isUrl && inferredUrl) {
 			// Check by URL
 			const { data: urlDoc, error: urlError } = await client
@@ -449,7 +474,7 @@ export async function addDocument({
 				.order("created_at", { ascending: false })
 				.limit(1)
 				.maybeSingle()
-			
+
 			if (!urlError && urlDoc) {
 				existing = urlDoc
 			}
@@ -467,7 +492,7 @@ export async function addDocument({
 				.order("created_at", { ascending: false })
 				.limit(1)
 				.maybeSingle()
-			
+
 			if (!contentError && contentDoc) {
 				existing = contentDoc
 			}
@@ -591,7 +616,7 @@ export async function addDocument({
 					.order("created_at", { ascending: false })
 					.limit(1)
 					.maybeSingle()
-				
+
 				if (existing) {
 					// Try to ensure it's in the right space
 					try {
@@ -615,6 +640,27 @@ export async function addDocument({
 
 	// NOTE: No longer using documents_to_spaces junction table
 	// Space is set via space_id in the document INSERT above
+
+	// Quick OG image extraction for immediate preview (non-blocking)
+	// This runs in the background and updates the document when done
+	if (isUrl && inferredUrl) {
+		extractOgImageQuick(inferredUrl).then(async (ogImage) => {
+			if (ogImage) {
+				try {
+					await client
+						.from("documents")
+						.update({ preview_image: ogImage })
+						.eq("id", docId)
+						.eq("org_id", organizationId)
+					console.log("[addDocument] Quick OG image set for document", { docId, ogImage: ogImage.slice(0, 100) })
+				} catch (e) {
+					console.log("[addDocument] Failed to update OG image:", e instanceof Error ? e.message : String(e))
+				}
+			}
+		}).catch(() => {
+			// Silently ignore - preview is optional
+		})
+	}
 
 	// Check if job already exists (race condition protection)
 	const { data: existingJob } = await client
@@ -643,7 +689,7 @@ export async function addDocument({
 			})
 			.select("id")
 			.single()
-		
+
 		if (jobError) {
 			console.error("[addDocument] Failed to create job", jobError)
 			// If job creation fails, try to clean up the document
@@ -657,65 +703,6 @@ export async function addDocument({
 		}
 	} else {
 		jobId = existingJob.id
-	}
-
-	if (RUN_SYNC_INGESTION && jobId) {
-		console.log("[addDocument] Starting synchronous ingestion", {
-			documentId: docId,
-			mode: "sync",
-		})
-
-		try {
-			await processDocument({
-				documentId: docId,
-				organizationId,
-				userId,
-				spaceId,
-				containerTags: parsed.containerTags ?? [containerTag],
-				jobId,
-				document: {
-					content: initialContent,
-					metadata,
-					title: initialTitle,
-					url: inferredUrl,
-					source: inferredSource,
-					type: inferredType,
-					raw: null,
-					processingMetadata: null,
-				},
-				jobPayload: {
-					containerTags: parsed.containerTags ?? [containerTag],
-					content: rawContent,
-					metadata,
-					url: inferredUrl,
-					type: inferredType,
-					source: inferredSource,
-				},
-			})
-
-			console.log(
-				"[addDocument] Synchronous ingestion completed successfully",
-				{
-					documentId: docId,
-				},
-			)
-
-			invalidateDocumentCaches()
-			return MemoryResponseSchema.parse({
-				id: docId,
-				status: "done", // Changed from "processing" to reflect actual status
-			})
-		} catch (error) {
-			console.error("[addDocument] Synchronous ingestion failed", {
-				documentId: docId,
-				error: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-			})
-
-			// Document and job status already updated by processDocument() error handler
-			// Just re-throw to let the caller handle it
-			throw error
-		}
 	}
 
 	invalidateDocumentCaches()

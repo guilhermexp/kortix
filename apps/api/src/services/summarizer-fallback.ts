@@ -44,11 +44,11 @@ export async function summarizeWithOpenRouter(
 				{
 					role: "system",
 					content:
-						"Você é um assistente que gera resumos estruturados em Markdown.",
+						"Você é um assistente que gera resumos estruturados em Markdown. RESPONDA SEMPRE EM PORTUGUÊS DO BRASIL, mesmo que o conteúdo original esteja em inglês. SEMPRE inclua a seção Casos de Uso com pelo menos 3 itens REAIS - SEMPRE infira casos de uso baseado no contexto do conteúdo. NUNCA escreva '(sem casos de uso identificados)' ou 'N/A' - sempre gere casos de uso relevantes. NUNCA inclua o título do documento/página na resposta - o título já é exibido separadamente na interface. Comece DIRETAMENTE com ## Resumo Executivo.",
 				},
 				{ role: "user", content: textPrompt },
 			],
-			{ maxTokens: 640, timeoutMs: 10_000 },
+			{ maxTokens: 800, timeoutMs: 12_000 },
 		)
 		if (answer && answer.trim()) {
 			console.log(
@@ -79,11 +79,11 @@ export async function summarizeWithOpenRouter(
 				{
 					role: "system",
 					content:
-						"Você é um assistente que gera resumos estruturados em Markdown.",
+						"Você é um assistente que gera resumos estruturados em Markdown. RESPONDA SEMPRE EM PORTUGUÊS DO BRASIL, mesmo que o conteúdo original esteja em inglês. SEMPRE inclua a seção Casos de Uso com pelo menos 3 itens REAIS - SEMPRE infira casos de uso baseado no contexto do conteúdo. NUNCA escreva '(sem casos de uso identificados)' ou 'N/A' - sempre gere casos de uso relevantes. NUNCA inclua o título do documento/página na resposta - o título já é exibido separadamente na interface. Comece DIRETAMENTE com ## Resumo Executivo.",
 				},
 				{ role: "user", content: urlPrompt },
 			],
-			{ maxTokens: 640, timeoutMs: 10_000 },
+			{ maxTokens: 800, timeoutMs: 12_000 },
 		)
 		if (answer && answer.trim()) {
 			console.log(
@@ -100,8 +100,27 @@ export async function summarizeWithOpenRouter(
 }
 
 function ensureUseCases(markdown: string): string {
-	const hasSection = /(?:^|\n)##\s*Casos\s*de\s*Uso(?:\s|\n)/i.test(markdown)
-	if (hasSection) return markdown
-	const appendix = `\n\n${getSectionHeader("useCases")}\n${getFallbackMessage("noUseCases")}\n`
-	return markdown.trimEnd() + appendix
+	let result = markdown
+
+	// Replace empty/placeholder use cases with actual fallback content
+	const emptyPatterns = [
+		/##\s*Casos\s*de\s*Uso\s*\n+\s*[-•]\s*\(sem casos de uso identificados\)/gi,
+		/##\s*Casos\s*de\s*Uso\s*\n+\s*\(sem casos de uso identificados\)/gi,
+		/##\s*Casos\s*de\s*Uso\s*\n+\s*[-•]\s*Não foram identificados/gi,
+		/##\s*Casos\s*de\s*Uso\s*\n+\s*Não foram identificados/gi,
+		/##\s*Casos\s*de\s*Uso\s*\n+\s*[-•]\s*N\/A/gi,
+	]
+
+	const fallbackUseCases = getFallbackMessage("noUseCases")
+	for (const pattern of emptyPatterns) {
+		result = result.replace(pattern, `## Casos de Uso\n${fallbackUseCases}`)
+	}
+
+	// Check if section exists after replacements
+	const hasSection = /(?:^|\n)##\s*Casos\s*de\s*Uso(?:\s|\n)/i.test(result)
+	if (hasSection) return result
+
+	// Add section if missing
+	const appendix = `\n\n${getSectionHeader("useCases")}\n${fallbackUseCases}\n`
+	return result.trimEnd() + appendix
 }

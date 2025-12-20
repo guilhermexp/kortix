@@ -20,13 +20,14 @@ interface AuthContextType {
 		slug: string
 		name: string
 	} | null
+	isLoading: boolean
 	setActiveOrg: (orgSlug: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-	const { data } = useSession()
+	const { data, isLoading } = useSession()
 
 	async function setActiveOrg() {
 		// Single-organization setup, nothing to switch.
@@ -46,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 				session: data?.session ?? null,
 				user,
 				org: data?.organization ?? null,
+				isLoading,
 				setActiveOrg,
 			}}
 		>

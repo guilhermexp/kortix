@@ -301,7 +301,7 @@ const MemoryGraphPage = () => {
 
         if (response.error) {
           const { status, message } = parseStatusAndMessage(response.error);
-          
+
           // Handle authentication errors
           if (status === 401 || status === 403) {
             const authError = new Error(
@@ -310,7 +310,7 @@ const MemoryGraphPage = () => {
             (authError as any).status = status;
             throw authError;
           }
-          
+
           if (isRateLimitError(status, message)) {
             markRateLimited();
             const rateError = new Error(
@@ -331,7 +331,7 @@ const MemoryGraphPage = () => {
         return response.data;
       } catch (err) {
         const { status, message } = parseStatusAndMessage(err);
-        
+
         // Handle authentication errors - don't retry
         if (status === 401 || status === 403) {
           console.error("Authentication error:", message);
@@ -340,7 +340,7 @@ const MemoryGraphPage = () => {
           (authError as any).status = status;
           throw authError;
         }
-        
+
         if (isRateLimitError(status, message)) {
           markRateLimited();
         }
@@ -1040,7 +1040,7 @@ const MemoryGraphPage = () => {
 
 // Wrapper component to handle auth and waitlist checks
 export default function Page() {
-  const { user, session } = useAuth();
+  const { user, session, isLoading } = useAuth();
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -1065,8 +1065,8 @@ export default function Page() {
     }
   }, [user, session]);
 
-  // Show loading state while checking authentication and waitlist status
-  if (!user) {
+  // Show loading state only while actually loading
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -1075,6 +1075,14 @@ export default function Page() {
         </div>
       </div>
     );
+  }
+
+  // Not loading and no user = redirect to login
+  if (!user) {
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+    return null;
   }
 
   // If we have a user and they have access, show the main component
