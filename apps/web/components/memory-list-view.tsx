@@ -430,13 +430,21 @@ function DocumentPreviewModal({
   const activeMemories = document.memoryEntries.filter((m) => !m.isForgotten);
   // Use formatted summary WITH markdown for expanded dialog view
   const displayText = getDocumentSummaryFormatted(document);
+
+  // Check if document is still processing
+  const docStatus = String(document.status ?? "").toLowerCase();
+  const isDocProcessing = PROCESSING_STATUSES.has(docStatus) || (document as any).isOptimistic;
+
   const cleanedTitle = (() => {
     const raw = document.title || "";
     const isData = raw.startsWith("data:");
     const cleaned = stripMarkdown(raw)
       .trim()
       .replace(/^['"""''`]+|['"""''`]+$/g, "");
-    return isData || !cleaned ? "Untitled Document" : cleaned;
+    if (isData || !cleaned) {
+      return isDocProcessing ? "Processando..." : "Sem título";
+    }
+    return cleaned;
   })();
 
   const originalUrl =
@@ -733,7 +741,14 @@ function DocumentPreviewModal({
       const cleaned = stripMarkdown(raw)
         .trim()
         .replace(/^['"""''`]+|['"""''`]+$/g, "");
-      return isData || !cleaned ? "Untitled Document" : cleaned;
+      // Show "Processando..." for documents still being processed without a title
+      if (isData || !cleaned) {
+        if (isProcessing || isOptimisticDoc || isQueued) {
+          return "Processando...";
+        }
+        return "Sem título";
+      }
+      return cleaned;
     })();
 
     return (
