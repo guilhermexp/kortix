@@ -779,18 +779,48 @@ function DocumentPreviewModal({
               </Button>
             </div>
           </div>
-        ) : isOptimisticDoc || isQueued ? (
-          /* Waiting state - optimistic or queued, not yet actively processing */
+        ) : isOptimisticDoc ? (
+          /* Optimistic - still sending to backend */
           <div className="p-6 flex flex-col items-center justify-center min-h-[140px] gap-3">
             <div className="relative">
-              <Pause className="h-6 w-6 text-muted-foreground" />
+              <Loader className="h-6 w-6 text-muted-foreground animate-spin" />
             </div>
             <div className="text-center space-y-1">
               <p className="text-sm font-medium text-muted-foreground">
-                Aguardando
+                Enviando...
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-1 opacity-70 hover:opacity-100"
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  await cancelDocument(document.id);
+                  setForcedStop(true);
+                  toast.success("Cancelado");
+                  queryClient.invalidateQueries({ queryKey: ["documents-with-memories", selectedProject], exact: false });
+                } catch (error) {
+                  toast.error("Falha ao cancelar", { description: error instanceof Error ? error.message : String(error) });
+                }
+              }}
+            >
+              Cancelar
+            </Button>
+          </div>
+        ) : isQueued ? (
+          /* Queued - in backend queue, waiting to be processed */
+          <div className="p-6 flex flex-col items-center justify-center min-h-[140px] gap-3">
+            <div className="relative">
+              <Clock className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">
+                Na fila
               </p>
               <p className="text-xs text-muted-foreground/70">
-                {isOptimisticDoc ? "Preparando envio" : "Na fila de processamento"}
+                Aguardando processamento
               </p>
             </div>
             <Button

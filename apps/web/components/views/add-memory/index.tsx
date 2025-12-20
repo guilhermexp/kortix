@@ -861,7 +861,7 @@ export function AddMemoryView({
         // Polling function to check status and update UI in real-time
         const pollForCompletion = async (): Promise<MemoryStatusResponse> => {
           let attempts = 0;
-          const maxAttempts = 60; // Maximum 5 minutes (60 attempts * 3 seconds)
+          const maxAttempts = 90; // Maximum 4.5 minutes (90 attempts * 3 seconds)
 
           while (attempts < maxAttempts) {
             try {
@@ -892,8 +892,9 @@ export function AddMemoryView({
                 return memory.data;
               }
 
-              // If still processing, wait and try again
-              await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait 3 seconds
+              // First few polls are faster to catch quick status changes
+              const delay = attempts < 3 ? 1000 : 3000;
+              await new Promise((resolve) => setTimeout(resolve, delay));
               attempts++;
             } catch (error) {
               console.error("Error polling memory status:", error);
@@ -901,7 +902,7 @@ export function AddMemoryView({
               if (attempts >= 3) {
                 throw new Error("Failed to check processing status");
               }
-              await new Promise((resolve) => setTimeout(resolve, 3000));
+              await new Promise((resolve) => setTimeout(resolve, 1000));
               attempts++;
             }
           }
