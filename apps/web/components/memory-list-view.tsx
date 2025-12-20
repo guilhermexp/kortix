@@ -17,6 +17,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -24,11 +25,15 @@ import {
 import { Button } from "@repo/ui/components/button";
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api";
 import {
+	AlertTriangle,
 	Brain,
+	Clock,
 	ExternalLink,
 	Expand,
 	Loader,
+	Pause,
 	Play,
+	RefreshCw,
 	Trash2,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -42,6 +47,7 @@ import { cancelDocument } from "@/lib/api/documents-client"
 import { useProject } from "@/stores"
 import {
 	getDocumentSnippet,
+	getDocumentSummaryFormatted,
 	stripMarkdown,
 } from "./memories"
 import { MarkdownContent } from "./markdown-content"
@@ -58,8 +64,11 @@ import {
 	isLowResolutionImage,
 	isInlineSvgDataUrl,
 	PROCESSING_STATUSES,
+	PAUSED_STATUS,
+	proxyImageUrl,
 	type BaseRecord,
 } from "@lib/utils"
+import { BACKEND_URL } from "@lib/env"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>;
 type DocumentWithMemories = DocumentsResponse["documents"][0];
@@ -419,7 +428,8 @@ function DocumentPreviewModal({
   const router = useRouter();
   const preview = useMemo(() => getDocumentPreview(document), [document]);
   const activeMemories = document.memoryEntries.filter((m) => !m.isForgotten);
-  const displayText = getDocumentSnippet(document);
+  // Use formatted summary WITH markdown for expanded dialog view
+  const displayText = getDocumentSummaryFormatted(document);
   const cleanedTitle = (() => {
     const raw = document.title || "";
     const isData = raw.startsWith("data:");
@@ -458,9 +468,10 @@ function DocumentPreviewModal({
           {preview?.src && (
             <div className="sticky top-0 w-full h-[50vh] min-h-[300px] overflow-hidden z-0">
               <img
-                src={preview.src}
+                src={proxyImageUrl(preview.src) || preview.src}
                 alt={cleanedTitle}
                 className="w-full h-full object-contain bg-muted/50"
+                referrerPolicy="no-referrer"
               />
               {/* Gradient overlay at bottom of image */}
               <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent" />
@@ -475,6 +486,9 @@ function DocumentPreviewModal({
             {/* Title */}
             <DialogHeader className="mb-2">
               <DialogTitle className="text-2xl leading-tight">{cleanedTitle}</DialogTitle>
+              <DialogDescription className="sr-only">
+                Preview of document: {cleanedTitle}
+              </DialogDescription>
             </DialogHeader>
 
             {/* Original URL */}
@@ -487,7 +501,16 @@ function DocumentPreviewModal({
                 onClick={(e) => e.stopPropagation()}
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                <span className="truncate max-w-[600px]">{new URL(originalUrl).hostname}</span>
+                <span className="truncate max-w-[600px]">{(() => {
+                  try {
+                    const url = new URL(originalUrl);
+                    // Show hostname + pathname (without query/hash) for more context
+                    const path = url.pathname === "/" ? "" : url.pathname;
+                    return url.hostname + path;
+                  } catch {
+                    return originalUrl;
+                  }
+                })()}</span>
               </a>
             )}
 
@@ -545,6 +568,9 @@ function DocumentPreviewModal({
       ? PROCESSING_STATUSES.has(String(document.status).toLowerCase())
       : false;
 
+    // Check if document is paused (queue halted due to systemic error)
+    const isPaused = String(document.status).toLowerCase() === PAUSED_STATUS;
+
     // Check if this is an optimistic (pending) document
     const isOptimisticDoc = !!(document as any).isOptimistic;
 
@@ -560,7 +586,31 @@ function DocumentPreviewModal({
 
     const contentNotReady = activeMemories.length === 0 && titleLooksIncomplete;
     const [forcedStop, setForcedStop] = useState(false);
-    const isProcessing = !forcedStop && (statusIsProcessing || contentNotReady || isOptimisticDoc);
+    const [isResuming, setIsResuming] = useState(false);
+
+    // Check if document is just waiting in queue (standby) vs actively processing
+    const isQueued = String(document.status).toLowerCase() === "queued";
+    const isActivelyProcessing = statusIsProcessing && !isQueued;
+    const isProcessing = !forcedStop && !isPaused && (statusIsProcessing || contentNotReady || isOptimisticDoc);
+
+    // Function to resume a paused document
+    const handleResume = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setIsResuming(true);
+      try {
+        const response = await fetch(`${BACKEND_URL}/v3/documents/${document.id}/resume`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (!response.ok) throw new Error("Failed to resume");
+        toast.success("Documento retomado");
+        queryClient.invalidateQueries({ queryKey: ["documents-with-memories", selectedProject], exact: false });
+      } catch (error) {
+        toast.error("Falha ao retomar", { description: error instanceof Error ? error.message : String(error) });
+      } finally {
+        setIsResuming(false);
+      }
+    };
 
     const [stickyPreview, setStickyPreview] = useState<PreviewData | null>(
       null,
@@ -688,8 +738,79 @@ function DocumentPreviewModal({
         onMouseEnter={handlePrefetchEdit}
         onTouchStart={handlePrefetchEdit}
       >
-        {/* Processing state - show progress bar with percentage */}
-        {isProcessing ? (
+        {/* Paused state - show warning and resume button */}
+        {isPaused ? (
+          <div className="p-6 flex flex-col items-center justify-center min-h-[140px] gap-3">
+            <div className="flex items-center gap-2 text-amber-500">
+              <Pause className="h-6 w-6" />
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                Fila Pausada
+              </p>
+              <p className="text-xs text-muted-foreground max-w-[180px]">
+                Erro detectado. Verifique as configurações antes de retomar.
+              </p>
+            </div>
+            <div className="flex gap-2 mt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResume}
+                disabled={isResuming}
+              >
+                {isResuming ? (
+                  <Loader className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                )}
+                Retomar
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(document.id, document.title || "Untitled");
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ) : isQueued && isProcessing ? (
+          /* Queued state - brief initial state before processing starts */
+          <div className="p-6 flex flex-col items-center justify-center min-h-[140px] gap-3">
+            <div className="relative">
+              <Clock className="h-6 w-6 text-muted-foreground animate-pulse" />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">
+                Iniciando...
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-1 opacity-70 hover:opacity-100"
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  await cancelDocument(document.id);
+                  setForcedStop(true);
+                  toast.success("Cancelado");
+                  queryClient.invalidateQueries({ queryKey: ["documents-with-memories", selectedProject], exact: false });
+                } catch (error) {
+                  toast.error("Falha ao cancelar", { description: error instanceof Error ? error.message : String(error) });
+                }
+              }}
+            >
+              Cancelar
+            </Button>
+          </div>
+        ) : isProcessing ? (
+          /* Active processing state - animated progress */
           <div className="p-6 flex flex-col items-center justify-center min-h-[140px] gap-3">
             <Loader className="h-6 w-6 text-primary animate-spin" />
             <div className="w-full max-w-[200px] space-y-2">
@@ -744,7 +865,8 @@ function DocumentPreviewModal({
               loading="lazy"
               onError={() => setImageError(true)}
               onLoad={() => setImageLoaded(true)}
-              src={previewToRender.src}
+              referrerPolicy="no-referrer"
+              src={proxyImageUrl(previewToRender.src) || previewToRender.src}
               style={{ display: imageError ? "none" : "block" }}
             />
             {/* Loading shimmer */}

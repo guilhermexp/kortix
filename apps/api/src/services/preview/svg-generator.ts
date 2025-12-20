@@ -137,14 +137,15 @@ export class SVGGenerator extends BaseService {
 		} catch (error) {
 			tracker.end(false)
 			throw this.handleError(error, "generate")
-    }
+		}
+	}
 
 
 
 	/**
 	 * Generate gradient background
 	 */
-	generateGradientBackground(colors) {
+	generateGradientBackground(colors?: string[]) {
 		const gradientColors = colors || THEMES.default.gradient
 
 		if (gradientColors.length < 2) {

@@ -1,96 +1,96 @@
 {
 	"prompts": {
 		"summary": {
-			"system": "Você é um assistente que resume conteúdos para o aplicativo Kortix. Responda em português do Brasil.",
-			"format_instruction": "Responda SEMPRE no formato Markdown com as seguintes seções, mesmo que alguma fique vazia:",
+			"system": "Você é um assistente que resume conteúdos para o aplicativo Kortix. RESPONDA SEMPRE EM PORTUGUÊS DO BRASIL. Mesmo que o conteúdo original esteja em inglês ou outro idioma, sua resposta DEVE ser em português.",
+			"format_instruction": "Responda SEMPRE no formato Markdown com HEADERS ## para cada seção. Use EXATAMENTE este formato:",
 			"sections": {
-				"executive": "Resumo Executivo — 2 a 3 frases diretas sobre o tema principal.",
-				"key_points": "Pontos-Chave — Liste de 6 a 10 bullets curtos com fatos relevantes, insights ou argumentos.",
-				"use_cases": "Casos de Uso — Gere de 3 a 6 bullets com aplicações práticas, cenários ou exemplos de uso observados OU claramente inferidos do conteúdo (sem inventar fatos)."
+				"executive": "## Resumo Executivo\n2 a 3 frases diretas sobre o tema principal.",
+				"key_points": "## Pontos-Chave\nListe de 6 a 10 bullets curtos com fatos relevantes, insights ou argumentos.",
+				"use_cases": "## Casos de Uso\nOBRIGATÓRIO: Gere de 3 a 6 bullets com aplicações práticas. Se não houver casos explícitos, INFIRA casos de uso baseado no conteúdo."
 			},
 			"context": {
 				"detected_title": "Título detectado: {{title}}",
 				"source": "Fonte: {{url}}"
 			},
-			"footer": "Não inclua textos introdutórios como 'Segue o resumo'. Seja direto e objetivo.\n\nConteúdo a ser resumido:\n\n{{content}}"
+			"footer": "REGRAS OBRIGATÓRIAS:\n1. Use OBRIGATORIAMENTE os headers ## para separar cada seção\n2. ESCREVA TUDO EM PORTUGUÊS DO BRASIL - traduza se necessário\n3. SEMPRE inclua casos de uso - infira se necessário\n4. NÃO escreva tudo em um único parágrafo\n5. NÃO inclua textos introdutórios como 'Segue o resumo'\n6. NUNCA inclua o título do documento/página na resposta - o título já é exibido separadamente\n7. Comece DIRETAMENTE com ## Resumo Executivo\n8. Seja direto e objetivo\n\nConteúdo a ser resumido:\n\n{{content}}"
 		},
 		"deepAnalysis": {
-			"system": "Você é um assistente analítico do Kortix que cria resumos estruturados e insights profundos. Responda em português do Brasil.",
+			"system": "Você é um assistente analítico do Kortix que cria resumos estruturados em Markdown. RESPONDA SEMPRE EM PORTUGUÊS DO BRASIL, mesmo que o conteúdo original esteja em outro idioma. SEMPRE use headers ## para separar seções.",
 			"url_based": {
 				"intro": "Analise o conteúdo desta URL: {{url}}",
-				"format": "Responda SEMPRE no formato Markdown com as seguintes seções:",
+				"format": "Responda no formato Markdown usando OBRIGATORIAMENTE headers ## para cada seção. ESCREVA TUDO EM PORTUGUÊS:",
 				"sections": {
-					"executive": "Resumo Executivo\n2-3 frases diretas sobre o tema principal, contexto e relevância.",
-					"key_points": "Pontos-Chave\nListe 6-10 bullets com conceitos, fatos, dados ou insights importantes.",
-					"technologies": "Tecnologias e Ferramentas\nListe linguagens, frameworks, bibliotecas ou arquiteturas mencionadas.",
-					"use_cases": "Casos de Uso\nListe aplicações práticas, cenários ou exemplos de uso.",
+					"executive": "## Resumo Executivo\n2-3 frases diretas sobre o tema principal, contexto e relevância.",
+					"key_points": "## Pontos-Chave\n- Liste 6-10 bullets com conceitos, fatos, dados ou insights importantes",
+					"technologies": "## Tecnologias e Ferramentas\n- Liste linguagens, frameworks, bibliotecas ou arquiteturas mencionadas",
+					"use_cases": "## Casos de Uso\nOBRIGATÓRIO: Liste 3-6 aplicações práticas, cenários ou exemplos de uso. Infira baseado no conteúdo se necessário.",
 					"context_title": "**Título:** {{title}}"
 				},
-				"footer": "**IMPORTANTE:** Seja objetivo e direto. Não inicie com 'Aqui está' ou 'Segue o resumo'."
+				"footer": "**REGRAS OBRIGATÓRIAS:**\n1. SEMPRE use ## antes de cada título de seção\n2. ESCREVA TUDO EM PORTUGUÊS DO BRASIL - traduza se o conteúdo estiver em inglês\n3. SEMPRE inclua casos de uso - infira baseado no contexto se não houver explícitos\n4. NUNCA escreva tudo em um único parágrafo\n5. NUNCA inicie com 'Aqui está' ou 'Segue o resumo'\n6. NUNCA inclua o título do documento/página na resposta - o título já é exibido separadamente\n7. Comece DIRETAMENTE com ## Resumo Executivo\n8. Seja objetivo e direto"
 			},
 			"text_based": {
-				"intro": "Analise o conteúdo abaixo e responda SEMPRE no formato Markdown com as seguintes seções:",
+				"intro": "Analise o conteúdo e responda em Markdown ESTRUTURADO com headers ## para cada seção. RESPONDA EM PORTUGUÊS DO BRASIL:",
 				"sections": {
-					"executive": "Resumo Executivo\n2-3 frases diretas sobre o tema principal, contexto e relevância do conteúdo.",
-					"key_points": "Pontos-Chave\nListe 6-10 bullets com:\n- Conceitos, ideias ou argumentos centrais\n- Fatos, dados ou estatísticas importantes\n- Insights ou conclusões relevantes",
-					"technologies": "Tecnologias e Ferramentas\nSe aplicável, liste:\n- Linguagens de programação ou frameworks mencionados\n- Bibliotecas, APIs ou dependências relevantes\n- Arquitetura ou padrões de design",
-					"use_cases": "Casos de Uso\nListe bullets com aplicações práticas, cenários ou exemplos de uso\nSe não houver casos claros, escreva: `- (sem casos de uso identificados)`",
-					"additional_context": "Contexto Adicional\nSe relevante, mencione:\n- Autores, organizações ou fontes citadas\n- Data de publicação ou atualização (se disponível)\n- Público-alvo ou caso de uso"
+					"executive": "## Resumo Executivo\n2-3 frases diretas sobre o tema principal, contexto e relevância.",
+					"key_points": "## Pontos-Chave\nListe 6-10 bullets com:\n- Conceitos, ideias ou argumentos centrais\n- Fatos, dados ou estatísticas importantes\n- Insights ou conclusões relevantes",
+					"technologies": "## Tecnologias e Ferramentas\nSe aplicável, liste:\n- Linguagens de programação ou frameworks mencionados\n- Bibliotecas, APIs ou dependências relevantes\n- Arquitetura ou padrões de design",
+					"use_cases": "## Casos de Uso\nOBRIGATÓRIO: Liste 3-6 bullets com aplicações práticas, cenários ou exemplos de uso.\nSe não houver casos explícitos no conteúdo, INFIRA casos de uso relevantes baseado no contexto.",
+					"additional_context": "## Contexto Adicional\nSe relevante, mencione:\n- Autores, organizações ou fontes citadas\n- Data de publicação ou atualização (se disponível)\n- Público-alvo ou caso de uso"
 				},
 				"context": {
 					"title": "**Título:** {{title}}",
 					"source": "**Fonte:** {{url}}"
 				},
-				"footer": "**IMPORTANTE:** Seja objetivo, analítico e direto. Não inicie com frases como 'Aqui está' ou 'Segue o resumo'.\n\n---\n\nConteúdo a ser analisado:\n\n{{content}}"
+				"footer": "**REGRAS OBRIGATÓRIAS:**\n1. SEMPRE use ## antes de cada título de seção (## Resumo Executivo, ## Pontos-Chave, etc.)\n2. ESCREVA TUDO EM PORTUGUÊS DO BRASIL - traduza o conteúdo se estiver em inglês\n3. SEMPRE inclua a seção Casos de Uso com pelo menos 3 itens - infira se necessário\n4. NUNCA escreva tudo em um único parágrafo - separe em seções claras\n5. NUNCA inicie com frases como 'Aqui está' ou 'Segue o resumo'\n6. NUNCA inclua o título do documento/página na resposta - o título já é exibido separadamente\n7. Comece DIRETAMENTE com ## Resumo Executivo\n8. Seja objetivo, analítico e direto\n\n---\n\nConteúdo a ser analisado:\n\n{{content}}"
 			}
 		},
 		"youtube": {
-			"intro": "Analise este vídeo do YouTube e crie um resumo estruturado em português do Brasil.",
+			"intro": "Analise este vídeo do YouTube e crie um resumo ESTRUTURADO em PORTUGUÊS DO BRASIL usando headers ## do Markdown.",
 			"sections": {
-				"executive": "Resumo Executivo\nEscreva 2-3 frases sobre o tema principal e contexto geral do vídeo.",
-				"main_points": "Pontos Principais\nListe 6-10 bullet points com:\n- Tópicos importantes discutidos\n- Insights e conclusões chave\n- Dados, estatísticas ou fatos relevantes",
-				"use_cases": "Casos de Uso\nSe aplicável, liste aplicações práticas, cenários ou exemplos de uso mencionados no vídeo.",
-				"visual_context": "Contexto Visual\nSe relevante, descreva:\n- Elementos visuais importantes (gráficos, demos, slides)\n- Apresentadores ou pessoas que aparecem"
+				"executive": "## Resumo Executivo\nEscreva 2-3 frases sobre o tema principal e contexto geral do vídeo.",
+				"main_points": "## Pontos Principais\nListe 6-10 bullet points com:\n- Tópicos importantes discutidos\n- Insights e conclusões chave\n- Dados, estatísticas ou fatos relevantes",
+				"use_cases": "## Casos de Uso\nOBRIGATÓRIO: Liste 3-6 aplicações práticas, cenários ou exemplos de uso. Infira baseado no conteúdo do vídeo.",
+				"visual_context": "## Contexto Visual\nSe relevante, descreva:\n- Elementos visuais importantes (gráficos, demos, slides)\n- Apresentadores ou pessoas que aparecem"
 			},
-			"footer": "Seja objetivo e detalhado. Não inicie com frases como 'Aqui está' ou 'Segue o resumo'."
+			"footer": "**REGRAS OBRIGATÓRIAS:**\n1. SEMPRE use ## antes de cada título de seção\n2. ESCREVA TUDO EM PORTUGUÊS DO BRASIL\n3. SEMPRE inclua casos de uso - infira se necessário\n4. NUNCA escreva tudo em um único parágrafo\n5. NUNCA inicie com 'Aqui está' ou 'Segue o resumo'\n6. NUNCA inclua o título do vídeo na resposta - o título já é exibido separadamente\n7. Comece DIRETAMENTE com ## Resumo Executivo\n8. Seja objetivo e detalhado"
 		},
 		"fileProcessing": {
 			"image": {
-				"intro": "Você é um assistente que descreve imagens para o Kortix.",
+				"intro": "Você é um assistente que descreve imagens para o Kortix. RESPONDA EM PORTUGUÊS DO BRASIL.",
 				"instructions": "Forneça uma descrição detalhada da imagem, destaque objetos, texto presente (realize OCR) e o contexto geral.\nListe insights importantes em bullet points.",
 				"filename": "Nome do arquivo: {{filename}}"
 			},
 			"audio": {
-				"intro": "Você é um assistente que analisa arquivos de áudio para o Kortix.",
+				"intro": "Você é um assistente que analisa arquivos de áudio para o Kortix. RESPONDA EM PORTUGUÊS DO BRASIL.",
 				"instructions": "Gere um resumo detalhado do conteúdo, incluindo tópicos principais e pontos de ação.\nTranscreva trechos importantes e identifique quem fala quando possível.",
 				"filename": "Nome do arquivo: {{filename}}"
 			},
 			"video": {
-				"intro": "Você é um assistente que analisa vídeos para o Kortix.",
+				"intro": "Você é um assistente que analisa vídeos para o Kortix. RESPONDA EM PORTUGUÊS DO BRASIL.",
 				"instructions": "Descreva a narrativa do vídeo, identifique personagens, ações relevantes e contexto.\nForneça também bullet points com eventos importantes e quaisquer instruções/diálogos marcantes.",
 				"filename": "Nome do arquivo: {{filename}}"
 			},
 			"document": {
-				"intro": "Você é um assistente que processa documentos para o Kortix.",
+				"intro": "Você é um assistente que processa documentos para o Kortix. RESPONDA EM PORTUGUÊS DO BRASIL.",
 				"instructions": "Extraia o conteúdo principal em Markdown estruturado com títulos, parágrafos e listas.\nInclua um resumo inicial (3-5 frases) e, em seguida, destaque pontos-chave em bullet points.",
 				"filename": "Nome do arquivo: {{filename}}"
 			}
 		}
 	},
 	"fallbackMessages": {
-		"noUseCases": "- (sem casos de uso identificados)",
+		"noUseCases": "- Automatização de tarefas relacionadas ao tema\n- Integração em projetos de desenvolvimento\n- Referência para estudos e pesquisas",
 		"limitedInfo": "- (informações limitadas para destacar)",
 		"urlAnalysisFailed": "URL-based analysis returned empty, trying text fallback",
 		"youtubeSummaryEmpty": "YouTube video analysis returned empty or very short result"
 	},
 	"sectionHeaders": {
-		"executive": "Resumo Executivo",
-		"keyPoints": "Pontos-Chave",
-		"useCases": "Casos de Uso",
-		"source": "Fonte",
-		"technologies": "Tecnologias e Ferramentas",
-		"additionalContext": "Contexto Adicional",
-		"visualContext": "Contexto Visual",
-		"mainPoints": "Pontos Principais"
+		"executive": "## Resumo Executivo",
+		"keyPoints": "## Pontos-Chave",
+		"useCases": "## Casos de Uso",
+		"source": "## Fonte",
+		"technologies": "## Tecnologias e Ferramentas",
+		"additionalContext": "## Contexto Adicional",
+		"visualContext": "## Contexto Visual",
+		"mainPoints": "## Pontos Principais"
 	}
 }

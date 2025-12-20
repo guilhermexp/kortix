@@ -341,6 +341,21 @@ export class TaggingService extends BaseService implements ITaggingService {
 				continue
 			}
 
+			// Skip tags that look like URL parts or repo namespaces
+			if (cleanTag.startsWith("/") || cleanTag.endsWith(":") || cleanTag.endsWith("/")) {
+				continue
+			}
+
+			// Skip common URL/path fragments
+			if (/^(http|https|www|com|org|io|github|google|hugging|huggingface)$/i.test(cleanTag)) {
+				continue
+			}
+
+			// Skip tags containing URL patterns
+			if (/^[a-z0-9-]+\.(com|org|io|net|co|ai)$/i.test(cleanTag)) {
+				continue
+			}
+
 			// Skip duplicates
 			if (cleaned.includes(cleanTag)) {
 				continue

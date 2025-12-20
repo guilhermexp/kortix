@@ -296,7 +296,7 @@ export interface RetryOptions {
  * Configuration for DocumentExtractorService
  */
 export interface ExtractorServiceConfig {
-	/** URL extraction configuration (MarkItDown + Puppeteer) */
+	/** URL extraction configuration (MarkItDown) */
 	url?: {
 		enabled: boolean
 		timeout?: number

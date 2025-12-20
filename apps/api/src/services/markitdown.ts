@@ -11,12 +11,12 @@ const MARKITDOWN_PYTHON_PATH =
 	process.env.MARKITDOWN_PYTHON_PATH ||
 	(isProduction
 		? "python3"
-		: "/Users/guilhermevarela/Public/kortix/apps/markitdown/.venv/bin/python")
+		: "/Users/guilhermevarela/Documents/Projetos/kortix/apps/markitdown/.venv/bin/python")
 const MARKITDOWN_VENV_PATH =
 	process.env.MARKITDOWN_VENV_PATH ||
 	(isProduction
 		? ""
-		: "/Users/guilhermevarela/Public/kortix/apps/markitdown/.venv")
+		: "/Users/guilhermevarela/Documents/Projetos/kortix/apps/markitdown/.venv")
 
 let markitdownAvailable: boolean | null = null
 

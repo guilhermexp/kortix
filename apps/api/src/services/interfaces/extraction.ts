@@ -6,7 +6,7 @@
  * common base interface.
  *
  * Extractor Types:
- * - URLExtractor: Web URLs using MarkItDown and Puppeteer
+ * - URLExtractor: Web URLs using MarkItDown
  * - YouTubeExtractor: YouTube videos with transcript extraction
  * - PDFExtractor: PDF documents with OCR fallback
  * - FileExtractor: Office documents (DOCX, XLSX, etc.)
@@ -54,11 +54,11 @@ export interface DocumentExtractor extends BaseService {
 // ============================================================================
 
 /**
- * URL-based web content extractor using MarkItDown and Puppeteer
+ * URL-based web content extractor using MarkItDown
  */
 export interface URLExtractor extends DocumentExtractor {
 	/**
-	 * Extract content from a web URL using MarkItDown with Puppeteer fallback
+	 * Extract content from a web URL using MarkItDown
 	 */
 	extractFromUrl(
 		url: string,

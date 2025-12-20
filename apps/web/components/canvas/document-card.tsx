@@ -52,6 +52,7 @@ import {
 	getYouTubeThumbnail,
 	isInlineSvgDataUrl,
 	PROCESSING_STATUSES,
+	proxyImageUrl,
 	type BaseRecord,
 } from "@lib/utils"
 
@@ -364,6 +365,17 @@ const getDocumentPreview = (
 				getYouTubeThumbnail(originalUrl),
 			href: youtubeUrl ?? originalUrl ?? undefined,
 			label: contentType === "video/youtube" ? "YouTube" : label || "Video",
+		}
+	}
+
+	// Prioritize database preview_image (set immediately on document creation)
+	// This ensures instant preview while full processing happens in background
+	if (documentPreviewImage) {
+		return {
+			kind: "image",
+			src: documentPreviewImage,
+			href: originalUrl ?? undefined,
+			label: label || "Preview",
 		}
 	}
 
@@ -729,8 +741,9 @@ export const DocumentCard = memo(
 												target.style.display = "none"
 											}}
 											priority={false}
+											referrerPolicy="no-referrer"
 											sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-											src={previewToRender.src}
+											src={proxyImageUrl(previewToRender.src) || previewToRender.src}
 										/>
 									))}
 								<div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45 z-20" />
@@ -780,17 +793,32 @@ export const DocumentCard = memo(
 							typeof raw?.aiTagsString === "string"
 								? raw.aiTagsString
 								: undefined
-						const tags = tagStr
-							? tagStr
-									.split(/[,\n]+/)
-									.map((t: string) => t.trim())
-									.filter(Boolean)
-							: []
-						if (!tags.length) return null
-						const show = tags.slice(0, 4)
+						if (!tagStr) return null
+
+						const isValidTag = (t: string): boolean => {
+							if (!t || t.length < 2 || t.length > 30) return false
+							// Filter tags that look like URL parts or repo names
+							if (t.startsWith("/") || t.endsWith(":") || t.endsWith("/")) return false
+							// Filter tags with only special characters
+							if (/^[^a-z0-9]+$/i.test(t)) return false
+							// Filter common URL/path fragments
+							if (/^(http|https|www|com|org|io|github|hugging)$/i.test(t)) return false
+							return true
+						}
+
+						const tags: string[] = tagStr
+							.split(/[,\n]+/)
+							.map((t: string) => t.trim().toLowerCase())
+							.filter(isValidTag)
+
+						// Deduplicate tags
+						const uniqueTags = Array.from(new Set(tags))
+						if (!uniqueTags.length) return null
+						const show = uniqueTags.slice(0, 4)
+						const remaining = uniqueTags.length - show.length
 						return (
 							<div className="mb-2 flex flex-wrap gap-1">
-								{show.map((t: string) => (
+								{show.map((t) => (
 									<span
 										className="px-1.5 py-0.5 text-[10px] rounded border"
 										key={t}
@@ -803,6 +831,18 @@ export const DocumentCard = memo(
 										{t}
 									</span>
 								))}
+								{remaining > 0 && (
+									<span
+										className="px-1.5 py-0.5 text-[10px] rounded border"
+										style={{
+											borderColor: "rgba(255, 255, 255, 0.08)",
+											color: colors.text.muted,
+											backgroundColor: "rgba(255,255,255,0.02)",
+										}}
+									>
+										+{remaining}
+									</span>
+								)}
 							</div>
 						)
 					})()}

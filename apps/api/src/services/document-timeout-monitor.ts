@@ -7,7 +7,7 @@
  * This prevents documents from being stuck indefinitely when:
  * - Extraction services crash or hang
  * - Network requests timeout without proper error handling
- * - External APIs (MarkItDown, Puppeteer, etc.) fail to respond
+ * - External APIs (MarkItDown, etc.) fail to respond
  *
  * Features:
  * - Circuit breaker pattern to prevent hammering the database when it's down
@@ -154,10 +154,13 @@ async function checkStuckDocuments(): Promise<void> {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Call the database function to mark stuck documents as failed
-    const { data, error } = await supabase.rpc(
-      "mark_stuck_documents_as_failed",
-    );
+    // Execute the query directly instead of RPC to avoid PostgREST schema cache issues
+    const { data, error } = await supabase
+      .from("documents")
+      .update({ status: "failed", updated_at: new Date().toISOString() })
+      .in("status", ["extracting", "processing", "embedding", "fetching"])
+      .lt("updated_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+      .select("id");
 
     if (error) {
       recordFailure(error);
@@ -171,7 +174,7 @@ async function checkStuckDocuments(): Promise<void> {
     // Success - reset circuit breaker
     recordSuccess();
 
-    const affectedCount = data as number;
+    const affectedCount = data?.length ?? 0;
 
     // Only log when documents are actually stuck
     if (affectedCount > 0) {
@@ -274,11 +277,17 @@ export function getCircuitBreakerStatus(): {
  */
 export async function manualCheckStuckDocuments(): Promise<number> {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  const { data, error } = await supabase.rpc("mark_stuck_documents_as_failed");
+
+  const { data, error } = await supabase
+    .from("documents")
+    .update({ status: "failed", updated_at: new Date().toISOString() })
+    .in("status", ["extracting", "processing", "embedding", "fetching"])
+    .lt("updated_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+    .select("id");
 
   if (error) {
     throw new Error(`Failed to check stuck documents: ${error.message}`);
   }
 
-  return data as number;
+  return data?.length ?? 0;
 }

@@ -67,6 +67,11 @@ export const stripMarkdown = (input: string): string => {
 		text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "$1")
 		// Links [text](url) -> text
 		text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
+		// Remove standalone URLs (to prevent remarkGfm autolinks)
+		text = text.replace(/https?:\/\/[^\s<>"{}|\\^`[\]]+/gi, "")
+		// Remove reference-style links [text][id] and their definitions [id]: url
+		text = text.replace(/\[([^\]]+)\]\[[^\]]*\]/g, "$1")
+		text = text.replace(/^\[[^\]]+\]:\s*.*$/gm, "")
 		// Bold/italic **text** *text* __text__ _text_
 		text = text.replace(/(\*\*|__)(.*?)\1/g, "$2")
 		text = text.replace(/(\*|_)(.*?)\1/g, "$2")
@@ -93,7 +98,62 @@ export const stripMarkdown = (input: string): string => {
 	}
 }
 
+// Get the full formatted summary WITH markdown (for expanded dialog view)
+export const getDocumentSummaryFormatted = (
+	document: DocumentWithMemories,
+): string | null => {
+	try {
+		const anyDoc = document as any
+		const raw =
+			anyDoc?.raw && typeof anyDoc.raw === "object" ? anyDoc.raw : null
+		const extraction =
+			raw?.extraction && typeof raw.extraction === "object"
+				? raw.extraction
+				: null
+		const metadata =
+			anyDoc?.metadata && typeof anyDoc.metadata === "object"
+				? anyDoc.metadata
+				: null
+
+		const firstActiveMemory = Array.isArray(anyDoc?.memoryEntries)
+			? anyDoc.memoryEntries.find(
+					(m: any) => !m?.isForgotten && typeof m?.memory === "string",
+				)?.memory
+			: undefined
+
+		const candidates = [
+			typeof anyDoc?.summary === "string" ? anyDoc.summary : undefined,
+			typeof metadata?.description === "string"
+				? metadata.description
+				: undefined,
+			typeof raw?.description === "string" ? raw.description : undefined,
+			typeof extraction?.description === "string"
+				? extraction.description
+				: undefined,
+			typeof extraction?.analysis === "string"
+				? extraction.analysis
+				: undefined,
+			typeof raw?.analysis === "string" ? raw.analysis : undefined,
+			firstActiveMemory,
+			typeof anyDoc?.content === "string" ? anyDoc.content : undefined,
+		].filter(Boolean) as string[]
+
+		if (candidates.length === 0) return null
+
+		// Return the summary WITH markdown formatting intact
+		// Just clean up extra whitespace but preserve ## headers and bullets
+		const text = candidates[0]
+			.trim()
+			.replace(/\n{3,}/g, "\n\n") // Collapse multiple newlines
+
+		return text || null
+	} catch {
+		return null
+	}
+}
+
 // Build a more diverse snippet preferring summary > analysis > first memory > content
+// This strips markdown for card previews
 export const getDocumentSnippet = (
 	document: DocumentWithMemories,
 ): string | null => {

@@ -15,12 +15,13 @@ import { ensureSpace } from "../routes/documents";
 import { createDocumentExtractorService } from "../services/extraction";
 import { createIngestionOrchestrator } from "../services/orchestration";
 import { createDocumentProcessorService } from "../services/processing";
-import { createPreviewGeneratorService } from "../services/preview";
+import { createPreviewGeneratorService } from "../services/preview/preview-generator";
+import { sanitizeJson } from "../services/ingestion/utils";
 import { getDefaultUserId, supabaseAdmin } from "../supabase";
 
-const MAX_BATCH = env.INGESTION_BATCH_SIZE;
-const POLL_INTERVAL = env.INGESTION_POLL_MS;
-const MAX_ATTEMPTS = env.INGESTION_MAX_ATTEMPTS;
+const MAX_BATCH = Number(env.INGESTION_BATCH_SIZE) || 5;
+const POLL_INTERVAL = Number(env.INGESTION_POLL_MS) || 5000;
+const MAX_ATTEMPTS = Number(env.INGESTION_MAX_ATTEMPTS) || 5;
 const MAX_IDLE_POLL_INTERVAL = 60_000; // Cap idle polling at 1 req/min to avoid hammering Supabase
 const IDLE_BACKOFF_MULTIPLIER = 2;
 const JITTER_FACTOR = 0.1;
@@ -38,10 +39,39 @@ const CIRCUIT_BREAKER = {
   baseBackoff: 5_000, // 5 seconds
 };
 
+// Patterns that indicate systemic errors (should pause queue)
+const SYSTEMIC_ERROR_PATTERNS = [
+  // API/Service errors
+  "rate limit", "rate_limit", "quota exceeded", "too many requests",
+  "429", "503", "502", "500",
+  // Auth errors
+  "unauthorized", "authentication", "invalid api key", "api key",
+  "forbidden", "401", "403",
+  // Service unavailable
+  "service unavailable", "temporarily unavailable",
+  "internal server error", "server error",
+  // Network/Connection
+  "timeout", "ECONNREFUSED", "ETIMEDOUT", "fetch failed",
+  "connection refused", "network error",
+  // AI service specific
+  "gemini", "openai", "anthropic", "model not found",
+  "resource exhausted", "billing",
+];
+
+/**
+ * Check if an error is systemic (affects all jobs) vs document-specific
+ */
+function isSystemicError(error: unknown): boolean {
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return SYSTEMIC_ERROR_PATTERNS.some(pattern => message.includes(pattern.toLowerCase()));
+}
+
 // Circuit breaker state
 let circuitState: "closed" | "open" | "half-open" = "closed";
 let consecutiveFailures = 0;
+let consecutiveJobFailures = 0; // Track job failures separately
 let lastFailureTime = 0;
+let lastSystemicError = "";
 let currentBackoff = CIRCUIT_BREAKER.baseBackoff;
 let currentPollInterval = POLL_INTERVAL;
 let idlePolls = 0;
@@ -52,7 +82,16 @@ let lastScheduledDelay = POLL_INTERVAL;
 // Create service instances
 const extractorService = createDocumentExtractorService();
 const processorService = createDocumentProcessorService();
-const previewService = createPreviewGeneratorService();
+// NOTE: Favicon fallback disabled because external favicon URLs cause CORS errors
+// when loaded directly by the browser. Only use image extraction which provides
+// OpenGraph/Twitter images that are typically CORS-friendly.
+const previewService = createPreviewGeneratorService({
+	enableImageExtraction: true,
+	enableFaviconExtraction: false,
+	fallbackChain: ["image"], // Only use image extraction
+	timeout: 15000,
+	strategyTimeout: 5000,
+});
 
 // Create ingestion orchestrator instance and register services
 const orchestrator = createIngestionOrchestrator();
@@ -69,6 +108,31 @@ type IngestionJobRow = {
 };
 
 type DocumentMetadata = Record<string, unknown> | null;
+
+/**
+ * Extract YouTube video ID from URL
+ */
+function extractYouTubeId(url: string): string | null {
+  try {
+    const u = new URL(url);
+
+    // youtube.com/watch?v=VIDEO_ID
+    if (u.hostname.includes("youtube.com")) {
+      const videoId = u.searchParams.get("v");
+      if (videoId) return videoId;
+    }
+
+    // youtu.be/VIDEO_ID
+    if (u.hostname.includes("youtu.be")) {
+      const pathParts = u.pathname.split("/").filter(Boolean);
+      if (pathParts.length > 0) return pathParts[0];
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 function toStringArray(value: unknown): string[] | null {
   if (!Array.isArray(value)) {
@@ -136,6 +200,100 @@ function recordSuccess(): void {
   circuitState = "closed";
   consecutiveFailures = 0;
   currentBackoff = CIRCUIT_BREAKER.baseBackoff;
+}
+
+/**
+ * Record a successful job completion - resets job failure counter
+ */
+function recordJobSuccess(): void {
+  consecutiveJobFailures = 0;
+  lastSystemicError = "";
+}
+
+/**
+ * Record a job failure and check if it's systemic
+ * Returns true if the queue should be paused
+ */
+async function recordJobFailure(error: unknown): Promise<boolean> {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+
+  // Check if this is a systemic error
+  if (isSystemicError(error)) {
+    consecutiveJobFailures++;
+    lastSystemicError = errorMessage;
+    lastFailureTime = Date.now();
+
+    console.warn(
+      `[ingestion-worker] Systemic error detected (${consecutiveJobFailures}/${CIRCUIT_BREAKER.failureThreshold}): ${errorMessage}`,
+    );
+
+    // If we hit the threshold, pause all pending jobs
+    if (consecutiveJobFailures >= CIRCUIT_BREAKER.failureThreshold) {
+      console.error(
+        `[ingestion-worker] 🛑 QUEUE PAUSED - ${consecutiveJobFailures} consecutive systemic errors. Last error: ${errorMessage}`,
+      );
+      await pauseAllPendingJobs(errorMessage);
+
+      // Open circuit breaker
+      circuitState = "open";
+      currentBackoff = Math.min(
+        currentBackoff * 2 + Math.random() * 1000,
+        CIRCUIT_BREAKER.maxBackoff,
+      );
+
+      return true;
+    }
+  } else {
+    // Non-systemic error (document-specific) - reset job failure counter
+    consecutiveJobFailures = 0;
+  }
+
+  return false;
+}
+
+/**
+ * Pause all pending jobs in the queue when a systemic error is detected
+ * This prevents all jobs from failing one by one
+ */
+async function pauseAllPendingJobs(errorMessage: string): Promise<void> {
+  try {
+    // Update all queued ingestion_jobs to paused
+    const { data: pausedJobs, error: jobError } = await supabaseAdmin
+      .from("ingestion_jobs")
+      .update({
+        status: "paused",
+        error_message: `Queue paused due to systemic error: ${errorMessage}`,
+      })
+      .eq("status", "queued")
+      .select("id, document_id");
+
+    if (jobError) {
+      console.error("[ingestion-worker] Failed to pause jobs:", jobError);
+      return;
+    }
+
+    const jobCount = pausedJobs?.length ?? 0;
+
+    if (jobCount > 0) {
+      // Update corresponding documents to paused status
+      const documentIds = pausedJobs?.map(j => j.document_id) ?? [];
+
+      await supabaseAdmin
+        .from("documents")
+        .update({
+          status: "paused",
+          processing_metadata: sanitizeJson({
+            pausedAt: new Date().toISOString(),
+            pauseReason: errorMessage,
+          }) as Record<string, unknown>,
+        })
+        .in("id", documentIds);
+
+      console.log(`[ingestion-worker] Paused ${jobCount} pending jobs to prevent cascade failure`);
+    }
+  } catch (error) {
+    console.error("[ingestion-worker] Error pausing jobs:", error);
+  }
 }
 
 /**
@@ -296,6 +454,60 @@ async function hydrateDocument(
     );
   }
 
+  // PRIORITY: Generate preview FIRST before any processing
+  // This allows the UI to show a preview immediately while processing continues
+  await updateDocumentStatus(documentId, "generating_preview");
+
+  try {
+    let previewUrl: string | null = null;
+
+    // Special handling for YouTube videos - extract thumbnail directly
+    if (document.url && (document.source === "youtube" || document.url.includes("youtube.com") || document.url.includes("youtu.be"))) {
+      const videoId = extractYouTubeId(document.url);
+      if (videoId) {
+        // Use maxresdefault for best quality, fallback to hqdefault
+        previewUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+        console.log("[ingestion-worker] YouTube thumbnail extracted", {
+          documentId,
+          videoId,
+          previewUrl,
+        });
+      }
+    }
+
+    // If not YouTube or extraction failed, use preview service
+    if (!previewUrl) {
+      const previewResult = await previewService.generate({
+        title: document.title || "Untitled",
+        text: document.content || "",
+        url: document.url || null,
+        source: document.source || "unknown",
+        contentType: document.type || "text",
+        metadata: document.metadata as Record<string, unknown> || {},
+      });
+      previewUrl = previewResult?.url || null;
+    }
+
+    if (previewUrl) {
+      // Save preview immediately so UI can display it
+      await supabaseAdmin
+        .from("documents")
+        .update({ preview_image: previewUrl })
+        .eq("id", documentId);
+
+      console.log("[ingestion-worker] Preview generated and saved first", {
+        documentId,
+        previewUrl: previewUrl.substring(0, 100),
+      });
+    }
+  } catch (previewError) {
+    // Don't fail the whole job if preview generation fails
+    console.warn("[ingestion-worker] Preview generation failed, continuing with processing", {
+      documentId,
+      error: previewError instanceof Error ? previewError.message : String(previewError),
+    });
+  }
+
   // Update status: extracting content
   await updateDocumentStatus(documentId, "extracting");
 
@@ -383,14 +595,46 @@ async function hydrateDocument(
   }
 
   // Update metadata with processing results
+  // Flatten metaTags into top-level metadata so frontend can find ogImage, twitterImage, etc.
+  const metaTags = extraction?.extractionMetadata?.metaTags ?? {};
   const updatedMetadata = {
     ...document.metadata,
     processingCompleted: true,
     extractedAt: new Date().toISOString(),
     ...(extraction?.extractionMetadata ?? {}),
+    // Flatten metaTags to top level for frontend compatibility
+    ogImage: metaTags.ogImage ?? (extraction?.extractionMetadata as any)?.ogImage,
+    twitterImage: metaTags.twitterImage ?? (extraction?.extractionMetadata as any)?.twitterImage,
+    description: metaTags.description ?? (extraction?.extractionMetadata as any)?.description,
+    favicon: metaTags.favicon ?? (extraction?.extractionMetadata as any)?.favicon,
     ...(processed?.tags ? { tags: processed.tags } : {}),
   };
   documentUpdate.metadata = updatedMetadata;
+
+  // Save raw extraction data including images
+  if (extraction?.raw || extraction?.images || metaTags.ogImage) {
+    const allImages = [
+      ...(extraction.images ?? []),
+      ...(metaTags.ogImage ? [metaTags.ogImage] : []),
+      ...(metaTags.twitterImage ? [metaTags.twitterImage] : []),
+    ].filter((v, i, a) => a.indexOf(v) === i); // dedupe
+
+    documentUpdate.raw = {
+      ...(extraction.raw ?? {}),
+      extraction: {
+        images: allImages,
+        source: extraction.source,
+        contentType: extraction.contentType,
+        extractorUsed: extraction.extractorUsed,
+      },
+    };
+    console.log("[ingestion-worker] Saving raw extraction data", {
+      documentId,
+      imageCount: allImages.length,
+      ogImage: metaTags.ogImage ?? null,
+      twitterImage: metaTags.twitterImage ?? null,
+    });
+  }
 
   // Save word count if available
   if (extraction?.wordCount) {
@@ -453,18 +697,26 @@ async function hydrateDocument(
         documentId,
         error: chunksError.message,
       });
+      // Mark as failed if chunks couldn't be saved
+      await supabaseAdmin
+        .from("documents")
+        .update({ status: "failed", error: `Failed to save chunks: ${chunksError.message}` })
+        .eq("id", documentId);
     } else {
       console.log("[ingestion-worker] Chunks saved successfully", {
         documentId,
         chunkCount: documentChunks.length,
       });
 
-      // Update document with chunk count
+      // Update document with chunk count and mark as done
       await supabaseAdmin
         .from("documents")
-        .update({ chunk_count: documentChunks.length })
+        .update({ chunk_count: documentChunks.length, status: "done", error: null })
         .eq("id", documentId);
     }
+  } else {
+    // No chunks but extraction succeeded - mark as done anyway
+    await updateDocumentStatus(documentId, "done");
   }
 
   // Mark job as completed
@@ -491,28 +743,6 @@ async function handleJobFailure(
   error: unknown,
 ) {
   const message = error instanceof Error ? error.message : String(error);
-  // Sanitize helper to avoid JSON 22P02 due to invalid surrogates
-  const sanitizeString = (value: string) =>
-    value.replace(
-      /([\uD800-\uDBFF])(?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])([\uDC00-\uDFFF])/g,
-      "\uFFFD",
-    );
-  const sanitizeJson = (value: unknown): unknown => {
-    if (value == null) return value;
-    const t = typeof value;
-    if (t === "string") return sanitizeString(value as string);
-    if (t === "number" || t === "boolean") return value;
-    if (Array.isArray(value)) return value.map((v) => sanitizeJson(v));
-    if (t === "object") {
-      const out: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-        if (v === undefined || typeof v === "function") continue;
-        out[k] = sanitizeJson(v);
-      }
-      return out;
-    }
-    return null;
-  };
 
   if (attempts >= MAX_ATTEMPTS) {
     await supabaseAdmin
@@ -550,7 +780,11 @@ async function handleJobFailure(
   );
 }
 
-async function processJob(job: IngestionJobRow) {
+/**
+ * Process a single job
+ * @returns true if processing should continue, false if queue was paused
+ */
+async function processJob(job: IngestionJobRow): Promise<boolean> {
   const attempts = (job.attempts ?? 0) + 1;
 
   console.log("[ingestion-worker] Starting job processing", {
@@ -574,6 +808,10 @@ async function processJob(job: IngestionJobRow) {
         documentId: job.document_id,
       },
     );
+
+    // Record success - resets systemic error counter
+    recordJobSuccess();
+    return true;
   } catch (error) {
     console.error("[ingestion-worker] Job failed with error", {
       jobId: job.id,
@@ -581,7 +819,18 @@ async function processJob(job: IngestionJobRow) {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
+
+    // Check if this is a systemic error that should pause the queue
+    const shouldPauseQueue = await recordJobFailure(error);
+
+    if (shouldPauseQueue) {
+      // Don't call handleJobFailure - the job is already paused with others
+      return false;
+    }
+
+    // Handle the failure normally (retry or mark as failed)
     await handleJobFailure(job, attempts, error);
+    return true;
   }
 }
 
@@ -627,13 +876,29 @@ async function tick() {
 
     console.log(`[ingestion-worker] Processing ${jobs.length} queued jobs`);
 
+    let processedCount = 0;
+    let queuePaused = false;
+
     for (const job of jobs) {
-      await processJob(job);
+      const shouldContinue = await processJob(job);
+      processedCount++;
+
+      if (!shouldContinue) {
+        // Queue was paused due to systemic error - stop processing
+        queuePaused = true;
+        console.log(`[ingestion-worker] Stopping after ${processedCount} jobs - queue paused`);
+        break;
+      }
     }
 
-    console.log(`[ingestion-worker] Finished processing ${jobs.length} jobs`);
-    nextDelay = currentPollInterval;
-    nextReason = "work";
+    if (queuePaused) {
+      nextDelay = currentBackoff;
+      nextReason = "queue-paused";
+    } else {
+      console.log(`[ingestion-worker] Finished processing ${processedCount} jobs`);
+      nextDelay = currentPollInterval;
+      nextReason = "work";
+    }
   } catch (error) {
     // Record failure for circuit breaker
     recordFailure(error);

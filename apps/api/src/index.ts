@@ -165,6 +165,48 @@ app.use("*", rateLimiter());
 
 app.get("/health", healthHandler);
 
+// Image proxy to bypass CORS restrictions for external images
+app.get("/api/image-proxy", async (c) => {
+  const url = c.req.query("url");
+  if (!url) {
+    return c.json({ error: "Missing url parameter" }, 400);
+  }
+
+  try {
+    // Validate URL
+    const parsedUrl = new URL(url);
+    const allowedProtocols = ["http:", "https:"];
+    if (!allowedProtocols.includes(parsedUrl.protocol)) {
+      return c.json({ error: "Invalid URL protocol" }, 400);
+    }
+
+    // Fetch the image
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; KortixBot/1.0)",
+        "Accept": "image/*,*/*",
+      },
+    });
+
+    if (!response.ok) {
+      return c.json({ error: `Failed to fetch image: ${response.status}` }, response.status);
+    }
+
+    const contentType = response.headers.get("content-type") || "image/png";
+    const buffer = await response.arrayBuffer();
+
+    // Set cache headers (cache for 1 hour)
+    c.header("Content-Type", contentType);
+    c.header("Cache-Control", "public, max-age=3600");
+    c.header("Access-Control-Allow-Origin", "*");
+
+    return c.body(buffer);
+  } catch (error) {
+    console.error("[image-proxy] Error fetching image:", error);
+    return c.json({ error: "Failed to fetch image" }, 500);
+  }
+});
+
 app.get("/", (c) =>
   c.json({
     message: "Kortix API",
@@ -665,6 +707,85 @@ app.post("/v3/documents/:id/cancel", async (c) => {
   }
 });
 
+// Resume a single paused document
+app.post("/v3/documents/:id/resume", async (c) => {
+  const { organizationId } = c.var.session;
+  const documentId = c.req.param("id");
+  const supabase = createClientForSession(c.var.session);
+
+  try {
+    // Update document status from paused to queued
+    const { error: docError } = await supabase
+      .from("documents")
+      .update({ status: "queued" })
+      .eq("id", documentId)
+      .eq("org_id", organizationId)
+      .eq("status", "paused");
+
+    if (docError) throw docError;
+
+    // Update corresponding ingestion job
+    const { error: jobError } = await supabase
+      .from("ingestion_jobs")
+      .update({ status: "queued", error_message: null })
+      .eq("document_id", documentId)
+      .eq("status", "paused");
+
+    if (jobError) throw jobError;
+
+    return c.json({ message: "Document resumed", documentId }, 200);
+  } catch (error) {
+    console.error("Failed to resume document", error);
+    return c.json({ error: { message: "Failed to resume document" } }, 400);
+  }
+});
+
+// Resume ALL paused documents for the organization
+app.post("/v3/documents/resume-all", async (c) => {
+  const { organizationId } = c.var.session;
+  const supabase = createClientForSession(c.var.session);
+
+  try {
+    // Get all paused documents for this org
+    const { data: pausedDocs, error: selectError } = await supabase
+      .from("documents")
+      .select("id")
+      .eq("org_id", organizationId)
+      .eq("status", "paused");
+
+    if (selectError) throw selectError;
+
+    const documentIds = pausedDocs?.map(d => d.id) ?? [];
+
+    if (documentIds.length === 0) {
+      return c.json({ message: "No paused documents found", count: 0 }, 200);
+    }
+
+    // Update all paused documents to queued
+    const { error: docError } = await supabase
+      .from("documents")
+      .update({ status: "queued" })
+      .in("id", documentIds);
+
+    if (docError) throw docError;
+
+    // Update all corresponding ingestion jobs
+    const { error: jobError } = await supabase
+      .from("ingestion_jobs")
+      .update({ status: "queued", error_message: null })
+      .in("document_id", documentIds)
+      .eq("status", "paused");
+
+    if (jobError) throw jobError;
+
+    console.log(`[resume-all] Resumed ${documentIds.length} paused documents for org ${organizationId}`);
+    return c.json({ message: "All paused documents resumed", count: documentIds.length }, 200);
+  } catch (error) {
+    console.error("Failed to resume all documents", error);
+    return c.json({ error: { message: "Failed to resume documents" } }, 400);
+  }
+});
+
 // Find related links for a document (manually triggered)
 app.post("/v3/documents/:id/related-links", async (c) => {
   const { organizationId } = c.var.session;
@@ -696,11 +817,13 @@ app.delete("/v3/documents/:id", async (c) => {
   const documentId = c.req.param("id");
   const supabase = createClientForSession(c.var.session);
 
+  console.log("[DELETE document] Debug:", { organizationId, documentId, session: c.var.session });
+
   try {
     await deleteDocument(supabase, { organizationId, documentId });
     return c.body(null, 204);
   } catch (error) {
-    console.error("Failed to delete document", error);
+    console.error("Failed to delete document", { error, organizationId, documentId });
     return c.json({ error: { message: "Failed to delete document" } }, 400);
   }
 });

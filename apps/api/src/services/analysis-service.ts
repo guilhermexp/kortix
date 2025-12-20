@@ -237,10 +237,32 @@ export class AnalysisService {
 			text = (contents[0]?.text || "").slice(0, 100_000)
 		}
 		if (!text) {
-			// Fallback to local MarkItDown
-			const { convertUrlWithMarkItDown } = await import("./markitdown")
-			const converted = await convertUrlWithMarkItDown(url)
-			text = converted.markdown?.slice(0, 100_000) || ""
+			// Fallback to basic HTTP fetch (MarkItDown disabled temporarily)
+			console.log("[AnalysisService] EXA empty, using HTTP fetch fallback for:", url)
+			const response = await safeFetch(url, {
+				headers: {
+					"User-Agent":
+						"Mozilla/5.0 (compatible; KortixBot/1.0)",
+				},
+				signal: AbortSignal.timeout(30000),
+			})
+			if (response.ok) {
+				const html = await response.text()
+				// Basic text extraction from HTML
+				let extractedText = html
+					.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+					.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+					.replace(/<[^>]+>/g, " ")
+					.replace(/&nbsp;/g, " ")
+					.replace(/&amp;/g, "&")
+					.replace(/&lt;/g, "<")
+					.replace(/&gt;/g, ">")
+					.replace(/&quot;/g, '"')
+					.replace(/&#39;/g, "'")
+					.replace(/\s+/g, " ")
+					.trim()
+				text = extractedText.slice(0, 100_000)
+			}
 		}
 
 		// Crawl a few subpages via EXA search within same domain

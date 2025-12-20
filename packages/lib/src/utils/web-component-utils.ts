@@ -216,3 +216,61 @@ export const PROCESSING_STATUSES = new Set([
   "processing",
   "indexing",
 ]);
+
+/**
+ * Status that indicates the queue was paused due to systemic error
+ */
+export const PAUSED_STATUS = "paused";
+
+/**
+ * Domains that are safe and don't need proxying (our own domains, CDNs, etc.)
+ */
+const SAFE_DOMAINS = [
+  "localhost",
+  "127.0.0.1",
+  "kortix.ai",
+  "kortix.com",
+  // YouTube thumbnails - they set CORS headers
+  "img.youtube.com",
+  "i.ytimg.com",
+  // Common CDNs that allow CORS
+  "cloudflare.com",
+  "cdnjs.cloudflare.com",
+  "unpkg.com",
+  "jsdelivr.net",
+];
+
+/**
+ * Wraps an image URL through our proxy to bypass CORS
+ * Proxies ALL external images except from safe/known domains
+ */
+export const proxyImageUrl = (
+  url: string | undefined | null,
+  apiBaseUrl?: string
+): string | undefined => {
+  if (!url) return undefined;
+
+  // Don't proxy data URLs
+  if (url.startsWith("data:")) return url;
+
+  // Don't proxy relative URLs
+  if (!url.startsWith("http://") && !url.startsWith("https://")) return url;
+
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+
+    // Check if this is a safe domain that doesn't need proxying
+    const isSafe = SAFE_DOMAINS.some(domain =>
+      hostname === domain || hostname.endsWith(`.${domain}`)
+    );
+
+    if (isSafe) return url;
+
+    // Proxy all other external images
+    const base = apiBaseUrl || (typeof window !== "undefined" ? "" : "");
+    return `${base}/api/image-proxy?url=${encodeURIComponent(url)}`;
+  } catch {
+    return url;
+  }
+};

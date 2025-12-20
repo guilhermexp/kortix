@@ -109,6 +109,39 @@ const getYouTubeThumbnail = (value?: string): string | undefined => {
 	return undefined
 }
 
+// Domains that are safe and don't need proxying
+const SAFE_DOMAINS = [
+	"localhost",
+	"127.0.0.1",
+	"kortix.ai",
+	"kortix.com",
+	"img.youtube.com",
+	"i.ytimg.com",
+	"cloudflare.com",
+	"cdnjs.cloudflare.com",
+	"unpkg.com",
+	"jsdelivr.net",
+]
+
+const proxyImageUrl = (url: string | undefined | null): string | undefined => {
+	if (!url) return undefined
+	if (url.startsWith("data:")) return url
+	if (!url.startsWith("http://") && !url.startsWith("https://")) return url
+	try {
+		const parsed = new URL(url)
+		const hostname = parsed.hostname.toLowerCase()
+		// Only skip proxying for safe domains
+		const isSafe = SAFE_DOMAINS.some(domain =>
+			hostname === domain || hostname.endsWith(`.${domain}`)
+		)
+		if (isSafe) return url
+		// Proxy all other external images
+		return `/api/image-proxy?url=${encodeURIComponent(url)}`
+	} catch {
+		return url
+	}
+}
+
 const extractDocumentImages = (document: DocumentWithMemories): { mainImage: string | null; relatedImages: string[] } => {
 	const metadata = asRecord(document.metadata)
 	const raw = asRecord(document.raw)
@@ -129,7 +162,7 @@ const extractDocumentImages = (document: DocumentWithMemories): { mainImage: str
 
 	const addImage = (src: string | undefined | null) => {
 		if (!src || seen.has(src)) return
-		// Skip badges, shields, and avatars
+		// Skip badges, shields, and avatars (but NOT GitHub content images)
 		const lower = src.toLowerCase()
 		if (
 			lower.includes("badge") ||
@@ -137,9 +170,9 @@ const extractDocumentImages = (document: DocumentWithMemories): { mainImage: str
 			lower.includes("avatars.githubusercontent.com") ||
 			lower.includes("gravatar.com") ||
 			lower.includes("pbs.twimg.com/profile") ||
-			lower.includes("/avatar") ||
+			lower.includes("/avatar/") ||
+			lower.includes("/avatars/") ||
 			lower.includes("profile_images") ||
-			lower.includes("user-images") ||
 			// Skip small icons
 			lower.endsWith(".ico")
 		) return
@@ -505,7 +538,8 @@ export function MemoryEditClient({
 										<img
 											alt={documentTitle}
 											className="w-full object-cover max-h-[70vh] transition-transform duration-500 group-hover:scale-[1.02]"
-											src={mainImage}
+											referrerPolicy="no-referrer"
+											src={proxyImageUrl(mainImage) || mainImage}
 										/>
 										{/* Video play overlay */}
 										{isVideo && (
@@ -679,7 +713,8 @@ export function MemoryEditClient({
 												className="w-full object-cover transition-transform duration-300 group-hover:scale-105"
 												loading="lazy"
 												onClick={() => window.open(img, "_blank")}
-												src={img}
+												referrerPolicy="no-referrer"
+												src={proxyImageUrl(img) || img}
 											/>
 											{/* Delete button */}
 											<button
@@ -715,7 +750,8 @@ export function MemoryEditClient({
 														alt={link.title}
 														className="w-full object-cover transition-transform duration-300 group-hover:scale-105"
 														loading="lazy"
-														src={link.image}
+														referrerPolicy="no-referrer"
+														src={proxyImageUrl(link.image) || link.image}
 													/>
 												) : (
 													<div className="w-full aspect-video flex items-center justify-center bg-gradient-to-br from-muted to-muted/80">
@@ -723,7 +759,8 @@ export function MemoryEditClient({
 															<img
 																alt=""
 																className="w-10 h-10 rounded-lg opacity-60"
-																src={link.favicon}
+																referrerPolicy="no-referrer"
+																src={proxyImageUrl(link.favicon) || link.favicon}
 															/>
 														) : (
 															<LinkIcon className="w-6 h-6 text-muted-foreground/40" />
