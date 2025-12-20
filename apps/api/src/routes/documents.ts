@@ -258,7 +258,7 @@ export async function getDocument(
 	const { data: document, error } = await client
 		.from("documents")
 		.select(
-			"id, status, content, summary, metadata, created_at, updated_at, space_id, spaces(container_tag)",
+			"id, status, content, summary, metadata, created_at, updated_at, space_id, spaces(container_tag), title, url, type, preview_image, raw",
 		)
 		.eq("org_id", organizationId)
 		.eq("id", documentId)
@@ -278,7 +278,7 @@ export async function getDocument(
 
 	if (memoriesError) throw memoriesError
 
-	return DocumentDetailSchema.parse({
+	return {
 		id: document.id,
 		status: document.status ?? "unknown",
 		content: document.content ?? null,
@@ -287,6 +287,12 @@ export async function getDocument(
 		containerTags,
 		createdAt: document.created_at,
 		updatedAt: document.updated_at,
+		// Additional fields needed for preview rendering
+		title: (document as any).title ?? null,
+		url: (document as any).url ?? null,
+		type: (document as any).type ?? null,
+		previewImage: (document as any).preview_image ?? null,
+		raw: (document as any).raw ?? null,
 		// Transform memory entries: database 'content' → API 'memory'
 		memoryEntries: (memories ?? []).map((row) => ({
 			id: row.id,
@@ -295,7 +301,7 @@ export async function getDocument(
 			createdAt: row.created_at,
 			updatedAt: row.updated_at,
 		})),
-	})
+	}
 }
 
 export async function ensureSpace(
