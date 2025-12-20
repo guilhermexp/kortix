@@ -183,6 +183,51 @@ const mergeOptimisticMemory = (
   return withOptimisticMemory(undefined, memory);
 };
 
+// Helper function to find and update optimistic document by content/URL
+const updateOptimisticByContentOrUrl = (
+  data: DocumentsQueryData | undefined,
+  content: string,
+  patch: Partial<DocumentListItem>,
+): DocumentsQueryData | undefined => {
+  if (!data) return data;
+
+  let found = false;
+
+  const applyUpdate = (list?: DocumentsListData): DocumentsListData | undefined => {
+    if (!list) return list;
+    const updatedDocuments = list.documents.map((doc) => {
+      // Match by content/URL and isOptimistic flag
+      const isMatch = (doc as any).isOptimistic &&
+        (doc.content === content || doc.url === content ||
+         (doc.url && content.includes(doc.url)) ||
+         (doc.content && content.includes(doc.content)));
+      if (!isMatch) return doc;
+      found = true;
+      return {
+        ...doc,
+        ...patch,
+        isOptimistic: false,
+      };
+    });
+    return { ...list, documents: updatedDocuments };
+  };
+
+  if (isInfiniteDocumentsListData(data)) {
+    const pages = data.pages.map((page, index) =>
+      index === 0 ? (applyUpdate(page) ?? page) : page,
+    );
+    if (found) return { ...data, pages };
+    return data;
+  }
+
+  if (isDocumentsListData(data)) {
+    const updated = applyUpdate(data);
+    if (found && updated) return updated;
+  }
+
+  return data;
+};
+
 const promoteOptimisticMemory = (
   data: DocumentsQueryData | undefined,
   optimisticId: string,
@@ -488,8 +533,19 @@ export function AddMemoryView({
         }
 
         const memoryId = res.data.id;
+        const initialStatus = res.data.status ?? "queued";
 
-        // Polling function to check status
+        // Immediately update cache to remove optimistic flag and show real status
+        queryClient.setQueriesData<DocumentsQueryData | undefined>(
+          { queryKey: ["documents-with-memories", project], exact: false },
+          (current) =>
+            updateOptimisticByContentOrUrl(current, content, {
+              id: memoryId,
+              status: initialStatus,
+            }),
+        );
+
+        // Polling function to check status with real-time updates
         const pollForCompletion = async (): Promise<MemoryStatusResponse> => {
           let attempts = 0;
           const maxAttempts = 60; // Maximum 5 minutes
@@ -506,16 +562,25 @@ export function AddMemoryView({
                 );
               }
 
+              const docStatus = String(memory.data?.status ?? "").toLowerCase();
+
+              // Update cache with current status for real-time feedback
+              queryClient.setQueriesData<DocumentsQueryData | undefined>(
+                { queryKey: ["documents-with-memories", project], exact: false },
+                (current) =>
+                  promoteOptimisticMemory(current, memoryId, {
+                    id: memoryId,
+                    status: memory.data?.status ?? docStatus,
+                  }),
+              );
+
               // Check if processing is complete
-              if (
-                memory.data?.status === "done" ||
-                memory.data?.status === "failed"
-              ) {
+              if (docStatus === "done" || docStatus === "failed") {
                 return memory;
               }
 
               // Wait before next attempt
-              await new Promise((resolve) => setTimeout(resolve, 5000)); // 5 seconds
+              await new Promise((resolve) => setTimeout(resolve, 3000)); // 3 seconds
               attempts++;
             } catch (error) {
               console.error("Error polling memory status:", error);
@@ -780,11 +845,23 @@ export function AddMemoryView({
         }
 
         const memoryId = response.data.id;
+        const initialStatus = response.data.status ?? "queued";
 
-        // Polling function to check status
+        // Immediately update cache to remove optimistic flag and show real status
+        // This allows the UI to show "Na fila" or "Processando" instead of "Preparando envio"
+        queryClient.setQueriesData<DocumentsQueryData | undefined>(
+          { queryKey: ["documents-with-memories", project], exact: false },
+          (current) =>
+            updateOptimisticByContentOrUrl(current, content, {
+              id: memoryId,
+              status: initialStatus,
+            }),
+        );
+
+        // Polling function to check status and update UI in real-time
         const pollForCompletion = async (): Promise<MemoryStatusResponse> => {
           let attempts = 0;
-          const maxAttempts = 60; // Maximum 5 minutes (60 attempts * 5 seconds)
+          const maxAttempts = 60; // Maximum 5 minutes (60 attempts * 3 seconds)
 
           while (attempts < maxAttempts) {
             try {
@@ -798,14 +875,25 @@ export function AddMemoryView({
                 );
               }
 
-              // Check if processing is complete - only return when fully done or failed
               const docStatus = String(memory.data?.status ?? "").toLowerCase();
+
+              // Update cache with current status for real-time feedback
+              queryClient.setQueriesData<DocumentsQueryData | undefined>(
+                { queryKey: ["documents-with-memories", project], exact: false },
+                (current) =>
+                  promoteOptimisticMemory(current, memoryId, {
+                    id: memoryId,
+                    status: memory.data?.status ?? docStatus,
+                  }),
+              );
+
+              // Check if processing is complete
               if (docStatus === "done" || docStatus === "failed") {
                 return memory.data;
               }
 
               // If still processing, wait and try again
-              await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds
+              await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait 3 seconds
               attempts++;
             } catch (error) {
               console.error("Error polling memory status:", error);
@@ -813,7 +901,7 @@ export function AddMemoryView({
               if (attempts >= 3) {
                 throw new Error("Failed to check processing status");
               }
-              await new Promise((resolve) => setTimeout(resolve, 5000));
+              await new Promise((resolve) => setTimeout(resolve, 3000));
               attempts++;
             }
           }
