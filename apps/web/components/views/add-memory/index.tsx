@@ -634,14 +634,24 @@ export function AddMemoryView({
           url: variables.content,
         });
       } else {
-        // Update optimistic entry with real data in ALL matching queries
+        // Update optimistic entry with ALL data from completed document
+        // This ensures the card renders immediately with full content
         if (context?.optimisticId && documentId) {
           queryClient.setQueriesData<DocumentsQueryData | undefined>(
             { queryKey: ["documents-with-memories", variables.project], exact: false },
             (current) =>
               promoteOptimisticMemory(current, context.optimisticId!, {
                 id: documentId,
-                status,
+                status: status || "done",
+                title: (payload as any)?.title,
+                content: (payload as any)?.content,
+                url: (payload as any)?.url ?? variables.url,
+                type: (payload as any)?.type,
+                previewImage: (payload as any)?.previewImage ?? (payload as any)?.preview_image,
+                memoryEntries: (payload as any)?.memoryEntries ?? [],
+                metadata: (payload as any)?.metadata,
+                raw: (payload as any)?.raw,
+                description: (payload as any)?.description ?? (payload as any)?.summary,
               }),
           );
         }
@@ -788,13 +798,9 @@ export function AddMemoryView({
                 );
               }
 
-              // Check if processing is complete
-              // Adjust this condition based on your API response structure
-              if (
-                memory.data?.status === "done" ||
-                // Sometimes the memory might be ready when it has content and no processing status
-                memory.data?.content
-              ) {
+              // Check if processing is complete - only return when fully done or failed
+              const docStatus = String(memory.data?.status ?? "").toLowerCase();
+              if (docStatus === "done" || docStatus === "failed") {
                 return memory.data;
               }
 
@@ -942,14 +948,24 @@ export function AddMemoryView({
           url: variables.contentType === "link" ? variables.content : undefined,
         });
       } else {
-        // Update optimistic entry with real data in ALL matching queries
+        // Update optimistic entry with ALL data from completed document
+        // This ensures the card renders immediately with full content
         if (context?.optimisticId && documentId) {
           queryClient.setQueriesData<DocumentsQueryData | undefined>(
             { queryKey: ["documents-with-memories", variables.project], exact: false },
             (current) =>
               promoteOptimisticMemory(current, context.optimisticId!, {
                 id: documentId,
-                status,
+                status: status || "done",
+                title: (payload as any)?.title,
+                content: (payload as any)?.content,
+                url: (payload as any)?.url,
+                type: (payload as any)?.type,
+                previewImage: (payload as any)?.previewImage ?? (payload as any)?.preview_image,
+                memoryEntries: (payload as any)?.memoryEntries ?? [],
+                metadata: (payload as any)?.metadata,
+                raw: (payload as any)?.raw,
+                description: (payload as any)?.description ?? (payload as any)?.summary,
               }),
           );
         }
@@ -1122,6 +1138,7 @@ export function AddMemoryView({
       }
 
       // Not a duplicate - proceed with normal flow, update ALL matching queries
+      // Include all document fields for immediate rendering
       if (context?.optimisticId) {
         queryClient.setQueriesData<DocumentsQueryData | undefined>(
           { queryKey: ["documents-with-memories", projectKey], exact: false },
@@ -1136,6 +1153,8 @@ export function AddMemoryView({
               type: data?.type ?? "file",
               url: data?.url ?? null,
               content: typeof data?.content === "string" ? data.content : "",
+              previewImage: (data as any)?.previewImage ?? (data as any)?.preview_image,
+              memoryEntries: (data as any)?.memoryEntries ?? [],
               metadata: (data?.metadata as Record<string, unknown>) ?? {
                 fileName: variables.file.name,
                 fileSize: variables.file.size,
