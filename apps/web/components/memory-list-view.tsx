@@ -593,6 +593,15 @@ function DocumentPreviewModal({
     const isActivelyProcessing = statusIsProcessing && !isQueued;
     const isProcessing = !forcedStop && !isPaused && (statusIsProcessing || contentNotReady || isOptimisticDoc);
 
+    // Check if document was recently created (< 10 seconds) - show "Iniciando..." instead of "Na fila"
+    const isRecentlyCreated = (() => {
+      const createdAt = document.createdAt || (document as any).created_at;
+      if (!createdAt) return false;
+      const created = new Date(createdAt).getTime();
+      const now = Date.now();
+      return (now - created) < 10000; // Less than 10 seconds
+    })();
+
     // Function to resume a paused document
     const handleResume = async (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -809,8 +818,38 @@ function DocumentPreviewModal({
               Cancelar
             </Button>
           </div>
+        ) : isQueued && isRecentlyCreated ? (
+          /* Recently created and queued - show "Iniciando..." with spinner */
+          <div className="p-6 flex flex-col items-center justify-center min-h-[140px] gap-3">
+            <div className="relative">
+              <Loader className="h-6 w-6 text-primary animate-spin" />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">
+                Iniciando...
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-1 opacity-70 hover:opacity-100"
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  await cancelDocument(document.id);
+                  setForcedStop(true);
+                  toast.success("Cancelado");
+                  queryClient.invalidateQueries({ queryKey: ["documents-with-memories", selectedProject], exact: false });
+                } catch (error) {
+                  toast.error("Falha ao cancelar", { description: error instanceof Error ? error.message : String(error) });
+                }
+              }}
+            >
+              Cancelar
+            </Button>
+          </div>
         ) : isQueued ? (
-          /* Queued - in backend queue, waiting to be processed */
+          /* Queued for a while - waiting in backend queue */
           <div className="p-6 flex flex-col items-center justify-center min-h-[140px] gap-3">
             <div className="relative">
               <Clock className="h-6 w-6 text-muted-foreground" />

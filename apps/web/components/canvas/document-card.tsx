@@ -445,6 +445,15 @@ export const DocumentCard = memo(
 		// Check if document is just waiting in queue vs actively processing
 		const isQueued = String(document.status ?? "").toLowerCase() === "queued"
 
+		// Check if document was recently created (< 10 seconds) - show "Iniciando..." instead of "Na fila"
+		const isRecentlyCreated = (() => {
+			const createdAt = document.createdAt || (document as any).created_at
+			if (!createdAt) return false
+			const created = new Date(createdAt).getTime()
+			const now = Date.now()
+			return (now - created) < 10000 // Less than 10 seconds
+		})()
+
 		const [stickyPreview, setStickyPreview] = useState<PreviewData | null>(null)
 
 		useEffect(() => {
@@ -662,8 +671,36 @@ export const DocumentCard = memo(
 						</div>
 					</div>
 				</div>
+			) : isQueued && isRecentlyCreated ? (
+				/* Recently created - show "Iniciando..." */
+				<div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center pointer-events-none">
+					<div className="flex flex-col items-center gap-2">
+						<svg
+							className="animate-spin h-5 w-5 text-white/70"
+							viewBox="0 0 24 24"
+						>
+							<circle
+								className="opacity-25"
+								cx="12"
+								cy="12"
+								fill="none"
+								r="10"
+								stroke="currentColor"
+								strokeWidth="3"
+							/>
+							<path
+								className="opacity-75"
+								d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+								fill="currentColor"
+							/>
+						</svg>
+						<div className="text-[11px] text-white/80">
+							Iniciando...
+						</div>
+					</div>
+				</div>
 			) : isQueued ? (
-				/* Queued - in backend queue */
+				/* Queued for a while - in backend queue */
 				<div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center pointer-events-none">
 					<div className="flex flex-col items-center gap-2">
 						{/* Clock icon */}
