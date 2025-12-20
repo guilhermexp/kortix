@@ -772,8 +772,11 @@ export const DocumentCard = memo(
 									const isData = raw.startsWith("data:")
 									const cleaned = stripMarkdown(raw)
 										.trim()
-										.replace(/^['"“”‘’`]+|['"“”‘’`]+$/g, "")
-									return isData || !cleaned ? "Untitled Document" : cleaned
+										.replace(/^['"""''`]+|['"""''`]+$/g, "")
+									if (isData || !cleaned) {
+										return (isProcessing || isOptimisticDoc || isQueued) ? "Processando..." : "Sem título"
+									}
+									return cleaned
 								})()}
 							</p>
 						</div>
