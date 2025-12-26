@@ -310,10 +310,12 @@ export function MemoryEntriesSidebar({
 	const PROCESSING_STATUSES = new Set([
 		"queued",
 		"fetching",
+		"generating_preview",
 		"extracting",
 		"chunking",
 		"embedding",
 		"processing",
+		"indexing",
 	])
 
 	const documentPreview = useMemo<DocumentPreviewData | null>(() => {

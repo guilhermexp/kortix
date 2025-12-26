@@ -7,9 +7,12 @@
     "dev": "bash -c 'bun run dev:server & SERVER_PID=$!; bun run dev:worker & WORKER_PID=$!; wait $SERVER_PID $WORKER_PID'",
     "dev:server": "bun run --hot src/index.ts",
     "dev:worker": "bun run src/worker/ingestion-worker.ts",
+    "dev:queue": "bun run src/worker/queue-worker.ts",
+    "dev:all": "bash -c 'bun run dev:server & bun run dev:worker & bun run dev:queue & wait'",
     "start": "bun --expose-gc run src/index.ts",
     "test": "bun test src/routes/**/*.test.ts",
     "ingest:worker": "bun run src/worker/ingestion-worker.ts",
+    "queue:worker": "bun run src/worker/queue-worker.ts",
     "postinstall": "bash install-markitdown.sh"
   },
   "dependencies": {
@@ -17,9 +20,10 @@
     "@anthropic-ai/sdk": "^0.67.0",
     "@google/generative-ai": "^0.24.1",
     "@hono/node-server": "^1.9.0",
-    
     "@supabase/supabase-js": "^2.76.1",
+    "bullmq": "^5.66.2",
     "hono": "^4.10.2",
+    "ioredis": "^5.8.2",
     "muppet": "0.2.1",
     "pdf-parse": "^1.1.1",
     "redis": "^5.9.0",

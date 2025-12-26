@@ -251,6 +251,7 @@ export function stripMarkdown(text: string): string {
 export const PROCESSING_STATUSES = new Set([
   "queued",
   "fetching",
+  "generating_preview",
   "extracting",
   "chunking",
   "embedding",
