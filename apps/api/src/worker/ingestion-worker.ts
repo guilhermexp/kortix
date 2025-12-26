@@ -17,13 +17,14 @@ import { createIngestionOrchestrator } from "../services/orchestration";
 import { createDocumentProcessorService } from "../services/processing";
 import { createPreviewGeneratorService } from "../services/preview/preview-generator";
 import { sanitizeJson } from "../services/ingestion/utils";
+import { documentListCache, documentCache } from "../services/query-cache";
 import { getDefaultUserId, supabaseAdmin } from "../supabase";
 
 const MAX_BATCH = Number(env.INGESTION_BATCH_SIZE) || 5;
 const POLL_INTERVAL = Number(env.INGESTION_POLL_MS) || 5000;
 const MAX_ATTEMPTS = Number(env.INGESTION_MAX_ATTEMPTS) || 5;
-const MAX_IDLE_POLL_INTERVAL = 60_000; // Cap idle polling at 1 req/min to avoid hammering Supabase
-const IDLE_BACKOFF_MULTIPLIER = 2;
+const MAX_IDLE_POLL_INTERVAL = 15_000; // Cap idle polling at 15s to stay responsive
+const IDLE_BACKOFF_MULTIPLIER = 1.5; // Gentler backoff
 const JITTER_FACTOR = 0.1;
 const MIN_POLL_INTERVAL = 1_000;
 
@@ -412,6 +413,11 @@ async function updateDocumentStatus(documentId: string, status: string) {
       .from("documents")
       .update({ status, updated_at: new Date().toISOString() })
       .eq("id", documentId);
+
+    // Invalidate caches to ensure fresh data is returned
+    documentListCache.clear();
+    documentCache.delete(documentId);
+
     console.log(`[ingestion-worker] Status updated to: ${status}`, { documentId });
   } catch (error) {
     console.warn("[ingestion-worker] Failed to update status", { documentId, status, error });

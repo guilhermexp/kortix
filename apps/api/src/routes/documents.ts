@@ -26,6 +26,8 @@ import {
 } from "../services/query-cache"
 import { findRelatedLinks, type RelatedLink } from "../services/related-links"
 import { sanitizeString, sanitizeJson } from "../services/ingestion/utils"
+// Redis queue disabled - using DB polling worker only
+// import { addDocumentJob, isRedisEnabled } from "../services/queue"
 
 const defaultContainerTag = "sm_project_default"
 
@@ -509,10 +511,12 @@ export async function addDocument({
 			const processingStates = new Set([
 				"queued",
 				"fetching",
+				"generating_preview",
 				"extracting",
 				"chunking",
 				"embedding",
 				"processing",
+				"indexing",
 			])
 
 			// Always ensure document is mapped to requested space
@@ -710,6 +714,29 @@ export async function addDocument({
 	} else {
 		jobId = existingJob.id
 	}
+
+	// NOTE: Redis queue is disabled for now - using DB polling worker only
+	// Enable this when running the queue-worker alongside the API server:
+	// bun run dev:queue
+	//
+	// if (isRedisEnabled()) {
+	// 	try {
+	// 		await addDocumentJob(docId, organizationId, userId, {
+	// 			containerTags: parsed.containerTags ?? [containerTag],
+	// 			content: rawContent,
+	// 			metadata,
+	// 			url: inferredUrl,
+	// 			type: inferredType,
+	// 			source: inferredSource,
+	// 		})
+	// 		console.log("[addDocument] Job added to Redis queue", { documentId: docId })
+	// 	} catch (queueError) {
+	// 		console.warn("[addDocument] Failed to add to Redis queue, falling back to DB worker", {
+	// 			documentId: docId,
+	// 			error: queueError instanceof Error ? queueError.message : String(queueError),
+	// 		})
+	// 	}
+	// }
 
 	invalidateDocumentCaches()
 	return MemoryResponseSchema.parse({ id: docId, status: "queued" })

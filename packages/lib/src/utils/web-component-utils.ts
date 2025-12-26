@@ -210,6 +210,7 @@ export const isInlineSvgDataUrl = (value?: string | null): boolean => {
 export const PROCESSING_STATUSES = new Set([
   "queued",
   "fetching",
+  "generating_preview",
   "extracting",
   "chunking",
   "embedding",

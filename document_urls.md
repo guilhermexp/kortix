@@ -120,6 +120,8 @@
 | 97 | GitHub - alam00000/bentopdf | https://github.com/alam00000/bentopdf | done | 2025-12-05 |
 | 98 | GitHub - CodeWithCJ/SparkyFitness | https://github.com/CodeWithCJ/SparkyFitness | done | 2025-12-05 |
 | 99 | Self-hosted, Open Source Social Media Management | https://mixpost.app/?utm_source=openalternative.co | done | 2025-12-05 |
+
+
 | 100 | Anytype — A safe haven for digital collaboration | https://anytype.io/?utm_source=openalternative.co | done | 2025-12-05 |
 | 101 | Hyprnote - AI notepad for private meetings | https://hyprnote.com/ | done | 2025-12-05 |
 | 102 | Notesnook | Open source & zero knowledge private note taking app | https://notesnook.com/ | done | 2025-12-05 |

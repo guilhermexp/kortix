@@ -29,12 +29,16 @@ export type DocumentType = z.infer<typeof DocumentTypeEnum>
 export const DocumentStatusEnum = z.enum([
 	"unknown",
 	"queued",
+	"fetching",
+	"generating_preview",
 	"extracting",
 	"chunking",
 	"embedding",
+	"processing",
 	"indexing",
 	"done",
 	"failed",
+	"paused",
 ])
 export type DocumentStatus = z.infer<typeof DocumentStatusEnum>
 

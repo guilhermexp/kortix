@@ -387,7 +387,7 @@ const MemoryGraphPage = () => {
       return;
     }
 
-    const processingStatuses = new Set(["queued", "fetching", "extracting", "chunking", "embedding", "processing", "indexing"]);
+    const processingStatuses = new Set(["queued", "fetching", "generating_preview", "extracting", "chunking", "embedding", "processing", "indexing"]);
     let hasOptimistic = false;
     let hasProcessing = false;
 

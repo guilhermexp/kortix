@@ -29,6 +29,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { documentListCache, documentCache } from "./query-cache";
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -155,10 +156,11 @@ async function checkStuckDocuments(): Promise<void> {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Execute the query directly instead of RPC to avoid PostgREST schema cache issues
+    // Include all processing statuses that could get stuck
     const { data, error } = await supabase
       .from("documents")
       .update({ status: "failed", updated_at: new Date().toISOString() })
-      .in("status", ["extracting", "processing", "embedding", "fetching"])
+      .in("status", ["fetching", "generating_preview", "extracting", "chunking", "embedding", "processing", "indexing"])
       .lt("updated_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
       .select("id");
 
@@ -178,6 +180,12 @@ async function checkStuckDocuments(): Promise<void> {
 
     // Only log when documents are actually stuck
     if (affectedCount > 0) {
+      // Invalidate caches to ensure fresh data is returned
+      documentListCache.clear();
+      for (const doc of data ?? []) {
+        documentCache.delete(doc.id);
+      }
+
       console.warn(
         `[DocumentTimeoutMonitor] Marked ${affectedCount} stuck document(s) as failed`,
       );
@@ -281,7 +289,7 @@ export async function manualCheckStuckDocuments(): Promise<number> {
   const { data, error } = await supabase
     .from("documents")
     .update({ status: "failed", updated_at: new Date().toISOString() })
-    .in("status", ["extracting", "processing", "embedding", "fetching"])
+    .in("status", ["fetching", "generating_preview", "extracting", "chunking", "embedding", "processing", "indexing"])
     .lt("updated_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
     .select("id");
 
