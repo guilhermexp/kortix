@@ -134,7 +134,7 @@ export function useGraphInteractions(
 		(e: React.MouseEvent) => {
 			// Ignore pan start if the mousedown is on a DnD handle (e.g., canvas document drag handle)
 			const target = e.target as HTMLElement | null;
-			if (target && target.closest('[data-dnd-handle="true"]')) {
+			if (target?.closest('[data-dnd-handle="true"]')) {
 				return;
 			}
 			setIsPanning(true);

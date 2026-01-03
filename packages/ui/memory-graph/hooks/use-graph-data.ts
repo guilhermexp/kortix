@@ -288,7 +288,7 @@ export function useGraphData(
 			Array.isArray(externalDocEdges) && externalDocEdges.length > 0;
 
 		if (hasExternalDocEdges) {
-			externalDocEdges!.forEach((edge) => {
+			externalDocEdges?.forEach((edge) => {
 				const sourceNode = documentNodeMap.get(edge.sourceId);
 				const targetNode = documentNodeMap.get(edge.targetId);
 				if (!sourceNode || !targetNode) return;
@@ -345,8 +345,8 @@ export function useGraphData(
 							embs[j] ?? null,
 						);
 						if (sim >= DOC_SIMILARITY_THRESHOLD) {
-							neighbors[i]!.push({ j, sim });
-							neighbors[j]!.push({ j: i, sim });
+							neighbors[i]?.push({ j, sim });
+							neighbors[j]?.push({ j: i, sim });
 						}
 					}
 				}
@@ -354,10 +354,9 @@ export function useGraphData(
 				// For each doc, keep top-K highest sims
 				const keep = new Set<string>();
 				for (let i = 0; i < n; i++) {
-					const top = neighbors[i]!.sort((a, b) => b.sim - a.sim).slice(
-						0,
-						TOP_K_PER_DOC,
-					);
+					const top = neighbors[i]
+						?.sort((a, b) => b.sim - a.sim)
+						.slice(0, TOP_K_PER_DOC);
 					for (const { j } of top) {
 						const a = Math.min(i, j);
 						const b = Math.max(i, j);

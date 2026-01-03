@@ -4,6 +4,6 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"test": "echo \"No tests yet for @repo/validation\""
+		"test": "bun test tests/"
 	}
 }
