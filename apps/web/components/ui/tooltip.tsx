@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import { cn } from "@lib/utils"
+import { useState } from "react"
 
 interface TooltipProps {
 	children: React.ReactNode
@@ -10,7 +10,12 @@ interface TooltipProps {
 	className?: string
 }
 
-export function Tooltip({ children, content, side = "top", className }: TooltipProps) {
+export function Tooltip({
+	children,
+	content,
+	side = "top",
+	className,
+}: TooltipProps) {
 	const [isVisible, setIsVisible] = useState(false)
 
 	const sideClasses = {
@@ -22,13 +27,15 @@ export function Tooltip({ children, content, side = "top", className }: TooltipP
 
 	const arrowClasses = {
 		top: "top-full left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-b-transparent",
-		bottom: "bottom-full left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-t-transparent",
+		bottom:
+			"bottom-full left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-t-transparent",
 		left: "left-full top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-r-transparent",
-		right: "right-full top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-l-transparent",
+		right:
+			"right-full top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-l-transparent",
 	}
 
 	return (
-		<div 
+		<div
 			className="relative inline-block"
 			onMouseEnter={() => setIsVisible(true)}
 			onMouseLeave={() => setIsVisible(false)}
@@ -39,7 +46,7 @@ export function Tooltip({ children, content, side = "top", className }: TooltipP
 					className={cn(
 						"absolute z-50 px-3 py-1.5 text-xs font-medium text-white bg-gray-900 dark:bg-gray-700 rounded-lg shadow-lg whitespace-nowrap pointer-events-none",
 						sideClasses[side],
-						className
+						className,
 					)}
 					role="tooltip"
 				>
@@ -47,7 +54,7 @@ export function Tooltip({ children, content, side = "top", className }: TooltipP
 					<div
 						className={cn(
 							"absolute w-0 h-0 border-4 border-gray-900 dark:border-gray-700",
-							arrowClasses[side]
+							arrowClasses[side],
 						)}
 					/>
 				</div>

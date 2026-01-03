@@ -50,12 +50,12 @@ var buttonVariants = (0, class_variance_authority_1.cva)(
 )
 exports.buttonVariants = buttonVariants
 function Button(_a) {
-	var className = _a.className,
-		variant = _a.variant,
-		size = _a.size,
-		_b = _a.asChild,
-		asChild = _b === void 0 ? false : _b,
-		props = __rest(_a, ["className", "variant", "size", "asChild"])
+	var className = _a.className
+	var variant = _a.variant
+	var size = _a.size
+	var _b = _a.asChild
+	var asChild = _b === void 0 ? false : _b
+	var props = __rest(_a, ["className", "variant", "size", "asChild"])
 	var Comp = asChild ? react_slot_1.Slot : "button"
 	return (
 		<Comp

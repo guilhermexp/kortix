@@ -29,7 +29,8 @@ var formatDate = (date) => {
 	var month = monthNames[dateObj.getMonth()]
 	var day = dateObj.getDate()
 	var getOrdinalSuffix = (n) => {
-		var _a, _b
+		var _a
+		var _b
 		var suffixes = ["th", "st", "nd", "rd"]
 		var v = n % 100
 		var suffix =

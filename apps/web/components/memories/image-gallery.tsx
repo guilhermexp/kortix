@@ -1,5 +1,4 @@
 import { getColors } from "@repo/ui/memory-graph/constants"
-import { Badge } from "@ui/components/badge"
 import type { DocumentWithMemories } from "@ui/memory-graph/types"
 import { ExternalLink, ImageIcon } from "lucide-react"
 import { memo, useCallback, useMemo, useState } from "react"

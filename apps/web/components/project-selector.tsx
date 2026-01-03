@@ -26,7 +26,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@repo/ui/components/select"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
 	ChevronDown,
 	FolderIcon,
@@ -37,7 +37,6 @@ import {
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { useState } from "react"
-import { toast } from "sonner"
 import { useProjectMutations } from "@/hooks/use-project-mutations"
 import { useProjectName } from "@/hooks/use-project-name"
 import { useProject } from "@/stores"
@@ -57,7 +56,7 @@ interface ProjectSelectorProps {
 }
 
 export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
-	const queryClient = useQueryClient()
+	const _queryClient = useQueryClient()
 	const [isOpen, setIsOpen] = useState(false)
 	const [showCreateDialog, setShowCreateDialog] = useState(false)
 	const { selectedProject } = useProject()

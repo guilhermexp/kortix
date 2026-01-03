@@ -138,7 +138,8 @@ export class ErrorBoundary extends Component<
 						{this.state.error && (
 							<div className="bg-muted rounded-lg p-4 space-y-2">
 								<div className="text-sm font-mono text-destructive">
-									<strong>Error:</strong> {this.state.error.message || "No message"}
+									<strong>Error:</strong>{" "}
+									{this.state.error.message || "No message"}
 								</div>
 								<div className="text-xs font-mono text-muted-foreground">
 									<strong>Name:</strong> {this.state.error.name || "Unknown"}

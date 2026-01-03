@@ -5,6 +5,7 @@ import { getColors } from "@repo/ui/memory-graph/constants"
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
 import { Brain, ExternalLink } from "lucide-react"
 import type { z } from "zod"
+import { MarkdownContent } from "@/components/markdown-content"
 import { analytics } from "@/lib/analytics"
 import { getDocumentSnippet, stripMarkdown } from "../memories"
 import {
@@ -12,7 +13,6 @@ import {
 	getPastelBackgroundColor,
 	getSourceUrl,
 } from "../memories-utils"
-import { MarkdownContent } from "@/components/markdown-content"
 import { MCPIcon } from "../menu"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>

@@ -7,7 +7,14 @@
 
 import { getColors } from "@repo/ui/memory-graph/constants"
 import type { DocumentWithMemories } from "@ui/memory-graph/types"
-import { ExternalLink, Github, Globe, Link2, Video, FileText } from "lucide-react"
+import {
+	ExternalLink,
+	FileText,
+	Github,
+	Globe,
+	Link2,
+	Video,
+} from "lucide-react"
 import { memo, useCallback, useMemo, useState } from "react"
 
 // Type definitions matching backend
