@@ -30,6 +30,7 @@
     "postgres": "^3.4.7",
     "random-word-slugs": "^0.1.7",
     "resend": "^6.2.2",
+    "sonner": "^2.0.7",
     "vite": "^7.1.12",
     "zod": "^4.1.12",
     "zod-openapi": "^5.4.3"
@@ -39,6 +40,7 @@
     "@supabase/supabase-js": "^2.76.1",
     "@total-typescript/tsconfig": "^1.0.4",
     "@types/pg": "^8.15.5",
+    "baseline-browser-mapping": "^2.9.11",
     "drizzle-kit": "^0.31.5",
     "lightningcss": "^1.30.2",
     "turbo": "^2.6.0",
