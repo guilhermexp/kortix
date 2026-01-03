@@ -1,10 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
 import type {
-	Chunk,
 	ExtractionResult,
 	ProcessedDocument,
-	ProcessingError,
-	ProcessingMetrics,
 	ProcessingOptions,
 	ProcessorServiceConfig,
 } from "../../interfaces"
@@ -98,9 +95,9 @@ describe("DocumentProcessorService", () => {
 	describe("Document Processing Pipeline", () => {
 		it("should process document through complete pipeline", async () => {
 			const mockProcessedDocument: ProcessedDocument = {
-				content: mockExtractionResult.data!.content,
+				content: mockExtractionResult.data?.content,
 				metadata: {
-					...mockExtractionResult.data!.metadata,
+					...mockExtractionResult.data?.metadata,
 					wordCount: 50,
 					characterCount: 350,
 				},
@@ -144,7 +141,7 @@ describe("DocumentProcessorService", () => {
 			const result = await service.processDocument(mockExtractionResult)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.content).toBe(mockExtractionResult.data!.content)
+			expect(result.data?.content).toBe(mockExtractionResult.data?.content)
 			expect(result.data?.chunks).toHaveLength(2)
 			expect(result.data?.summary).toBe(
 				"Sample document summary with key points",
@@ -380,8 +377,8 @@ describe("DocumentProcessorService", () => {
 			sequentialSpy.mockResolvedValue({
 				success: true,
 				data: {
-					content: mockExtractionResult.data!.content,
-					metadata: mockExtractionResult.data!.metadata,
+					content: mockExtractionResult.data?.content,
+					metadata: mockExtractionResult.data?.metadata,
 				},
 			})
 
@@ -596,7 +593,7 @@ describe("DocumentProcessorService", () => {
 					...mockExtractionResult,
 					data: {
 						...mockExtractionResult.data!,
-						content: `Document ${i}: ${mockExtractionResult.data!.content}`,
+						content: `Document ${i}: ${mockExtractionResult.data?.content}`,
 					},
 				}))
 
@@ -779,7 +776,7 @@ describe("DocumentProcessorService", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toBeDefined()
-			expect(result.data?.chunks!.length).toBeGreaterThan(0)
+			expect(result.data?.chunks?.length).toBeGreaterThan(0)
 		})
 
 		it("should handle documents with special characters", async () => {
@@ -847,7 +844,7 @@ describe("DocumentProcessorService", () => {
 
 		it("should handle health check with failed dependencies", () => {
 			// Mock some services as failed
-			const health = service.getHealth()
+			const _health = service.getHealth()
 			// Verify health status reflects dependency failures
 		})
 	})

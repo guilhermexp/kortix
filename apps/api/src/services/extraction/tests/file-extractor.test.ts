@@ -406,8 +406,8 @@ describe("FileExtractor", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.sheets).toHaveLength(2)
-			expect(result.data?.sheets![0].name).toBe("Sales Data")
-			expect(result.data?.sheets![1].name).toBe("Summary")
+			expect(result.data?.sheets?.[0].name).toBe("Sales Data")
+			expect(result.data?.sheets?.[1].name).toBe("Summary")
 		})
 
 		it("should extract Excel charts and images", async () => {
@@ -537,7 +537,7 @@ describe("FileExtractor", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.slides).toHaveLength(2)
-			expect(result.data?.slides![0].notes).toBe(
+			expect(result.data?.slides?.[0].notes).toBe(
 				"Introduce yourself and the topic",
 			)
 		})
@@ -996,7 +996,7 @@ describe("FileExtractor", () => {
 				options: { filename: "document.doc.bak" },
 			}
 
-			const canHandle = extractor.canHandle(fileInput)
+			const _canHandle = extractor.canHandle(fileInput)
 			// Should detect the actual format from content or handle gracefully
 		})
 
@@ -1032,7 +1032,7 @@ describe("FileExtractor", () => {
 				options: { filename: "noextension" },
 			}
 
-			const canHandle = extractor.canHandle(fileInput)
+			const _canHandle = extractor.canHandle(fileInput)
 			// Should detect format from file signature
 		})
 	})

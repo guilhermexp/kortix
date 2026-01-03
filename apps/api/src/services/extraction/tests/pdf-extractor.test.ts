@@ -171,8 +171,8 @@ describe("PDFExtractor", () => {
 
 			const extractSpy = vi.spyOn(extractor as any, "extractTextFromPDF")
 			extractSpy.mockResolvedValue({
-				text: mockResult.data!.content,
-				metadata: mockResult.data!.metadata,
+				text: mockResult.data?.content,
+				metadata: mockResult.data?.metadata,
 			})
 
 			const result = await extractor.extract(fileInput)
@@ -470,8 +470,8 @@ describe("PDFExtractor", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.images).toHaveLength(2)
-			expect(result.data?.images![0].format).toBe("PNG")
-			expect(result.data?.images![1].format).toBe("JPEG")
+			expect(result.data?.images?.[0].format).toBe("PNG")
+			expect(result.data?.images?.[1].format).toBe("JPEG")
 		})
 
 		it("should handle PDFs with no images", async () => {
@@ -496,7 +496,7 @@ describe("PDFExtractor", () => {
 				includeImages: false,
 			}
 
-			const customExtractor = new PDFExtractor(options)
+			const _customExtractor = new PDFExtractor(options)
 			// Should not extract images when disabled
 		})
 	})
@@ -531,8 +531,8 @@ describe("PDFExtractor", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.tables).toHaveLength(1)
-			expect(result.data?.tables![0].rows).toBe(3)
-			expect(result.data?.tables![0].columns).toBe(4)
+			expect(result.data?.tables?.[0].rows).toBe(3)
+			expect(result.data?.tables?.[0].columns).toBe(4)
 		})
 
 		it("should handle complex tables with merged cells", async () => {
@@ -560,7 +560,7 @@ describe("PDFExtractor", () => {
 			const result = await extractor.extract(fileInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.tables![0].mergedCells).toHaveLength(1)
+			expect(result.data?.tables?.[0].mergedCells).toHaveLength(1)
 		})
 	})
 
@@ -646,7 +646,7 @@ describe("PDFExtractor", () => {
 		it("should handle oversized PDF files", async () => {
 			const fileInput: ExtractionInput = {
 				type: "file",
-				content: "data:application/pdf;base64," + "x".repeat(100 * 1024 * 1024), // 100MB
+				content: `data:application/pdf;base64,${"x".repeat(100 * 1024 * 1024)}`, // 100MB
 				options: { filename: "huge.pdf" },
 			}
 
@@ -786,8 +786,8 @@ describe("PDFExtractor", () => {
 
 			const extractSpy = vi.spyOn(extractor as any, "extractTextFromPDF")
 			extractSpy.mockResolvedValue({
-				text: mockResult.data!.content,
-				metadata: mockResult.data!.metadata,
+				text: mockResult.data?.content,
+				metadata: mockResult.data?.metadata,
 			})
 
 			const results = await Promise.all(
@@ -920,7 +920,7 @@ describe("PDFExtractor", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.forms).toHaveLength(1)
-			expect(result.data?.forms![0].fields).toHaveLength(2)
+			expect(result.data?.forms?.[0].fields).toHaveLength(2)
 		})
 
 		it("should handle PDFs with annotations", async () => {

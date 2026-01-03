@@ -1,11 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
-import type {
-	Chunk,
-	ChunkBoundary,
-	ChunkingOptions,
-	ChunkingStatistics,
-	ProcessingError,
-} from "../../interfaces"
+import type { ChunkingOptions } from "../../interfaces"
 import { ChunkingService, createChunkingService } from "../chunking-service"
 
 /**
@@ -66,9 +60,9 @@ describe("ChunkingService", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toBeDefined()
-			expect(result.data?.chunks!.length).toBeGreaterThan(0)
+			expect(result.data?.chunks?.length).toBeGreaterThan(0)
 
-			const firstChunk = result.data!.chunks![0]
+			const firstChunk = result.data?.chunks?.[0]
 			expect(firstChunk.content).toBeTruthy()
 			expect(firstChunk.embeddings).toEqual([]) // No embeddings in chunking service
 			expect(firstChunk.metadata).toBeDefined()
@@ -84,7 +78,7 @@ describe("ChunkingService", () => {
 			expect(result.data?.chunks).toBeDefined()
 
 			// Verify no chunk exceeds the token limit
-			result.data!.chunks!.forEach((chunk) => {
+			result.data?.chunks?.forEach((chunk) => {
 				expect(chunk.metadata.tokenCount).toBeLessThanOrEqual(
 					mockOptions.maxTokensPerChunk + 50,
 				) // Small tolerance
@@ -99,12 +93,12 @@ describe("ChunkingService", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toBeDefined()
-			expect(result.data?.chunks!.length).toBeGreaterThan(1)
+			expect(result.data?.chunks?.length).toBeGreaterThan(1)
 
 			// Verify overlap content
-			if (result.data!.chunks!.length > 1) {
-				const chunk1 = result.data!.chunks![0]
-				const chunk2 = result.data!.chunks![1]
+			if (result.data?.chunks?.length > 1) {
+				const chunk1 = result.data?.chunks?.[0]
+				const chunk2 = result.data?.chunks?.[1]
 
 				// Chunks should share some context (sentence boundary + overlap)
 				expect(chunk1.content).not.toBe(chunk2.content)
@@ -123,7 +117,7 @@ describe("ChunkingService", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toHaveLength(1)
-			expect(result.data?.chunks![0].content).toBe("Short")
+			expect(result.data?.chunks?.[0].content).toBe("Short")
 		})
 	})
 
@@ -164,7 +158,7 @@ describe("ChunkingService", () => {
 			expect(result.data?.chunks).toBeDefined()
 
 			// All chunks should be approximately the same size
-			const chunkSizes = result.data!.chunks!.map((c) => c.metadata.tokenCount)
+			const chunkSizes = result.data?.chunks?.map((c) => c.metadata.tokenCount)
 			const avgSize = chunkSizes.reduce((a, b) => a + b, 0) / chunkSizes.length
 			const variance =
 				chunkSizes
@@ -222,7 +216,7 @@ Regular paragraph again.`
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toBeDefined()
-			expect(result.data?.chunks!.length).toBeGreaterThan(0)
+			expect(result.data?.chunks?.length).toBeGreaterThan(0)
 		})
 
 		it("should handle code content", async () => {
@@ -249,7 +243,7 @@ if (sum > 10) {
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toBeDefined()
 			// Should preserve code structure
-			const codeChunks = result.data!.chunks!.filter(
+			const codeChunks = result.data?.chunks?.filter(
 				(c) =>
 					c.content.includes("function") ||
 					c.content.includes("const") ||
@@ -315,7 +309,7 @@ This table shows information about people from different cities.`
 			const result = await service.chunkText(text)
 
 			expect(result.success).toBe(true)
-			const chunk = result.data!.chunks![0]
+			const chunk = result.data?.chunks?.[0]
 			expect(chunk.metadata.tokenCount).toBeGreaterThan(0)
 		})
 
@@ -337,7 +331,7 @@ This table shows information about people from different cities.`
 				)
 
 				expect(result.success).toBe(true)
-				expect(result.data?.chunks![0].metadata.tokenCount).toBeGreaterThan(0)
+				expect(result.data?.chunks?.[0].metadata.tokenCount).toBeGreaterThan(0)
 			}
 		})
 
@@ -356,8 +350,8 @@ This table shows information about people from different cities.`
 			const result = await offsetService.chunkText(text)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.chunks![0].metadata.startOffset).toBe(0)
-			expect(result.data?.chunks![0].metadata.endOffset).toBeGreaterThan(0)
+			expect(result.data?.chunks?.[0].metadata.startOffset).toBe(0)
+			expect(result.data?.chunks?.[0].metadata.endOffset).toBeGreaterThan(0)
 		})
 	})
 
@@ -371,7 +365,7 @@ This table shows information about people from different cities.`
 			expect(result.success).toBe(true)
 			expect(result.data?.boundaries).toBeDefined()
 
-			const boundaries = result.data!.boundaries!
+			const boundaries = result.data?.boundaries!
 			expect(boundaries.length).toBeGreaterThan(0)
 			expect(boundaries[0].type).toMatch(/paragraph|sentence|semantic/)
 		})
@@ -410,7 +404,7 @@ Third paragraph continues the discussion from the second paragraph.`
 
 			expect(result.success).toBe(true)
 			expect(endTime - startTime).toBeLessThan(10000) // Should complete within 10 seconds
-			expect(result.data?.chunks!.length).toBeGreaterThan(0)
+			expect(result.data?.chunks?.length).toBeGreaterThan(0)
 		})
 
 		it("should implement streaming for very large documents", async () => {
@@ -458,7 +452,7 @@ Third paragraph continues the discussion from the second paragraph.`
 			const result = await service.chunkText(text)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.chunks!.length).toBeGreaterThan(0)
+			expect(result.data?.chunks?.length).toBeGreaterThan(0)
 		})
 	})
 
@@ -550,7 +544,7 @@ Third paragraph continues the discussion from the second paragraph.`
 
 			expect(result.success).toBe(true)
 
-			result.data!.chunks!.forEach((chunk, index) => {
+			result.data?.chunks?.forEach((chunk, index) => {
 				expect(chunk.id).toBe(`chunk-${index}`)
 				expect(chunk.content).toBeTruthy()
 				expect(chunk.metadata.tokenCount).toBeGreaterThan(0)
@@ -642,7 +636,7 @@ Third paragraph continues the discussion from the second paragraph.`
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toBeDefined()
-			expect(result.data?.chunks![0].content).toContain("émojis")
+			expect(result.data?.chunks?.[0].content).toContain("émojis")
 		})
 
 		it("should handle very long words", async () => {
@@ -682,7 +676,7 @@ Final paragraph.`
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toBeDefined()
-			expect(result.data?.chunks!.length).toBeGreaterThan(1)
+			expect(result.data?.chunks?.length).toBeGreaterThan(1)
 		})
 	})
 
@@ -700,8 +694,8 @@ Final paragraph.`
 			const result = await formatService.chunkText(formattedText)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.chunks![0].content).toContain("**bold**")
-			expect(result.data?.chunks![0].content).toContain("*italic*")
+			expect(result.data?.chunks?.[0].content).toContain("**bold**")
+			expect(result.data?.chunks?.[0].content).toContain("*italic*")
 		})
 
 		it("should strip formatting when disabled", async () => {

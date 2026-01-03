@@ -1,10 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
-import type {
-	MultiLevelSummary,
-	ProcessingError,
-	SummarizationOptions,
-	SummarizationStatistics,
-} from "../../interfaces"
+import type { MultiLevelSummary, SummarizationOptions } from "../../interfaces"
 import {
 	createSummarizationService,
 	SummarizationService,
@@ -132,7 +127,7 @@ describe("SummarizationService", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.bullets).toHaveLength(3)
-			expect(result.data?.bullets![0]).toContain("Concept 1")
+			expect(result.data?.bullets?.[0]).toContain("Concept 1")
 		})
 
 		it("should handle single level when multi-level disabled", async () => {
@@ -230,7 +225,7 @@ Final thoughts and summary.`
 			const hugeText = "Content. ".repeat(10000)
 
 			const summarySpy = vi.spyOn(service as any, "callSummarizationAPI")
-			summarySpy.mockImplementation((text) => {
+			summarySpy.mockImplementation((_text) => {
 				// Simulate processing large text
 				return Promise.resolve({
 					summary: "Summary of large document",

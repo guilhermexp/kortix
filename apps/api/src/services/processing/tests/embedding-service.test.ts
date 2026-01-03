@@ -1,11 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
-import type {
-	Chunk,
-	EmbeddingOptions,
-	EmbeddingProviderInfo,
-	HybridEmbeddingStrategy,
-	ProcessingError,
-} from "../../interfaces"
+import type { Chunk, EmbeddingOptions } from "../../interfaces"
 import { createEmbeddingService, EmbeddingService } from "../embedding-service"
 
 /**
@@ -149,8 +143,8 @@ describe("EmbeddingService", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.chunks).toHaveLength(3)
-			expect(result.data?.chunks![0].embeddings).toEqual([0.1, 0.2, 0.3])
-			expect(result.data?.chunks![1].embeddings).toEqual([0.1, 0.2, 0.3])
+			expect(result.data?.chunks?.[0].embeddings).toEqual([0.1, 0.2, 0.3])
+			expect(result.data?.chunks?.[1].embeddings).toEqual([0.1, 0.2, 0.3])
 		})
 
 		it("should respect batch size limits", async () => {
@@ -394,10 +388,10 @@ describe("EmbeddingService", () => {
 			const texts = Array(10)
 				.fill(null)
 				.map((_, i) => `Text ${i}`)
-			const embeddings = texts.map(() => [0.1, 0.2, 0.3])
+			const _embeddings = texts.map(() => [0.1, 0.2, 0.3])
 
 			const providerSpy = vi.spyOn(service as any, "callEmbeddingProvider")
-			providerSpy.mockImplementation((text) => {
+			providerSpy.mockImplementation((_text) => {
 				return new Promise((resolve) =>
 					setTimeout(() => resolve([0.1, 0.2, 0.3]), 10),
 				)

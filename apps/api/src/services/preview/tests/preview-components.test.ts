@@ -2,12 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
 import type {
 	FaviconExtractionOptions,
 	ImageExtractionOptions,
-	ProcessingError,
 	SVGGenerationOptions,
 } from "../../interfaces"
-import { createFaviconExtractor, FaviconExtractor } from "../favicon-extractor"
-import { createImageExtractor, ImageExtractor } from "../image-extractor"
-import { createSVGGenerator, SVGGenerator } from "../svg-generator"
+import { FaviconExtractor } from "../favicon-extractor"
+import { ImageExtractor } from "../image-extractor"
+import { SVGGenerator } from "../svg-generator"
 
 describe("Preview Service Components", () => {
 	afterEach(() => vi.clearAllMocks())
@@ -55,7 +54,7 @@ describe("Preview Service Components", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.images).toHaveLength(1)
-			expect(result.data?.images![0].metadata.format).toBe("jpeg")
+			expect(result.data?.images?.[0].metadata.format).toBe("jpeg")
 		})
 
 		it("should handle documents with no images", async () => {
@@ -93,7 +92,7 @@ describe("Preview Service Components", () => {
 			const result = await extractor.extractImages(documentInput)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.images![0].metadata.optimized).toBe(true)
+			expect(result.data?.images?.[0].metadata.optimized).toBe(true)
 		})
 	})
 
@@ -220,10 +219,10 @@ describe("Preview Service Components", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.favicons).toHaveLength(1)
-			expect(result.data?.favicons![0].url).toBe(
+			expect(result.data?.favicons?.[0].url).toBe(
 				"https://example.com/favicon.ico",
 			)
-			expect(result.data?.favicons![0].format).toBe("ico")
+			expect(result.data?.favicons?.[0].format).toBe("ico")
 		})
 
 		it("should handle multiple favicon sizes", async () => {

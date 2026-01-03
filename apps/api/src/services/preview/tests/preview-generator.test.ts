@@ -1,10 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
-import type {
-	PreviewGenerationOptions,
-	PreviewMetrics,
-	PreviewResult,
-	ProcessingError,
-} from "../../interfaces"
+import type { PreviewGenerationOptions, PreviewResult } from "../../interfaces"
 import {
 	createPreviewGeneratorService,
 	PreviewGeneratorService,
