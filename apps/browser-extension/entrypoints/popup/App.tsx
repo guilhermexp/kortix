@@ -40,7 +40,6 @@ function App() {
 	})
 	const setDefaultProjectMutation = useSetDefaultProject()
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: suppress dependency analysis
 	useEffect(() => {
 		const checkAuthStatus = async () => {
 			try {
@@ -484,8 +483,8 @@ function App() {
 										</label>
 									</div>
 									<p className="text-xs text-gray-500 mt-2">
-										When enabled, Kortix will search your memories as you
-										type in ChatGPT, Claude, and T3.chat
+										When enabled, Kortix will search your memories as you type
+										in ChatGPT, Claude, and T3.chat
 									</p>
 								</div>
 							</div>
