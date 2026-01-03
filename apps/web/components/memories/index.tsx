@@ -142,9 +142,7 @@ export const getDocumentSummaryFormatted = (
 
 		// Return the summary WITH markdown formatting intact
 		// Just clean up extra whitespace but preserve ## headers and bullets
-		const text = candidates[0]
-			.trim()
-			.replace(/\n{3,}/g, "\n\n") // Collapse multiple newlines
+		const text = candidates[0].trim().replace(/\n{3,}/g, "\n\n") // Collapse multiple newlines
 
 		return text || null
 	} catch {

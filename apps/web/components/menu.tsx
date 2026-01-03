@@ -14,11 +14,26 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@repo/ui/components/dialog"
-import { HeadingH2Bold } from "@repo/ui/text/heading/heading-h2-bold"
 import { ScrollArea } from "@repo/ui/components/scroll-area"
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@repo/ui/components/tooltip"
+import { HeadingH2Bold } from "@repo/ui/text/heading/heading-h2-bold"
 import { GlassMenuEffect } from "@ui/other/glass-effect"
-import { LayoutGrid, List, MessageSquareMore, Network, Plus, Puzzle, User, X } from "lucide-react"
-import { AnimatePresence, LayoutGroup, motion } from "motion/react"
+import {
+	LayoutGrid,
+	List,
+	MessageSquareMore,
+	Network,
+	Plus,
+	Puzzle,
+	User,
+	X,
+} from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { Drawer } from "vaul"
@@ -31,12 +46,6 @@ import { ProjectSelector } from "./project-selector"
 import { AddMemoryExpandedView, AddMemoryView } from "./views/add-memory"
 import { IntegrationsView } from "./views/integrations"
 import { ProfileView } from "./views/profile"
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@repo/ui/components/tooltip"
 
 export const MCPIcon = ({ className }: { className?: string }) => {
 	return (
@@ -75,12 +84,12 @@ function Menu({
 	] as const
 	type ValidView = (typeof validViews)[number]
 
-	const [isHovered, setIsHovered] = useState(false)
+	const [_isHovered, _setIsHovered] = useState(false)
 	const [expandedView, setExpandedView] = useState<
 		"addUrl" | "mcp" | "projects" | "profile" | "integrations" | null
 	>(null)
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-	const [isCollapsing, setIsCollapsing] = useState(false)
+	const [_isCollapsing, setIsCollapsing] = useState(false)
 	const [showAddMemoryView, setShowAddMemoryView] = useState(false)
 	const [showConnectAIModal, setShowConnectAIModal] = useState(false)
 	const [showProfileModal, setShowProfileModal] = useState(false)
@@ -176,7 +185,15 @@ function Menu({
 	]
 
 	const handleMenuItemClick = (
-		key: "chat" | "addUrl" | "connections" | "projects" | "profile" | "canvas" | "list" | "graph",
+		key:
+			| "chat"
+			| "addUrl"
+			| "connections"
+			| "projects"
+			| "profile"
+			| "canvas"
+			| "list"
+			| "graph",
 	) => {
 		// Prevent multiple rapid clicks
 		if (isClickProcessingRef.current) {
@@ -217,14 +234,18 @@ function Menu({
 		} else if (key === "connections") {
 			// Mark that button was clicked (prevents Dialog's onOpenChange from reopening)
 			buttonClickedRef.current = true
-			setTimeout(() => { buttonClickedRef.current = false }, 100)
+			setTimeout(() => {
+				buttonClickedRef.current = false
+			}, 100)
 			setIsMobileMenuOpen(false)
 			setExpandedView(null)
 			setShowConnectAIModal(!showConnectAIModal)
 		} else if (key === "profile") {
 			// Mark that button was clicked (prevents Dialog's onOpenChange from reopening)
 			buttonClickedRef.current = true
-			setTimeout(() => { buttonClickedRef.current = false }, 100)
+			setTimeout(() => {
+				buttonClickedRef.current = false
+			}, 100)
 			setIsMobileMenuOpen(false)
 			setExpandedView(null)
 			setShowProfileModal(!showProfileModal)
@@ -255,7 +276,11 @@ function Menu({
 				if (isMobile) {
 					setActivePanel("chat")
 				}
-			} else if (openParam === "mcp" || openParam === "connections" || openParam === "integrations") {
+			} else if (
+				openParam === "mcp" ||
+				openParam === "connections" ||
+				openParam === "integrations"
+			) {
 				// Open ConnectAIModal (combined MCP + Integrations)
 				setIsMobileMenuOpen(false)
 				setExpandedView(null)
@@ -304,7 +329,7 @@ function Menu({
 
 	// Collapse menu to icons when chat panel is open (desktop only)
 	const isCollapsedToIcons = !isMobile && !expandedView && isChatPanelOpen
-	const menuWidth = isCollapsedToIcons ? 280 : 600
+	const _menuWidth = isCollapsedToIcons ? 280 : 600
 
 	// Dynamic z-index for mobile based on active panel
 	const mobileZIndex = isMobile && activePanel === "menu" ? "z-[70]" : "z-[100]"
@@ -327,9 +352,7 @@ function Menu({
 							<div className="flex flex-col items-center gap-1">
 								{menuItems.map((item, index) => (
 									<React.Fragment key={item.key}>
-										{index === 1 && (
-											<div className="w-6 h-px bg-border my-1" />
-										)}
+										{index === 1 && <div className="w-6 h-px bg-border my-1" />}
 										<Tooltip>
 											<TooltipTrigger asChild>
 												<motion.button
@@ -588,12 +611,15 @@ function Menu({
 			/>
 
 			{/* Profile Modal */}
-			<Dialog onOpenChange={(open) => {
-				// Only update if the button wasn't just clicked
-				if (!buttonClickedRef.current) {
-					setShowProfileModal(open)
-				}
-			}} open={showProfileModal}>
+			<Dialog
+				onOpenChange={(open) => {
+					// Only update if the button wasn't just clicked
+					if (!buttonClickedRef.current) {
+						setShowProfileModal(open)
+					}
+				}}
+				open={showProfileModal}
+			>
 				<DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden">
 					<DialogHeader>
 						<DialogTitle>Profile</DialogTitle>

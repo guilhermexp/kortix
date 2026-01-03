@@ -1,7 +1,7 @@
 "use client"
 
 import { $fetch } from "@lib/api"
-import { DOCS_URL, MCP_SERVER_URL } from "@lib/env"
+import { MCP_SERVER_URL } from "@lib/env"
 import { cn } from "@lib/utils"
 import { useForm } from "@tanstack/react-form"
 import { useMutation, useQuery } from "@tanstack/react-query"
@@ -22,15 +22,14 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@ui/components/select"
-import { CopyableCell } from "@ui/copyable-cell"
-import { CopyIcon, ExternalLink, Loader2, Puzzle } from "lucide-react"
+import { CopyIcon, Loader2, Puzzle } from "lucide-react"
 import Image from "next/image"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { z } from "zod/v4"
 import { analytics } from "@/lib/analytics"
-import { IntegrationsView } from "./views/integrations"
 import { MCPIcon } from "./menu"
+import { IntegrationsView } from "./views/integrations"
 
 const escapeRegExp = (value: string) =>
 	value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -261,347 +260,351 @@ export function ConnectAIModal({
 				<div className="flex-1 overflow-y-auto">
 					{activeTab === "mcp" ? (
 						<div className="space-y-6 py-2">
-					{/* Step 1: Client Selection */}
-					<div className="space-y-4">
-						<div className="flex items-center gap-3">
-							<div
-								className={
-									"w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-muted text-muted-foreground"
-								}
-							>
-								1
-							</div>
-							<h3 className="text-sm font-medium text-foreground">
-								Select Your AI Client
-							</h3>
-						</div>
-
-						<div className="space-x-2 space-y-2">
-							{Object.entries(clients)
-								.slice(0, 7)
-								.map(([key, clientName]) => (
-									<button
-										className={`pr-3 pl-1 rounded-full border cursor-pointer transition-all ${
-											selectedClient === key
-												? "border-blue-500 bg-blue-500/10"
-												: "border-white/10 hover:border-white/20 hover:bg-white/5"
-										}`}
-										key={key}
-										onClick={() =>
-											setSelectedClient(key as keyof typeof clients)
-										}
-										type="button"
-									>
-										<div className="flex items-center gap-1">
-											<div className="w-8 h-8 flex items-center justify-center">
-												<Image
-													alt={clientName}
-													className="rounded object-contain text-white fill-white"
-													height={20}
-													onError={(e) => {
-														const target = e.target as HTMLImageElement
-														target.style.display = "none"
-														const parent = target.parentElement
-														if (
-															parent &&
-															!parent.querySelector(".fallback-text")
-														) {
-															const fallback = document.createElement("span")
-															fallback.className =
-																"fallback-text text-sm font-bold text-white/40"
-															fallback.textContent = clientName
-																.substring(0, 2)
-																.toUpperCase()
-															parent.appendChild(fallback)
-														}
-													}}
-													src={
-														key === "mcp-url"
-															? "/mcp-icon.svg"
-															: `/mcp-supported-tools/${key === "claude-code" ? "claude" : key}.png`
-													}
-													width={20}
-												/>
-											</div>
-											<span className="text-sm font-medium text-foreground">
-												{clientName}
-											</span>
-										</div>
-									</button>
-								))}
-						</div>
-					</div>
-
-					{/* Step 2: One-click Install for Cursor, Project Selection for others, or MCP URL */}
-					{selectedClient && (
-						<div className="space-y-4">
-							<div className="flex justify-between">
+							{/* Step 1: Client Selection */}
+							<div className="space-y-4">
 								<div className="flex items-center gap-3">
-									<div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-sm font-medium">
-										2
+									<div
+										className={
+											"w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-muted text-muted-foreground"
+										}
+									>
+										1
 									</div>
 									<h3 className="text-sm font-medium text-foreground">
-										{selectedClient === "cursor"
-											? "Install Kortix MCP"
-											: selectedClient === "mcp-url"
-												? "MCP Server URL"
-												: "Select Target Project (Optional)"}
+										Select Your AI Client
 									</h3>
 								</div>
 
-								<div
-									className={cn(
-										"flex-col gap-2 hidden",
-										selectedClient === "cursor" && "flex",
-									)}
-								>
-									{/* Tabs */}
-									<div className="flex justify-end">
-										<div className="flex bg-white/5 rounded-full p-1 border border-white/10">
+								<div className="space-x-2 space-y-2">
+									{Object.entries(clients)
+										.slice(0, 7)
+										.map(([key, clientName]) => (
 											<button
-												className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
-													cursorInstallTab === "oneClick"
-														? "bg-muted text-foreground border border-border"
-														: "text-muted-foreground hover:text-foreground"
+												className={`pr-3 pl-1 rounded-full border cursor-pointer transition-all ${
+													selectedClient === key
+														? "border-blue-500 bg-blue-500/10"
+														: "border-white/10 hover:border-white/20 hover:bg-white/5"
 												}`}
-												onClick={() => setCursorInstallTab("oneClick")}
+												key={key}
+												onClick={() =>
+													setSelectedClient(key as keyof typeof clients)
+												}
 												type="button"
 											>
-												One Click Install
+												<div className="flex items-center gap-1">
+													<div className="w-8 h-8 flex items-center justify-center">
+														<Image
+															alt={clientName}
+															className="rounded object-contain text-white fill-white"
+															height={20}
+															onError={(e) => {
+																const target = e.target as HTMLImageElement
+																target.style.display = "none"
+																const parent = target.parentElement
+																if (
+																	parent &&
+																	!parent.querySelector(".fallback-text")
+																) {
+																	const fallback =
+																		document.createElement("span")
+																	fallback.className =
+																		"fallback-text text-sm font-bold text-white/40"
+																	fallback.textContent = clientName
+																		.substring(0, 2)
+																		.toUpperCase()
+																	parent.appendChild(fallback)
+																}
+															}}
+															src={
+																key === "mcp-url"
+																	? "/mcp-icon.svg"
+																	: `/mcp-supported-tools/${key === "claude-code" ? "claude" : key}.png`
+															}
+															width={20}
+														/>
+													</div>
+													<span className="text-sm font-medium text-foreground">
+														{clientName}
+													</span>
+												</div>
 											</button>
-											<button
-												className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
-													cursorInstallTab === "manual"
-														? "bg-muted text-foreground border border-border"
-														: "text-muted-foreground hover:text-foreground"
-												}`}
-												onClick={() => setCursorInstallTab("manual")}
-												type="button"
-											>
-												Manual Install
-											</button>
-										</div>
-									</div>
+										))}
 								</div>
 							</div>
 
-							{selectedClient === "cursor" ? (
+							{/* Step 2: One-click Install for Cursor, Project Selection for others, or MCP URL */}
+							{selectedClient && (
 								<div className="space-y-4">
-									{/* Tab Content */}
-									{cursorInstallTab === "oneClick" ? (
+									<div className="flex justify-between">
+										<div className="flex items-center gap-3">
+											<div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-sm font-medium">
+												2
+											</div>
+											<h3 className="text-sm font-medium text-foreground">
+												{selectedClient === "cursor"
+													? "Install Kortix MCP"
+													: selectedClient === "mcp-url"
+														? "MCP Server URL"
+														: "Select Target Project (Optional)"}
+											</h3>
+										</div>
+
+										<div
+											className={cn(
+												"flex-col gap-2 hidden",
+												selectedClient === "cursor" && "flex",
+											)}
+										>
+											{/* Tabs */}
+											<div className="flex justify-end">
+												<div className="flex bg-white/5 rounded-full p-1 border border-white/10">
+													<button
+														className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
+															cursorInstallTab === "oneClick"
+																? "bg-muted text-foreground border border-border"
+																: "text-muted-foreground hover:text-foreground"
+														}`}
+														onClick={() => setCursorInstallTab("oneClick")}
+														type="button"
+													>
+														One Click Install
+													</button>
+													<button
+														className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
+															cursorInstallTab === "manual"
+																? "bg-muted text-foreground border border-border"
+																: "text-muted-foreground hover:text-foreground"
+														}`}
+														onClick={() => setCursorInstallTab("manual")}
+														type="button"
+													>
+														Manual Install
+													</button>
+												</div>
+											</div>
+										</div>
+									</div>
+
+									{selectedClient === "cursor" ? (
 										<div className="space-y-4">
-											<div className="flex flex-col items-center gap-4 p-6 border border-green-500/20 rounded-lg bg-green-500/5">
-												<div className="text-center">
-													<p className="text-sm text-foreground mb-2">
-														Click the button below to automatically install and
-														configure Kortix in Cursor
-													</p>
-													<p className="text-xs text-muted-foreground">
-														This will install the MCP server without any
-														additional setup required
+											{/* Tab Content */}
+											{cursorInstallTab === "oneClick" ? (
+												<div className="space-y-4">
+													<div className="flex flex-col items-center gap-4 p-6 border border-green-500/20 rounded-lg bg-green-500/5">
+														<div className="text-center">
+															<p className="text-sm text-foreground mb-2">
+																Click the button below to automatically install
+																and configure Kortix in Cursor
+															</p>
+															<p className="text-xs text-muted-foreground">
+																This will install the MCP server without any
+																additional setup required
+															</p>
+														</div>
+														<a
+															href={getCursorDeeplink()}
+															onClick={() => {
+																analytics.mcpInstallCmdCopied()
+																toast.success("Opening Cursor installer...")
+															}}
+														>
+															<img
+																alt="Add Kortix MCP server to Cursor"
+																className="hover:opacity-80 transition-opacity cursor-pointer"
+																height="40"
+																src="https://cursor.com/deeplink/mcp-install-dark.svg"
+															/>
+														</a>
+													</div>
+													<p className="text-xs text-muted-foreground text-center">
+														Make sure you have Cursor installed on your system
 													</p>
 												</div>
-												<a
-													href={getCursorDeeplink()}
+											) : (
+												<div className="space-y-4">
+													<p className="text-sm text-foreground">
+														Choose a project and follow the installation steps
+														below
+													</p>
+													<div className="max-w-md">
+														<Select
+															disabled={isLoadingProjects}
+															onValueChange={setSelectedProject}
+															value={selectedProject || "none"}
+														>
+															<SelectTrigger className="w-full">
+																<SelectValue placeholder="Select project" />
+															</SelectTrigger>
+															<SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
+																<SelectItem
+																	className="text-foreground hover:bg-muted"
+																	value="none"
+																>
+																	Auto-select project
+																</SelectItem>
+																<SelectItem
+																	className="text-foreground hover:bg-muted"
+																	value="sm_project_default"
+																>
+																	All Projects
+																</SelectItem>
+																{projects
+																	.filter(
+																		(p: Project) =>
+																			p.containerTag !== "sm_project_default",
+																	)
+																	.map((project: Project) => (
+																		<SelectItem
+																			className="text-foreground hover:bg-muted"
+																			key={project.id}
+																			value={project.containerTag}
+																		>
+																			{project.name}
+																		</SelectItem>
+																	))}
+															</SelectContent>
+														</Select>
+													</div>
+												</div>
+											)}
+										</div>
+									) : selectedClient === "mcp-url" ? (
+										<div className="space-y-2">
+											<div className="relative">
+												<Input
+													className="font-mono text-xs w-full pr-10"
+													readOnly
+													value={MCP_SERVER_BASE}
+												/>
+												<Button
+													className="absolute top-[-1px] right-0 cursor-pointer"
 													onClick={() => {
+														navigator.clipboard.writeText(MCP_SERVER_BASE)
 														analytics.mcpInstallCmdCopied()
-														toast.success("Opening Cursor installer...")
+														toast.success("Copied to clipboard!")
 													}}
+													variant="ghost"
 												>
-													<img
-														alt="Add Kortix MCP server to Cursor"
-														className="hover:opacity-80 transition-opacity cursor-pointer"
-														height="40"
-														src="https://cursor.com/deeplink/mcp-install-dark.svg"
-													/>
-												</a>
+													<CopyIcon className="size-4" />
+												</Button>
 											</div>
-											<p className="text-xs text-muted-foreground text-center">
-												Make sure you have Cursor installed on your system
+											<p className="text-xs text-muted-foreground">
+												Use this URL to configure Kortix in your AI assistant
 											</p>
 										</div>
 									) : (
-										<div className="space-y-4">
-											<p className="text-sm text-foreground">
-												Choose a project and follow the installation steps below
-											</p>
-											<div className="max-w-md">
-												<Select
-													disabled={isLoadingProjects}
-													onValueChange={setSelectedProject}
-													value={selectedProject || "none"}
-												>
-													<SelectTrigger className="w-full">
-														<SelectValue placeholder="Select project" />
-													</SelectTrigger>
-													<SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
-														<SelectItem
-															className="text-foreground hover:bg-muted"
-															value="none"
-														>
-															Auto-select project
-														</SelectItem>
-														<SelectItem
-															className="text-foreground hover:bg-muted"
-															value="sm_project_default"
-														>
-															All Projects
-														</SelectItem>
-														{projects
-															.filter(
-																(p: Project) =>
-																	p.containerTag !== "sm_project_default",
-															)
-															.map((project: Project) => (
-																<SelectItem
-																	className="text-foreground hover:bg-muted"
-																	key={project.id}
-																	value={project.containerTag}
-																>
-																	{project.name}
-																</SelectItem>
-															))}
-													</SelectContent>
-												</Select>
-											</div>
+										<div className="max-w-md">
+											<Select
+												disabled={isLoadingProjects}
+												onValueChange={setSelectedProject}
+												value={selectedProject || "none"}
+											>
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="Select project" />
+												</SelectTrigger>
+												<SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
+													<SelectItem
+														className="text-white hover:bg-white/10"
+														value="none"
+													>
+														Auto-select project
+													</SelectItem>
+													<SelectItem
+														className="text-white hover:bg-white/10"
+														value="sm_project_default"
+													>
+														All Projects
+													</SelectItem>
+													{projects
+														.filter(
+															(p: Project) =>
+																p.containerTag !== "sm_project_default",
+														)
+														.map((project: Project) => (
+															<SelectItem
+																className="text-white hover:bg-white/10"
+																key={project.id}
+																value={project.containerTag}
+															>
+																{project.name}
+															</SelectItem>
+														))}
+												</SelectContent>
+											</Select>
 										</div>
 									)}
 								</div>
-							) : selectedClient === "mcp-url" ? (
-								<div className="space-y-2">
-									<div className="relative">
-										<Input
-											className="font-mono text-xs w-full pr-10"
-											readOnly
-											value={MCP_SERVER_BASE}
-										/>
-										<Button
-											className="absolute top-[-1px] right-0 cursor-pointer"
-											onClick={() => {
-												navigator.clipboard.writeText(MCP_SERVER_BASE)
-												analytics.mcpInstallCmdCopied()
-												toast.success("Copied to clipboard!")
-											}}
-											variant="ghost"
-										>
-											<CopyIcon className="size-4" />
-										</Button>
+							)}
+
+							{/* Step 3: Command Line - Show for manual installation or non-cursor clients */}
+							{selectedClient &&
+								selectedClient !== "mcp-url" &&
+								(selectedClient !== "cursor" ||
+									cursorInstallTab === "manual") && (
+									<div className="space-y-4">
+										<div className="flex items-center gap-3">
+											<div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-sm font-medium">
+												3
+											</div>
+											<h3 className="text-sm font-medium text-foreground">
+												{selectedClient === "cursor" &&
+												cursorInstallTab === "manual"
+													? "Manual Installation Command"
+													: "Installation Command"}
+											</h3>
+										</div>
+
+										<div className="relative">
+											<Input
+												className="font-mono text-xs w-full pr-10"
+												readOnly
+												value={generateInstallCommand()}
+											/>
+											<Button
+												className="absolute top-[-1px] right-0 cursor-pointer"
+												onClick={copyToClipboard}
+												variant="ghost"
+											>
+												<CopyIcon className="size-4" />
+											</Button>
+										</div>
+
+										<p className="text-xs text-white/50">
+											{selectedClient === "cursor" &&
+											cursorInstallTab === "manual"
+												? "Copy and run this command in your terminal for manual installation (or switch to the one-click option above)"
+												: "Copy and run this command in your terminal to install the MCP server"}
+										</p>
 									</div>
-									<p className="text-xs text-muted-foreground">
-										Use this URL to configure Kortix in your AI assistant
+								)}
+
+							{/* Blurred Command Placeholder - Only show when no client selected */}
+							{!selectedClient && (
+								<div className="space-y-4">
+									<div className="flex items-center gap-3">
+										<div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-sm font-medium">
+											3
+										</div>
+										<h3 className="text-sm font-medium text-foreground">
+											Installation Command
+										</h3>
+									</div>
+
+									<div className="relative">
+										<div className="w-full h-10 bg-white/5 border border-white/10 rounded-md flex items-center px-3">
+											<div className="w-full h-4 bg-white/20 rounded animate-pulse blur-sm" />
+										</div>
+									</div>
+
+									<p className="text-xs text-muted-foreground/60">
+										Select a client above to see the installation command
 									</p>
 								</div>
-							) : (
-								<div className="max-w-md">
-									<Select
-										disabled={isLoadingProjects}
-										onValueChange={setSelectedProject}
-										value={selectedProject || "none"}
-									>
-										<SelectTrigger className="w-full">
-											<SelectValue placeholder="Select project" />
-										</SelectTrigger>
-										<SelectContent className="bg-black/90 backdrop-blur-xl border-white/10">
-											<SelectItem
-												className="text-white hover:bg-white/10"
-												value="none"
-											>
-												Auto-select project
-											</SelectItem>
-											<SelectItem
-												className="text-white hover:bg-white/10"
-												value="sm_project_default"
-											>
-												All Projects
-											</SelectItem>
-											{projects
-												.filter(
-													(p: Project) =>
-														p.containerTag !== "sm_project_default",
-												)
-												.map((project: Project) => (
-													<SelectItem
-														className="text-white hover:bg-white/10"
-														key={project.id}
-														value={project.containerTag}
-													>
-														{project.name}
-													</SelectItem>
-												))}
-										</SelectContent>
-									</Select>
-								</div>
 							)}
-						</div>
-					)}
 
-					{/* Step 3: Command Line - Show for manual installation or non-cursor clients */}
-					{selectedClient &&
-						selectedClient !== "mcp-url" &&
-						(selectedClient !== "cursor" || cursorInstallTab === "manual") && (
-							<div className="space-y-4">
-								<div className="flex items-center gap-3">
-									<div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-sm font-medium">
-										3
-									</div>
-									<h3 className="text-sm font-medium text-foreground">
-										{selectedClient === "cursor" &&
-										cursorInstallTab === "manual"
-											? "Manual Installation Command"
-											: "Installation Command"}
-									</h3>
-								</div>
-
-								<div className="relative">
-									<Input
-										className="font-mono text-xs w-full pr-10"
-										readOnly
-										value={generateInstallCommand()}
-									/>
-									<Button
-										className="absolute top-[-1px] right-0 cursor-pointer"
-										onClick={copyToClipboard}
-										variant="ghost"
-									>
-										<CopyIcon className="size-4" />
-									</Button>
-								</div>
-
-								<p className="text-xs text-white/50">
-									{selectedClient === "cursor" && cursorInstallTab === "manual"
-										? "Copy and run this command in your terminal for manual installation (or switch to the one-click option above)"
-										: "Copy and run this command in your terminal to install the MCP server"}
-								</p>
+							<div className="flex justify-end items-center pt-4 border-t">
+								<Button onClick={() => setIsOpen(false)}>Done</Button>
 							</div>
-						)}
-
-					{/* Blurred Command Placeholder - Only show when no client selected */}
-					{!selectedClient && (
-						<div className="space-y-4">
-							<div className="flex items-center gap-3">
-								<div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-sm font-medium">
-									3
-								</div>
-								<h3 className="text-sm font-medium text-foreground">
-									Installation Command
-								</h3>
-							</div>
-
-							<div className="relative">
-								<div className="w-full h-10 bg-white/5 border border-white/10 rounded-md flex items-center px-3">
-									<div className="w-full h-4 bg-white/20 rounded animate-pulse blur-sm" />
-								</div>
-							</div>
-
-							<p className="text-xs text-muted-foreground/60">
-								Select a client above to see the installation command
-							</p>
-						</div>
-					)}
-
-					<div className="flex justify-end items-center pt-4 border-t">
-						<Button onClick={() => setIsOpen(false)}>Done</Button>
-					</div>
 						</div>
 					) : (
 						<div className="py-2">

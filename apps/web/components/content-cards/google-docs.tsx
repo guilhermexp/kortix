@@ -30,7 +30,7 @@ export const GoogleDocsCard = ({
 	lastModified,
 }: GoogleDocsCardProps) => {
 	const colors = getColors()
-	const [imageError, setImageError] = useState(false)
+	const [_imageError, _setImageError] = useState(false)
 
 	const handleCardClick = () => {
 		if (onClick) {
