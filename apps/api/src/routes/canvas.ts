@@ -15,7 +15,7 @@ export interface CanvasProject {
 export async function listCanvasProjects(
 	client: SupabaseClient,
 	userId: string,
-	orgId: string,
+	_orgId: string,
 ): Promise<CanvasProject[]> {
 	const { data, error } = await client
 		.from("canvas_projects")
@@ -73,13 +73,19 @@ export async function updateCanvasProject(
 	client: SupabaseClient,
 	userId: string,
 	projectId: string,
-	payload: { name?: string; description?: string; color?: string; thumbnail?: string },
+	payload: {
+		name?: string
+		description?: string
+		color?: string
+		thumbnail?: string
+	},
 ): Promise<CanvasProject> {
 	const updateData: Record<string, unknown> = {
 		updated_at: new Date().toISOString(),
 	}
 	if (payload.name !== undefined) updateData.name = payload.name
-	if (payload.description !== undefined) updateData.description = payload.description
+	if (payload.description !== undefined)
+		updateData.description = payload.description
 	if (payload.color !== undefined) updateData.color = payload.color
 	if (payload.thumbnail !== undefined) updateData.thumbnail = payload.thumbnail
 
@@ -133,8 +139,8 @@ export async function deleteCanvasProject(
 export async function getCanvasState(
 	client: SupabaseClient,
 	userId: string,
-	orgId: string,
-	projectId: string = "default",
+	_orgId: string,
+	projectId = "default",
 ) {
 	const { data, error } = await client
 		.from("canvas_states")
@@ -156,7 +162,7 @@ export async function saveCanvasState(
 	client: SupabaseClient,
 	userId: string,
 	orgId: string,
-	projectId: string = "default",
+	projectId,
 	state: unknown,
 ) {
 	// Upsert the canvas state
@@ -172,7 +178,7 @@ export async function saveCanvasState(
 			},
 			{
 				onConflict: "user_id,project_id",
-			}
+			},
 		)
 		.select("id, updated_at")
 		.single()
@@ -189,7 +195,7 @@ export async function saveCanvasState(
 export async function deleteCanvasState(
 	client: SupabaseClient,
 	userId: string,
-	projectId: string = "default",
+	projectId = "default",
 ) {
 	const { error } = await client
 		.from("canvas_states")

@@ -153,7 +153,7 @@ export async function handleGraphConnections({
 				if (!docsBySpace.has(space)) {
 					docsBySpace.set(space, [])
 				}
-				docsBySpace.get(space)!.push(doc)
+				docsBySpace.get(space)?.push(doc)
 			}
 		}
 
@@ -167,25 +167,24 @@ export async function handleGraphConnections({
 			)
 
 			for (let i = 0; i < n; i++) {
-				const embI = spaceDocs[i]!.embedding
+				const embI = spaceDocs[i]?.embedding
 				if (!embI) continue
 				for (let j = i + 1; j < n; j++) {
-					const embJ = spaceDocs[j]!.embedding
+					const embJ = spaceDocs[j]?.embedding
 					if (!embJ) continue
 					const sim = calculateSemanticSimilarity(embI, embJ)
 					if (sim >= DOC_SIMILARITY_THRESHOLD) {
-						neighbors[i]!.push({ j, sim })
-						neighbors[j]!.push({ j: i, sim })
+						neighbors[i]?.push({ j, sim })
+						neighbors[j]?.push({ j: i, sim })
 					}
 				}
 			}
 
 			const keep = new Set<string>()
 			for (let i = 0; i < n; i++) {
-				const top = neighbors[i]!.sort((a, b) => b.sim - a.sim).slice(
-					0,
-					TOP_K_PER_DOC,
-				)
+				const top = neighbors[i]
+					?.sort((a, b) => b.sim - a.sim)
+					.slice(0, TOP_K_PER_DOC)
 				for (const { j } of top) {
 					const a = Math.min(i, j)
 					const b = Math.max(i, j)
@@ -197,14 +196,14 @@ export async function handleGraphConnections({
 				const [aStr, bStr] = key.split("-")
 				const i = Number(aStr)
 				const j = Number(bStr)
-				const embI = spaceDocs[i]!.embedding
-				const embJ = spaceDocs[j]!.embedding
+				const embI = spaceDocs[i]?.embedding
+				const embJ = spaceDocs[j]?.embedding
 				if (!embI || !embJ) continue
 				const similarity = calculateSemanticSimilarity(embI, embJ)
 				if (similarity <= 0) continue
 				edges.push({
-					sourceId: spaceDocs[i]!.id,
-					targetId: spaceDocs[j]!.id,
+					sourceId: spaceDocs[i]?.id,
+					targetId: spaceDocs[j]?.id,
 					similarity: Number(similarity.toFixed(4)),
 				})
 			}

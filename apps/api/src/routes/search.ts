@@ -31,7 +31,7 @@ type ChunkRow = {
 	embedding?: number[] | null
 }
 
-function formatEmbeddingForSql(values: number[]): string {
+function _formatEmbeddingForSql(values: number[]): string {
 	const sanitized = values.map((value) => {
 		if (!Number.isFinite(value)) return "0"
 		const rounded = Math.abs(value) < 1e-6 ? 0 : value

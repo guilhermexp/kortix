@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { z } from "zod"
 import { env } from "../env"
-import { ENHANCED_SYSTEM_PROMPT, CANVAS_SYSTEM_PROMPT } from "../prompts/chat"
+import { CANVAS_SYSTEM_PROMPT, ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
 import {
 	executeClaudeAgent,
 	type ToolResultBlock,
@@ -12,7 +12,7 @@ import {
 	ConversationStorageUnavailableError,
 	EventStorageService,
 } from "../services/event-storage"
-import { createScopedSupabase, supabaseAdmin } from "../supabase"
+import { supabaseAdmin } from "../supabase"
 
 // New schema (SDK session-based)
 const chatRequestSchema = z.object({
@@ -551,7 +551,9 @@ export async function handleChatV2({
 			)
 		: []
 	const contextDocument = metadata.contextDocument
-	const canvasContext = metadata.canvasContext as CanvasContextPayload | undefined
+	const canvasContext = metadata.canvasContext as
+		| CanvasContextPayload
+		| undefined
 
 	const scopedDocumentIds = Array.isArray(payload.scopedDocumentIds)
 		? payload.scopedDocumentIds.filter(
@@ -580,7 +582,7 @@ export async function handleChatV2({
 	if (preferredTone) {
 		instructions.push(`Adopt a ${preferredTone} tone in the reply.`)
 	}
-	if (contextDocument && contextDocument.content) {
+	if (contextDocument?.content) {
 		instructions.push(
 			"The user is currently viewing a specific document. You have DIRECT ACCESS to the full content of this document. DO NOT use the searchDatabase tool for questions about this document - answer directly from the content provided.",
 		)
@@ -609,7 +611,10 @@ export async function handleChatV2({
 			)
 		}
 
-		if (canvasContext.shapesInViewport && canvasContext.shapesInViewport.length > 0) {
+		if (
+			canvasContext.shapesInViewport &&
+			canvasContext.shapesInViewport.length > 0
+		) {
 			const shapesSummary = canvasContext.shapesInViewport
 				.slice(0, 10) // Limit to first 10 shapes to avoid token overflow
 				.map((s) => {
@@ -635,9 +640,10 @@ export async function handleChatV2({
 
 					// Text content if available
 					if (s.text) {
-						const truncatedText = s.text.length > 30
-							? `"${s.text.substring(0, 30)}..."`
-							: `"${s.text}"`
+						const truncatedText =
+							s.text.length > 30
+								? `"${s.text.substring(0, 30)}..."`
+								: `"${s.text}"`
 						parts.push(`text:${truncatedText}`)
 					}
 
@@ -659,7 +665,10 @@ export async function handleChatV2({
 			)
 		}
 
-		if (canvasContext.userSelections && canvasContext.userSelections.length > 0) {
+		if (
+			canvasContext.userSelections &&
+			canvasContext.userSelections.length > 0
+		) {
 			const selectionsSummary = canvasContext.userSelections
 				.map((sel) => {
 					if (sel.type === "selectedShape" && sel.shapeId) {
@@ -682,11 +691,15 @@ export async function handleChatV2({
 			"When the user asks about visual organization, diagrams, or charts, proactively use the canvasApplyChanges tool to create visual representations on the canvas.",
 		)
 
-		console.log("[Chat V2] Canvas context active, added canvas instructions to prompt")
+		console.log(
+			"[Chat V2] Canvas context active, added canvas instructions to prompt",
+		)
 	}
 
 	// Use canvas-specific prompt when canvas context is present
-	const basePrompt = canvasContext ? CANVAS_SYSTEM_PROMPT : ENHANCED_SYSTEM_PROMPT
+	const basePrompt = canvasContext
+		? CANVAS_SYSTEM_PROMPT
+		: ENHANCED_SYSTEM_PROMPT
 	const systemPrompt =
 		instructions.length > 0
 			? `${basePrompt}\n\n${instructions.join("\n")}`
@@ -711,7 +724,7 @@ export async function handleChatV2({
 	let messageForAgent = payload.message
 
 	// If user is viewing a specific document, inject its full content
-	if (contextDocument && contextDocument.content) {
+	if (contextDocument?.content) {
 		const lines: string[] = []
 		if (contextDocument.title) {
 			lines.push(`Título: ${contextDocument.title}`)
@@ -985,8 +998,11 @@ export async function handleChatV2({
 										toolName: resolvedToolName,
 										state,
 										hasOutputText: !!payload.outputText,
-										outputTextLength: (payload.outputText as string)?.length || 0,
-										outputTextPreview: (payload.outputText as string)?.substring(0, 200),
+										outputTextLength:
+											(payload.outputText as string)?.length || 0,
+										outputTextPreview: (
+											payload.outputText as string
+										)?.substring(0, 200),
 									})
 								}
 								enqueue(payload)
@@ -1107,7 +1123,10 @@ export async function handleChatV2({
 										toolName: p.toolName,
 										state: p.state,
 										hasOutputText: typeof p.outputText === "string",
-										outputTextLength: typeof p.outputText === "string" ? (p.outputText as string).length : 0,
+										outputTextLength:
+											typeof p.outputText === "string"
+												? (p.outputText as string).length
+												: 0,
 									})
 								}
 							}

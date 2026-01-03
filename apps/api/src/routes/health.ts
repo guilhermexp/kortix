@@ -37,13 +37,7 @@ export const healthHandler = async (c: Context) => {
 
 	// Check required tables
 	try {
-		const tables = [
-			"documents",
-			"spaces",
-			"memories",
-			"users",
-			"sessions",
-		]
+		const tables = ["documents", "spaces", "memories", "users", "sessions"]
 		const tableChecks: Record<string, TableStatus> = {}
 
 		for (const table of tables) {
