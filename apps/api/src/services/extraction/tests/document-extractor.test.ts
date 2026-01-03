@@ -4,7 +4,6 @@ import type {
 	ExtractionInput,
 	ExtractionResult,
 	ExtractorServiceConfig,
-	ProcessingError,
 } from "../../interfaces"
 import {
 	createDocumentExtractorService,
@@ -300,7 +299,7 @@ describe("DocumentExtractorService", () => {
 				options: {},
 			}
 
-			const result = await service.extract(maliciousInput)
+			const _result = await service.extract(maliciousInput)
 			// Should either sanitize or reject the input
 		})
 

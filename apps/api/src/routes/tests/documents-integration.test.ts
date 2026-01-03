@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
 import { Hono } from "hono"
-import type {
-	ExtractionResult,
-	ProcessedDocument,
-	ProcessingError,
-} from "../interfaces"
+import type { ExtractionResult, ProcessedDocument } from "../interfaces"
 
 /**
  * Integration tests for document ingestion flow
@@ -19,20 +15,20 @@ import type {
  */
 
 describe("Documents Integration Tests", () => {
-	let app: Hono
+	let _app: Hono
 	let mockDatabase: any
-	let mockStorage: any
+	let _mockStorage: any
 
 	beforeEach(() => {
 		// Setup test environment
-		app = new Hono()
+		_app = new Hono()
 		mockDatabase = {
 			insertDocument: vi.fn(),
 			updateDocument: vi.fn(),
 			getDocument: vi.fn(),
 			deleteDocument: vi.fn(),
 		}
-		mockStorage = {
+		_mockStorage = {
 			uploadFile: vi.fn(),
 			deleteFile: vi.fn(),
 		}

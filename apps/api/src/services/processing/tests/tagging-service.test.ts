@@ -1,10 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
-import type {
-	ProcessingError,
-	TagCategory,
-	TaggingOptions,
-	TagWithMetadata,
-} from "../../interfaces"
+import type { TaggingOptions, TagWithMetadata } from "../../interfaces"
 import { createTaggingService, TaggingService } from "../tagging-service"
 
 describe("TaggingService", () => {
@@ -67,8 +62,8 @@ describe("TaggingService", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.data?.tags).toHaveLength(4)
-			expect(result.data?.tags![0].tag).toBe("artificial intelligence")
-			expect(result.data?.tags![0].confidence).toBe(0.95)
+			expect(result.data?.tags?.[0].tag).toBe("artificial intelligence")
+			expect(result.data?.tags?.[0].confidence).toBe(0.95)
 		})
 
 		it("should respect maximum tag limit", async () => {
@@ -93,12 +88,12 @@ describe("TaggingService", () => {
 			const result = await service.generateTags(text)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.tags!.length).toBeLessThanOrEqual(
+			expect(result.data?.tags?.length).toBeLessThanOrEqual(
 				mockOptions.maxTags!,
 			)
 			// Should return highest confidence tags
-			expect(result.data?.tags![0].confidence).toBeGreaterThanOrEqual(
-				result.data?.tags!.at(-1)!.confidence,
+			expect(result.data?.tags?.[0].confidence).toBeGreaterThanOrEqual(
+				result.data?.tags?.at(-1)?.confidence,
 			)
 		})
 
@@ -183,8 +178,8 @@ describe("TaggingService", () => {
 			const result = await service.generateTags(text)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.tags!.every((tag) => tag.category)).toBe(true)
-			expect(result.data?.tags![0].category).toBe("Technology")
+			expect(result.data?.tags?.every((tag) => tag.category)).toBe(true)
+			expect(result.data?.tags?.[0].category).toBe("Technology")
 		})
 
 		it("should handle categories when disabled", async () => {
@@ -209,7 +204,7 @@ describe("TaggingService", () => {
 			const result = await noCategoryService.generateTags(text)
 
 			expect(result.success).toBe(true)
-			expect(result.data?.tags![0].category).toBeUndefined()
+			expect(result.data?.tags?.[0].category).toBeUndefined()
 		})
 
 		it("should group tags by category", async () => {
@@ -250,8 +245,8 @@ describe("TaggingService", () => {
 			const categoryGroups = service.groupTagsByCategory(
 				result.data?.tags || [],
 			)
-			expect(categoryGroups["Technology"]).toHaveLength(2)
-			expect(categoryGroups["Business"]).toHaveLength(2)
+			expect(categoryGroups.Technology).toHaveLength(2)
+			expect(categoryGroups.Business).toHaveLength(2)
 		})
 	})
 
@@ -515,7 +510,7 @@ describe("TaggingService", () => {
 			const hugeText = "Content. ".repeat(10000)
 
 			const taggingSpy = vi.spyOn(service as any, "callTaggingAPI")
-			taggingSpy.mockImplementation((text) => {
+			taggingSpy.mockImplementation((_text) => {
 				// Simulate processing large text
 				return Promise.resolve({
 					tags: [

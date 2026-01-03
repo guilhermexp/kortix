@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
 import { CircuitBreaker, createCircuitBreaker } from "../circuit-breaker"
-import type { ProcessingError, RetryOptions } from "../interfaces"
 import { createRetryHandler, RetryHandler } from "../retry-handler"
 
 /**
@@ -45,7 +44,7 @@ describe("Error Handling Tests", () => {
 				for (let i = 0; i < 3; i++) {
 					try {
 						await circuitBreaker.execute(failingOperation)
-					} catch (error) {
+					} catch (_error) {
 						// Expected to fail
 					}
 				}
@@ -62,7 +61,7 @@ describe("Error Handling Tests", () => {
 				for (let i = 0; i < 3; i++) {
 					try {
 						await circuitBreaker.execute(failingOperation)
-					} catch (error) {
+					} catch (_error) {
 						// Expected to fail
 					}
 				}
@@ -76,7 +75,7 @@ describe("Error Handling Tests", () => {
 				// Next call should transition to half-open
 				try {
 					await circuitBreaker.execute(failingOperation)
-				} catch (error) {
+				} catch (_error) {
 					// Expected to fail
 				}
 
@@ -94,7 +93,7 @@ describe("Error Handling Tests", () => {
 				for (let i = 0; i < 3; i++) {
 					try {
 						await circuitBreaker.execute(failingOperation)
-					} catch (error) {
+					} catch (_error) {
 						// Expected to fail
 					}
 				}
@@ -123,7 +122,7 @@ describe("Error Handling Tests", () => {
 				for (const error of errors) {
 					try {
 						await circuitBreaker.execute(() => Promise.reject(error))
-					} catch (e) {
+					} catch (_e) {
 						// Expected to fail
 					}
 				}
@@ -142,13 +141,13 @@ describe("Error Handling Tests", () => {
 				// Only transient errors should count toward circuit breaker
 				try {
 					await circuitBreaker.execute(() => Promise.reject(transientError))
-				} catch (e) {
+				} catch (_e) {
 					// Expected
 				}
 
 				try {
 					await circuitBreaker.execute(() => Promise.reject(permanentError))
-				} catch (e) {
+				} catch (_e) {
 					// Expected
 				}
 
@@ -183,7 +182,7 @@ describe("Error Handling Tests", () => {
 				for (let i = 0; i < 3; i++) {
 					try {
 						await circuitBreaker.execute(failingOperation)
-					} catch (error) {
+					} catch (_error) {
 						// Expected
 					}
 				}
@@ -197,7 +196,7 @@ describe("Error Handling Tests", () => {
 				vi.advanceTimersByTime(60000)
 				try {
 					await circuitBreaker.execute(failingOperation)
-				} catch (error) {
+				} catch (_error) {
 					// Expected
 				}
 				expect(circuitBreaker.getState()).toBe("open")
@@ -245,7 +244,7 @@ describe("Error Handling Tests", () => {
 
 				try {
 					await retryHandler.executeWithRetry(failingOperation)
-				} catch (error) {
+				} catch (_error) {
 					// Expected to fail after max attempts
 				}
 
@@ -265,10 +264,10 @@ describe("Error Handling Tests", () => {
 				// Mock time to test delay capping
 				vi.useFakeTimers()
 
-				const startTime = Date.now()
+				const _startTime = Date.now()
 				try {
 					await retryHandler.executeWithRetry(failingOperation)
-				} catch (error) {
+				} catch (_error) {
 					// Expected
 				}
 
@@ -327,7 +326,7 @@ describe("Error Handling Tests", () => {
 
 					try {
 						await retryHandler.executeWithRetry(operation)
-					} catch (e) {
+					} catch (_e) {
 						// Expected to fail immediately
 					}
 
@@ -340,7 +339,7 @@ describe("Error Handling Tests", () => {
 
 				try {
 					await retryHandler.executeWithRetry(operation)
-				} catch (error) {
+				} catch (_error) {
 					// Expected to fail
 				}
 
@@ -423,7 +422,7 @@ describe("Error Handling Tests", () => {
 						if (!shouldRetry) {
 							fail("Should have thrown error")
 						}
-					} catch (e) {
+					} catch (_e) {
 						if (shouldRetry) {
 							fail("Should have succeeded")
 						}
@@ -462,7 +461,7 @@ describe("Error Handling Tests", () => {
 
 				try {
 					await customHandler.executeWithRetry(fatalOp)
-				} catch (e) {
+				} catch (_e) {
 					// Expected
 				}
 
@@ -492,7 +491,7 @@ describe("Error Handling Tests", () => {
 					await circuitBreaker.execute(() =>
 						retryHandler.executeWithRetry(operation),
 					)
-				} catch (error) {
+				} catch (_error) {
 					// Expected to fail
 				}
 			}
@@ -521,7 +520,7 @@ describe("Error Handling Tests", () => {
 			try {
 				// Try primary service
 				await primaryService.execute(primaryOp)
-			} catch (primaryError) {
+			} catch (_primaryError) {
 				// Primary failed, try fallback
 				const result = await fallbackService.execute(() =>
 					retryHandler.executeWithRetry(fallbackOp),
@@ -569,7 +568,7 @@ describe("Error Handling Tests", () => {
 
 			try {
 				await circuitBreaker.execute(operation)
-			} catch (e) {
+			} catch (_e) {
 				// Expected
 			}
 

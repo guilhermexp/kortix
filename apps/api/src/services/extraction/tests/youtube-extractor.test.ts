@@ -189,7 +189,7 @@ describe("YouTubeExtractor", () => {
 				tags: ["rick astley", "never gonna give you up", "pop", "80s music"],
 			}
 
-			const mockResult: ExtractionResult = {
+			const _mockResult: ExtractionResult = {
 				success: true,
 				data: {
 					content: "Video transcript and description content...",
@@ -283,7 +283,7 @@ describe("YouTubeExtractor", () => {
 				},
 			]
 
-			const mockResult: ExtractionResult = {
+			const _mockResult: ExtractionResult = {
 				success: true,
 				data: {
 					content: mockTranscript
