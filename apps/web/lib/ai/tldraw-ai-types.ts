@@ -3,7 +3,7 @@
  * These types are compatible with tldraw 4.x
  */
 
-import type { TLShapeId, TLShape, TLBinding } from "tldraw"
+import type { TLBinding, TLShape, TLShapeId } from "tldraw"
 
 // ============================================================
 // TLAiChange Types

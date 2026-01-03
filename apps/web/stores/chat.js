@@ -84,8 +84,10 @@ exports.usePersistentChatStore = (0, zustand_1.create)()(
 			setConversation: (projectId, chatId, messages) => {
 				var now = new Date().toISOString()
 				set((state) => {
-					var _a, _b
-					var _c, _d
+					var _a
+					var _b
+					var _c
+					var _d
 					var project =
 						(_c = state.byProject[projectId]) !== null && _c !== void 0
 							? _c
@@ -147,10 +149,10 @@ exports.usePersistentChatStore = (0, zustand_1.create)()(
 									currentChatId: null,
 									conversations: {},
 								}
-					var _c = project.conversations,
-						_d = chatId,
-						_ = _c[_d],
-						rest = __rest(_c, [typeof _d === "symbol" ? _d : _d + ""])
+					var _c = project.conversations
+					var _d = chatId
+					var _ = _c[_d]
+					var rest = __rest(_c, [typeof _d === "symbol" ? _d : `${_d}`])
 					var nextCurrent =
 						project.currentChatId === chatId ? null : project.currentChatId
 					return {
@@ -169,7 +171,8 @@ exports.usePersistentChatStore = (0, zustand_1.create)()(
 			setConversationTitle: (projectId, chatId, title) => {
 				var now = new Date().toISOString()
 				set((state) => {
-					var _a, _b
+					var _a
+					var _b
 					var _c
 					var project =
 						(_c = state.byProject[projectId]) !== null && _c !== void 0
@@ -238,8 +241,8 @@ function usePersistentChat() {
 				? _a
 				: {}
 		return Object.entries(convs).map((_a) => {
-			var id = _a[0],
-				rec = _a[1]
+			var id = _a[0]
+			var rec = _a[1]
 			return {
 				id: id,
 				title: rec.title,
@@ -267,7 +270,8 @@ function usePersistentChat() {
 		setConversationTitleRaw(projectId, chatId, title)
 	}
 	function getCurrentConversation() {
-		var _a, _b
+		var _a
+		var _b
 		var convs =
 			(_a =
 				projectState === null || projectState === void 0

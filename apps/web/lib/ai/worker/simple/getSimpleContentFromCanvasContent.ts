@@ -2,8 +2,8 @@
 // Convert TLDraw Canvas Content to Simple Format for AI
 // ============================================================
 
-import type { TLAiContent } from "@/lib/ai/tldraw-ai-types"
 import type { TLShape } from "tldraw"
+import type { TLAiContent } from "@/lib/ai/tldraw-ai-types"
 import { tldrawFillToSimpleFill } from "./conversions"
 import type { Shape } from "./schema"
 
@@ -218,7 +218,7 @@ function convertShape(shape: TLShape): Shape | null {
 
 // Main conversion function
 export function getSimpleContentFromCanvasContent(
-	content: TLAiContent
+	content: TLAiContent,
 ): SimpleCanvasContent {
 	const shapes: Shape[] = []
 
@@ -236,7 +236,9 @@ export function getSimpleContentFromCanvasContent(
 }
 
 // Format simple content for AI prompt
-export function formatSimpleContentForPrompt(content: SimpleCanvasContent): string {
+export function formatSimpleContentForPrompt(
+	content: SimpleCanvasContent,
+): string {
 	if (content.shapes.length === 0) {
 		return "The canvas is currently empty."
 	}

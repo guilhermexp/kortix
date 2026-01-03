@@ -2,7 +2,7 @@
 // TLDraw AI Worker Utilities
 // ============================================================
 
-import type { CoreMessage, TextPart, ImagePart } from "ai"
+import type { CoreMessage, ImagePart, TextPart } from "ai"
 
 type MessagePart = TextPart | ImagePart | { type: "image"; image: string }
 

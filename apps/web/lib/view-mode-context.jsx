@@ -34,12 +34,12 @@ var isMobileDevice = () => {
 function ViewModeProvider(_a) {
 	var children = _a.children
 	// Start with a default that works for SSR
-	var _b = (0, react_1.useState)("graph"),
-		viewMode = _b[0],
-		setViewModeState = _b[1]
-	var _c = (0, react_1.useState)(false),
-		isInitialized = _c[0],
-		setIsInitialized = _c[1]
+	var _b = (0, react_1.useState)("graph")
+	var viewMode = _b[0]
+	var setViewModeState = _b[1]
+	var _c = (0, react_1.useState)(false)
+	var isInitialized = _c[0]
+	var setIsInitialized = _c[1]
 	// Load preferences on the client side
 	;(0, react_1.useEffect)(() => {
 		if (!isInitialized) {

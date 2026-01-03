@@ -3,7 +3,11 @@
 // Abstract base class for AI services
 // ============================================================
 
-import type { TLAiSerializedPrompt, TLAiResult, TLAiChange } from "@/lib/ai/tldraw-ai-types"
+import type {
+	TLAiChange,
+	TLAiResult,
+	TLAiSerializedPrompt,
+} from "@/lib/ai/tldraw-ai-types"
 import type { Environment } from "./types"
 
 export abstract class TldrawAiBaseService {
@@ -27,7 +31,7 @@ export abstract class TldrawAiBaseService {
 
 		if (!hasGoogleKey && !hasOpenAiKey && !hasAnthropicKey) {
 			throw new Error(
-				"No AI provider API key found. Please set GOOGLE_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY."
+				"No AI provider API key found. Please set GOOGLE_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY.",
 			)
 		}
 	}

@@ -72,10 +72,22 @@ export const SizeSchema = z
 	.describe("The size of the shape")
 
 export const ArrowheadSchema = z
-	.enum(["none", "arrow", "triangle", "square", "dot", "diamond", "inverted", "bar", "pipe"])
+	.enum([
+		"none",
+		"arrow",
+		"triangle",
+		"square",
+		"dot",
+		"diamond",
+		"inverted",
+		"bar",
+		"pipe",
+	])
 	.describe("The arrowhead style")
 
-export const GrowSchema = z.enum(["up", "right", "down", "left"]).describe("The direction of growth")
+export const GrowSchema = z
+	.enum(["up", "right", "down", "left"])
+	.describe("The direction of growth")
 
 // ============================================================
 // POINT SCHEMAS
@@ -115,7 +127,10 @@ export const RectangleSchema = BaseShapeSchema.extend({
 	fill: FillSchema.optional(),
 	dash: DashSchema.optional(),
 	size: SizeSchema.optional(),
-	label: z.string().optional().describe("Optional text label inside the rectangle"),
+	label: z
+		.string()
+		.optional()
+		.describe("Optional text label inside the rectangle"),
 	labelColor: LabelColorSchema.optional(),
 	font: FontSchema.optional(),
 }).describe("A rectangle shape")
@@ -128,7 +143,10 @@ export const EllipseSchema = BaseShapeSchema.extend({
 	fill: FillSchema.optional(),
 	dash: DashSchema.optional(),
 	size: SizeSchema.optional(),
-	label: z.string().optional().describe("Optional text label inside the ellipse"),
+	label: z
+		.string()
+		.optional()
+		.describe("Optional text label inside the ellipse"),
 	labelColor: LabelColorSchema.optional(),
 	font: FontSchema.optional(),
 }).describe("An ellipse shape")
@@ -141,7 +159,10 @@ export const TriangleSchema = BaseShapeSchema.extend({
 	fill: FillSchema.optional(),
 	dash: DashSchema.optional(),
 	size: SizeSchema.optional(),
-	label: z.string().optional().describe("Optional text label inside the triangle"),
+	label: z
+		.string()
+		.optional()
+		.describe("Optional text label inside the triangle"),
 	labelColor: LabelColorSchema.optional(),
 	font: FontSchema.optional(),
 }).describe("A triangle shape")
@@ -154,7 +175,10 @@ export const DiamondSchema = BaseShapeSchema.extend({
 	fill: FillSchema.optional(),
 	dash: DashSchema.optional(),
 	size: SizeSchema.optional(),
-	label: z.string().optional().describe("Optional text label inside the diamond"),
+	label: z
+		.string()
+		.optional()
+		.describe("Optional text label inside the diamond"),
 	labelColor: LabelColorSchema.optional(),
 	font: FontSchema.optional(),
 }).describe("A diamond shape")
@@ -167,7 +191,10 @@ export const PentagonSchema = BaseShapeSchema.extend({
 	fill: FillSchema.optional(),
 	dash: DashSchema.optional(),
 	size: SizeSchema.optional(),
-	label: z.string().optional().describe("Optional text label inside the pentagon"),
+	label: z
+		.string()
+		.optional()
+		.describe("Optional text label inside the pentagon"),
 	labelColor: LabelColorSchema.optional(),
 	font: FontSchema.optional(),
 }).describe("A pentagon shape")
@@ -180,7 +207,10 @@ export const HexagonSchema = BaseShapeSchema.extend({
 	fill: FillSchema.optional(),
 	dash: DashSchema.optional(),
 	size: SizeSchema.optional(),
-	label: z.string().optional().describe("Optional text label inside the hexagon"),
+	label: z
+		.string()
+		.optional()
+		.describe("Optional text label inside the hexagon"),
 	labelColor: LabelColorSchema.optional(),
 	font: FontSchema.optional(),
 }).describe("A hexagon shape")
@@ -193,7 +223,10 @@ export const OctagonSchema = BaseShapeSchema.extend({
 	fill: FillSchema.optional(),
 	dash: DashSchema.optional(),
 	size: SizeSchema.optional(),
-	label: z.string().optional().describe("Optional text label inside the octagon"),
+	label: z
+		.string()
+		.optional()
+		.describe("Optional text label inside the octagon"),
 	labelColor: LabelColorSchema.optional(),
 	font: FontSchema.optional(),
 }).describe("An octagon shape")
@@ -219,7 +252,10 @@ export const RhombusSchema = BaseShapeSchema.extend({
 	fill: FillSchema.optional(),
 	dash: DashSchema.optional(),
 	size: SizeSchema.optional(),
-	label: z.string().optional().describe("Optional text label inside the rhombus"),
+	label: z
+		.string()
+		.optional()
+		.describe("Optional text label inside the rhombus"),
 	labelColor: LabelColorSchema.optional(),
 	font: FontSchema.optional(),
 }).describe("A rhombus shape")
@@ -258,7 +294,10 @@ export const TrapezoidSchema = BaseShapeSchema.extend({
 	fill: FillSchema.optional(),
 	dash: DashSchema.optional(),
 	size: SizeSchema.optional(),
-	label: z.string().optional().describe("Optional text label inside the trapezoid"),
+	label: z
+		.string()
+		.optional()
+		.describe("Optional text label inside the trapezoid"),
 	labelColor: LabelColorSchema.optional(),
 	font: FontSchema.optional(),
 }).describe("A trapezoid shape")
@@ -271,7 +310,10 @@ export const ArrowLeftSchema = BaseShapeSchema.extend({
 	fill: FillSchema.optional(),
 	dash: DashSchema.optional(),
 	size: SizeSchema.optional(),
-	label: z.string().optional().describe("Optional text label inside the arrow-left"),
+	label: z
+		.string()
+		.optional()
+		.describe("Optional text label inside the arrow-left"),
 	labelColor: LabelColorSchema.optional(),
 	font: FontSchema.optional(),
 }).describe("An arrow-left shape")
@@ -284,7 +326,10 @@ export const ArrowRightSchema = BaseShapeSchema.extend({
 	fill: FillSchema.optional(),
 	dash: DashSchema.optional(),
 	size: SizeSchema.optional(),
-	label: z.string().optional().describe("Optional text label inside the arrow-right"),
+	label: z
+		.string()
+		.optional()
+		.describe("Optional text label inside the arrow-right"),
 	labelColor: LabelColorSchema.optional(),
 	font: FontSchema.optional(),
 }).describe("An arrow-right shape")
@@ -297,7 +342,10 @@ export const ArrowUpSchema = BaseShapeSchema.extend({
 	fill: FillSchema.optional(),
 	dash: DashSchema.optional(),
 	size: SizeSchema.optional(),
-	label: z.string().optional().describe("Optional text label inside the arrow-up"),
+	label: z
+		.string()
+		.optional()
+		.describe("Optional text label inside the arrow-up"),
 	labelColor: LabelColorSchema.optional(),
 	font: FontSchema.optional(),
 }).describe("An arrow-up shape")
@@ -310,7 +358,10 @@ export const ArrowDownSchema = BaseShapeSchema.extend({
 	fill: FillSchema.optional(),
 	dash: DashSchema.optional(),
 	size: SizeSchema.optional(),
-	label: z.string().optional().describe("Optional text label inside the arrow-down"),
+	label: z
+		.string()
+		.optional()
+		.describe("Optional text label inside the arrow-down"),
 	labelColor: LabelColorSchema.optional(),
 	font: FontSchema.optional(),
 }).describe("An arrow-down shape")
@@ -336,7 +387,10 @@ export const CheckBoxSchema = BaseShapeSchema.extend({
 	fill: FillSchema.optional(),
 	dash: DashSchema.optional(),
 	size: SizeSchema.optional(),
-	label: z.string().optional().describe("Optional text label inside the check-box"),
+	label: z
+		.string()
+		.optional()
+		.describe("Optional text label inside the check-box"),
 	labelColor: LabelColorSchema.optional(),
 	font: FontSchema.optional(),
 }).describe("A check-box shape")
@@ -443,9 +497,9 @@ export const DrawSchema = BaseShapeSchema.extend({
 						x: z.number(),
 						y: z.number(),
 						z: z.number().optional(),
-					})
+					}),
 				),
-			})
+			}),
 		)
 		.describe("The drawing segments"),
 	isComplete: z.boolean().optional(),
@@ -465,9 +519,9 @@ export const HighlightSchema = BaseShapeSchema.extend({
 						x: z.number(),
 						y: z.number(),
 						z: z.number().optional(),
-					})
+					}),
 				),
-			})
+			}),
 		)
 		.describe("The highlight segments"),
 	isComplete: z.boolean().optional(),
@@ -579,13 +633,18 @@ export const ShapeChangesSchema = z
 		label: z.string().optional().describe("New label text"),
 		labelColor: LabelColorSchema.optional().describe("New label color"),
 		font: FontSchema.optional().describe("New font"),
-		text: z.string().optional().describe("New text content (for text/note shapes)"),
+		text: z
+			.string()
+			.optional()
+			.describe("New text content (for text/note shapes)"),
 		align: TextAlignSchema.optional().describe("New text alignment"),
 		name: z.string().optional().describe("New name (for frame shapes)"),
 		rotation: z.number().optional().describe("New rotation angle"),
 		opacity: z.number().optional().describe("New opacity (0-1)"),
 	})
-	.describe("Properties to change on the shape. Only include properties that should change.")
+	.describe(
+		"Properties to change on the shape. Only include properties that should change.",
+	)
 
 export const UpdateEventSchema = z
 	.object({
@@ -653,7 +712,9 @@ export type SimpleEvent = z.infer<typeof EventSchema>
 // ============================================================
 
 export const ModelResponseSchema = z.object({
-	events: z.array(EventSchema).describe("The list of events to execute on the canvas"),
+	events: z
+		.array(EventSchema)
+		.describe("The list of events to execute on the canvas"),
 })
 
 export type ModelResponse = z.infer<typeof ModelResponseSchema>

@@ -2,28 +2,36 @@
 // Convert Simple AI Events to TLDraw Changes
 // ============================================================
 
-import type { TLAiChange, TLAiCreateShapeChange, TLAiUpdateShapeChange, TLAiDeleteShapeChange } from "@/lib/ai/tldraw-ai-types"
 import type { TLShapeId } from "tldraw"
-import type { SimpleEvent, Shape } from "./schema"
+import type {
+	TLAiChange,
+	TLAiCreateShapeChange,
+	TLAiDeleteShapeChange,
+	TLAiUpdateShapeChange,
+} from "@/lib/ai/tldraw-ai-types"
 import {
-	simpleFillToTldrawFill,
-	simpleColorToTldrawColor,
-	simpleSizeToTldrawSize,
-	simpleDashToTldrawDash,
-	simpleFontToTldrawFont,
 	simpleAlignToTldrawAlign,
 	simpleArrowheadToTldrawArrowhead,
+	simpleColorToTldrawColor,
+	simpleDashToTldrawDash,
+	simpleFillToTldrawFill,
+	simpleFontToTldrawFont,
 	simpleGeoToTldrawGeo,
+	simpleSizeToTldrawSize,
 } from "./conversions"
+import type { Shape, SimpleEvent } from "./schema"
 
 // Helper to create a unique ID if not provided
 function ensureId(id: string | undefined): TLShapeId {
-	const rawId = id || `shape_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+	const rawId =
+		id || `shape_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 	return `shape:${rawId}` as TLShapeId
 }
 
 // Convert a simple shape to TLDraw createShape change
-function convertShapeToTldrawChange(shape: Shape): TLAiCreateShapeChange | null {
+function convertShapeToTldrawChange(
+	shape: Shape,
+): TLAiCreateShapeChange | null {
 	const id = ensureId(shape.id)
 	const baseProps = {
 		x: shape.x,
@@ -152,7 +160,7 @@ function convertShapeToTldrawChange(shape: Shape): TLAiCreateShapeChange | null 
 		const getPoint = (
 			point: any,
 			defaultX: number,
-			defaultY: number
+			defaultY: number,
 		): { x: number; y: number } => {
 			if (!point) return { x: defaultX, y: defaultY }
 			// If it has x and y coordinates, use them
@@ -163,7 +171,7 @@ function convertShapeToTldrawChange(shape: Shape): TLAiCreateShapeChange | null 
 			// The user can manually connect the arrow later if needed
 			if ("id" in point) {
 				console.warn(
-					"[getTldrawAiChanges] Arrow binding to shape not supported, using default position"
+					"[getTldrawAiChanges] Arrow binding to shape not supported, using default position",
 				)
 				return { x: defaultX, y: defaultY }
 			}
@@ -184,8 +192,12 @@ function convertShapeToTldrawChange(shape: Shape): TLAiCreateShapeChange | null 
 					fill: simpleFillToTldrawFill(arrowShape.fill),
 					dash: simpleDashToTldrawDash(arrowShape.dash) as any,
 					size: simpleSizeToTldrawSize(arrowShape.size) as any,
-					arrowheadStart: simpleArrowheadToTldrawArrowhead(arrowShape.arrowheadStart) as any,
-					arrowheadEnd: simpleArrowheadToTldrawArrowhead(arrowShape.arrowheadEnd || "arrow") as any,
+					arrowheadStart: simpleArrowheadToTldrawArrowhead(
+						arrowShape.arrowheadStart,
+					) as any,
+					arrowheadEnd: simpleArrowheadToTldrawArrowhead(
+						arrowShape.arrowheadEnd || "arrow",
+					) as any,
 					text: arrowShape.label || "",
 					labelColor: simpleColorToTldrawColor(arrowShape.labelColor) as any,
 					font: simpleFontToTldrawFont(arrowShape.font) as any,
@@ -379,7 +391,9 @@ function convertEventToChange(event: SimpleEvent): TLAiChange | null {
 }
 
 // Main conversion function
-export function getTldrawAiChangesFromSimpleEvents(events: SimpleEvent[]): TLAiChange[] {
+export function getTldrawAiChangesFromSimpleEvents(
+	events: SimpleEvent[],
+): TLAiChange[] {
 	const changes: TLAiChange[] = []
 
 	for (const event of events) {
@@ -394,7 +408,7 @@ export function getTldrawAiChangesFromSimpleEvents(events: SimpleEvent[]): TLAiC
 
 // Generator version for streaming
 export function* getTldrawAiChangesFromSimpleEventsGenerator(
-	events: SimpleEvent[]
+	events: SimpleEvent[],
 ): Generator<TLAiChange> {
 	for (const event of events) {
 		const change = convertEventToChange(event)
