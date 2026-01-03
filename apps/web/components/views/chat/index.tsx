@@ -98,7 +98,9 @@ export function ChatRewrite() {
 												<button
 													className="min-w-0 flex-1 text-left outline-none"
 													onClick={() => {
-														console.log("========================================")
+														console.log(
+															"========================================",
+														)
 														console.log("[UI] Conversation clicked:", {
 															id: c.id,
 															title: c.title,
@@ -106,7 +108,9 @@ export function ChatRewrite() {
 															sdkSessionId: c.sdkSessionId,
 															hasSdkSession: !!c.sdkSessionId,
 														})
-														console.log("========================================")
+														console.log(
+															"========================================",
+														)
 														setCurrentChatId(c.id)
 														setIsDialogOpen(false)
 													}}

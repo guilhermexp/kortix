@@ -1,18 +1,7 @@
 "use client"
 
 import { cn } from "@lib/utils"
-import { Button } from "@repo/ui/components/button"
 import isHotkey from "is-hotkey"
-import {
-	Bold,
-	Code,
-	Heading1,
-	Heading2,
-	Heading3,
-	Italic,
-	List,
-	Quote,
-} from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import {
 	type BaseEditor,

@@ -7,7 +7,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@ui/components/select"
-import { Sparkles } from "lucide-react"
 import { useEffect, useState } from "react"
 
 export type ProviderId = "glm"
@@ -47,7 +46,7 @@ export function ProviderSelector({
 		if (value && value !== selectedProvider) {
 			setSelectedProvider(value)
 		}
-	}, [value])
+	}, [value, selectedProvider])
 
 	const handleChange = (newProvider: string) => {
 		const providerId = newProvider as ProviderId

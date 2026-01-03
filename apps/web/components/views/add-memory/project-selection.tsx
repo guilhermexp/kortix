@@ -47,7 +47,10 @@ export function ProjectSelection({
 	return (
 		<div className="flex flex-col gap-1.5">
 			{showLabel && (
-				<label className="text-sm font-medium text-foreground dark:text-white/80" htmlFor={id}>
+				<label
+					className="text-sm font-medium text-foreground dark:text-white/80"
+					htmlFor={id}
+				>
 					Project
 				</label>
 			)}

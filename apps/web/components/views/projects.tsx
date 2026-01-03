@@ -54,7 +54,7 @@ export function ProjectsView() {
 		action: "move",
 		targetProjectId: "",
 	})
-	const [expDialog, setExpDialog] = useState<{
+	const [_expDialog, _setExpDialog] = useState<{
 		open: boolean
 		projectId: string
 	}>({
