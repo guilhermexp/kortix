@@ -1,4 +1,4 @@
-import type { TLShape, VecModel, BoxModel } from "tldraw"
+import type { BoxModel, TLShape, VecModel } from "tldraw"
 import { Box, StateNode } from "tldraw"
 import { addCanvasContextItem } from "./agent-context"
 
@@ -37,7 +37,9 @@ class TargetShapeIdle extends StateNode {
 
 	override onPointerMove() {
 		const { currentPagePoint } = this.editor.inputs
-		const shape = this.editor.getShapeAtPoint(currentPagePoint, { hitInside: true })
+		const shape = this.editor.getShapeAtPoint(currentPagePoint, {
+			hitInside: true,
+		})
 		if (shape) {
 			this.editor.setHintingShapes([shape])
 		} else {
@@ -46,9 +48,12 @@ class TargetShapeIdle extends StateNode {
 	}
 
 	override onPointerDown() {
-		const shape = this.editor.getShapeAtPoint(this.editor.inputs.currentPagePoint, {
-			hitInside: true,
-		})
+		const shape = this.editor.getShapeAtPoint(
+			this.editor.inputs.currentPagePoint,
+			{
+				hitInside: true,
+			},
+		)
 		this.parent.transition("pointing", { shape })
 	}
 }
@@ -68,16 +73,24 @@ class TargetShapePointing extends StateNode {
 
 	override onPointerMove() {
 		if (!this.initialScreenPoint) return
-		const distance = this.editor.inputs.currentScreenPoint.dist(this.initialScreenPoint)
+		const distance = this.editor.inputs.currentScreenPoint.dist(
+			this.initialScreenPoint,
+		)
 		if (distance > 10) {
-			this.parent.transition("dragging", { initialPagePoint: this.initialPagePoint })
+			this.parent.transition("dragging", {
+				initialPagePoint: this.initialPagePoint,
+			})
 		}
 	}
 
 	override onPointerUp() {
 		this.editor.setHintingShapes([])
 		if (this.shape) {
-			addCanvasContextItem({ type: "shape", shapeId: this.shape.id, source: "user" })
+			addCanvasContextItem({
+				type: "shape",
+				shapeId: this.shape.id,
+				source: "user",
+			})
 		}
 		this.editor.setCurrentTool("select")
 	}
@@ -128,14 +141,15 @@ class TargetShapeDragging extends StateNode {
 		this.bounds = { x, y, w, h }
 
 		const bounds = new Box(x, y, w, h)
-		const shapesInBounds = this.editor.getCurrentPageShapesSorted().filter((shape) => {
-			const shapeBounds = this.editor.getShapePageBounds(shape)
-			if (!shapeBounds) return false
-			return bounds.includes(shapeBounds) || bounds.collides(shapeBounds)
-		})
+		const shapesInBounds = this.editor
+			.getCurrentPageShapesSorted()
+			.filter((shape) => {
+				const shapeBounds = this.editor.getShapePageBounds(shape)
+				if (!shapeBounds) return false
+				return bounds.includes(shapeBounds) || bounds.collides(shapeBounds)
+			})
 
 		this.shapes = shapesInBounds
 		this.editor.setHintingShapes(shapesInBounds)
 	}
 }
-

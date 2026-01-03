@@ -1,11 +1,11 @@
 "use client"
 
+import { AnimatePresence, motion } from "framer-motion"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { AIInputBar } from "./ai-input-bar"
 import { AIActionList } from "./ai-action-list"
-import { AIGenerating } from "./ai-generating"
 import { AIAnswer } from "./ai-answer"
+import { AIGenerating } from "./ai-generating"
+import { AIInputBar } from "./ai-input-bar"
 import type { AIAction, AIMenuState } from "./types"
 
 interface AIContextMenuProps {
@@ -87,7 +87,10 @@ export function AIContextMenu({
 	}, [isOpen, state, onClose])
 
 	const executeAction = useCallback(
-		async (action: AIAction, options?: { lang?: string; tone?: string; customPrompt?: string }) => {
+		async (
+			action: AIAction,
+			options?: { lang?: string; tone?: string; customPrompt?: string },
+		) => {
 			setCurrentAction(action)
 			setState("generating")
 			setResult("")
@@ -223,13 +226,13 @@ export function AIContextMenu({
 	return (
 		<AnimatePresence>
 			<motion.div
-				ref={menuRef}
-				initial={{ opacity: 0, y: -10, scale: 0.95 }}
 				animate={{ opacity: 1, y: 0, scale: 1 }}
-				exit={{ opacity: 0, y: -10, scale: 0.95 }}
-				transition={{ duration: 0.15 }}
-				style={menuStyle}
 				className="ai-context-menu"
+				exit={{ opacity: 0, y: -10, scale: 0.95 }}
+				initial={{ opacity: 0, y: -10, scale: 0.95 }}
+				ref={menuRef}
+				style={menuStyle}
+				transition={{ duration: 0.15 }}
 			>
 				<div className="ai-context-menu-container">
 					{state === "input" && (
@@ -245,15 +248,12 @@ export function AIContextMenu({
 					{state === "generating" && (
 						<>
 							{result && (
-								<AIAnswer
-									content={result}
-									isStreaming={isStreaming}
-								/>
+								<AIAnswer content={result} isStreaming={isStreaming} />
 							)}
 							<AIGenerating
 								actionName={currentAction?.name || "Processing"}
-								onStop={handleStopGenerating}
 								hasContent={!!result}
+								onStop={handleStopGenerating}
 							/>
 						</>
 					)}
@@ -262,10 +262,10 @@ export function AIContextMenu({
 						<AIAnswer
 							content={result}
 							isStreaming={false}
-							onReplace={handleReplace}
+							onDiscard={handleDiscard}
 							onInsertBelow={handleInsertBelow}
 							onRegenerate={handleRegenerate}
-							onDiscard={handleDiscard}
+							onReplace={handleReplace}
 						/>
 					)}
 

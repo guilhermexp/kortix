@@ -53,9 +53,13 @@ class TargetAreaPointing extends StateNode {
 
 	override onPointerMove() {
 		if (!this.initialScreenPoint) return
-		const distance = this.editor.inputs.currentScreenPoint.dist(this.initialScreenPoint)
+		const distance = this.editor.inputs.currentScreenPoint.dist(
+			this.initialScreenPoint,
+		)
 		if (distance > 10) {
-			this.parent.transition("dragging", { initialPagePoint: this.initialPagePoint })
+			this.parent.transition("dragging", {
+				initialPagePoint: this.initialPagePoint,
+			})
 		}
 	}
 
@@ -109,4 +113,3 @@ class TargetAreaDragging extends StateNode {
 		this.bounds = { x, y, w, h }
 	}
 }
-

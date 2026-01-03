@@ -1,8 +1,8 @@
 "use client"
 
+import { Button } from "@repo/ui/components/button"
 import { Brush, Eraser, Loader2, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
-import { Button } from "@repo/ui/components/button"
 import { urlToBlob } from "./canvas-ai-utils"
 
 interface ImageEditorProps {
@@ -12,7 +12,7 @@ interface ImageEditorProps {
 	editImageApi: (
 		imageBlob: Blob,
 		maskBlob: Blob,
-		prompt: string
+		prompt: string,
 	) => Promise<string>
 }
 
@@ -53,8 +53,8 @@ export function CanvasImageEditor({
 		// Drawing handlers
 		const getCoords = (e: MouseEvent | TouchEvent) => {
 			const rect = canvas.getBoundingClientRect()
-			const clientX = "touches" in e ? e.touches[0]?.clientX ?? 0 : e.clientX
-			const clientY = "touches" in e ? e.touches[0]?.clientY ?? 0 : e.clientY
+			const clientX = "touches" in e ? (e.touches[0]?.clientX ?? 0) : e.clientX
+			const clientY = "touches" in e ? (e.touches[0]?.clientY ?? 0) : e.clientY
 			return { x: clientX - rect.left, y: clientY - rect.top }
 		}
 
@@ -135,12 +135,12 @@ export function CanvasImageEditor({
 				0,
 				0,
 				maskCanvas.width,
-				maskCanvas.height
+				maskCanvas.height,
 			)
 
 			// 3. Convert mask to Blob
 			const maskBlob = await new Promise<Blob>((resolve) =>
-				maskCanvas.toBlob(resolve as BlobCallback, "image/png")
+				maskCanvas.toBlob(resolve as BlobCallback, "image/png"),
 			)
 
 			// 4. Call edit API
@@ -150,7 +150,9 @@ export function CanvasImageEditor({
 			await onSave(newImageSrc)
 		} catch (error) {
 			console.error("Edit error:", error)
-			alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`)
+			alert(
+				`Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+			)
 		} finally {
 			setIsLoading(false)
 		}
@@ -172,10 +174,10 @@ export function CanvasImageEditor({
 				<div className="flex items-center justify-between px-4 py-3 border-b border-border">
 					<h3 className="text-foreground font-medium">Edit Image</h3>
 					<Button
-						variant="ghost"
-						size="sm"
-						onClick={onCancel}
 						disabled={isLoading}
+						onClick={onCancel}
+						size="sm"
+						variant="ghost"
 					>
 						<X className="w-4 h-4" />
 					</Button>
@@ -185,15 +187,15 @@ export function CanvasImageEditor({
 				<div className="relative p-4">
 					<div className="relative inline-block">
 						<img
-							ref={imageRef}
-							src={image.src}
 							alt="Image to edit"
 							className="max-w-full max-h-[60vh] rounded-lg"
 							crossOrigin="anonymous"
+							ref={imageRef}
+							src={image.src}
 						/>
 						<canvas
-							ref={canvasRef}
 							className="absolute inset-0 cursor-crosshair rounded-lg"
+							ref={canvasRef}
 							style={{ touchAction: "none" }}
 						/>
 						{isLoading && (
@@ -208,22 +210,22 @@ export function CanvasImageEditor({
 				<div className="flex items-center gap-4 px-4 py-3 border-t border-border">
 					<div className="flex items-center gap-2">
 						<Button
-							variant={!isErasing ? "default" : "outline"}
-							size="sm"
 							onClick={() => setIsErasing(false)}
+							size="sm"
+							variant={!isErasing ? "default" : "outline"}
 						>
 							<Brush className="w-4 h-4 mr-1" />
 							Brush
 						</Button>
 						<Button
-							variant={isErasing ? "default" : "outline"}
-							size="sm"
 							onClick={() => setIsErasing(true)}
+							size="sm"
+							variant={isErasing ? "default" : "outline"}
 						>
 							<Eraser className="w-4 h-4 mr-1" />
 							Eraser
 						</Button>
-						<Button variant="outline" size="sm" onClick={handleClear}>
+						<Button onClick={handleClear} size="sm" variant="outline">
 							Clear
 						</Button>
 					</div>
@@ -231,12 +233,12 @@ export function CanvasImageEditor({
 					<div className="flex items-center gap-2">
 						<span className="text-muted-foreground text-sm">Size:</span>
 						<input
-							type="range"
-							min="5"
-							max="100"
-							value={brushSize}
-							onChange={(e) => setBrushSize(Number(e.target.value))}
 							className="w-24"
+							max="100"
+							min="5"
+							onChange={(e) => setBrushSize(Number(e.target.value))}
+							type="range"
+							value={brushSize}
 						/>
 						<span className="text-muted-foreground text-sm w-8">
 							{brushSize}
@@ -247,23 +249,23 @@ export function CanvasImageEditor({
 				{/* Prompt input */}
 				<div className="flex items-center gap-3 px-4 py-3 border-t border-border">
 					<input
-						type="text"
-						value={prompt}
-						onChange={(e) => setPrompt(e.target.value)}
-						placeholder="Describe what you want in the painted area..."
 						className="flex-1 bg-muted border border-border rounded-lg px-4 py-2 text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/50"
 						disabled={isLoading}
+						onChange={(e) => setPrompt(e.target.value)}
 						onKeyDown={(e) => {
 							if (e.key === "Enter" && !e.shiftKey) {
 								e.preventDefault()
 								handleGenerate()
 							}
 						}}
+						placeholder="Describe what you want in the painted area..."
+						type="text"
+						value={prompt}
 					/>
 					<Button
-						onClick={handleGenerate}
-						disabled={isLoading || !prompt}
 						className="px-6"
+						disabled={isLoading || !prompt}
+						onClick={handleGenerate}
 					>
 						{isLoading ? (
 							<Loader2 className="w-4 h-4 animate-spin" />

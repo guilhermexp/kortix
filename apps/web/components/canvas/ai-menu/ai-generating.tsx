@@ -8,7 +8,11 @@ interface AIGeneratingProps {
 	hasContent: boolean
 }
 
-export function AIGenerating({ actionName, onStop, hasContent }: AIGeneratingProps) {
+export function AIGenerating({
+	actionName,
+	onStop,
+	hasContent,
+}: AIGeneratingProps) {
 	return (
 		<div className="ai-generating">
 			<div className="ai-generating-content">
@@ -19,10 +23,10 @@ export function AIGenerating({ actionName, onStop, hasContent }: AIGeneratingPro
 					</span>
 				</div>
 				<button
-					type="button"
-					onClick={onStop}
 					className="ai-generating-stop"
+					onClick={onStop}
 					title="Stop generating"
+					type="button"
 				>
 					<Square className="h-3 w-3" />
 					<span>Stop</span>

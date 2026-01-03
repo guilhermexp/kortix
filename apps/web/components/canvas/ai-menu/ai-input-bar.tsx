@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback, useRef, useState, useEffect } from "react"
-import { Sparkles, Send } from "lucide-react"
+import { Send, Sparkles } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 interface AIInputBarProps {
 	onSubmit: (text: string) => void
@@ -10,7 +10,7 @@ interface AIInputBarProps {
 
 export function AIInputBar({
 	onSubmit,
-	placeholder = "What are your thoughts?"
+	placeholder = "What are your thoughts?",
 }: AIInputBarProps) {
 	const [value, setValue] = useState("")
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -68,20 +68,20 @@ export function AIInputBar({
 			</div>
 			<div className="ai-input-bar-container">
 				<textarea
-					ref={textareaRef}
-					value={value}
+					className="ai-input-bar-textarea"
 					onChange={handleChange}
 					onKeyDown={handleKeyDown}
 					placeholder={placeholder}
+					ref={textareaRef}
 					rows={1}
-					className="ai-input-bar-textarea"
+					value={value}
 				/>
 				<button
-					type="button"
-					onClick={handleSend}
-					disabled={!hasContent}
 					className={`ai-input-bar-send ${hasContent ? "active" : ""}`}
+					disabled={!hasContent}
+					onClick={handleSend}
 					title="Send to AI"
+					type="button"
 				>
 					<Send className="h-5 w-5" />
 				</button>
