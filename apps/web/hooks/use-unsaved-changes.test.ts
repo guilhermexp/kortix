@@ -138,7 +138,7 @@ describe("useUnsavedChanges", () => {
 		const beforeunloadCall = calls.find((call) => call[0] === "beforeunload")
 		expect(beforeunloadCall).toBeDefined()
 
-		const handler = beforeunloadCall![1] as EventListener
+		const handler = beforeunloadCall?.[1] as EventListener
 
 		// Create a mock event
 		const mockEvent = {
@@ -169,7 +169,7 @@ describe("useUnsavedChanges", () => {
 		const beforeunloadCall = calls.find((call) => call[0] === "beforeunload")
 		expect(beforeunloadCall).toBeDefined()
 
-		const handler = beforeunloadCall![1] as EventListener
+		const handler = beforeunloadCall?.[1] as EventListener
 
 		const mockEvent = {
 			preventDefault: vi.fn(),

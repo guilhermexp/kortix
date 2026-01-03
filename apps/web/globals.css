@@ -225,7 +225,7 @@ small,
 }
 
 .dark .chat-markdown code {
-	background-color: transparent !important;
+	background-color: transparent;
 	color: color-mix(in oklch, var(--foreground) 92%, white 8%);
 	border: none;
 }
@@ -244,7 +244,7 @@ small,
 		in oklch,
 		var(--background) 94%,
 		var(--foreground) 6%
-	) !important;
+	);
 	border-color: color-mix(in oklch, var(--border) 65%, transparent);
 	box-shadow: 0 12px 28px color-mix(in srgb, black 24%, transparent);
 }
@@ -271,16 +271,16 @@ small,
 
 .dark .chat-markdown div pre,
 .dark .chat-markdown div code {
-	background-color: transparent !important;
+	background-color: transparent;
 }
 
 .chat-markdown div pre code {
-	background-color: transparent !important;
+	background-color: transparent;
 }
 
 .dark .chat-markdown pre[class*="language-"],
 .dark .chat-markdown code[class*="language-"] {
-	background-color: transparent !important;
+	background-color: transparent;
 }
 
 .dark .chat-markdown pre code span {
@@ -472,23 +472,23 @@ small,
 /* TLDraw Canvas Background */
 .tldraw-dark-theme .tl-background,
 .dark .tl-background {
-	background-color: hsl(var(--background)) !important;
+	background-color: hsl(var(--background));
 }
 
 .tldraw-dark-theme .tl-canvas,
 .dark .tl-canvas {
-	background-color: hsl(var(--background)) !important;
+	background-color: hsl(var(--background));
 }
 
 .tldraw-dark-theme .tl-container,
 .dark .tl-container {
-	background-color: hsl(var(--background)) !important;
+	background-color: hsl(var(--background));
 }
 
 /* TLDraw Grid - subtle appearance */
 .tldraw-dark-theme .tl-grid,
 .dark .tl-grid {
-	opacity: 0.12 !important;
+	opacity: 0.12;
 }
 
 /* TLDraw UI Panels and Menus */
@@ -502,9 +502,9 @@ small,
 .dark .tlui-panel,
 .dark .tlui-popover,
 .dark .tlui-dropdown__content {
-	background-color: hsl(var(--card)) !important;
-	border-color: hsl(var(--border)) !important;
-	color: hsl(var(--foreground)) !important;
+	background-color: hsl(var(--card));
+	border-color: hsl(var(--border));
+	color: hsl(var(--foreground));
 }
 
 /* TLDraw Menu Items */
@@ -512,38 +512,38 @@ small,
 .tldraw-dark-theme .tlui-dropdown__item,
 .dark .tlui-menu__item,
 .dark .tlui-dropdown__item {
-	color: hsl(var(--foreground)) !important;
+	color: hsl(var(--foreground));
 }
 
 .tldraw-dark-theme .tlui-menu__item:hover,
 .tldraw-dark-theme .tlui-dropdown__item:hover,
 .dark .tlui-menu__item:hover,
 .dark .tlui-dropdown__item:hover {
-	background-color: hsl(var(--accent)) !important;
+	background-color: hsl(var(--accent));
 }
 
 /* TLDraw Buttons */
 .tldraw-dark-theme .tlui-button,
 .dark .tlui-button {
-	color: hsl(var(--foreground)) !important;
+	color: hsl(var(--foreground));
 }
 
 .tldraw-dark-theme .tlui-button:hover,
 .dark .tlui-button:hover {
-	background-color: hsl(var(--accent)) !important;
+	background-color: hsl(var(--accent));
 }
 
 /* TLDraw Icon colors */
 .tldraw-dark-theme .tlui-icon,
 .dark .tlui-icon {
-	color: hsl(var(--foreground)) !important;
+	color: hsl(var(--foreground));
 }
 
 /* TLDraw Style Panel */
 .tldraw-dark-theme .tlui-style-panel,
 .dark .tlui-style-panel {
-	background-color: hsl(var(--card)) !important;
-	border-color: hsl(var(--border)) !important;
+	background-color: hsl(var(--card));
+	border-color: hsl(var(--border));
 }
 
 /* TLDraw Dialogs and Modals */
@@ -551,13 +551,13 @@ small,
 .tldraw-dark-theme .tlui-dialog__overlay,
 .dark .tlui-dialog,
 .dark .tlui-dialog__overlay {
-	background-color: hsl(var(--background) / 0.8) !important;
+	background-color: hsl(var(--background) / 0.8);
 }
 
 .tldraw-dark-theme .tlui-dialog__content,
 .dark .tlui-dialog__content {
-	background-color: hsl(var(--card)) !important;
-	border-color: hsl(var(--border)) !important;
+	background-color: hsl(var(--card));
+	border-color: hsl(var(--border));
 }
 
 /* TLDraw Input fields */
@@ -565,22 +565,22 @@ small,
 .tldraw-dark-theme .tlui-input__field,
 .dark .tlui-input,
 .dark .tlui-input__field {
-	background-color: hsl(var(--background)) !important;
-	border-color: hsl(var(--border)) !important;
-	color: hsl(var(--foreground)) !important;
+	background-color: hsl(var(--background));
+	border-color: hsl(var(--border));
+	color: hsl(var(--foreground));
 }
 
 /* TLDraw Selection/highlight colors */
 .tldraw-dark-theme .tl-selection__fg,
 .dark .tl-selection__fg {
-	stroke: hsl(var(--primary)) !important;
+	stroke: hsl(var(--primary));
 }
 
 /* TLDraw Keyboard shortcuts hint */
 .tldraw-dark-theme .tlui-kbd,
 .dark .tlui-kbd {
-	background-color: hsl(var(--muted)) !important;
-	color: hsl(var(--muted-foreground)) !important;
+	background-color: hsl(var(--muted));
+	color: hsl(var(--muted-foreground));
 }
 
 /* TLDraw Page Menu (Páginas dropdown) */
@@ -588,18 +588,18 @@ small,
 .tldraw-dark-theme .tlui-page-menu__wrapper,
 .dark .tlui-page-menu,
 .dark .tlui-page-menu__wrapper {
-	background-color: hsl(var(--card)) !important;
-	border-color: hsl(var(--border)) !important;
+	background-color: hsl(var(--card));
+	border-color: hsl(var(--border));
 }
 
 .tldraw-dark-theme .tlui-page-menu__item,
 .dark .tlui-page-menu__item {
-	color: hsl(var(--foreground)) !important;
+	color: hsl(var(--foreground));
 }
 
 .tldraw-dark-theme .tlui-page-menu__item:hover,
 .dark .tlui-page-menu__item:hover {
-	background-color: hsl(var(--accent)) !important;
+	background-color: hsl(var(--accent));
 }
 
 /* Ensure tldraw popovers appear above our custom UI */
@@ -607,56 +607,56 @@ small,
 .tlui-dropdown__content,
 .tlui-menu,
 .tlui-dialog {
-	z-index: 500 !important;
+	z-index: 500;
 }
 
 /* Move TLDraw toolbar from bottom to top center */
 .tl-container .tlui-layout__bottom,
 .tlui-layout__bottom {
-	top: 16px !important;
-	bottom: unset !important;
-	inset-block-end: unset !important;
-	inset-block-start: 16px !important;
+	top: 16px;
+	bottom: unset;
+	inset-block-end: unset;
+	inset-block-start: 16px;
 }
 
 /* Adjust toolbar styles for top position */
 .tl-container .tlui-toolbar,
 .tlui-toolbar {
-	border-radius: 12px !important;
+	border-radius: 12px;
 }
 
 /* Hide the license watermark */
 .tlui-watermark_SEE-LICENSE,
 [class*="watermark"] {
-	display: none !important;
+	display: none;
 }
 
 @layer utilities {
 	.bg-chat-surface {
-		background: rgba(255, 255, 255, 0.65) !important;
-		backdrop-filter: blur(32px) saturate(120%) !important;
-		-webkit-backdrop-filter: blur(32px) saturate(120%) !important;
+		background: rgba(255, 255, 255, 0.65);
+		backdrop-filter: blur(32px) saturate(120%);
+		-webkit-backdrop-filter: blur(32px) saturate(120%);
 	}
 
 	/* Only apply text colors to direct chat content, not buttons/controls */
 	.bg-chat-surface > div:not([class*="sticky"]) *:not(button):not(svg) {
-		color: rgb(30, 30, 30) !important;
+		color: rgb(30, 30, 30);
 	}
 
 	.bg-chat-surface code {
-		background-color: transparent !important;
+		background-color: transparent;
 	}
 
 	.dark .bg-chat-surface {
-		background: rgba(10, 10, 10, 0.45) !important;
+		background: rgba(10, 10, 10, 0.45);
 	}
 
 	/* Only apply text colors to direct chat content, not buttons/controls */
 	.dark .bg-chat-surface > div:not([class*="sticky"]) *:not(button):not(svg) {
-		color: rgb(240, 240, 240) !important;
+		color: rgb(240, 240, 240);
 	}
 
 	.dark .bg-chat-surface code {
-		background-color: transparent !important;
+		background-color: transparent;
 	}
 }

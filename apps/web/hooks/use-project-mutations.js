@@ -20,7 +20,7 @@ var __awaiter =
 			}
 			function rejected(value) {
 				try {
-					step(generator["throw"](value))
+					step(generator.throw(value))
 				} catch (e) {
 					reject(e)
 				}
@@ -37,18 +37,18 @@ var __generator =
 	(this && this.__generator) ||
 	((thisArg, body) => {
 		var _ = {
-				label: 0,
-				sent: () => {
-					if (t[0] & 1) throw t[1]
-					return t[1]
-				},
-				trys: [],
-				ops: [],
+			label: 0,
+			sent: () => {
+				if (t[0] & 1) throw t[1]
+				return t[1]
 			},
-			f,
-			y,
-			t,
-			g
+			trys: [],
+			ops: [],
+		}
+		var f
+		var y
+		var t
+		var g
 		return (
 			(g = { next: verb(0), throw: verb(1), return: verb(2) }),
 			typeof Symbol === "function" &&
@@ -69,9 +69,9 @@ var __generator =
 						y &&
 							(t =
 								op[0] & 2
-									? y["return"]
+									? y.return
 									: op[0]
-										? y["throw"] || ((t = y["return"]) && t.call(y), 0)
+										? y.throw || ((t = y.return) && t.call(y), 0)
 										: y.next) &&
 							!(t = t.call(y, op[1])).done)
 					)
@@ -140,9 +140,9 @@ var sonner_1 = require("sonner")
 var stores_1 = require("@/stores")
 function useProjectMutations() {
 	var queryClient = (0, react_query_1.useQueryClient)()
-	var _a = (0, stores_1.useProject)(),
-		selectedProject = _a.selectedProject,
-		setSelectedProject = _a.setSelectedProject
+	var _a = (0, stores_1.useProject)()
+	var selectedProject = _a.selectedProject
+	var setSelectedProject = _a.setSelectedProject
 	var createProjectMutation = (0, react_query_1.useMutation)({
 		mutationFn: (name) =>
 			__awaiter(this, void 0, void 0, function () {
@@ -186,9 +186,9 @@ function useProjectMutations() {
 	})
 	var deleteProjectMutation = (0, react_query_1.useMutation)({
 		mutationFn: (_a) => {
-			var projectId = _a.projectId,
-				action = _a.action,
-				targetProjectId = _a.targetProjectId
+			var projectId = _a.projectId
+			var action = _a.action
+			var targetProjectId = _a.targetProjectId
 			return __awaiter(this, void 0, void 0, function () {
 				var response
 				var _b
@@ -240,8 +240,8 @@ function useProjectMutations() {
 	})
 	var renameProjectMutation = (0, react_query_1.useMutation)({
 		mutationFn: (_a) => {
-			var projectId = _a.projectId,
-				name = _a.name
+			var projectId = _a.projectId
+			var name = _a.name
 			return __awaiter(this, void 0, void 0, function () {
 				var response
 				var _b
