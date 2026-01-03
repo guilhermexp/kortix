@@ -141,7 +141,7 @@ async function keywordSearch(
 async function vectorSearch(
 	client: SupabaseClient,
 	orgId: string,
-	query: string,
+	_query: string,
 	embedding: number[],
 	limit = 20,
 ): Promise<SearchResult[]> {
@@ -221,7 +221,7 @@ export async function hybridSearch(
 	if (options.containerTags?.length) {
 		results = results.filter((result) => {
 			const tags = result.metadata?.containerTags || []
-			return options.containerTags!.some((tag) => tags.includes(tag))
+			return options.containerTags?.some((tag) => tags.includes(tag))
 		})
 	}
 
@@ -311,7 +311,7 @@ function reciprocalRankFusion(
 		scores.set(id, (scores.get(id) || 0) + rrfScore)
 
 		// Keep document with higher individual score
-		if (!documents.has(id) || doc.score > documents.get(id)!.score) {
+		if (!documents.has(id) || doc.score > documents.get(id)?.score) {
 			documents.set(id, doc)
 		}
 	})

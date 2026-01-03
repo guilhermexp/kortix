@@ -6,7 +6,7 @@
  */
 
 import { env } from "../env"
-import { searchWebWithExa, type ExaWebResult } from "./exa-search"
+import { searchWebWithExa } from "./exa-search"
 import { openRouterChat } from "./openrouter"
 
 export type RelatedLink = {
@@ -128,12 +128,15 @@ async function getPreviewImage(url: string): Promise<string | null> {
 	try {
 		const microlinkUrl = `https://api.microlink.io?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=screenshot.url`
 		const response = await fetch(microlinkUrl, {
-			headers: { "Accept": "application/json" },
+			headers: { Accept: "application/json" },
 		})
 
 		if (!response.ok) return null
 
-		const data = await response.json() as { status?: string; data?: { screenshot?: { url?: string } } }
+		const data = (await response.json()) as {
+			status?: string
+			data?: { screenshot?: { url?: string } }
+		}
 
 		if (data.status === "success" && data.data?.screenshot?.url) {
 			return data.data.screenshot.url
@@ -177,7 +180,7 @@ async function searchForMention(
 			includeDomains: domains.length > 0 ? domains : undefined,
 		})
 
-		let best: typeof results[0] | null = null
+		let best: (typeof results)[0] | null = null
 
 		if (results.length === 0) {
 			// Retry without domain filter
@@ -244,7 +247,7 @@ export async function findRelatedLinks(
 
 	// Filter by type if specified
 	const filteredMentions = options?.includeTypes
-		? mentions.filter((m) => options.includeTypes!.includes(m.type))
+		? mentions.filter((m) => options.includeTypes?.includes(m.type))
 		: mentions
 
 	// Step 2: Search for each mention sequentially with delay to avoid rate limits
@@ -293,7 +296,9 @@ export async function findRelatedLinks(
 	}
 
 	const allLinks = [...results, ...alternatives]
-	console.log(`[RelatedLinks] Found ${results.length} mentioned + ${alternatives.length} alternatives = ${allLinks.length} total`)
+	console.log(
+		`[RelatedLinks] Found ${results.length} mentioned + ${alternatives.length} alternatives = ${allLinks.length} total`,
+	)
 	return allLinks
 }
 

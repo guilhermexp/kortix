@@ -5,7 +5,6 @@ import {
 	getProviderConfig,
 	type ProviderId,
 } from "../config/providers"
-import { env } from "../env"
 import { ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
 import { searchDocuments } from "../routes/search"
 

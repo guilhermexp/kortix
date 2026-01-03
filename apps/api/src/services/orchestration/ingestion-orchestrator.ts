@@ -443,7 +443,7 @@ export class IngestionOrchestratorService
 			}
 
 			// Call extractor service
-			return await this.extractorService!.extract(extractionInput)
+			return await this.extractorService?.extract(extractionInput)
 		}
 
 		// Execute with circuit breaker and retry
@@ -460,7 +460,7 @@ export class IngestionOrchestratorService
 		const operation = async () => {
 			this.logger.debug("Executing processing")
 
-			return await this.processorService!.process(extraction, options)
+			return await this.processorService?.process(extraction, options)
 		}
 
 		// Execute with circuit breaker and retry
@@ -476,7 +476,7 @@ export class IngestionOrchestratorService
 		const operation = async () => {
 			this.logger.debug("Executing preview generation")
 
-			return await this.previewService!.generate(extraction)
+			return await this.previewService?.generate(extraction)
 		}
 
 		// Execute with circuit breaker and retry (with fallback)
@@ -522,7 +522,7 @@ export class IngestionOrchestratorService
 	 */
 	private async storeDocument(
 		documentId: string,
-		input: ProcessDocumentInput,
+		_input: ProcessDocumentInput,
 		processed: ProcessedDocument,
 		preview?: PreviewResult,
 	): Promise<void> {

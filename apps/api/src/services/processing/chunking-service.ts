@@ -14,7 +14,6 @@
 import { BaseService } from "../base/base-service"
 import type {
 	Chunk,
-	ChunkBoundary,
 	ChunkingOptions,
 	ChunkingStatistics,
 	ChunkingService as IChunkingService,
@@ -32,7 +31,7 @@ const TOKENS_PER_CHAR = 0.25 // Approximate ratio for English text
 
 // Sentence boundary markers
 const SENTENCE_ENDINGS = [".", "!", "?", "。", "！", "？"]
-const SENTENCE_REGEX = /[.!?。！？]+[\s\n]+/g
+const _SENTENCE_REGEX = /[.!?。！？]+[\s\n]+/g
 
 // Paragraph markers
 const PARAGRAPH_REGEX = /\n\s*\n/g
@@ -360,7 +359,7 @@ export class ChunkingService extends BaseService implements IChunkingService {
 	private getOverlapUnits(
 		units: string[],
 		overlapTokens: number,
-		separator: string,
+		_separator: string,
 	): string[] {
 		const overlapUnits: string[] = []
 		let tokenCount = 0

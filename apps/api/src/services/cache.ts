@@ -1,5 +1,4 @@
 import { createClient, type RedisClientType } from "redis"
-import { env } from "../env"
 
 export type CacheOptions = {
 	ttl?: number // Time to live in seconds
@@ -97,7 +96,7 @@ export class CacheService {
 		}
 
 		try {
-			const value = await this.client!.get(key)
+			const value = await this.client?.get(key)
 			if (!value) {
 				return null
 			}
@@ -125,9 +124,9 @@ export class CacheService {
 			const serialized = JSON.stringify(value)
 
 			if (options?.ttl) {
-				await this.client!.setEx(key, options.ttl, serialized)
+				await this.client?.setEx(key, options.ttl, serialized)
 			} else {
-				await this.client!.set(key, serialized)
+				await this.client?.set(key, serialized)
 			}
 
 			return true
@@ -146,7 +145,7 @@ export class CacheService {
 		}
 
 		try {
-			await this.client!.del(key)
+			await this.client?.del(key)
 			return true
 		} catch (error) {
 			console.error(`[CacheService] Error deleting key "${key}":`, error)
@@ -163,12 +162,12 @@ export class CacheService {
 		}
 
 		try {
-			const keys = await this.client!.keys(pattern)
+			const keys = await this.client?.keys(pattern)
 			if (keys.length === 0) {
 				return 0
 			}
 
-			await this.client!.del(keys)
+			await this.client?.del(keys)
 			return keys.length
 		} catch (error) {
 			console.error(
@@ -188,7 +187,7 @@ export class CacheService {
 		}
 
 		try {
-			const result = await this.client!.exists(key)
+			const result = await this.client?.exists(key)
 			return result === 1
 		} catch (error) {
 			console.error(
@@ -208,7 +207,7 @@ export class CacheService {
 		}
 
 		try {
-			await this.client!.expire(key, seconds)
+			await this.client?.expire(key, seconds)
 			return true
 		} catch (error) {
 			console.error(
@@ -228,7 +227,7 @@ export class CacheService {
 		}
 
 		try {
-			const values = await this.client!.mGet(keys)
+			const values = await this.client?.mGet(keys)
 			return values.map((value) => {
 				if (!value) return null
 				try {
@@ -261,7 +260,7 @@ export class CacheService {
 				for (const entry of simpleEntries) {
 					pairs.push(entry.key, JSON.stringify(entry.value))
 				}
-				await this.client!.mSet(pairs)
+				await this.client?.mSet(pairs)
 			}
 
 			// Set values with TTL individually
@@ -286,7 +285,7 @@ export class CacheService {
 		}
 
 		try {
-			const result = await this.client!.incrBy(key, amount)
+			const result = await this.client?.incrBy(key, amount)
 			return result
 		} catch (error) {
 			console.error(`[CacheService] Error incrementing key "${key}":`, error)
@@ -333,7 +332,7 @@ export class CacheService {
 		}
 
 		try {
-			await this.client!.flushAll()
+			await this.client?.flushAll()
 			return true
 		} catch (error) {
 			console.error("[CacheService] Error flushing cache:", error)

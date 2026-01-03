@@ -10,9 +10,7 @@ import {
 	type ProviderId,
 } from "../config/providers"
 import { env } from "../env"
-import { ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
 import { createKortixTools } from "./claude-agent-tools"
-import { type ClaudeMessage, EventStorageService } from "./event-storage"
 
 // Content block types for Claude messages
 export type TextBlock = { type: "text"; text: string }
@@ -219,7 +217,7 @@ function collectTextFromContent(content: unknown): string[] {
 	return []
 }
 
-function extractAssistantText(events: unknown[]): string {
+function _extractAssistantText(events: unknown[]): string {
 	const parts: string[] = []
 
 	for (const event of events) {
@@ -396,7 +394,10 @@ export async function executeClaudeAgent(
 			console.log("[executeClaudeAgent] Sequential thinking MCP server enabled")
 		}
 
-		console.log("[executeClaudeAgent] Active MCP servers:", Object.keys(mcpServers).join(", "))
+		console.log(
+			"[executeClaudeAgent] Active MCP servers:",
+			Object.keys(mcpServers).join(", "),
+		)
 
 		const queryOptions: Record<string, unknown> = {
 			model: resolvedModel,
@@ -594,7 +595,7 @@ export async function executeClaudeAgent(
 
 		// Log generated text preview for debugging
 		if (text && text.length > 0) {
-			const preview = text.length > 150 ? text.substring(0, 150) + "..." : text
+			const preview = text.length > 150 ? `${text.substring(0, 150)}...` : text
 			console.log(
 				`[executeClaudeAgent] Generated text (${text.length} chars): ${preview}`,
 			)
@@ -698,7 +699,10 @@ function buildAssistantResponse(events: unknown[]): {
 			eventTypeCounts.set(type, (eventTypeCounts.get(type) || 0) + 1)
 		}
 	}
-	console.log("[buildAssistantResponse] Event types (after unwrap):", Object.fromEntries(eventTypeCounts))
+	console.log(
+		"[buildAssistantResponse] Event types (after unwrap):",
+		Object.fromEntries(eventTypeCounts),
+	)
 
 	// Track content blocks for tool results (from streaming format)
 	const toolResultBuffers = new Map<
@@ -717,18 +721,28 @@ function buildAssistantResponse(events: unknown[]): {
 		const e = unwrappedEvents[i]
 		if (e && typeof e === "object") {
 			const ev = e as Record<string, unknown>
-			console.log(`  Event ${i}: type=${ev.type}`, JSON.stringify(e).substring(0, 300))
+			console.log(
+				`  Event ${i}: type=${ev.type}`,
+				JSON.stringify(e).substring(0, 300),
+			)
 		}
 	}
 
 	// DEBUG: Look for content_block events
 	const contentBlockStarts = unwrappedEvents.filter(
-		(e) => e && typeof e === "object" && (e as any).type === "content_block_start"
+		(e) =>
+			e && typeof e === "object" && (e as any).type === "content_block_start",
 	)
-	console.log("[buildAssistantResponse] Found content_block_start events:", contentBlockStarts.length)
+	console.log(
+		"[buildAssistantResponse] Found content_block_start events:",
+		contentBlockStarts.length,
+	)
 	for (const cbs of contentBlockStarts) {
 		const cb = (cbs as any).content_block
-		console.log("  content_block:", cb ? JSON.stringify(cb).substring(0, 200) : "undefined")
+		console.log(
+			"  content_block:",
+			cb ? JSON.stringify(cb).substring(0, 200) : "undefined",
+		)
 	}
 
 	// Process unwrapped events
@@ -738,8 +752,7 @@ function buildAssistantResponse(events: unknown[]): {
 
 		// Handle content_block_start - track tool_use and tool_result blocks
 		if (base.type === "content_block_start") {
-			const index =
-				typeof base.index === "number" ? base.index : undefined
+			const index = typeof base.index === "number" ? base.index : undefined
 			const contentBlock = base.content_block as
 				| Record<string, unknown>
 				| undefined
@@ -780,21 +793,23 @@ function buildAssistantResponse(events: unknown[]): {
 						isError,
 					})
 
-					console.log("[buildAssistantResponse] Started tracking tool_result:", {
-						index,
-						toolUseId,
-						toolName,
-						isError,
-						initialContentLength: initialContent.length,
-					})
+					console.log(
+						"[buildAssistantResponse] Started tracking tool_result:",
+						{
+							index,
+							toolUseId,
+							toolName,
+							isError,
+							initialContentLength: initialContent.length,
+						},
+					)
 				}
 			}
 		}
 
 		// Handle content_block_delta - accumulate tool result content
 		if (base.type === "content_block_delta") {
-			const index =
-				typeof base.index === "number" ? base.index : undefined
+			const index = typeof base.index === "number" ? base.index : undefined
 			const delta = base.delta as Record<string, unknown> | undefined
 
 			if (index !== undefined && toolResultBuffers.has(index) && delta) {
@@ -811,8 +826,7 @@ function buildAssistantResponse(events: unknown[]): {
 
 		// Handle content_block_stop - finalize tool result
 		if (base.type === "content_block_stop") {
-			const index =
-				typeof base.index === "number" ? base.index : undefined
+			const index = typeof base.index === "number" ? base.index : undefined
 
 			if (index !== undefined && toolResultBuffers.has(index)) {
 				const tracker = toolResultBuffers.get(index)!
@@ -840,7 +854,10 @@ function buildAssistantResponse(events: unknown[]): {
 						outputText: isError ? undefined : raw,
 						error: isError ? raw || "Tool execution failed" : undefined,
 					})
-					console.log("[buildAssistantResponse] Added tool-generic part for:", toolName)
+					console.log(
+						"[buildAssistantResponse] Added tool-generic part for:",
+						toolName,
+					)
 				}
 
 				toolResultBuffers.delete(index)
@@ -864,7 +881,10 @@ function buildAssistantResponse(events: unknown[]): {
 							typeof value.name === "string" ? value.name : (id ?? "tool")
 						if (id) {
 							toolCalls.set(id, { name })
-							console.log("[buildAssistantResponse] Registered tool_use:", { id, name })
+							console.log("[buildAssistantResponse] Registered tool_use:", {
+								id,
+								name,
+							})
 						}
 					}
 				}
@@ -889,16 +909,19 @@ function buildAssistantResponse(events: unknown[]): {
 						const raw = segments.join("")
 						const isError = Boolean(value.is_error)
 
-						console.log("[buildAssistantResponse] Tool result from user event:", {
-							toolUseId,
-							toolName,
-							resolvedFromMap: !!info,
-							toolCallsMapSize: toolCalls.size,
-							toolCallsKeys: Array.from(toolCalls.keys()),
-							isError,
-							rawLength: raw.length,
-							rawPreview: raw.substring(0, 100),
-						})
+						console.log(
+							"[buildAssistantResponse] Tool result from user event:",
+							{
+								toolUseId,
+								toolName,
+								resolvedFromMap: !!info,
+								toolCallsMapSize: toolCalls.size,
+								toolCallsKeys: Array.from(toolCalls.keys()),
+								isError,
+								rawLength: raw.length,
+								rawPreview: raw.substring(0, 100),
+							},
+						)
 
 						if (toolName === "mcp__kortix-tools__searchDatabase") {
 							toolParts.push(
@@ -912,7 +935,10 @@ function buildAssistantResponse(events: unknown[]): {
 								outputText: isError ? undefined : raw,
 								error: isError ? raw || "Tool execution failed" : undefined,
 							})
-							console.log("[buildAssistantResponse] Added tool-generic part for:", toolName)
+							console.log(
+								"[buildAssistantResponse] Added tool-generic part for:",
+								toolName,
+							)
 						}
 					}
 				}

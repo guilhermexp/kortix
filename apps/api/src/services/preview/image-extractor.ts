@@ -54,7 +54,7 @@ const YOUTUBE_PATTERNS = [
 function extractYouTubeVideoId(url: string): string | null {
 	for (const pattern of YOUTUBE_PATTERNS) {
 		const match = url.match(pattern)
-		if (match && match[1]) {
+		if (match?.[1]) {
 			return match[1]
 		}
 	}
@@ -71,7 +71,10 @@ function isYouTubeUrl(url: string): boolean {
 /**
  * Get YouTube thumbnail URL - tries maxresdefault first, falls back to hqdefault
  */
-function getYouTubeThumbnailUrl(videoId: string, quality: "maxres" | "hq" | "mq" | "sd" = "maxres"): string {
+function getYouTubeThumbnailUrl(
+	videoId: string,
+	quality: "maxres" | "hq" | "mq" | "sd" = "maxres",
+): string {
 	const qualityMap = {
 		maxres: "maxresdefault",
 		hq: "hqdefault",
@@ -107,28 +110,60 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 		}
 	}
 
-	async extractImages(document: { id?: string; title?: string; content?: string; url?: string; images?: Array<{ url: string; alt?: string }> }): Promise<{ success: boolean; data?: { images: any[] }; error?: { code: string; message: string } }> {
+	async extractImages(document: {
+		id?: string
+		title?: string
+		content?: string
+		url?: string
+		images?: Array<{ url: string; alt?: string }>
+	}): Promise<{
+		success: boolean
+		data?: { images: any[] }
+		error?: { code: string; message: string }
+	}> {
 		try {
 			const res = await (this as any).extractImagesFromDocument(document)
 			return { success: true, data: { images: res?.images || [] } }
 		} catch (e) {
-			return { success: false, error: { code: "EXTRACTION_FAILED", message: e instanceof Error ? e.message : String(e) } }
+			return {
+				success: false,
+				error: {
+					code: "EXTRACTION_FAILED",
+					message: e instanceof Error ? e.message : String(e),
+				},
+			}
 		}
 	}
 
-	private async extractImagesFromDocument(document: { id?: string; title?: string; content?: string; url?: string; images?: Array<{ url: string; alt?: string }> }): Promise<{ images: any[]; extractionTime?: number }> {
+	private async extractImagesFromDocument(document: {
+		id?: string
+		title?: string
+		content?: string
+		url?: string
+		images?: Array<{ url: string; alt?: string }>
+	}): Promise<{ images: any[]; extractionTime?: number }> {
 		const start = Date.now()
 		const out: any[] = []
 		if (document.images && Array.isArray(document.images)) {
 			for (const img of document.images) {
-				out.push({ id: img.url, url: img.url, data: img.url, metadata: { alt: img.alt } })
+				out.push({
+					id: img.url,
+					url: img.url,
+					data: img.url,
+					metadata: { alt: img.alt },
+				})
 			}
 			return { images: out, extractionTime: Date.now() - start }
 		}
 		if (document.url) {
 			const result = await this.extractFromUrl(document.url)
 			if (result.imageUrl) {
-				out.push({ id: result.imageUrl, url: result.imageUrl, data: result.imageUrl, metadata: result.metadata })
+				out.push({
+					id: result.imageUrl,
+					url: result.imageUrl,
+					data: result.imageUrl,
+					metadata: result.metadata,
+				})
 			}
 		}
 		return { images: out, extractionTime: Date.now() - start }
@@ -165,13 +200,17 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 					const maxresThumbnail = getYouTubeThumbnailUrl(videoId, "maxres")
 					if (await this.validateImageUrl(maxresThumbnail)) {
 						tracker.end(true)
-						this.logger.info("YouTube maxres thumbnail found", { imageUrl: maxresThumbnail })
+						this.logger.info("YouTube maxres thumbnail found", {
+							imageUrl: maxresThumbnail,
+						})
 						return maxresThumbnail
 					}
 					// Fallback to hqdefault (always exists)
 					const hqThumbnail = getYouTubeThumbnailUrl(videoId, "hq")
 					tracker.end(true)
-					this.logger.info("YouTube hq thumbnail used", { imageUrl: hqThumbnail })
+					this.logger.info("YouTube hq thumbnail used", {
+						imageUrl: hqThumbnail,
+					})
 					return hqThumbnail
 				}
 			}
@@ -260,7 +299,9 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 					const maxresThumbnail = getYouTubeThumbnailUrl(videoId, "maxres")
 					if (await this.validateImageUrl(maxresThumbnail)) {
 						tracker.end(true)
-						this.logger.info("YouTube maxres thumbnail found", { imageUrl: maxresThumbnail })
+						this.logger.info("YouTube maxres thumbnail found", {
+							imageUrl: maxresThumbnail,
+						})
 						return {
 							imageUrl: maxresThumbnail,
 							source: "youtube",
@@ -274,7 +315,9 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 					// Fallback to hqdefault (always exists for any valid video)
 					const hqThumbnail = getYouTubeThumbnailUrl(videoId, "hq")
 					tracker.end(true)
-					this.logger.info("YouTube hq thumbnail used", { imageUrl: hqThumbnail })
+					this.logger.info("YouTube hq thumbnail used", {
+						imageUrl: hqThumbnail,
+					})
 					return {
 						imageUrl: hqThumbnail,
 						source: "youtube",
@@ -402,7 +445,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 				/<meta\s+(?:property|name)=["']og:image(?::url)?["']\s+content=["']([^"']+)["']/i,
 			)
 
-			if (match && match[1]) {
+			if (match?.[1]) {
 				const imageUrl = this.resolveUrl(match[1], url)
 				this.logger.debug("OpenGraph image found", { imageUrl })
 				return imageUrl
@@ -430,7 +473,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 				/<meta\s+(?:property|name)=["']twitter:image(?::src)?["']\s+content=["']([^"']+)["']/i,
 			)
 
-			if (match && match[1]) {
+			if (match?.[1]) {
 				const imageUrl = this.resolveUrl(match[1], url)
 				this.logger.debug("Twitter card image found", { imageUrl })
 				return imageUrl
@@ -501,7 +544,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			}
 
 			return true
-		} catch (error) {
+		} catch (_error) {
 			return false
 		}
 	}
@@ -526,7 +569,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 					url.includes("githubassets.com") ||
 					url.includes("githubusercontent.com"))
 			) {
-				headers["Authorization"] = `Bearer ${githubToken}`
+				headers.Authorization = `Bearer ${githubToken}`
 			}
 
 			// Try HEAD request first
@@ -688,7 +731,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 				url.includes("githubassets.com") ||
 				url.includes("githubusercontent.com"))
 		) {
-			headers["Authorization"] = `Bearer ${githubToken}`
+			headers.Authorization = `Bearer ${githubToken}`
 		}
 
 		const response = await fetch(url, {
@@ -768,7 +811,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 		// Test image extraction with a reliable URL
 		try {
 			const testUrl = "https://www.example.com"
-			const result = await this.extractFromUrl(testUrl, {
+			const _result = await this.extractFromUrl(testUrl, {
 				timeout: 5000,
 			})
 			return true // Service is operational even if no image found
@@ -786,7 +829,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
  * Create image extractor service with optional configuration
  */
 export function createImageExtractor(
-    options?: Partial<ImageExtractionOptions>,
+	options?: Partial<ImageExtractionOptions>,
 ): ImageExtractor {
-    return new ImageExtractor(options)
+	return new ImageExtractor(options)
 }

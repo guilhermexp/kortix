@@ -238,18 +238,20 @@ export class AnalysisService {
 		}
 		if (!text) {
 			// Fallback to basic HTTP fetch (MarkItDown disabled temporarily)
-			console.log("[AnalysisService] EXA empty, using HTTP fetch fallback for:", url)
+			console.log(
+				"[AnalysisService] EXA empty, using HTTP fetch fallback for:",
+				url,
+			)
 			const response = await safeFetch(url, {
 				headers: {
-					"User-Agent":
-						"Mozilla/5.0 (compatible; KortixBot/1.0)",
+					"User-Agent": "Mozilla/5.0 (compatible; KortixBot/1.0)",
 				},
 				signal: AbortSignal.timeout(30000),
 			})
 			if (response.ok) {
 				const html = await response.text()
 				// Basic text extraction from HTML
-				let extractedText = html
+				const extractedText = html
 					.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
 					.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
 					.replace(/<[^>]+>/g, " ")

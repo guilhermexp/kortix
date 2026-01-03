@@ -395,15 +395,15 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 
 			// Format as markdown table
 			const formattedLines = [
-				"| " + headers.join(" | ") + " |",
-				"| " + headers.map(() => "---").join(" | ") + " |",
+				`| ${headers.join(" | ")} |`,
+				`| ${headers.map(() => "---").join(" | ")} |`,
 			]
 
 			// Add data rows
 			for (let i = 1; i < Math.min(lines.length, 100); i++) {
 				// Limit to 100 rows
 				const cells = lines[i].split(",").map((c) => c.trim())
-				formattedLines.push("| " + cells.join(" | ") + " |")
+				formattedLines.push(`| ${cells.join(" | ")} |`)
 			}
 
 			if (lines.length > 100) {
@@ -591,7 +591,7 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 		}
 
 		const truncated = content.substring(0, 100).trim()
-		return truncated.length > 0 ? truncated + "..." : null
+		return truncated.length > 0 ? `${truncated}...` : null
 	}
 
 	/**

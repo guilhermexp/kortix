@@ -1,6 +1,5 @@
 import { isGitHubUrl, isHtmlContent, isPdfContent } from "../config/constants"
 import {
-	buildSummaryPrompt,
 	buildTextAnalysisPrompt,
 	buildUrlAnalysisPrompt as buildUrlAnalysisPromptI18n,
 	getFallbackMessage,
@@ -50,7 +49,7 @@ export async function summarizeWithOpenRouter(
 			],
 			{ maxTokens: 800, timeoutMs: 12_000 },
 		)
-		if (answer && answer.trim()) {
+		if (answer?.trim()) {
 			console.log(
 				"[OpenRouterFallback] Text-based summary generated successfully",
 			)
@@ -85,7 +84,7 @@ export async function summarizeWithOpenRouter(
 			],
 			{ maxTokens: 800, timeoutMs: 12_000 },
 		)
-		if (answer && answer.trim()) {
+		if (answer?.trim()) {
 			console.log(
 				"[OpenRouterFallback] URL-based summary generated successfully",
 			)

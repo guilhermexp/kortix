@@ -16,7 +16,7 @@ import { ensureVectorSize, VECTOR_SIZE } from "./embedding"
 
 const VOYAGE_API_URL = "https://api.voyageai.com/v1/embeddings"
 const VOYAGE_MODEL = "voyage-3.5-lite" // Fastest, most cost-effective
-const VOYAGE_DIMENSION = 1024 // Default dimension for voyage-3.5-lite
+const _VOYAGE_DIMENSION = 1024 // Default dimension for voyage-3.5-lite
 const MAX_BATCH_SIZE = 128 // Maximum texts per request
 const MAX_RETRIES = 3
 const RETRY_DELAY_BASE = 1000 // 1 second base delay

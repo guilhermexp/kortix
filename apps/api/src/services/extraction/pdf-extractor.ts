@@ -387,7 +387,7 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 		}
 
 		const truncated = content.substring(0, 100).trim()
-		return truncated.length > 0 ? truncated + "..." : null
+		return truncated.length > 0 ? `${truncated}...` : null
 	}
 
 	/**

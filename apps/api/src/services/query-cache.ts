@@ -119,7 +119,6 @@ class QueryCache {
 		if (oldestKey !== undefined) this.cache.delete(oldestKey)
 	}
 
-
 	/**
 	 * Clean up expired entries (should be called periodically)
 	 */

@@ -342,12 +342,20 @@ export class TaggingService extends BaseService implements ITaggingService {
 			}
 
 			// Skip tags that look like URL parts or repo namespaces
-			if (cleanTag.startsWith("/") || cleanTag.endsWith(":") || cleanTag.endsWith("/")) {
+			if (
+				cleanTag.startsWith("/") ||
+				cleanTag.endsWith(":") ||
+				cleanTag.endsWith("/")
+			) {
 				continue
 			}
 
 			// Skip common URL/path fragments
-			if (/^(http|https|www|com|org|io|github|google|hugging|huggingface)$/i.test(cleanTag)) {
+			if (
+				/^(http|https|www|com|org|io|github|google|hugging|huggingface)$/i.test(
+					cleanTag,
+				)
+			) {
 				continue
 			}
 
