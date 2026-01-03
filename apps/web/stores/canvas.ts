@@ -66,7 +66,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
 	isPaletteOpen: false,
 	setIsPaletteOpen: (open: boolean) => set({ isPaletteOpen: open }),
-	togglePalette: () => set((state) => ({ isPaletteOpen: !state.isPaletteOpen })),
+	togglePalette: () =>
+		set((state) => ({ isPaletteOpen: !state.isPaletteOpen })),
 
 	editor: null,
 	setEditor: (editor: Editor | null) => set({ editor }),

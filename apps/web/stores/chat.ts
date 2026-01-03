@@ -201,7 +201,9 @@ export const usePersistentChatStore = create<ConversationsStoreState>()(
 					}
 					const existing = project.conversations[chatId]
 					if (!existing) {
-						console.log("⚠️ [Store] Conversation not found, cannot save SDK session ID")
+						console.log(
+							"⚠️ [Store] Conversation not found, cannot save SDK session ID",
+						)
 						console.log("========================================")
 						return { byProject: state.byProject }
 					}

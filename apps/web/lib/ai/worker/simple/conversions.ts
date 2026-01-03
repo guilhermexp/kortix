@@ -6,7 +6,9 @@
 import type { TLDefaultFillStyle } from "tldraw"
 
 // Simple fill values to TLDraw fill values
-export function simpleFillToTldrawFill(fill: string | undefined): TLDefaultFillStyle {
+export function simpleFillToTldrawFill(
+	fill: string | undefined,
+): TLDefaultFillStyle {
 	switch (fill) {
 		case "none":
 			return "none"
@@ -23,7 +25,7 @@ export function simpleFillToTldrawFill(fill: string | undefined): TLDefaultFillS
 
 // TLDraw fill values to simple fill values
 export function tldrawFillToSimpleFill(
-	fill: TLDefaultFillStyle | undefined
+	fill: TLDefaultFillStyle | undefined,
 ): "none" | "semi" | "solid" | "pattern" {
 	switch (fill) {
 		case "none":
@@ -64,7 +66,9 @@ export function simpleColorToTldrawColor(color: string | undefined): string {
 }
 
 // Convert simple size to TLDraw size
-export function simpleSizeToTldrawSize(size: string | undefined): "s" | "m" | "l" | "xl" {
+export function simpleSizeToTldrawSize(
+	size: string | undefined,
+): "s" | "m" | "l" | "xl" {
 	switch (size) {
 		case "s":
 			return "s"
@@ -81,7 +85,7 @@ export function simpleSizeToTldrawSize(size: string | undefined): "s" | "m" | "l
 
 // Convert simple dash to TLDraw dash
 export function simpleDashToTldrawDash(
-	dash: string | undefined
+	dash: string | undefined,
 ): "draw" | "dashed" | "dotted" | "solid" {
 	switch (dash) {
 		case "draw":
@@ -98,7 +102,9 @@ export function simpleDashToTldrawDash(
 }
 
 // Convert simple font to TLDraw font
-export function simpleFontToTldrawFont(font: string | undefined): "draw" | "sans" | "serif" | "mono" {
+export function simpleFontToTldrawFont(
+	font: string | undefined,
+): "draw" | "sans" | "serif" | "mono" {
 	switch (font) {
 		case "draw":
 			return "draw"
@@ -115,8 +121,14 @@ export function simpleFontToTldrawFont(font: string | undefined): "draw" | "sans
 
 // Convert simple text align to TLDraw align
 export function simpleAlignToTldrawAlign(
-	align: string | undefined
-): "start" | "middle" | "end" | "start-legacy" | "end-legacy" | "middle-legacy" {
+	align: string | undefined,
+):
+	| "start"
+	| "middle"
+	| "end"
+	| "start-legacy"
+	| "end-legacy"
+	| "middle-legacy" {
 	switch (align) {
 		case "start":
 			return "start"
@@ -131,8 +143,17 @@ export function simpleAlignToTldrawAlign(
 
 // Convert simple arrowhead to TLDraw arrowhead
 export function simpleArrowheadToTldrawArrowhead(
-	arrowhead: string | undefined
-): "none" | "arrow" | "triangle" | "square" | "dot" | "diamond" | "inverted" | "bar" | "pipe" {
+	arrowhead: string | undefined,
+):
+	| "none"
+	| "arrow"
+	| "triangle"
+	| "square"
+	| "dot"
+	| "diamond"
+	| "inverted"
+	| "bar"
+	| "pipe" {
 	switch (arrowhead) {
 		case "none":
 			return "none"

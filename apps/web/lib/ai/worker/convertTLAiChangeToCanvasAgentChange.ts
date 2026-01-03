@@ -2,14 +2,14 @@
 // Convert TLAiChange from @tldraw/ai to CanvasAgentChange
 // ============================================================
 
-import type { TLAiChange } from "@/lib/ai/tldraw-ai-types"
 import type { CanvasAgentChange } from "@/components/canvas/canvas-agent-changes"
+import type { TLAiChange } from "@/lib/ai/tldraw-ai-types"
 
 /**
  * Convert a TLAiChange (from @tldraw/ai backend) to CanvasAgentChange (frontend format)
  */
 export function convertTLAiChangeToCanvasAgentChange(
-	change: TLAiChange
+	change: TLAiChange,
 ): CanvasAgentChange | null {
 	switch (change.type) {
 		case "createShape":
@@ -35,11 +35,15 @@ export function convertTLAiChangeToCanvasAgentChange(
 		case "createBinding":
 		case "updateBinding":
 		case "deleteBinding":
-			console.warn(`[convertTLAiChange] Binding changes not supported: ${change.type}`)
+			console.warn(
+				`[convertTLAiChange] Binding changes not supported: ${change.type}`,
+			)
 			return null
 
 		default:
-			console.warn(`[convertTLAiChange] Unknown change type: ${(change as any).type}`)
+			console.warn(
+				`[convertTLAiChange] Unknown change type: ${(change as any).type}`,
+			)
 			return null
 	}
 }
@@ -48,7 +52,7 @@ export function convertTLAiChangeToCanvasAgentChange(
  * Convert an array of TLAiChanges to CanvasAgentChanges
  */
 export function convertTLAiChangesToCanvasAgentChanges(
-	changes: TLAiChange[]
+	changes: TLAiChange[],
 ): CanvasAgentChange[] {
 	return changes
 		.map(convertTLAiChangeToCanvasAgentChange)

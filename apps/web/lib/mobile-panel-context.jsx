@@ -6,9 +6,9 @@ var react_1 = require("react")
 var MobilePanelContext = (0, react_1.createContext)(undefined)
 function MobilePanelProvider(_a) {
 	var children = _a.children
-	var _b = (0, react_1.useState)(null),
-		activePanel = _b[0],
-		setActivePanel = _b[1]
+	var _b = (0, react_1.useState)(null)
+	var activePanel = _b[0]
+	var setActivePanel = _b[1]
 	return (
 		<MobilePanelContext.Provider
 			value={{ activePanel: activePanel, setActivePanel: setActivePanel }}

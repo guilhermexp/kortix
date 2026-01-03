@@ -3,7 +3,11 @@
 // Main entry point for AI canvas manipulation
 // ============================================================
 
-import type { TLAiSerializedPrompt, TLAiResult, TLAiChange } from "@/lib/ai/tldraw-ai-types"
+import type {
+	TLAiChange,
+	TLAiResult,
+	TLAiSerializedPrompt,
+} from "@/lib/ai/tldraw-ai-types"
 import { VercelAiService } from "./worker/do/vercel/VercelAiService"
 import type { Environment } from "./worker/types"
 
@@ -12,7 +16,9 @@ function getEnv(): Environment {
 	return {
 		OPENAI_API_KEY: process.env.OPENAI_API_KEY || "",
 		ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || "",
-		GOOGLE_API_KEY: (process.env.API_KEY || process.env.GOOGLE_API_KEY || "") as string,
+		GOOGLE_API_KEY: (process.env.API_KEY ||
+			process.env.GOOGLE_API_KEY ||
+			"") as string,
 	}
 }
 
@@ -43,7 +49,9 @@ function getService(): VercelAiService {
  * @param prompt The serialized prompt from TLDraw AI
  * @returns The AI result with changes to apply
  */
-export async function generateAgent(prompt: TLAiSerializedPrompt): Promise<TLAiResult> {
+export async function generateAgent(
+	prompt: TLAiSerializedPrompt,
+): Promise<TLAiResult> {
 	const service = getService()
 	return service.generate(prompt)
 }
@@ -53,7 +61,9 @@ export async function generateAgent(prompt: TLAiSerializedPrompt): Promise<TLAiR
  * @param prompt The serialized prompt from TLDraw AI
  * @yields TLAiChange objects to apply to the canvas
  */
-export async function* streamAgent(prompt: TLAiSerializedPrompt): AsyncGenerator<TLAiChange> {
+export async function* streamAgent(
+	prompt: TLAiSerializedPrompt,
+): AsyncGenerator<TLAiChange> {
 	const service = getService()
 	for await (const change of service.stream(prompt)) {
 		yield change
@@ -72,5 +82,7 @@ export function resetAgentService(): void {
  */
 export function isAgentConfigured(): boolean {
 	const env = getEnv()
-	return Boolean(env.GOOGLE_API_KEY || env.OPENAI_API_KEY || env.ANTHROPIC_API_KEY)
+	return Boolean(
+		env.GOOGLE_API_KEY || env.OPENAI_API_KEY || env.ANTHROPIC_API_KEY,
+	)
 }

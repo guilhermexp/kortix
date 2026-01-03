@@ -3,19 +3,27 @@
 // Uses Vercel AI SDK for structured object generation
 // ============================================================
 
-import type { TLAiSerializedPrompt, TLAiResult, TLAiChange, TLAiContent, TLAiMessage } from "@/lib/ai/tldraw-ai-types"
-import { generateObject, streamObject, type CoreMessage } from "ai"
-import { TldrawAiBaseService } from "../../TldrawAiBaseService"
-import type { Environment } from "../../types"
+import { type CoreMessage, generateObject, streamObject } from "ai"
+import type {
+	TLAiChange,
+	TLAiResult,
+	TLAiSerializedPrompt,
+} from "@/lib/ai/tldraw-ai-types"
 import { getModel, type ModelId } from "../../models"
-import { asMessage, toRichText } from "../../utils"
-import { ModelResponseSchema, type ModelResponse, type SimpleEvent } from "../../simple/schema"
-import { getSystemPrompt } from "../../simple/system-prompt"
 import {
-	getSimpleContentFromCanvasContent,
 	formatSimpleContentForPrompt,
+	getSimpleContentFromCanvasContent,
 } from "../../simple/getSimpleContentFromCanvasContent"
 import { getTldrawAiChangesFromSimpleEvents } from "../../simple/getTldrawAiChangesFromSimpleEvents"
+import {
+	type ModelResponse,
+	ModelResponseSchema,
+	type SimpleEvent,
+} from "../../simple/schema"
+import { getSystemPrompt } from "../../simple/system-prompt"
+import { TldrawAiBaseService } from "../../TldrawAiBaseService"
+import type { Environment } from "../../types"
+import { asMessage, toRichText } from "../../utils"
 
 export class VercelAiService extends TldrawAiBaseService {
 	private modelId: ModelId
@@ -32,25 +40,43 @@ export class VercelAiService extends TldrawAiBaseService {
 
 		// Add system prompt
 		messages.push(asMessage("user", toRichText(getSystemPrompt())))
-		messages.push(asMessage("assistant", toRichText("I understand. I'll help manipulate the canvas.")))
+		messages.push(
+			asMessage(
+				"assistant",
+				toRichText("I understand. I'll help manipulate the canvas."),
+			),
+		)
 
 		// Add canvas content if available
 		if (prompt.canvasContent) {
-			const simpleContent = getSimpleContentFromCanvasContent(prompt.canvasContent)
+			const simpleContent = getSimpleContentFromCanvasContent(
+				prompt.canvasContent,
+			)
 			const contentDesc = formatSimpleContentForPrompt(simpleContent)
-			messages.push(asMessage("user", toRichText(`Current canvas state:\n${contentDesc}`)))
 			messages.push(
-				asMessage("assistant", toRichText("I can see the current canvas state. What would you like me to do?"))
+				asMessage("user", toRichText(`Current canvas state:\n${contentDesc}`)),
+			)
+			messages.push(
+				asMessage(
+					"assistant",
+					toRichText(
+						"I can see the current canvas state. What would you like me to do?",
+					),
+				),
 			)
 		}
 
 		// Add screenshot if available
 		if (prompt.image) {
 			messages.push(
-				asMessage("user", toRichText("Here's a screenshot of the current canvas:"), {
-					type: "image" as const,
-					image: prompt.image,
-				})
+				asMessage(
+					"user",
+					toRichText("Here's a screenshot of the current canvas:"),
+					{
+						type: "image" as const,
+						image: prompt.image,
+					},
+				),
 			)
 		}
 
@@ -113,7 +139,10 @@ export class VercelAiService extends TldrawAiBaseService {
 		try {
 			const messages = this.buildMessages(prompt)
 			console.log("[VercelAiService] Stream starting with model:", this.modelId)
-			console.log("[VercelAiService] Messages:", JSON.stringify(messages.slice(-2), null, 2))
+			console.log(
+				"[VercelAiService] Messages:",
+				JSON.stringify(messages.slice(-2), null, 2),
+			)
 
 			const model = getModel(this.modelId, this.env)
 
@@ -128,10 +157,15 @@ export class VercelAiService extends TldrawAiBaseService {
 
 			for await (const chunk of stream.partialObjectStream) {
 				chunkCount++
-				console.log(`[VercelAiService] Chunk ${chunkCount}:`, JSON.stringify(chunk, null, 2))
+				console.log(
+					`[VercelAiService] Chunk ${chunkCount}:`,
+					JSON.stringify(chunk, null, 2),
+				)
 
 				if (chunk.events && Array.isArray(chunk.events)) {
-					console.log(`[VercelAiService] Found ${chunk.events.length} events in chunk`)
+					console.log(
+						`[VercelAiService] Found ${chunk.events.length} events in chunk`,
+					)
 
 					// Check ALL events each time - previous events may now be complete
 					for (let i = 0; i < chunk.events.length; i++) {
@@ -143,7 +177,11 @@ export class VercelAiService extends TldrawAiBaseService {
 
 						// Check if event is complete enough to process
 						const isComplete = this.isEventComplete(event)
-						console.log(`[VercelAiService] Event ${i} complete:`, isComplete, JSON.stringify(event, null, 2))
+						console.log(
+							`[VercelAiService] Event ${i} complete:`,
+							isComplete,
+							JSON.stringify(event, null, 2),
+						)
 
 						if (isComplete) {
 							processedEvents.add(i)
@@ -151,7 +189,10 @@ export class VercelAiService extends TldrawAiBaseService {
 							// Handle think and message events specially - send them directly
 							// These are conversational events that don't map to TLAiChange
 							if (event.type === "think" || event.type === "message") {
-								console.log(`[VercelAiService] Event ${i} is ${event.type}, sending directly:`, JSON.stringify(event, null, 2))
+								console.log(
+									`[VercelAiService] Event ${i} is ${event.type}, sending directly:`,
+									JSON.stringify(event, null, 2),
+								)
 								// Send as custom event for frontend handling
 								yield {
 									type: event.type,
@@ -160,8 +201,13 @@ export class VercelAiService extends TldrawAiBaseService {
 								continue
 							}
 
-							const changes = getTldrawAiChangesFromSimpleEvents([event as SimpleEvent])
-							console.log(`[VercelAiService] Event ${i} converted to ${changes.length} changes:`, JSON.stringify(changes, null, 2))
+							const changes = getTldrawAiChangesFromSimpleEvents([
+								event as SimpleEvent,
+							])
+							console.log(
+								`[VercelAiService] Event ${i} converted to ${changes.length} changes:`,
+								JSON.stringify(changes, null, 2),
+							)
 
 							for (const change of changes) {
 								yield change
@@ -171,7 +217,9 @@ export class VercelAiService extends TldrawAiBaseService {
 				}
 			}
 
-			console.log(`[VercelAiService] Stream complete. Total chunks: ${chunkCount}, Processed events: ${processedEvents.size}`)
+			console.log(
+				`[VercelAiService] Stream complete. Total chunks: ${chunkCount}, Processed events: ${processedEvents.size}`,
+			)
 		} catch (error) {
 			console.error("[VercelAiService] Error streaming response:", error)
 			// Errors are handled at a higher level - just stop streaming
@@ -183,20 +231,32 @@ export class VercelAiService extends TldrawAiBaseService {
 		if (!event || !event.type) return false
 
 		switch (event.type) {
-			case "create":
+			case "create": {
 				// Check for shape object with required fields
 				// The schema defines shape with: id, type, x, y as required
 				const hasShape = event.shape && typeof event.shape === "object"
 				const hasShapeType = hasShape && event.shape.type !== undefined
 				const hasShapeId = hasShape && event.shape.id !== undefined
-				const hasPosition = hasShape && event.shape.x !== undefined && event.shape.y !== undefined
+				const hasPosition =
+					hasShape && event.shape.x !== undefined && event.shape.y !== undefined
 				const isComplete = hasShape && hasShapeType && hasShapeId && hasPosition
-				console.log("[isEventComplete] create check:", { hasShape, hasShapeType, hasShapeId, hasPosition, isComplete })
+				console.log("[isEventComplete] create check:", {
+					hasShape,
+					hasShapeType,
+					hasShapeId,
+					hasPosition,
+					isComplete,
+				})
 				return isComplete
+			}
 			case "update":
 				return event.id !== undefined && event.changes !== undefined
 			case "move":
-				return event.id !== undefined && event.x !== undefined && event.y !== undefined
+				return (
+					event.id !== undefined &&
+					event.x !== undefined &&
+					event.y !== undefined
+				)
 			case "label":
 				return event.id !== undefined && event.label !== undefined
 			case "delete":
