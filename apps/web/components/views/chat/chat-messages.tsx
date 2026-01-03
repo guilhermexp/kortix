@@ -4,7 +4,6 @@ import { BACKEND_URL } from "@lib/env"
 import { cn } from "@lib/utils"
 import { DEFAULT_PROJECT_ID } from "@repo/lib/constants"
 import { Button } from "@ui/components/button"
-import { Input } from "@ui/components/input"
 // Select components removed - no longer needed with Claude Agent SDK
 import {
 	ArrowUp,
@@ -12,22 +11,12 @@ import {
 	ChevronDown,
 	ChevronRight,
 	Copy,
-	Info,
-	Loader2,
 	Plus,
 	RotateCcw,
-	Search,
 	X,
 } from "lucide-react"
 import type { ReactNode } from "react"
-import {
-	Fragment,
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { Streamdown } from "streamdown"
 import {
@@ -41,23 +30,24 @@ import {
 	ToolHeader,
 	ToolOutput,
 } from "@/components/ai-elements/tool"
+import { useCanvasAgentOptional } from "@/components/canvas/canvas-agent-provider"
 import {
 	InputGroup,
 	InputGroupAddon,
 	InputGroupButton,
 	InputGroupTextarea,
 } from "@/components/ui/input-group"
-import { useCanvasAgentOptional } from "@/components/canvas/canvas-agent-provider"
-import { useChatMentionQueue, useChatOpen, usePersistentChat, useProject } from "@/stores"
+import { useViewMode } from "@/lib/view-mode-context"
+import {
+	useChatMentionQueue,
+	useChatOpen,
+	usePersistentChat,
+	useProject,
+} from "@/stores"
 import { useCanvasSelection, useCanvasState } from "@/stores/canvas"
 import { useGraphHighlights } from "@/stores/highlights"
-import { useViewMode } from "@/lib/view-mode-context"
 import { Spinner } from "../../spinner"
-import {
-	type ProviderId,
-	ProviderSelector,
-	useProviderSelection,
-} from "./provider-selector"
+import { ProviderSelector, useProviderSelection } from "./provider-selector"
 
 interface MemoryResult {
 	documentId?: string
@@ -651,34 +641,47 @@ function useClaudeChat({
 				if (savedSessionId) {
 					sdkSessionIdRef.current = savedSessionId
 					lastMessageTimeRef.current = 0 // Reset tempo para forçar resume ao invés de continue
-					console.log("✅ [Frontend Session] Loaded SDK session ID:", savedSessionId)
-					console.log("✅ [Frontend Session] Will use RESUME mode on next message")
+					console.log(
+						"✅ [Frontend Session] Loaded SDK session ID:",
+						savedSessionId,
+					)
+					console.log(
+						"✅ [Frontend Session] Will use RESUME mode on next message",
+					)
 				} else {
 					sdkSessionIdRef.current = null
 					lastMessageTimeRef.current = 0
-					console.log("⚠️ [Frontend Session] No SDK session ID found for this conversation")
-					console.log("⚠️ [Frontend Session] Will create NEW session on next message")
+					console.log(
+						"⚠️ [Frontend Session] No SDK session ID found for this conversation",
+					)
+					console.log(
+						"⚠️ [Frontend Session] Will create NEW session on next message",
+					)
 				}
 			}
 		} else {
 			// Nova conversa - reset session
 			sdkSessionIdRef.current = null
 			lastMessageTimeRef.current = 0
-			console.log("🆕 [Frontend Session] New conversation - will create NEW session")
+			console.log(
+				"🆕 [Frontend Session] New conversation - will create NEW session",
+			)
 		}
 		console.log("========================================")
 	}, [conversationId, getSdkSessionId])
 
 	// Reset session when scoped documents change (user switches document context)
 	const { scopedDocumentIds } = useCanvasSelection()
-	const scopedIdsKey = JSON.stringify(scopedDocumentIds.sort())
+	const _scopedIdsKey = JSON.stringify(scopedDocumentIds.sort())
 	useEffect(() => {
 		if (sdkSessionIdRef.current !== null) {
 			sdkSessionIdRef.current = null
 			lastMessageTimeRef.current = 0
-			console.log("[Frontend Session] Session reset due to document context change")
+			console.log(
+				"[Frontend Session] Session reset due to document context change",
+			)
 		}
-	}, [scopedIdsKey])
+	}, [])
 
 	useEffect(() => {
 		messagesRef.current = messagesState
@@ -830,7 +833,7 @@ function useClaudeChat({
 				const body = buildRequestBody(trimmed, sdkSessionId, continueSession)
 				console.log("📦 [Send Message] Request body:", {
 					...body,
-					message: body.message?.substring(0, 50) + "...",
+					message: `${body.message?.substring(0, 50)}...`,
 				})
 				console.log("========================================")
 				const response = await fetch(endpoint, {
@@ -1178,9 +1181,14 @@ function useClaudeChat({
 								} else if (record.type === "tool_event") {
 									applyToolEvent(record)
 									// Process canvas changes if this is a canvasApplyChanges tool
-									const toolName = typeof record.toolName === "string" ? record.toolName : ""
-									const outputText = typeof record.outputText === "string" ? record.outputText : ""
-									const toolState = typeof record.state === "string" ? record.state : ""
+									const toolName =
+										typeof record.toolName === "string" ? record.toolName : ""
+									const outputText =
+										typeof record.outputText === "string"
+											? record.outputText
+											: ""
+									const toolState =
+										typeof record.state === "string" ? record.state : ""
 
 									// Debug: log all tool events
 									if (toolName.includes("canvas")) {
@@ -1200,24 +1208,43 @@ function useClaudeChat({
 										canvasAgent
 									) {
 										try {
-											console.log("[ChatMessages] Processing canvas changes from tool:", toolName)
-											console.log("[ChatMessages] Output text preview:", outputText.substring(0, 200))
-											const applied = canvasAgent.processToolOutput(toolName, outputText)
+											console.log(
+												"[ChatMessages] Processing canvas changes from tool:",
+												toolName,
+											)
+											console.log(
+												"[ChatMessages] Output text preview:",
+												outputText.substring(0, 200),
+											)
+											const applied = canvasAgent.processToolOutput(
+												toolName,
+												outputText,
+											)
 											if (applied) {
-												console.log("[ChatMessages] Canvas changes applied successfully")
+												console.log(
+													"[ChatMessages] Canvas changes applied successfully",
+												)
 											} else {
-												console.warn("[ChatMessages] Canvas changes were not applied")
+												console.warn(
+													"[ChatMessages] Canvas changes were not applied",
+												)
 											}
 										} catch (err) {
-											console.error("[ChatMessages] Failed to apply canvas changes:", err)
+											console.error(
+												"[ChatMessages] Failed to apply canvas changes:",
+												err,
+											)
 										}
 									} else if (toolName.includes("canvasApplyChanges")) {
-										console.warn("[ChatMessages] Canvas tool conditions not met:", {
-											toolName,
-											toolState,
-											hasOutputText: !!outputText,
-											hasCanvasAgent: !!canvasAgent,
-										})
+										console.warn(
+											"[ChatMessages] Canvas tool conditions not met:",
+											{
+												toolName,
+												toolState,
+												hasOutputText: !!outputText,
+												hasCanvasAgent: !!canvasAgent,
+											},
+										)
 									}
 								} else if (record.type === "final") {
 									const messagePayload =
@@ -1241,9 +1268,13 @@ function useClaudeChat({
 									console.log("[ChatMessages] Final event received:", {
 										hasCanvasAgent: !!canvasAgent,
 										hasParts: Array.isArray(messagePayload?.parts),
-										partsLength: Array.isArray(messagePayload?.parts) ? messagePayload.parts.length : 0,
+										partsLength: Array.isArray(messagePayload?.parts)
+											? messagePayload.parts.length
+											: 0,
 										partsTypes: Array.isArray(messagePayload?.parts)
-											? (messagePayload.parts as Array<Record<string, unknown>>).map(p => p?.type)
+											? (
+													messagePayload.parts as Array<Record<string, unknown>>
+												).map((p) => p?.type)
 											: [],
 									})
 
@@ -1251,22 +1282,27 @@ function useClaudeChat({
 									if (Array.isArray(messagePayload?.parts)) {
 										console.log("[ChatMessages] Processing parts array:", {
 											length: messagePayload.parts.length,
-											allParts: messagePayload.parts.map((p: Record<string, unknown>) => ({
-												type: p?.type,
-												toolName: p?.toolName,
-												state: p?.state,
-											})),
+											allParts: messagePayload.parts.map(
+												(p: Record<string, unknown>) => ({
+													type: p?.type,
+													toolName: p?.toolName,
+													state: p?.state,
+												}),
+											),
 										})
-										for (const part of messagePayload.parts as Array<Record<string, unknown>>) {
+										for (const part of messagePayload.parts as Array<
+											Record<string, unknown>
+										>) {
 											// Debug: log each part
 											if (part?.type === "tool-generic") {
 												console.log("[ChatMessages] Found tool-generic part:", {
 													toolName: part?.toolName,
 													state: part?.state,
 													hasOutputText: typeof part?.outputText === "string",
-													outputTextPreview: typeof part?.outputText === "string"
-														? (part.outputText as string).substring(0, 100)
-														: null,
+													outputTextPreview:
+														typeof part?.outputText === "string"
+															? (part.outputText as string).substring(0, 100)
+															: null,
 												})
 											}
 
@@ -1277,26 +1313,42 @@ function useClaudeChat({
 												part?.state === "output-available" &&
 												typeof part?.outputText === "string"
 											) {
-												console.log("[ChatMessages] Processing canvas tool from final parts:", {
-													toolName: part.toolName,
-													outputTextLength: (part.outputText as string).length,
-													hasCanvasAgent: !!canvasAgent,
-												})
+												console.log(
+													"[ChatMessages] Processing canvas tool from final parts:",
+													{
+														toolName: part.toolName,
+														outputTextLength: (part.outputText as string)
+															.length,
+														hasCanvasAgent: !!canvasAgent,
+													},
+												)
 
 												if (!canvasAgent) {
-													console.warn("[ChatMessages] Cannot apply canvas changes - canvasAgent is null")
+													console.warn(
+														"[ChatMessages] Cannot apply canvas changes - canvasAgent is null",
+													)
 													continue
 												}
 
 												try {
-													const applied = canvasAgent.processToolOutput(part.toolName, part.outputText as string)
+													const applied = canvasAgent.processToolOutput(
+														part.toolName,
+														part.outputText as string,
+													)
 													if (applied) {
-														console.log("[ChatMessages] Canvas changes applied successfully from final parts")
+														console.log(
+															"[ChatMessages] Canvas changes applied successfully from final parts",
+														)
 													} else {
-														console.warn("[ChatMessages] Canvas changes were not applied from final parts")
+														console.warn(
+															"[ChatMessages] Canvas changes were not applied from final parts",
+														)
 													}
 												} catch (err) {
-													console.error("[ChatMessages] Failed to apply canvas changes from final parts:", err)
+													console.error(
+														"[ChatMessages] Failed to apply canvas changes from final parts:",
+														err,
+													)
 												}
 											}
 										}
@@ -1313,7 +1365,10 @@ function useClaudeChat({
 									// Capture SDK session ID and update timestamp
 									console.log("========================================")
 									console.log("📥 [Stream] Received final event from backend")
-									console.log("[Stream] SDK session ID in event:", record.sdkSessionId)
+									console.log(
+										"[Stream] SDK session ID in event:",
+										record.sdkSessionId,
+									)
 									if (
 										typeof record.sdkSessionId === "string" &&
 										record.sdkSessionId.length > 0
@@ -1325,7 +1380,9 @@ function useClaudeChat({
 											record.sdkSessionId,
 										)
 										if (onSdkSessionId) {
-											console.log("📞 [Stream] Calling onSdkSessionId callback...")
+											console.log(
+												"📞 [Stream] Calling onSdkSessionId callback...",
+											)
 											onSdkSessionId(record.sdkSessionId)
 										}
 									} else {
@@ -1404,18 +1461,27 @@ function useClaudeChat({
 							console.log("[ChatMessages] Final event received (streaming):", {
 								hasCanvasAgent: !!canvasAgent,
 								hasParts: Array.isArray(messagePayload?.parts),
-								partsLength: Array.isArray(messagePayload?.parts) ? messagePayload.parts.length : 0,
+								partsLength: Array.isArray(messagePayload?.parts)
+									? messagePayload.parts.length
+									: 0,
 							})
 							if (Array.isArray(messagePayload?.parts) && canvasAgent) {
-								console.log("[ChatMessages] Processing parts for canvas (streaming):", {
-									length: messagePayload.parts.length,
-									allParts: messagePayload.parts.map((p: Record<string, unknown>) => ({
-										type: p?.type,
-										toolName: p?.toolName,
-										state: p?.state,
-									})),
-								})
-								for (const part of messagePayload.parts as Array<Record<string, unknown>>) {
+								console.log(
+									"[ChatMessages] Processing parts for canvas (streaming):",
+									{
+										length: messagePayload.parts.length,
+										allParts: messagePayload.parts.map(
+											(p: Record<string, unknown>) => ({
+												type: p?.type,
+												toolName: p?.toolName,
+												state: p?.state,
+											}),
+										),
+									},
+								)
+								for (const part of messagePayload.parts as Array<
+									Record<string, unknown>
+								>) {
 									if (
 										part?.type === "tool-generic" &&
 										typeof part?.toolName === "string" &&
@@ -1423,19 +1489,32 @@ function useClaudeChat({
 										part?.state === "output-available" &&
 										typeof part?.outputText === "string"
 									) {
-										console.log("[ChatMessages] Applying canvas changes (streaming):", {
-											toolName: part.toolName,
-											outputTextLength: (part.outputText as string).length,
-										})
+										console.log(
+											"[ChatMessages] Applying canvas changes (streaming):",
+											{
+												toolName: part.toolName,
+												outputTextLength: (part.outputText as string).length,
+											},
+										)
 										try {
-											const applied = canvasAgent.processToolOutput(part.toolName, part.outputText as string)
+											const applied = canvasAgent.processToolOutput(
+												part.toolName,
+												part.outputText as string,
+											)
 											if (applied) {
-												console.log("[ChatMessages] Canvas changes applied successfully (streaming)")
+												console.log(
+													"[ChatMessages] Canvas changes applied successfully (streaming)",
+												)
 											} else {
-												console.warn("[ChatMessages] Canvas changes were not applied (streaming)")
+												console.warn(
+													"[ChatMessages] Canvas changes were not applied (streaming)",
+												)
 											}
 										} catch (err) {
-											console.error("[ChatMessages] Failed to apply canvas changes (streaming):", err)
+											console.error(
+												"[ChatMessages] Failed to apply canvas changes (streaming):",
+												err,
+											)
 										}
 									}
 								}
@@ -1530,7 +1609,16 @@ function useClaudeChat({
 				setStatus("ready")
 			}
 		},
-		[buildRequestBody, endpoint, onConversationId, setMessages, status],
+		[
+			buildRequestBody,
+			endpoint,
+			onConversationId,
+			setMessages,
+			status,
+			canvasAgent,
+			onComplete,
+			onSdkSessionId,
+		],
 	)
 
 	const regenerate = useCallback(
@@ -1612,11 +1700,11 @@ export function ChatMessages() {
 			: "__ALL__",
 	)
 	// Expanded context toggle (increases search result limits)
-	const [expandContext, setExpandContext] = useState<boolean>(false)
-	const [projects, setProjects] = useState<
+	const [expandContext, _setExpandContext] = useState<boolean>(false)
+	const [_projects, setProjects] = useState<
 		Array<{ id: string; name: string; containerTag: string }>
 	>([])
-	const [loadingProjects, setLoadingProjects] = useState(false)
+	const [_loadingProjects, setLoadingProjects] = useState(false)
 
 	useEffect(() => {
 		let ignore = false
@@ -1664,30 +1752,24 @@ export function ChatMessages() {
 	// Inline mentions: pick canvas docs per message (@)
 	const [mentionedDocIds, setMentionedDocIdsState] = useState<string[]>([])
 	const mentionedDocIdsRef = useRef<string[]>([])
-	const addMentionedDocId = useCallback(
-		(id: string) => {
-			setMentionedDocIdsState((prev) => {
-				const next = [...new Set([...prev, id])]
-				mentionedDocIdsRef.current = next
-				return next
-			})
-		},
-		[setMentionedDocIdsState],
-	)
-	const removeMentionedDocId = useCallback(
-		(id: string) => {
-			setMentionedDocIdsState((prev) => {
-				const next = prev.filter((x) => x !== id)
-				mentionedDocIdsRef.current = next
-				return next
-			})
-		},
-		[setMentionedDocIdsState],
-	)
+	const addMentionedDocId = useCallback((id: string) => {
+		setMentionedDocIdsState((prev) => {
+			const next = [...new Set([...prev, id])]
+			mentionedDocIdsRef.current = next
+			return next
+		})
+	}, [])
+	const removeMentionedDocId = useCallback((id: string) => {
+		setMentionedDocIdsState((prev) => {
+			const next = prev.filter((x) => x !== id)
+			mentionedDocIdsRef.current = next
+			return next
+		})
+	}, [])
 	const clearMentionedDocIds = useCallback(() => {
 		mentionedDocIdsRef.current = []
 		setMentionedDocIdsState([])
-	}, [setMentionedDocIdsState])
+	}, [])
 	const pendingMentionedDocIdsRef = useRef<string[]>([])
 	const pendingMentionDocIds = useChatMentionQueue(
 		(state) => state.pendingDocIds,
@@ -1757,7 +1839,10 @@ export function ChatMessages() {
 				const canvasContext = canvasAgent.buildContextForAgent()
 				if (canvasContext) {
 					metadata.canvasContext = canvasContext
-					console.log("[ChatMessages] Including canvas context in request:", canvasContext)
+					console.log(
+						"[ChatMessages] Including canvas context in request:",
+						canvasContext,
+					)
 				}
 			}
 
@@ -2004,7 +2089,7 @@ export function ChatMessages() {
 	useEffect(() => {
 		setMessages([])
 		shouldGenerateTitleRef.current = false
-	}, [project, setMessages])
+	}, [setMessages])
 
 	// Create new chat when chat is opened (to avoid showing old messages)
 	const { isOpen } = useChatOpen()
@@ -2021,7 +2106,8 @@ export function ChatMessages() {
 			// Always create a new chat when opening, unless:
 			// - Chat was closed and reopened within 1 minute (quick toggle)
 			// - AND there are already messages in the current chat
-			const isQuickReopen = timeSinceClosed < QUICK_REOPEN_THRESHOLD && messages.length > 0
+			const isQuickReopen =
+				timeSinceClosed < QUICK_REOPEN_THRESHOLD && messages.length > 0
 
 			if (!isQuickReopen) {
 				const newChatId = crypto.randomUUID()
@@ -2126,7 +2212,7 @@ export function ChatMessages() {
 			shouldGenerateTitleRef.current = false
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [currentChatId])
+	}, [currentChatId, getCurrentConversation, id, setMessages])
 
 	useEffect(() => {
 		const rawActiveId = currentChatId ?? id
@@ -2346,7 +2432,7 @@ export function ChatMessages() {
 												}
 
 												if (isAddMemoryPart(part)) {
-													const isSuccess = part.state === "output-available"
+													const _isSuccess = part.state === "output-available"
 													return (
 														<ToolCard
 															durationMs={part.durationMs}
@@ -2652,7 +2738,9 @@ export function ChatMessages() {
 									) : (
 										<span className="w-3 h-3 rounded-sm bg-muted/50 inline-block" />
 									)}
-									<span className="truncate max-w-[100px]">@{doc?.title || id}</span>
+									<span className="truncate max-w-[100px]">
+										@{doc?.title || id}
+									</span>
 									<X className="size-2.5 opacity-60" />
 								</button>
 							)

@@ -1,204 +1,204 @@
-"use client";
+"use client"
 
-import { MCP_SERVER_URL } from "@lib/env";
-import { $fetch } from "@repo/lib/api";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@ui/components/button";
+import { MCP_SERVER_URL } from "@lib/env"
+import { $fetch } from "@repo/lib/api"
+import { useQuery } from "@tanstack/react-query"
+import { Button } from "@ui/components/button"
 import {
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@ui/components/dialog";
-import { Input } from "@ui/components/input";
-import { Label } from "@ui/components/label";
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@ui/components/dialog"
+import { Input } from "@ui/components/input"
+import { Label } from "@ui/components/label"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@ui/components/select";
-import { CopyIcon } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
-import { analytics } from "@/lib/analytics";
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@ui/components/select"
+import { CopyIcon } from "lucide-react"
+import { useState } from "react"
+import { toast } from "sonner"
+import { analytics } from "@/lib/analytics"
 
 const clients = {
-  cursor: "Cursor",
-  claude: "Claude Desktop",
-  vscode: "VSCode",
-  cline: "Cline",
-  "roo-cline": "Roo Cline",
-  witsy: "Witsy",
-  enconvo: "Enconvo",
-  "gemini-cli": "Gemini CLI",
-  "claude-code": "Claude Code",
-} as const;
+	cursor: "Cursor",
+	claude: "Claude Desktop",
+	vscode: "VSCode",
+	cline: "Cline",
+	"roo-cline": "Roo Cline",
+	witsy: "Witsy",
+	enconvo: "Enconvo",
+	"gemini-cli": "Gemini CLI",
+	"claude-code": "Claude Code",
+} as const
 
 interface Project {
-  id: string;
-  name: string;
-  containerTag: string;
-  createdAt: string;
-  updatedAt: string;
-  isExperimental?: boolean;
+	id: string
+	name: string
+	containerTag: string
+	createdAt: string
+	updatedAt: string
+	isExperimental?: boolean
 }
 
 interface InstallationDialogContentProps {
-  apiKey: string;
+	apiKey: string
 }
 
 export function InstallationDialogContent({
-  apiKey,
+	apiKey,
 }: InstallationDialogContentProps) {
-  const [client, setClient] = useState<keyof typeof clients>("cursor");
-  const [selectedProject, setSelectedProject] = useState<string | null>("none");
+	const [client, setClient] = useState<keyof typeof clients>("cursor")
+	const [selectedProject, setSelectedProject] = useState<string | null>("none")
 
-  // Fetch projects
-  const { data: projects = [], isLoading: isLoadingProjects } = useQuery({
-    queryKey: ["projects"],
-    queryFn: async () => {
-      const response = await $fetch("@get/projects");
+	// Fetch projects
+	const { data: projects = [], isLoading: isLoadingProjects } = useQuery({
+		queryKey: ["projects"],
+		queryFn: async () => {
+			const response = await $fetch("@get/projects")
 
-      if (response.error) {
-        throw new Error(response.error?.message || "Failed to load projects");
-      }
+			if (response.error) {
+				throw new Error(response.error?.message || "Failed to load projects")
+			}
 
-      return response.data?.projects || [];
-    },
-    staleTime: 30 * 1000,
-  });
+			return response.data?.projects || []
+		},
+		staleTime: 30 * 1000,
+	})
 
-  // Generate installation command based on selected project
-  function generateInstallCommand() {
-    const base = MCP_SERVER_URL.replace(/\/$/, "");
-    let command = `npx -y install-mcp@latest ${base} --client ${client} --oauth=yes --header 'Authorization: Bearer ${apiKey}'`;
+	// Generate installation command based on selected project
+	function generateInstallCommand() {
+		const base = MCP_SERVER_URL.replace(/\/$/, "")
+		let command = `npx -y install-mcp@latest ${base} --client ${client} --oauth=yes --header 'Authorization: Bearer ${apiKey}'`
 
-    if (
-      selectedProject &&
-      selectedProject !== "none" &&
-      selectedProject !== "sm_project_default"
-    ) {
-      // Remove the "sm_project_" prefix from the containerTag
-      const projectId = selectedProject.replace(/^sm_project_/, "");
-      command += ` --project ${projectId}`;
-    }
+		if (
+			selectedProject &&
+			selectedProject !== "none" &&
+			selectedProject !== "sm_project_default"
+		) {
+			// Remove the "sm_project_" prefix from the containerTag
+			const projectId = selectedProject.replace(/^sm_project_/, "")
+			command += ` --project ${projectId}`
+		}
 
-    return command;
-  }
+		return command
+	}
 
-  return (
-    <DialogContent className="border border-white/10 bg-background text-foreground dark:text-white">
-      <DialogHeader>
-        <DialogTitle>Install the Kortix MCP Server</DialogTitle>
-        <DialogDescription>
-          Select the app and project you want to install Kortix MCP to,
-          then run the following command:
-        </DialogDescription>
-      </DialogHeader>
+	return (
+		<DialogContent className="border border-white/10 bg-background text-foreground dark:text-white">
+			<DialogHeader>
+				<DialogTitle>Install the Kortix MCP Server</DialogTitle>
+				<DialogDescription>
+					Select the app and project you want to install Kortix MCP to, then run
+					the following command:
+				</DialogDescription>
+			</DialogHeader>
 
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="api-key-input">API Key</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              className="font-mono text-xs flex-1"
-              id="api-key-input"
-              readOnly
-              value={apiKey}
-            />
-            <Button
-              onClick={() => {
-                navigator.clipboard.writeText(apiKey);
-                toast.success("API key copied to clipboard");
-              }}
-              variant="outline"
-            >
-              <CopyIcon className="size-4" />
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Keep this key safe. It authenticates your MCP client with your
-            Kortix workspace.
-          </p>
-        </div>
+			<div className="space-y-4">
+				<div className="space-y-2">
+					<Label htmlFor="api-key-input">API Key</Label>
+					<div className="flex items-center gap-2">
+						<Input
+							className="font-mono text-xs flex-1"
+							id="api-key-input"
+							readOnly
+							value={apiKey}
+						/>
+						<Button
+							onClick={() => {
+								navigator.clipboard.writeText(apiKey)
+								toast.success("API key copied to clipboard")
+							}}
+							variant="outline"
+						>
+							<CopyIcon className="size-4" />
+						</Button>
+					</div>
+					<p className="text-xs text-muted-foreground">
+						Keep this key safe. It authenticates your MCP client with your
+						Kortix workspace.
+					</p>
+				</div>
 
-        <div className="space-y-2">
-          <Label htmlFor="client-select">Client Application</Label>
-          <Select
-            onValueChange={(value) => setClient(value as keyof typeof clients)}
-            value={client}
-          >
-            <SelectTrigger className="w-full" id="client-select">
-              <SelectValue placeholder="Select client" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(clients).map(([key, value]) => (
-                <SelectItem key={key} value={key}>
-                  {value}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+				<div className="space-y-2">
+					<Label htmlFor="client-select">Client Application</Label>
+					<Select
+						onValueChange={(value) => setClient(value as keyof typeof clients)}
+						value={client}
+					>
+						<SelectTrigger className="w-full" id="client-select">
+							<SelectValue placeholder="Select client" />
+						</SelectTrigger>
+						<SelectContent>
+							{Object.entries(clients).map(([key, value]) => (
+								<SelectItem key={key} value={key}>
+									{value}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
 
-        <div className="space-y-2">
-          <Label htmlFor="project-select">Target Project (Optional)</Label>
-          <Select
-            disabled={isLoadingProjects}
-            onValueChange={setSelectedProject}
-            value={selectedProject || "none"}
-          >
-            <SelectTrigger className="w-full" id="project-select">
-              <SelectValue placeholder="Select project" />
-            </SelectTrigger>
-            <SelectContent className="border border-white/10 bg-background">
-              <SelectItem className="hover:bg-white/10" value="none">
-                Auto-select project
-              </SelectItem>
-              <SelectItem
-                className="hover:bg-white/10"
-                value="sm_project_default"
-              >
-                All Projects
-              </SelectItem>
-              {projects
-                .filter((p: Project) => p.containerTag !== "sm_project_default")
-                .map((project: Project) => (
-                  <SelectItem
-                    className="hover:bg-white/10"
-                    key={project.id}
-                    value={project.containerTag}
-                  >
-                    {project.name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-        </div>
+				<div className="space-y-2">
+					<Label htmlFor="project-select">Target Project (Optional)</Label>
+					<Select
+						disabled={isLoadingProjects}
+						onValueChange={setSelectedProject}
+						value={selectedProject || "none"}
+					>
+						<SelectTrigger className="w-full" id="project-select">
+							<SelectValue placeholder="Select project" />
+						</SelectTrigger>
+						<SelectContent className="border border-white/10 bg-background">
+							<SelectItem className="hover:bg-white/10" value="none">
+								Auto-select project
+							</SelectItem>
+							<SelectItem
+								className="hover:bg-white/10"
+								value="sm_project_default"
+							>
+								All Projects
+							</SelectItem>
+							{projects
+								.filter((p: Project) => p.containerTag !== "sm_project_default")
+								.map((project: Project) => (
+									<SelectItem
+										className="hover:bg-white/10"
+										key={project.id}
+										value={project.containerTag}
+									>
+										{project.name}
+									</SelectItem>
+								))}
+						</SelectContent>
+					</Select>
+				</div>
 
-        <div className="space-y-2">
-          <Label htmlFor="command-input">Installation Command</Label>
-          <Input
-            className="font-mono text-xs!"
-            id="command-input"
-            readOnly
-            value={generateInstallCommand()}
-          />
-        </div>
-      </div>
+				<div className="space-y-2">
+					<Label htmlFor="command-input">Installation Command</Label>
+					<Input
+						className="font-mono text-xs!"
+						id="command-input"
+						readOnly
+						value={generateInstallCommand()}
+					/>
+				</div>
+			</div>
 
-      <Button
-        onClick={() => {
-          const command = generateInstallCommand();
-          navigator.clipboard.writeText(command);
-          analytics.mcpInstallCmdCopied();
-          toast.success("Copied to clipboard!");
-        }}
-      >
-        <CopyIcon className="size-4" /> Copy Installation Command
-      </Button>
-    </DialogContent>
-  );
+			<Button
+				onClick={() => {
+					const command = generateInstallCommand()
+					navigator.clipboard.writeText(command)
+					analytics.mcpInstallCmdCopied()
+					toast.success("Copied to clipboard!")
+				}}
+			>
+				<CopyIcon className="size-4" /> Copy Installation Command
+			</Button>
+		</DialogContent>
+	)
 }

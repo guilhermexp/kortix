@@ -101,7 +101,12 @@ export function ConnectionsTabContent() {
 				return data as Connection[]
 			}
 			// Handle case where data might be an object with connections property
-			if (data && typeof data === "object" && "connections" in data && Array.isArray((data as any).connections)) {
+			if (
+				data &&
+				typeof data === "object" &&
+				"connections" in data &&
+				Array.isArray((data as any).connections)
+			) {
 				return (data as any).connections as Connection[]
 			}
 			return []
@@ -138,7 +143,6 @@ export function ConnectionsTabContent() {
 				},
 			})
 
-			// biome-ignore lint/style/noNonNullAssertion: its fine
 			if ("data" in response && !("error" in response.data!)) {
 				return response.data
 			}
