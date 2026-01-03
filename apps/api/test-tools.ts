@@ -12,11 +12,7 @@ async function testToolsRegistration() {
 
 	try {
 		// Create tools server
-		const toolsServerConfig = createKortixTools(
-			mockClient,
-			"test-org-id",
-			{},
-		)
+		const toolsServerConfig = createKortixTools(mockClient, "test-org-id", {})
 
 		console.log("\n✅ Tools server created successfully")
 
@@ -84,7 +80,7 @@ async function testToolsRegistration() {
 			)
 
 			if (searchWebTool) {
-				console.log("\n" + "=".repeat(60))
+				console.log(`\n${"=".repeat(60)}`)
 				console.log("searchWeb Tool Details:")
 				console.log("=".repeat(60))
 				console.log("\nDescription:")
@@ -107,7 +103,7 @@ async function testToolsRegistration() {
 				}
 			}
 
-			console.log("\n" + "=".repeat(60))
+			console.log(`\n${"=".repeat(60)}`)
 			console.log("✅ All tests passed! searchWeb is properly registered.")
 			console.log("=".repeat(60))
 		} else if (typeof registeredTools === "object") {

@@ -7,9 +7,18 @@
 type MockSupabaseClient = {
 	from: (table: string) => {
 		select: (columns: string) => {
-			eq: (column: string, value: string) => {
-				eq: (column: string, value: string) => {
-					order: (column: string, options: { ascending: boolean }) => {
+			eq: (
+				column: string,
+				value: string,
+			) => {
+				eq: (
+					column: string,
+					value: string,
+				) => {
+					order: (
+						column: string,
+						options: { ascending: boolean },
+					) => {
 						limit: (n: number) => {
 							maybeSingle: () => Promise<{
 								data: any
@@ -53,7 +62,13 @@ async function testDocumentDeduplication() {
 					}),
 				}
 			}
-			return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }
+			return {
+				select: () => ({
+					eq: () => ({
+						maybeSingle: async () => ({ data: null, error: null }),
+					}),
+				}),
+			}
 		},
 	}
 
@@ -76,7 +91,9 @@ async function testDocumentDeduplication() {
 
 	// Test case 2: Content deduplication - short text document
 	console.log("Test 2: Content deduplication (short text)")
-	const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+	const sevenDaysAgo = new Date(
+		Date.now() - 7 * 24 * 60 * 60 * 1000,
+	).toISOString()
 	const mockClient2: any = {
 		from: (table: string) => {
 			if (table === "documents") {
@@ -105,7 +122,13 @@ async function testDocumentDeduplication() {
 					}),
 				}
 			}
-			return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }
+			return {
+				select: () => ({
+					eq: () => ({
+						maybeSingle: async () => ({ data: null, error: null }),
+					}),
+				}),
+			}
 		},
 	}
 
@@ -149,7 +172,13 @@ async function testDocumentDeduplication() {
 					}),
 				}
 			}
-			return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }
+			return {
+				select: () => ({
+					eq: () => ({
+						maybeSingle: async () => ({ data: null, error: null }),
+					}),
+				}),
+			}
 		},
 	}
 
@@ -162,7 +191,10 @@ async function testDocumentDeduplication() {
 		.limit(1)
 		.maybeSingle()
 
-	console.assert(result3.data === null, "Test 3 failed: Should not find duplicate")
+	console.assert(
+		result3.data === null,
+		"Test 3 failed: Should not find duplicate",
+	)
 	console.log("✓ Test 3 passed: No duplicate found (new document)\n")
 
 	console.log("✅ All document deduplication tests passed!")
@@ -170,5 +202,3 @@ async function testDocumentDeduplication() {
 
 // Run tests
 testDocumentDeduplication().catch(console.error)
-
-

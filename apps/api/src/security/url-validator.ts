@@ -58,7 +58,7 @@ export function validateUrlSafety(urlString: string): URL {
 	let parsed: URL
 	try {
 		parsed = new URL(urlString)
-	} catch (error) {
+	} catch (_error) {
 		throw new URLValidationError(
 			`Invalid URL format: ${urlString}`,
 			urlString,

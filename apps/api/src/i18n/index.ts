@@ -5,9 +5,8 @@
  * Currently supports Portuguese (pt-BR) and English (en-US).
  */
 
-import ptBR from "./locales/pt-BR.json" assert { type: "json" };
-
-import enUS from "./locales/en-US.json" assert { type: "json" };
+import enUS from "./locales/en-US.json" with { type: "json" }
+import ptBR from "./locales/pt-BR.json" with { type: "json" }
 
 /**
  * Supported locales
@@ -123,11 +122,19 @@ export function buildSummaryPrompt(
 	]
 
 	if (context?.title) {
-		parts.push(t("prompts.summary.context.detected_title", { title: context.title }, locale))
+		parts.push(
+			t(
+				"prompts.summary.context.detected_title",
+				{ title: context.title },
+				locale,
+			),
+		)
 	}
 
 	if (context?.url) {
-		parts.push(t("prompts.summary.context.source", { url: context.url }, locale))
+		parts.push(
+			t("prompts.summary.context.source", { url: context.url }, locale),
+		)
 	}
 
 	parts.push(t("prompts.summary.footer", { content }, locale))
@@ -159,7 +166,13 @@ export function buildUrlAnalysisPrompt(
 	]
 
 	if (options?.isGitHub) {
-		parts.push(t("prompts.deepAnalysis.url_based.sections.technologies", undefined, locale))
+		parts.push(
+			t(
+				"prompts.deepAnalysis.url_based.sections.technologies",
+				undefined,
+				locale,
+			),
+		)
 		parts.push("")
 	}
 
@@ -172,7 +185,11 @@ export function buildUrlAnalysisPrompt(
 	if (options?.title) {
 		parts.push(
 			"",
-			t("prompts.deepAnalysis.url_based.sections.context_title", { title: options.title }, locale),
+			t(
+				"prompts.deepAnalysis.url_based.sections.context_title",
+				{ title: options.title },
+				locale,
+			),
 		)
 	}
 
@@ -205,7 +222,11 @@ export function buildTextAnalysisPrompt(
 
 	if (options?.isGitHub) {
 		parts.push(
-			t("prompts.deepAnalysis.text_based.sections.technologies", undefined, locale),
+			t(
+				"prompts.deepAnalysis.text_based.sections.technologies",
+				undefined,
+				locale,
+			),
 			"",
 		)
 	}
@@ -217,17 +238,33 @@ export function buildTextAnalysisPrompt(
 
 	if (options?.isPDF || options?.isWebPage) {
 		parts.push(
-			t("prompts.deepAnalysis.text_based.sections.additional_context", undefined, locale),
+			t(
+				"prompts.deepAnalysis.text_based.sections.additional_context",
+				undefined,
+				locale,
+			),
 			"",
 		)
 	}
 
 	if (options?.title) {
-		parts.push(t("prompts.deepAnalysis.text_based.context.title", { title: options.title }, locale))
+		parts.push(
+			t(
+				"prompts.deepAnalysis.text_based.context.title",
+				{ title: options.title },
+				locale,
+			),
+		)
 	}
 
 	if (options?.url) {
-		parts.push(t("prompts.deepAnalysis.text_based.context.source", { url: options.url }, locale))
+		parts.push(
+			t(
+				"prompts.deepAnalysis.text_based.context.source",
+				{ url: options.url },
+				locale,
+			),
+		)
 	}
 
 	parts.push(
@@ -285,7 +322,9 @@ export function buildFilePrompt(
 	]
 
 	if (filename) {
-		parts.push(t(`prompts.fileProcessing.${promptType}.filename`, { filename }, locale))
+		parts.push(
+			t(`prompts.fileProcessing.${promptType}.filename`, { filename }, locale),
+		)
 	}
 
 	return parts.filter(Boolean).join("\n\n")

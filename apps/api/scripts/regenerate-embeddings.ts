@@ -28,17 +28,17 @@ const TARGET_TABLE =
 
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
 
-interface ChunkRow {
+interface _ChunkRow {
 	id: string
 	content: string
 }
 
-interface DocumentRow {
+interface _DocumentRow {
 	id: string
 	summary: string | null
 }
 
-interface MemoryRow {
+interface _MemoryRow {
 	id: string
 	content: string
 }

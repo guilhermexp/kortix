@@ -25,7 +25,7 @@ async function testSearchWeb() {
 			console.log()
 		})
 
-		console.log("\n" + "=".repeat(60))
+		console.log(`\n${"=".repeat(60)}`)
 		console.log("🔍 Test 2: Recent search with boostRecency")
 		const query2 = "AI news 2025"
 		console.log(`Query: "${query2}"`)
@@ -44,7 +44,7 @@ async function testSearchWeb() {
 			console.log()
 		})
 
-		console.log("\n" + "=".repeat(60))
+		console.log(`\n${"=".repeat(60)}`)
 		console.log("✅ All tests passed! searchWeb is working correctly.")
 		console.log("=".repeat(60))
 	} catch (error) {
