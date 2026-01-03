@@ -1,0 +1,10 @@
+# Biome Ignore File
+# Exclude auto-generated JavaScript files from linting
+
+# Generated CommonJS builds in packages/ui
+packages/ui/**/*.jsx
+packages/ui/copyable-cell.jsx
+packages/ui/globals.css
+
+# Generated TypeScript declarations
+**/*.d.ts

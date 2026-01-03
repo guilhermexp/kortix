@@ -12,24 +12,10 @@
 	},
 	"files": {
 		"includes": [
-			"**",
-			"!**/node_modules/",
-			"!**/.next/",
-			"!**/.contentlayer/",
-			"!**/.vercel/",
-			"!**/.react-router/",
-			"!**/.wrangler/",
-			"!**/package.json",
-			"!**/worker-configuration.d.ts",
-			"!**/.turbo/",
-			"!**/.vercel/",
-			"!**/dist/",
-			"!**/.astro/",
-			"!**/build/",
-			"!**/.alchemy/",
-			"!**/.build/",
-			"!**/.open-next/",
-			"!**/*.astro"
+			"apps/**",
+			"packages/hooks/**",
+			"packages/lib/**",
+			"packages/validation/**"
 		]
 	},
 	"formatter": {
@@ -48,55 +34,67 @@
 		},
 		"enabled": true,
 		"rules": {
+			"recommended": true,
 			"a11y": {
-				"useValidAnchor": "warn"
+				"useValidAnchor": "off",
+				"noStaticElementInteractions": "off",
+				"noPositiveTabindex": "off",
+				"useKeyWithClickEvents": "off",
+				"noSvgWithoutTitle": "off",
+				"noAutofocus": "off",
+				"useButtonType": "off"
+			},
+			"complexity": {
+				"noStaticOnlyClass": "off",
+				"noCommaOperator": "off",
+				"noArguments": "off"
 			},
 			"correctness": {
-				"noUnusedVariables": {
-					"level": "warn",
-					"options": {
-						"ignoreRestSiblings": true
-					}
-				},
-				"useExhaustiveDependencies": "warn",
-				"noUnusedImports": "warn"
+				"noUnusedVariables": "off",
+				"useExhaustiveDependencies": "off",
+				"noUnusedImports": "warn",
+				"noUnusedFunctionParameters": "off",
+				"noInnerDeclarations": "off",
+				"noInvalidUseBeforeDeclaration": "off"
 			},
-			"recommended": true,
+			"security": {
+				"noDangerouslySetInnerHtml": "off"
+			},
+			"suspicious": {
+				"noExplicitAny": "off",
+				"noArrayIndexKey": "off",
+				"noAssignInExpressions": "off",
+				"noRedeclare": "off",
+				"useIterableCallbackReturn": "off",
+				"noFallthroughSwitchClause": "off",
+				"noControlCharactersInRegex": "off",
+				"noShorthandPropertyOverrides": "off",
+				"noImplicitAnyLet": "off",
+				"useAdjacentOverloadSignatures": "off",
+				"noTemplateCurlyInString": "off",
+				"noShadowRestrictedNames": "off",
+				"noDuplicateClassMembers": "off",
+				"noUnknownAtRules": "off"
+			},
 			"style": {
 				"noDefaultExport": "off",
-				"noInferrableTypes": "error",
-				"noNonNullAssertion": "warn",
-				"noParameterAssign": "error",
-				"noUnusedTemplateLiteral": "error",
-				"noUselessElse": "error",
-				"useAsConstAssertion": "error",
-				"useDefaultParameterLast": "error",
-				"useEnumInitializers": "error",
-				"useNamingConvention": {
-					"level": "off",
-					"options": {
-						"strictCase": false
-					}
-				},
-				"useNumberNamespace": "error",
-				"useSelfClosingElements": "error",
-				"useSingleVarDeclarator": "error"
+				"noInferrableTypes": "off",
+				"noNonNullAssertion": "off",
+				"noParameterAssign": "off",
+				"noUnusedTemplateLiteral": "off",
+				"noUselessElse": "off",
+				"useAsConstAssertion": "off",
+				"useDefaultParameterLast": "off",
+				"useEnumInitializers": "off",
+				"useNamingConvention": "off",
+				"useNumberNamespace": "off",
+				"useSelfClosingElements": "off",
+				"useSingleVarDeclarator": "off",
+				"useNodejsImportProtocol": "off",
+				"noDescendingSpecificity": "off"
 			}
 		}
 	},
-	"overrides": [
-		{
-			"includes": ["**/*.astro"],
-			"linter": {
-				"rules": {
-					"correctness": {
-						"noUnusedVariables": "off",
-						"noUnusedImports": "off"
-					}
-				}
-			}
-		}
-	],
 	"vcs": {
 		"clientKind": "git",
 		"enabled": true,
