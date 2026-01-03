@@ -17,7 +17,6 @@ import type {
 	ExtractionResult,
 	DocumentProcessorService as IDocumentProcessorService,
 	ProcessedDocument,
-	ProcessingMetrics,
 	ProcessingOptions,
 	ProcessorServiceConfig,
 } from "../interfaces"
@@ -319,7 +318,7 @@ export class DocumentProcessorService
 	 */
 	private async executeEmbedding(
 		chunks: Chunk[],
-		options?: ProcessingOptions,
+		_options?: ProcessingOptions,
 	): Promise<Chunk[]> {
 		if (!this.embeddingService) {
 			throw this.createError(
@@ -354,7 +353,7 @@ export class DocumentProcessorService
 	 */
 	private async executeSummarization(
 		extraction: ExtractionResult,
-		options?: ProcessingOptions,
+		_options?: ProcessingOptions,
 	): Promise<string> {
 		if (!this.summarizationService) {
 			throw this.createError(
@@ -396,7 +395,7 @@ export class DocumentProcessorService
 	 */
 	private async executeTagging(
 		extraction: ExtractionResult,
-		options?: ProcessingOptions,
+		_options?: ProcessingOptions,
 	): Promise<string[]> {
 		if (!this.taggingService) {
 			throw this.createError(
@@ -449,7 +448,7 @@ export class DocumentProcessorService
 
 		const summary = sentences.slice(0, 3).join(". ")
 
-		return summary.length > 0 ? summary + "." : "No summary available."
+		return summary.length > 0 ? `${summary}.` : "No summary available."
 	}
 
 	// ========================================================================

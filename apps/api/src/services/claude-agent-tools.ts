@@ -40,17 +40,38 @@ export function createKortixTools(
 	// Note shape schema - for sticky notes
 	const NoteShapeSchema = z.object({
 		type: z.literal("note"),
-		id: z.string().optional().describe("Unique ID for the shape (auto-generated if not provided)"),
+		id: z
+			.string()
+			.optional()
+			.describe("Unique ID for the shape (auto-generated if not provided)"),
 		x: z.number().describe("X coordinate (top-left corner)"),
 		y: z.number().describe("Y coordinate (top-left corner)"),
-		props: z.object({
-			text: z.string().default("").describe("Text content of the note"),
-			color: z.enum(["black", "grey", "light-violet", "violet", "blue", "light-blue", "yellow", "orange", "green", "light-green", "light-red", "red", "white"]).default("yellow"),
-			size: z.enum(["s", "m", "l", "xl"]).default("m"),
-			font: z.enum(["draw", "sans", "serif", "mono"]).default("draw"),
-			align: z.enum(["start", "middle", "end"]).default("middle"),
-			verticalAlign: z.enum(["start", "middle", "end"]).default("middle"),
-		}).partial(),
+		props: z
+			.object({
+				text: z.string().default("").describe("Text content of the note"),
+				color: z
+					.enum([
+						"black",
+						"grey",
+						"light-violet",
+						"violet",
+						"blue",
+						"light-blue",
+						"yellow",
+						"orange",
+						"green",
+						"light-green",
+						"light-red",
+						"red",
+						"white",
+					])
+					.default("yellow"),
+				size: z.enum(["s", "m", "l", "xl"]).default("m"),
+				font: z.enum(["draw", "sans", "serif", "mono"]).default("draw"),
+				align: z.enum(["start", "middle", "end"]).default("middle"),
+				verticalAlign: z.enum(["start", "middle", "end"]).default("middle"),
+			})
+			.partial(),
 	})
 
 	// Text shape schema
@@ -59,13 +80,31 @@ export function createKortixTools(
 		id: z.string().optional(),
 		x: z.number(),
 		y: z.number(),
-		props: z.object({
-			text: z.string().default(""),
-			color: z.enum(["black", "grey", "light-violet", "violet", "blue", "light-blue", "yellow", "orange", "green", "light-green", "light-red", "red", "white"]).default("black"),
-			size: z.enum(["s", "m", "l", "xl"]).default("m"),
-			font: z.enum(["draw", "sans", "serif", "mono"]).default("draw"),
-			align: z.enum(["start", "middle", "end"]).default("start"),
-		}).partial(),
+		props: z
+			.object({
+				text: z.string().default(""),
+				color: z
+					.enum([
+						"black",
+						"grey",
+						"light-violet",
+						"violet",
+						"blue",
+						"light-blue",
+						"yellow",
+						"orange",
+						"green",
+						"light-green",
+						"light-red",
+						"red",
+						"white",
+					])
+					.default("black"),
+				size: z.enum(["s", "m", "l", "xl"]).default("m"),
+				font: z.enum(["draw", "sans", "serif", "mono"]).default("draw"),
+				align: z.enum(["start", "middle", "end"]).default("start"),
+			})
+			.partial(),
 	})
 
 	// Geo shape schema - rectangles, ellipses, etc.
@@ -74,19 +113,60 @@ export function createKortixTools(
 		id: z.string().optional(),
 		x: z.number(),
 		y: z.number(),
-		props: z.object({
-			w: z.number().default(100).describe("Width"),
-			h: z.number().default(100).describe("Height"),
-			geo: z.enum(["rectangle", "ellipse", "triangle", "diamond", "pentagon", "hexagon", "octagon", "star", "rhombus", "rhombus-2", "oval", "trapezoid", "arrow-right", "arrow-left", "arrow-up", "arrow-down", "x-box", "check-box", "cloud", "heart"]).default("rectangle"),
-			color: z.enum(["black", "grey", "light-violet", "violet", "blue", "light-blue", "yellow", "orange", "green", "light-green", "light-red", "red", "white"]).default("black"),
-			fill: z.enum(["none", "semi", "solid", "pattern"]).default("none"),
-			dash: z.enum(["draw", "solid", "dashed", "dotted"]).default("draw"),
-			size: z.enum(["s", "m", "l", "xl"]).default("m"),
-			text: z.string().default("").describe("Label text inside shape"),
-			align: z.enum(["start", "middle", "end"]).default("middle"),
-			verticalAlign: z.enum(["start", "middle", "end"]).default("middle"),
-			font: z.enum(["draw", "sans", "serif", "mono"]).default("draw"),
-		}).partial(),
+		props: z
+			.object({
+				w: z.number().default(100).describe("Width"),
+				h: z.number().default(100).describe("Height"),
+				geo: z
+					.enum([
+						"rectangle",
+						"ellipse",
+						"triangle",
+						"diamond",
+						"pentagon",
+						"hexagon",
+						"octagon",
+						"star",
+						"rhombus",
+						"rhombus-2",
+						"oval",
+						"trapezoid",
+						"arrow-right",
+						"arrow-left",
+						"arrow-up",
+						"arrow-down",
+						"x-box",
+						"check-box",
+						"cloud",
+						"heart",
+					])
+					.default("rectangle"),
+				color: z
+					.enum([
+						"black",
+						"grey",
+						"light-violet",
+						"violet",
+						"blue",
+						"light-blue",
+						"yellow",
+						"orange",
+						"green",
+						"light-green",
+						"light-red",
+						"red",
+						"white",
+					])
+					.default("black"),
+				fill: z.enum(["none", "semi", "solid", "pattern"]).default("none"),
+				dash: z.enum(["draw", "solid", "dashed", "dotted"]).default("draw"),
+				size: z.enum(["s", "m", "l", "xl"]).default("m"),
+				text: z.string().default("").describe("Label text inside shape"),
+				align: z.enum(["start", "middle", "end"]).default("middle"),
+				verticalAlign: z.enum(["start", "middle", "end"]).default("middle"),
+				font: z.enum(["draw", "sans", "serif", "mono"]).default("draw"),
+			})
+			.partial(),
 	})
 
 	// Arrow shape schema
@@ -95,24 +175,72 @@ export function createKortixTools(
 		id: z.string().optional(),
 		x: z.number(),
 		y: z.number(),
-		props: z.object({
-			color: z.enum(["black", "grey", "light-violet", "violet", "blue", "light-blue", "yellow", "orange", "green", "light-green", "light-red", "red", "white"]).default("black"),
-			fill: z.enum(["none", "semi", "solid", "pattern"]).default("none"),
-			dash: z.enum(["draw", "solid", "dashed", "dotted"]).default("draw"),
-			size: z.enum(["s", "m", "l", "xl"]).default("m"),
-			arrowheadStart: z.enum(["none", "arrow", "triangle", "square", "dot", "diamond", "inverted", "bar", "pipe"]).default("none"),
-			arrowheadEnd: z.enum(["none", "arrow", "triangle", "square", "dot", "diamond", "inverted", "bar", "pipe"]).default("arrow"),
-			text: z.string().default(""),
-			font: z.enum(["draw", "sans", "serif", "mono"]).default("draw"),
-			start: z.object({
-				x: z.number(),
-				y: z.number(),
-			}).optional().describe("Start point relative to shape position"),
-			end: z.object({
-				x: z.number(),
-				y: z.number(),
-			}).optional().describe("End point relative to shape position"),
-		}).partial(),
+		props: z
+			.object({
+				color: z
+					.enum([
+						"black",
+						"grey",
+						"light-violet",
+						"violet",
+						"blue",
+						"light-blue",
+						"yellow",
+						"orange",
+						"green",
+						"light-green",
+						"light-red",
+						"red",
+						"white",
+					])
+					.default("black"),
+				fill: z.enum(["none", "semi", "solid", "pattern"]).default("none"),
+				dash: z.enum(["draw", "solid", "dashed", "dotted"]).default("draw"),
+				size: z.enum(["s", "m", "l", "xl"]).default("m"),
+				arrowheadStart: z
+					.enum([
+						"none",
+						"arrow",
+						"triangle",
+						"square",
+						"dot",
+						"diamond",
+						"inverted",
+						"bar",
+						"pipe",
+					])
+					.default("none"),
+				arrowheadEnd: z
+					.enum([
+						"none",
+						"arrow",
+						"triangle",
+						"square",
+						"dot",
+						"diamond",
+						"inverted",
+						"bar",
+						"pipe",
+					])
+					.default("arrow"),
+				text: z.string().default(""),
+				font: z.enum(["draw", "sans", "serif", "mono"]).default("draw"),
+				start: z
+					.object({
+						x: z.number(),
+						y: z.number(),
+					})
+					.optional()
+					.describe("Start point relative to shape position"),
+				end: z
+					.object({
+						x: z.number(),
+						y: z.number(),
+					})
+					.optional()
+					.describe("End point relative to shape position"),
+			})
+			.partial(),
 	})
 
 	// Generic shape for flexibility
@@ -140,13 +268,15 @@ export function createKortixTools(
 		}),
 		z.object({
 			type: z.literal("updateShape"),
-			shape: z.object({
-				id: z.string().describe("ID of the shape to update"),
-				type: z.string().optional(),
-				x: z.number().optional(),
-				y: z.number().optional(),
-				props: z.record(z.any()).optional(),
-			}).describe("Partial shape with ID to update"),
+			shape: z
+				.object({
+					id: z.string().describe("ID of the shape to update"),
+					type: z.string().optional(),
+					x: z.number().optional(),
+					y: z.number().optional(),
+					props: z.record(z.any()).optional(),
+				})
+				.describe("Partial shape with ID to update"),
 		}),
 		z.object({
 			type: z.literal("deleteShape"),

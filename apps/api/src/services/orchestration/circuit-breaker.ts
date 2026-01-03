@@ -173,7 +173,7 @@ export class CircuitBreaker extends BaseService implements ICircuitBreaker {
 	 */
 	getMetrics(): CircuitBreakerMetrics {
 		const recentRequests = this.getRequestsInWindow()
-		const recentFailures = recentRequests.filter((r) => !r.success).length
+		const _recentFailures = recentRequests.filter((r) => !r.success).length
 
 		return {
 			state: this.state,

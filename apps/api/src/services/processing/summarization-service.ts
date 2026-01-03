@@ -135,10 +135,13 @@ export class SummarizationService
 		// Handle short content gracefully - use title/description as summary
 		const textLength = extraction.text?.length || 0
 		if (textLength < 100) {
-			this.logger.info("Content too short for AI summarization, using fallback", {
-				textLength,
-				hasTitle: !!extraction.title,
-			})
+			this.logger.info(
+				"Content too short for AI summarization, using fallback",
+				{
+					textLength,
+					hasTitle: !!extraction.title,
+				},
+			)
 
 			// Build a simple summary from available metadata
 			const fallbackSummary = extraction.title
@@ -393,7 +396,7 @@ export class SummarizationService
 
 		// Otherwise just truncate at word boundary
 		const lastSpace = truncated.lastIndexOf(" ")
-		return truncated.slice(0, lastSpace) + "..."
+		return `${truncated.slice(0, lastSpace)}...`
 	}
 
 	/**

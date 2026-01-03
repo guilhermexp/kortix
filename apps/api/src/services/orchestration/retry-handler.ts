@@ -305,7 +305,7 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 	 */
 	private shouldRetry(
 		error: Error,
-		attempt: number,
+		_attempt: number,
 		options: Required<RetryOptions> & Partial<ExtendedRetryOptions>,
 	): boolean {
 		// Check custom retry condition if provided
@@ -355,7 +355,7 @@ export class RetryHandler extends BaseService implements IRetryHandler {
 	private updateStatistics(): void {
 		const totalRetries =
 			this.statistics.successfulAfterRetry + this.statistics.failed
-		const totalSuccess =
+		const _totalSuccess =
 			this.statistics.successfulFirstTry + this.statistics.successfulAfterRetry
 
 		// Calculate average retry count

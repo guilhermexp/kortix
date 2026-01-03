@@ -12,14 +12,7 @@
  */
 
 import { BaseService } from "../base/base-service"
-import type {
-	ExtractionResult,
-	IconSVGOptions,
-	SVGGenerator as ISVGGenerator,
-	SVGGenerationOptions,
-	SVGTemplate,
-	TextSVGOptions,
-} from "../interfaces"
+import type { ExtractionResult, SVGGenerationOptions } from "../interfaces"
 
 // ============================================================================
 // Constants
@@ -27,7 +20,7 @@ import type {
 
 const DEFAULT_WIDTH = 640
 const DEFAULT_HEIGHT = 400
-const DEFAULT_FONT_SIZE = 28
+const _DEFAULT_FONT_SIZE = 28
 const DEFAULT_FONT_FAMILY =
 	"system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
 
@@ -80,9 +73,9 @@ type ThemeName = keyof typeof THEMES
  * Service for generating SVG preview images
  */
 export class SVGGenerator extends BaseService {
-    constructor() {
-        super("SVGGenerator")
-    }
+	constructor() {
+		super("SVGGenerator")
+	}
 
 	// ========================================================================
 	// Public API
@@ -139,8 +132,6 @@ export class SVGGenerator extends BaseService {
 			throw this.handleError(error, "generate")
 		}
 	}
-
-
 
 	/**
 	 * Generate gradient background
@@ -438,7 +429,7 @@ export class SVGGenerator extends BaseService {
 			return cleaned
 		}
 
-		return cleaned.slice(0, maxLength - 1) + "…"
+		return `${cleaned.slice(0, maxLength - 1)}…`
 	}
 
 	/**

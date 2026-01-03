@@ -2,28 +2,23 @@
 
 import {
 	AI_GENERATION_CONFIG,
-	AI_MODELS,
 	CONTENT_PATTERNS,
 	isGitHubUrl,
 	isHtmlContent,
 	isPdfContent,
-	MARKDOWN_SECTIONS,
-	QUALITY_THRESHOLDS,
 	TEXT_LIMITS,
 } from "../config/constants"
 import {
 	buildSummaryPrompt,
 	buildTextAnalysisPrompt,
 	buildUrlAnalysisPrompt as buildUrlAnalysisPromptI18n,
-	buildYoutubePrompt,
 	getFallbackMessage,
 	getSectionHeader,
 } from "../i18n"
-import { getGoogleClient, getGoogleModel } from "./google-genai"
 import { openRouterChat } from "./openrouter"
 import { summarizeWithOpenRouter } from "./summarizer-fallback"
 
-const googleClient = null // Disable Gemini for summaries/tags; use OpenRouter
+const _googleClient = null // Disable Gemini for summaries/tags; use OpenRouter
 
 export async function generateSummary(
 	text: string,
@@ -38,7 +33,7 @@ export async function generateSummary(
 	return viaOpenRouter || buildFallbackSummary(trimmed, context)
 }
 
-function buildPrompt(
+function _buildPrompt(
 	snippet: string,
 	context?: { title?: string | null; url?: string | null },
 ) {
@@ -136,21 +131,21 @@ export async function generateDeepAnalysis(
 /**
  * Análise usando o texto extraído (fallback ou quando não tem URL)
  */
-async function generateTextBasedAnalysis(
+async function _generateTextBasedAnalysis(
 	text: string,
 	context?: {
 		title?: string | null
 		url?: string | null
 		contentType?: string | null
 	},
-	model?: any,
+	_model?: any,
 ): Promise<string | null> {
 	const trimmed = text.trim()
 	if (!trimmed) return null
 
 	try {
 		const viaOpenRouter = await summarizeWithOpenRouter(trimmed, context)
-		if (viaOpenRouter && viaOpenRouter.trim()) {
+		if (viaOpenRouter?.trim()) {
 			return ensureUseCasesSection(viaOpenRouter)
 		}
 	} catch {}
@@ -160,7 +155,7 @@ async function generateTextBasedAnalysis(
 /**
  * Prompt simplificado para análise via URL (Gemini lê diretamente)
  */
-function buildUrlAnalysisPrompt(context: {
+function _buildUrlAnalysisPrompt(context: {
 	title?: string | null
 	url?: string | null
 	contentType?: string | null
@@ -177,7 +172,7 @@ function buildUrlAnalysisPrompt(context: {
 	})
 }
 
-function buildDeepAnalysisPrompt(
+function _buildDeepAnalysisPrompt(
 	snippet: string,
 	context?: {
 		title?: string | null
@@ -212,7 +207,7 @@ export async function summarizeYoutubeVideo(
 		let text = ""
 		let title: string | null = null
 
-		if (transcriptResult && transcriptResult.markdown) {
+		if (transcriptResult?.markdown) {
 			text = transcriptResult.markdown.trim()
 			title = transcriptResult.metadata?.title || null
 			console.log(
@@ -375,11 +370,17 @@ export async function generateCategoryTags(
 		const isValidTag = (tag: string): boolean => {
 			if (!tag || tag.length < 2 || tag.length > 30) return false
 			// Reject tags that look like URL parts or repo namespaces
-			if (tag.startsWith("/") || tag.endsWith(":") || tag.endsWith("/")) return false
+			if (tag.startsWith("/") || tag.endsWith(":") || tag.endsWith("/"))
+				return false
 			// Reject tags with only special characters
 			if (/^[^a-z0-9]+$/i.test(tag)) return false
 			// Reject common URL/path fragments
-			if (/^(http|https|www|com|org|io|github|google|hugging|huggingface)$/i.test(tag)) return false
+			if (
+				/^(http|https|www|com|org|io|github|google|hugging|huggingface)$/i.test(
+					tag,
+				)
+			)
+				return false
 			// Reject tags containing URL patterns
 			if (/^[a-z0-9-]+\.(com|org|io|net|co|ai)$/i.test(tag)) return false
 			return true

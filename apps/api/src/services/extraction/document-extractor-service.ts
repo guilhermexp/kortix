@@ -17,17 +17,16 @@ import type {
 	DocumentExtractor,
 	ExtractionInput,
 	ExtractionResult,
-	ExtractorChainConfig,
 	ExtractorServiceConfig,
 	DocumentExtractorService as IDocumentExtractorService,
 	ProcessingError,
 } from "../interfaces"
 import { CircuitBreaker } from "../orchestration/circuit-breaker"
 import { RetryHandler } from "../orchestration/retry-handler"
-import { createFileExtractor, FileExtractor } from "./file-extractor"
-import { createPDFExtractor, PDFExtractor } from "./pdf-extractor"
-import { createURLExtractor, URLExtractor } from "./url-extractor"
-import { createYouTubeExtractor, YouTubeExtractor } from "./youtube-extractor"
+import { createFileExtractor } from "./file-extractor"
+import { createPDFExtractor } from "./pdf-extractor"
+import { createURLExtractor } from "./url-extractor"
+import { createYouTubeExtractor } from "./youtube-extractor"
 
 // ============================================================================
 // Document Extractor Service Implementation
@@ -442,7 +441,7 @@ export class DocumentExtractorService
 
 		if (!circuitBreaker) return
 
-		for (const [name, extractor] of this.extractors) {
+		for (const [name, _extractor] of this.extractors) {
 			const breaker = new CircuitBreaker(name, {
 				failureThreshold: circuitBreaker.failureThreshold,
 				resetTimeout: circuitBreaker.resetTimeout,

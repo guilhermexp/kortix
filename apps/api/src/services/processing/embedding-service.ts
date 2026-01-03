@@ -30,7 +30,7 @@ import type {
 // ============================================================================
 
 const DEFAULT_BATCH_SIZE = 10
-const DEFAULT_TIMEOUT = 30000 // 30 seconds
+const _DEFAULT_TIMEOUT = 30000 // 30 seconds
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 1000
 const MAX_TEXT_LENGTH = 30000 // bytes (Gemini limit)
@@ -162,8 +162,6 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 				case "deterministic":
 					embedding = this.generateDeterministic(text)
 					break
-
-				case "hybrid":
 				default:
 					// Try Gemini first, fall back to deterministic
 					try {

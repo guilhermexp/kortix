@@ -122,7 +122,7 @@ export class ExtractionValidator extends BaseService {
 		let parsedUrl: URL
 		try {
 			parsedUrl = new URL(url)
-		} catch (error) {
+		} catch (_error) {
 			throw this.createError("INVALID_URL", `Invalid URL format: ${url}`)
 		}
 

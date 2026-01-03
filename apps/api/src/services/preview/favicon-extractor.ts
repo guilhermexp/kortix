@@ -81,7 +81,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 		this.assertInitialized()
 
 		const tracker = this.performanceMonitor.startOperation("extract")
-		const config = { ...this.defaultOptions, ...options }
+		const _config = { ...this.defaultOptions, ...options }
 
 		try {
 			this.logger.info("Extracting favicon", { url })
@@ -117,7 +117,17 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 		}
 	}
 
-	async extractFavicon(url: string, options?: { generateDefault?: boolean }): Promise<{ success: boolean; data?: { favicons: Array<{ url: string; format?: string; size?: number }>; extractionTime?: number }; error?: { code: string; message: string } }> {
+	async extractFavicon(
+		url: string,
+		options?: { generateDefault?: boolean },
+	): Promise<{
+		success: boolean
+		data?: {
+			favicons: Array<{ url: string; format?: string; size?: number }>
+			extractionTime?: number
+		}
+		error?: { code: string; message: string }
+	}> {
 		try {
 			const res = await (this as any).fetchFaviconFromURL(url)
 			if (res.favicons.length === 0 && options?.generateDefault) {
@@ -126,11 +136,20 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 			}
 			return { success: true, data: res }
 		} catch (e) {
-			return { success: false, error: { code: "EXTRACTION_FAILED", message: e instanceof Error ? e.message : String(e) } }
+			return {
+				success: false,
+				error: {
+					code: "EXTRACTION_FAILED",
+					message: e instanceof Error ? e.message : String(e),
+				},
+			}
 		}
 	}
 
-	private async fetchFaviconFromURL(url: string): Promise<{ favicons: Array<{ url: string; format?: string; size?: number }>; extractionTime?: number }> {
+	private async fetchFaviconFromURL(url: string): Promise<{
+		favicons: Array<{ url: string; format?: string; size?: number }>
+		extractionTime?: number
+	}> {
 		const start = Date.now()
 		const collection = await this.getAllFavicons(url)
 		const list: Array<{ url: string; format?: string; size?: number }> = []
@@ -141,9 +160,12 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 		return { favicons: list, extractionTime: Date.now() - start }
 	}
 
-	private async generateDefaultFavicon(): Promise<{ favicons: Array<{ url: string; format?: string; size?: number }> }> {
-		const svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\"><rect width=\"32\" height=\"32\" fill=\"#4b5563\"/></svg>"
-		const dataUrl = "data:image/svg+xml;base64," + Buffer.from(svg).toString("base64")
+	private async generateDefaultFavicon(): Promise<{
+		favicons: Array<{ url: string; format?: string; size?: number }>
+	}> {
+		const svg =
+			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#4b5563"/></svg>'
+		const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`
 		return { favicons: [{ url: dataUrl, format: "svg", size: 32 }] }
 	}
 
@@ -313,7 +335,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 			}
 
 			const contentType = response.headers.get("content-type") || "image/x-icon"
-			const contentLength = response.headers.get("content-length")
+			const _contentLength = response.headers.get("content-length")
 
 			// Try to determine size from URL or filename
 			const sizeMatch = url.match(/(\d+)x(\d+)/)
@@ -358,7 +380,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 
 			// Extract href
 			const hrefMatch = linkTag.match(/href=["']([^"']+)["']/)
-			if (hrefMatch && hrefMatch[1]) {
+			if (hrefMatch?.[1]) {
 				const iconUrl = this.resolveUrl(hrefMatch[1], baseUrl)
 				icons.push(iconUrl)
 			}
@@ -456,8 +478,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 		const response = await fetch(url, {
 			signal: AbortSignal.timeout(timeout),
 			headers: {
-				"User-Agent":
-					"Mozilla/5.0 (compatible; KortixBot/1.0)",
+				"User-Agent": "Mozilla/5.0 (compatible; KortixBot/1.0)",
 			},
 		})
 
@@ -547,7 +568,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 		// Test favicon extraction with a reliable URL
 		try {
 			const testUrl = "https://www.github.com"
-			const favicon = await this.extract(testUrl, {
+			const _favicon = await this.extract(testUrl, {
 				timeout: 5000,
 			})
 			return true // Service is operational even if no favicon found
@@ -571,40 +592,64 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
  * Create favicon extractor service with optional configuration
  */
 export function createFaviconExtractor(
-    options?: Partial<FaviconExtractionOptions>,
+	options?: Partial<FaviconExtractionOptions>,
 ): FaviconExtractor {
-    return new FaviconExtractor(options)
+	return new FaviconExtractor(options)
 }
 
-export interface FaviconOptions { generateDefault?: boolean }
+export interface FaviconOptions {
+	generateDefault?: boolean
+}
 
 export class FaviconExtractorFacade {
-    constructor(private readonly inner: FaviconExtractor) {}
-    async extractFavicon(url: string, options?: FaviconOptions): Promise<{ success: boolean; data?: { favicons: Array<{ url: string; format?: string; size?: number }>; extractionTime?: number }; error?: { code: string; message: string } }> {
-        try {
-            const res = await (this as any).fetchFaviconFromURL(url)
-            if (res.favicons.length === 0 && options?.generateDefault) {
-                const def = await (this as any).generateDefaultFavicon()
-                return { success: true, data: { favicons: def.favicons } }
-            }
-            return { success: true, data: res }
-        } catch (e) {
-            return { success: false, error: { code: "EXTRACTION_FAILED", message: e instanceof Error ? e.message : String(e) } }
-        }
-    }
-    private async fetchFaviconFromURL(url: string): Promise<{ favicons: Array<{ url: string; format?: string; size?: number }>; extractionTime?: number }> {
-        const start = Date.now()
-        const collection = await this.inner.getAllFavicons(url)
-        const list: Array<{ url: string; format?: string; size?: number }> = []
-        for (const icon of [...collection.highRes, ...collection.standard]) {
-            list.push({ url: icon })
-        }
-        if (collection.primary) list.unshift({ url: collection.primary })
-        return { favicons: list, extractionTime: Date.now() - start }
-    }
-    private async generateDefaultFavicon(): Promise<{ favicons: Array<{ url: string; format?: string; size?: number }> }> {
-        const svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\"><rect width=\"32\" height=\"32\" fill=\"#4b5563\"/></svg>"
-        const dataUrl = "data:image/svg+xml;base64," + Buffer.from(svg).toString("base64")
-        return { favicons: [{ url: dataUrl, format: "svg", size: 32 }] }
-    }
+	constructor(private readonly inner: FaviconExtractor) {}
+	async extractFavicon(
+		url: string,
+		options?: FaviconOptions,
+	): Promise<{
+		success: boolean
+		data?: {
+			favicons: Array<{ url: string; format?: string; size?: number }>
+			extractionTime?: number
+		}
+		error?: { code: string; message: string }
+	}> {
+		try {
+			const res = await (this as any).fetchFaviconFromURL(url)
+			if (res.favicons.length === 0 && options?.generateDefault) {
+				const def = await (this as any).generateDefaultFavicon()
+				return { success: true, data: { favicons: def.favicons } }
+			}
+			return { success: true, data: res }
+		} catch (e) {
+			return {
+				success: false,
+				error: {
+					code: "EXTRACTION_FAILED",
+					message: e instanceof Error ? e.message : String(e),
+				},
+			}
+		}
+	}
+	private async fetchFaviconFromURL(url: string): Promise<{
+		favicons: Array<{ url: string; format?: string; size?: number }>
+		extractionTime?: number
+	}> {
+		const start = Date.now()
+		const collection = await this.inner.getAllFavicons(url)
+		const list: Array<{ url: string; format?: string; size?: number }> = []
+		for (const icon of [...collection.highRes, ...collection.standard]) {
+			list.push({ url: icon })
+		}
+		if (collection.primary) list.unshift({ url: collection.primary })
+		return { favicons: list, extractionTime: Date.now() - start }
+	}
+	private async generateDefaultFavicon(): Promise<{
+		favicons: Array<{ url: string; format?: string; size?: number }>
+	}> {
+		const svg =
+			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#4b5563"/></svg>'
+		const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`
+		return { favicons: [{ url: dataUrl, format: "svg", size: 32 }] }
+	}
 }

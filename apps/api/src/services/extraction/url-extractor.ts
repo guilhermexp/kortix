@@ -164,8 +164,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		// Basic HTML scraping - fetch and parse HTML directly
 		const response = await safeFetch(url, {
 			headers: {
-				"User-Agent":
-					"Mozilla/5.0 (compatible; KortixBot/1.0)",
+				"User-Agent": "Mozilla/5.0 (compatible; KortixBot/1.0)",
 			},
 			signal: AbortSignal.timeout(options?.timeout ?? 30000),
 		})
@@ -255,7 +254,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 				if (!images.includes(absoluteUrl)) {
 					images.push(absoluteUrl)
 				}
-			} catch (error) {}
+			} catch (_error) {}
 		}
 
 		return images
@@ -360,7 +359,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		}
 
 		const truncated = content.substring(0, 100).trim()
-		return truncated.length > 0 ? truncated + "..." : null
+		return truncated.length > 0 ? `${truncated}...` : null
 	}
 
 	/**

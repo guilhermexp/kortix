@@ -219,7 +219,7 @@ except Exception as e:
 			stderr += data.toString()
 		})
 
-		child.on("close", (code) => {
+		child.on("close", (_code) => {
 			try {
 				// Find the last line with JSON (Python warnings may appear before)
 				const lines = stdout.trim().split("\n")
