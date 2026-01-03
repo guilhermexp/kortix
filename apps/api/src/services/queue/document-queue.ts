@@ -1,14 +1,14 @@
-import { Queue, type JobsOptions } from "bullmq";
-import { redis, isRedisEnabled } from "./redis-client";
+import { type JobsOptions, Queue } from "bullmq"
+import { isRedisEnabled, redis } from "./redis-client"
 
 export type DocumentJobData = {
-	documentId: string;
-	orgId: string;
-	userId?: string;
-	payload?: Record<string, unknown>;
-};
+	documentId: string
+	orgId: string
+	userId?: string
+	payload?: Record<string, unknown>
+}
 
-const QUEUE_NAME = "document-processing";
+const QUEUE_NAME = "document-processing"
 
 // Default job options with retry strategy
 const DEFAULT_JOB_OPTIONS: JobsOptions = {
@@ -24,7 +24,7 @@ const DEFAULT_JOB_OPTIONS: JobsOptions = {
 	removeOnFail: {
 		age: 86400, // Keep failed jobs for 24 hours
 	},
-};
+}
 
 // Create queue only if Redis is available
 export const documentQueue = isRedisEnabled()
@@ -32,7 +32,7 @@ export const documentQueue = isRedisEnabled()
 			connection: redis!,
 			defaultJobOptions: DEFAULT_JOB_OPTIONS,
 		})
-	: null;
+	: null
 
 /**
  * Add a document processing job to the queue
@@ -48,8 +48,8 @@ export async function addDocumentJob(
 		console.log(
 			"[document-queue] Redis not available, skipping queue",
 			documentId,
-		);
-		return null;
+		)
+		return null
 	}
 
 	const job = await documentQueue.add(
@@ -64,15 +64,15 @@ export async function addDocumentJob(
 			// Use documentId as job ID for deduplication
 			jobId: `doc-${documentId}`,
 		},
-	);
+	)
 
 	console.log("[document-queue] Job added to queue", {
 		jobId: job.id,
 		documentId,
 		orgId,
-	});
+	})
 
-	return job.id ?? null;
+	return job.id ?? null
 }
 
 /**
@@ -80,7 +80,7 @@ export async function addDocumentJob(
  */
 export async function getQueueStats() {
 	if (!documentQueue) {
-		return null;
+		return null
 	}
 
 	const [waiting, active, completed, failed, delayed] = await Promise.all([
@@ -89,7 +89,7 @@ export async function getQueueStats() {
 		documentQueue.getCompletedCount(),
 		documentQueue.getFailedCount(),
 		documentQueue.getDelayedCount(),
-	]);
+	])
 
 	return {
 		waiting,
@@ -98,7 +98,7 @@ export async function getQueueStats() {
 		failed,
 		delayed,
 		total: waiting + active + delayed,
-	};
+	}
 }
 
 /**
@@ -106,8 +106,8 @@ export async function getQueueStats() {
  */
 export async function pauseQueue(): Promise<void> {
 	if (documentQueue) {
-		await documentQueue.pause();
-		console.log("[document-queue] Queue paused");
+		await documentQueue.pause()
+		console.log("[document-queue] Queue paused")
 	}
 }
 
@@ -116,8 +116,8 @@ export async function pauseQueue(): Promise<void> {
  */
 export async function resumeQueue(): Promise<void> {
 	if (documentQueue) {
-		await documentQueue.resume();
-		console.log("[document-queue] Queue resumed");
+		await documentQueue.resume()
+		console.log("[document-queue] Queue resumed")
 	}
 }
 
@@ -126,8 +126,8 @@ export async function resumeQueue(): Promise<void> {
  */
 export async function cleanQueue(gracePeriod = 3600000): Promise<void> {
 	if (documentQueue) {
-		await documentQueue.clean(gracePeriod, 1000, "completed");
-		await documentQueue.clean(gracePeriod * 24, 1000, "failed");
-		console.log("[document-queue] Queue cleaned");
+		await documentQueue.clean(gracePeriod, 1000, "completed")
+		await documentQueue.clean(gracePeriod * 24, 1000, "failed")
+		console.log("[document-queue] Queue cleaned")
 	}
 }
