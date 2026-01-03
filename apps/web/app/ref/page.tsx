@@ -30,13 +30,10 @@ export default function ReferralHomePage() {
 				<CardContent>
 					<div className="space-y-4">
 						<div className="bg-background rounded-lg p-4 border border-white/10">
-							<h3 className="text-white font-semibold mb-2">
-								What is Kortix?
-							</h3>
+							<h3 className="text-white font-semibold mb-2">What is Kortix?</h3>
 							<p className="text-white/70 text-sm leading-relaxed">
-								Kortix is an AI-powered personal knowledge base that helps
-								you store, organize, and interact with all your digital
-								memories.
+								Kortix is an AI-powered personal knowledge base that helps you
+								store, organize, and interact with all your digital memories.
 							</p>
 						</div>
 

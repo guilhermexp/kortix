@@ -3,9 +3,9 @@
 // Non-streaming AI response for canvas manipulation
 // ============================================================
 
-import { NextRequest } from "next/server"
-import type { TLAiSerializedPrompt } from "@/lib/ai/tldraw-ai-types"
+import type { NextRequest } from "next/server"
 import { generateAgent } from "@/lib/ai/AgentService"
+import type { TLAiSerializedPrompt } from "@/lib/ai/tldraw-ai-types"
 
 export const runtime = "nodejs"
 
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 			{
 				status: 500,
 				headers: { "Content-Type": "application/json" },
-			}
+			},
 		)
 	}
 }

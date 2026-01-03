@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
 // Types for FAL actions
 type FalAction =
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 		if (!FAL_KEY) {
 			return NextResponse.json(
 				{ error: "FAL_KEY not configured" },
-				{ status: 500 }
+				{ status: 500 },
 			)
 		}
 
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
 		console.error("[FAL API Error]:", error)
 		return NextResponse.json(
 			{ error: error instanceof Error ? error.message : "Unknown error" },
-			{ status: 500 }
+			{ status: 500 },
 		)
 	}
 }
