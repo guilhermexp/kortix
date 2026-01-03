@@ -3,9 +3,9 @@
 // Streams AI changes for canvas manipulation
 // ============================================================
 
-import { NextRequest } from "next/server"
-import type { TLAiSerializedPrompt, TLAiChange } from "@/lib/ai/tldraw-ai-types"
+import type { NextRequest } from "next/server"
 import { streamAgent } from "@/lib/ai/AgentService"
+import type { TLAiChange, TLAiSerializedPrompt } from "@/lib/ai/tldraw-ai-types"
 
 export const runtime = "nodejs"
 
@@ -46,7 +46,10 @@ function transformChangeToStreamEvent(change: TLAiChange): StreamEvent | null {
 	switch (change.type) {
 		case "createShape": {
 			const shape = change.shape as Record<string, unknown>
-			const shapeId = typeof shape.id === "string" ? shape.id.replace("shape:", "") : String(shape.id)
+			const shapeId =
+				typeof shape.id === "string"
+					? shape.id.replace("shape:", "")
+					: String(shape.id)
 			const props = (shape.props || {}) as Record<string, unknown>
 
 			// Determine shape type from props.geo or shape.type
@@ -71,11 +74,18 @@ function transformChangeToStreamEvent(change: TLAiChange): StreamEvent | null {
 
 		case "updateShape": {
 			const shape = change.shape as Record<string, unknown>
-			const shapeId = typeof shape.id === "string" ? shape.id.replace("shape:", "") : String(shape.id)
+			const shapeId =
+				typeof shape.id === "string"
+					? shape.id.replace("shape:", "")
+					: String(shape.id)
 			const props = (shape.props || {}) as Record<string, unknown>
 
 			// Check if this is primarily a move operation
-			if (shape.x !== undefined && shape.y !== undefined && Object.keys(props).length === 0) {
+			if (
+				shape.x !== undefined &&
+				shape.y !== undefined &&
+				Object.keys(props).length === 0
+			) {
 				return {
 					type: "move",
 					shapeId,
@@ -103,9 +113,10 @@ function transformChangeToStreamEvent(change: TLAiChange): StreamEvent | null {
 		}
 
 		case "deleteShape": {
-			const shapeId = typeof change.shapeId === "string"
-				? change.shapeId.replace("shape:", "")
-				: String(change.shapeId)
+			const shapeId =
+				typeof change.shapeId === "string"
+					? change.shapeId.replace("shape:", "")
+					: String(change.shapeId)
 
 			return {
 				type: "delete",
@@ -114,7 +125,10 @@ function transformChangeToStreamEvent(change: TLAiChange): StreamEvent | null {
 		}
 
 		default:
-			console.warn("[API] Unknown change type:", (change as unknown as Record<string, unknown>).type)
+			console.warn(
+				"[API] Unknown change type:",
+				(change as unknown as Record<string, unknown>).type,
+			)
 			return null
 	}
 }
@@ -122,11 +136,18 @@ function transformChangeToStreamEvent(change: TLAiChange): StreamEvent | null {
 export async function POST(req: NextRequest) {
 	try {
 		const prompt = (await req.json()) as TLAiSerializedPrompt
-		console.log("[API/stream] Received prompt:", JSON.stringify({
-			message: prompt.message,
-			hasCanvasContent: !!prompt.canvasContent,
-			hasImage: !!prompt.image,
-		}, null, 2))
+		console.log(
+			"[API/stream] Received prompt:",
+			JSON.stringify(
+				{
+					message: prompt.message,
+					hasCanvasContent: !!prompt.canvasContent,
+					hasImage: !!prompt.image,
+				},
+				null,
+				2,
+			),
+		)
 
 		const encoder = new TextEncoder()
 		const { readable, writable } = new TransformStream()
@@ -138,17 +159,25 @@ export async function POST(req: NextRequest) {
 			try {
 				for await (const change of streamAgent(prompt)) {
 					changeCount++
-					console.log(`[API/stream] Change ${changeCount}:`, JSON.stringify(change, null, 2))
+					console.log(
+						`[API/stream] Change ${changeCount}:`,
+						JSON.stringify(change, null, 2),
+					)
 
 					const event = transformChangeToStreamEvent(change)
-					console.log(`[API/stream] Transformed event:`, JSON.stringify(event, null, 2))
+					console.log(
+						"[API/stream] Transformed event:",
+						JSON.stringify(event, null, 2),
+					)
 
 					if (event) {
 						const data = `data: ${JSON.stringify(event)}\n\n`
 						await writer.write(encoder.encode(data))
 					}
 				}
-				console.log(`[API/stream] Stream complete. Total changes: ${changeCount}`)
+				console.log(
+					`[API/stream] Stream complete. Total changes: ${changeCount}`,
+				)
 				// Send done signal
 				await writer.write(encoder.encode("data: [DONE]\n\n"))
 			} catch (error) {
@@ -179,7 +208,7 @@ export async function POST(req: NextRequest) {
 			{
 				status: 500,
 				headers: { "Content-Type": "application/json" },
-			}
+			},
 		)
 	}
 }

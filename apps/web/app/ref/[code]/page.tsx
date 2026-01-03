@@ -137,10 +137,9 @@ export default function ReferralPage() {
 									What is Kortix?
 								</h3>
 								<p className="text-white/70 text-sm leading-relaxed">
-									Kortix is an AI-powered personal knowledge base that
-									helps you store, organize, and interact with all your digital
-									memories - from documents and links to conversations and
-									ideas.
+									Kortix is an AI-powered personal knowledge base that helps you
+									store, organize, and interact with all your digital memories -
+									from documents and links to conversations and ideas.
 								</p>
 							</div>
 
