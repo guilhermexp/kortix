@@ -17,13 +17,14 @@ let orchestrator: ReturnType<typeof createIngestionOrchestrator> | null = null
 let previewService: ReturnType<typeof createPreviewGeneratorService> | null =
 	null
 
-function getOrchestrator() {
+async function getOrchestrator() {
 	if (!orchestrator) {
 		const extractorService = createDocumentExtractorService()
 		const processorService = createDocumentProcessorService()
 		orchestrator = createIngestionOrchestrator()
 		orchestrator.setExtractorService(extractorService)
 		orchestrator.setProcessorService(processorService)
+		await orchestrator.initialize()
 	}
 	return orchestrator
 }
@@ -136,7 +137,8 @@ export async function processDocumentInline(
 		}
 
 		// Process with orchestrator
-		const result = await getOrchestrator().processDocument({
+		const orch = await getOrchestrator()
+		const result = await orch.processDocument({
 			content: document.content ?? "",
 			url: document.url ?? null,
 			type: document.type ?? null,
