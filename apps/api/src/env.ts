@@ -98,9 +98,14 @@ const envSchema = z.object({
 		.string()
 		.optional()
 		.transform((v) => (v != null ? Number.parseInt(v, 10) : undefined))
-		.refine((v) => v === undefined || (typeof v === "number" && Number.isFinite(v) && v > 0), {
-			message: "OPENROUTER_MAX_TOKENS must be a positive integer",
-		}),
+		.refine(
+			(v) =>
+				v === undefined ||
+				(typeof v === "number" && Number.isFinite(v) && v > 0),
+			{
+				message: "OPENROUTER_MAX_TOKENS must be a positive integer",
+			},
+		),
 	// Optional: configure external MCP (sequential thinking) server spawn command
 	SEQ_MCP_COMMAND: z.string().min(1).optional(),
 	// JSON array of args, e.g.: ["--flag", "value"]

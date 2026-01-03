@@ -1,14 +1,15 @@
 #!/usr/bin/env bun
+
 /**
  * Apply conversation tables migration to Supabase
  * This script reads and executes the SQL migration file
  */
 
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import { createClient } from "@supabase/supabase-js"
 // Load environment variables
 import { config as loadEnv } from "dotenv"
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
 
 loadEnv({ path: join(process.cwd(), ".env.local") })
 loadEnv()

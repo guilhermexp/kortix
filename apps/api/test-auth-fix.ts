@@ -36,7 +36,9 @@ console.log("✓ Test 2 passed: JWT token from cookie")
 // Test 3: Supabase auth cookie (JSON format)
 const testRequest3 = new Request("http://localhost")
 const cookies3: Record<string, string> = {
-	"sb-project-auth-token": JSON.stringify({ access_token: "supabase-token-456" }),
+	"sb-project-auth-token": JSON.stringify({
+		access_token: "supabase-token-456",
+	}),
 }
 const token3 = extractAccessToken(testRequest3, cookies3)
 console.assert(
@@ -81,5 +83,3 @@ console.assert(
 console.log("✓ Test 6 passed: Header takes precedence over cookie")
 
 console.log("\n✅ All extractAccessToken tests passed!")
-
-

@@ -30,7 +30,7 @@ export function extractAccessToken(
 
 	// Check kortix_session cookie for JWT token
 	const kortixSession = cookies[SESSION_COOKIE]
-	if (kortixSession && kortixSession.startsWith("eyJ")) {
+	if (kortixSession?.startsWith("eyJ")) {
 		// Looks like a JWT token (starts with base64 encoded JSON header)
 		return kortixSession
 	}

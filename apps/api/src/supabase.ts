@@ -15,7 +15,9 @@ export const supabaseAdmin = adminClient
  * Create a Supabase client authenticated with a user's JWT access token.
  * This enables RLS policies that use auth.uid().
  */
-export function createAuthenticatedSupabase(accessToken: string): SupabaseClient {
+export function createAuthenticatedSupabase(
+	accessToken: string,
+): SupabaseClient {
 	return createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
 		auth: { persistSession: false },
 		global: {
@@ -49,8 +51,8 @@ export function createClientForSession(session: {
  * This function relies on custom headers that don't propagate in Supabase Cloud.
  */
 export function createScopedSupabase(
-	organizationId: string,
-	userId?: string,
+	_organizationId: string,
+	_userId?: string,
 ): SupabaseClient {
 	// DEPRECATED: Custom headers don't propagate to PostgreSQL context in Supabase Cloud
 	// For now, return admin client to ensure operations work

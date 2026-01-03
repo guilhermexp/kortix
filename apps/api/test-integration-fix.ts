@@ -7,8 +7,10 @@
 
 import { extractAccessToken } from "./src/session"
 
-console.log("🧪 Running Integration Tests for Authentication and Document Fixes\n")
-console.log("=" .repeat(60))
+console.log(
+	"🧪 Running Integration Tests for Authentication and Document Fixes\n",
+)
+console.log("=".repeat(60))
 
 // Test Suite 1: Authentication Token Extraction
 console.log("\n📋 Test Suite 1: Authentication Token Extraction")
@@ -41,7 +43,9 @@ const testCases = [
 		name: "Supabase cookie with array format",
 		request: new Request("http://localhost"),
 		cookies: {
-			"sb-project-auth-token": JSON.stringify([{ access_token: "array-token" }]),
+			"sb-project-auth-token": JSON.stringify([
+				{ access_token: "array-token" },
+			]),
 		},
 		expected: "array-token",
 	},
@@ -128,7 +132,8 @@ for (const scenario of dedupScenarios) {
 	try {
 		// Simulate the deduplication check logic
 		const shouldCheckDuplicates =
-			scenario.isUrl || (scenario.contentLength && scenario.contentLength < 1000)
+			scenario.isUrl ||
+			(scenario.contentLength && scenario.contentLength < 1000)
 
 		if (scenario.expected.includes("should check")) {
 			if (shouldCheckDuplicates) {
@@ -159,12 +164,16 @@ for (const scenario of dedupScenarios) {
 console.log(`\n📊 Results: ${dedupPassed} passed, ${dedupFailed} failed`)
 
 // Summary
-console.log("\n" + "=".repeat(60))
+console.log(`\n${"=".repeat(60)}`)
 console.log("📊 FINAL SUMMARY")
 console.log("=".repeat(60))
 console.log(`Authentication Tests: ${passedTests}/${testCases.length} passed`)
-console.log(`Deduplication Tests: ${dedupPassed}/${dedupScenarios.length} passed`)
-console.log(`\nTotal: ${passedTests + dedupPassed}/${testCases.length + dedupScenarios.length} tests passed`)
+console.log(
+	`Deduplication Tests: ${dedupPassed}/${dedupScenarios.length} passed`,
+)
+console.log(
+	`\nTotal: ${passedTests + dedupPassed}/${testCases.length + dedupScenarios.length} tests passed`,
+)
 
 if (failedTests === 0 && dedupFailed === 0) {
 	console.log("\n✅ All tests passed! Fixes are working correctly.")
@@ -173,5 +182,3 @@ if (failedTests === 0 && dedupFailed === 0) {
 	console.log("\n❌ Some tests failed. Please review the output above.")
 	process.exit(1)
 }
-
-
