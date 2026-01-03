@@ -15,13 +15,22 @@ const nextConfig: NextConfig = {
 		ignoreBuildErrors: true,
 	},
 	// Transpile monorepo packages to ensure shared module instances
-	transpilePackages: ["@repo/lib", "@repo/ui", "@repo/validation", "@repo/hooks"],
+	transpilePackages: [
+		"@repo/lib",
+		"@repo/ui",
+		"@repo/validation",
+		"@repo/hooks",
+	],
 	turbopack: {}, // Empty config to silence warning
 	outputFileTracingRoot: workspaceRoot,
 	experimental: {
 		viewTransition: true,
 		// Optimize preloading to prevent unused resource warnings
-		optimizePackageImports: ["lucide-react", "framer-motion", "@tanstack/react-query"],
+		optimizePackageImports: [
+			"lucide-react",
+			"framer-motion",
+			"@tanstack/react-query",
+		],
 	},
 	poweredByHeader: false,
 	// Image optimization to cache external images (prevents GitHub 429 errors)
@@ -99,11 +108,13 @@ const nextConfig: NextConfig = {
 					},
 					{
 						key: "Content-Security-Policy",
-						value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://opengraph.githubassets.com https://*.githubusercontent.com https://i.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com https://*.tldraw.com https://unpkg.com; connect-src 'self' http://localhost:4000 https://*; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; frame-src https://www.youtube.com https://youtube.com https://*.figma.com https://*.google.com https://*.excalidraw.com;",
+						value:
+							"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://opengraph.githubassets.com https://*.githubusercontent.com https://i.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com https://*.tldraw.com https://unpkg.com; connect-src 'self' http://localhost:4000 https://*; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; frame-src https://www.youtube.com https://youtube.com https://*.figma.com https://*.google.com https://*.excalidraw.com;",
 					},
 					{
 						key: "Permissions-Policy",
-						value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+						value:
+							"camera=(), microphone=(), geolocation=(), interest-cohort=()",
 					},
 				],
 			},

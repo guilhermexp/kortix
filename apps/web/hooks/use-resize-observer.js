@@ -1,13 +1,14 @@
 exports.__esModule = true
 var react_1 = require("react")
 function useResizeObserver(ref) {
-	var _a = (0, react_1.useState)({ width: 0, height: 0 }),
-		size = _a[0],
-		setSize = _a[1]
+	var _a = (0, react_1.useState)({ width: 0, height: 0 })
+	var size = _a[0]
+	var setSize = _a[1]
 	;(0, react_1.useEffect)(() => {
 		if (!ref.current) return
 		var observer = new ResizeObserver((_a) => {
-			var _b, _c
+			var _b
+			var _c
 			var entry = _a[0]
 			setSize({
 				width:
@@ -31,4 +32,4 @@ function useResizeObserver(ref) {
 	}, [ref])
 	return size
 }
-exports["default"] = useResizeObserver
+exports.default = useResizeObserver

@@ -1,23 +1,23 @@
 {
-  "name": "Kortix",
-  "short_name": "Kortix",
-  "description": "Your memory, accessible and private",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
-  "orientation": "portrait-primary",
-  "icons": [
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
-  ],
-  "categories": ["productivity", "utilities"],
-  "lang": "pt-BR",
-  "dir": "ltr",
-  "scope": "/",
-  "prefer_related_applications": false
+	"name": "Kortix",
+	"short_name": "Kortix",
+	"description": "Your memory, accessible and private",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#000000",
+	"theme_color": "#000000",
+	"orientation": "portrait-primary",
+	"icons": [
+		{
+			"src": "/favicon.svg",
+			"sizes": "any",
+			"type": "image/svg+xml",
+			"purpose": "any maskable"
+		}
+	],
+	"categories": ["productivity", "utilities"],
+	"lang": "pt-BR",
+	"dir": "ltr",
+	"scope": "/",
+	"prefer_related_applications": false
 }
