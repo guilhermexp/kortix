@@ -2,22 +2,21 @@
 
 import {
 	createContext,
+	type ReactNode,
 	useCallback,
 	useContext,
-	useEffect,
 	useRef,
-	type ReactNode,
 } from "react"
 import type { Editor } from "tldraw"
-import {
-	type CanvasAgentChange,
-	applyCanvasAgentChange,
-} from "./canvas-agent-changes"
 import {
 	$canvasContextItems,
 	type CanvasContextItem,
 	clearCanvasContext,
 } from "./agent-context"
+import {
+	applyCanvasAgentChange,
+	type CanvasAgentChange,
+} from "./canvas-agent-changes"
 
 export type CanvasChangesPayload = {
 	kind: "canvasChanges"
@@ -39,26 +38,6 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 	const editorRef = useRef<Editor | null>(null)
 	const pendingChangesRef = useRef<CanvasChangesPayload[]>([])
 
-	const setEditor = useCallback((editor: Editor | null) => {
-		editorRef.current = editor
-		const pendingCount = pendingChangesRef.current.length
-		console.log("[CanvasAgentProvider] Editor registered:", !!editor, "pending:", pendingCount)
-
-		// Apply any pending changes that arrived before the editor was ready
-		if (editor && pendingCount > 0) {
-			const queued = [...pendingChangesRef.current]
-			pendingChangesRef.current = []
-			for (const payload of queued) {
-				try {
-					applyChanges(payload)
-					console.log("[CanvasAgentProvider] Flushed pending changes")
-				} catch (err) {
-					console.error("[CanvasAgentProvider] Failed to flush pending change:", err)
-				}
-			}
-		}
-	}, [])
-
 	const applyChanges = useCallback((payload: CanvasChangesPayload) => {
 		const currentEditor = editorRef.current
 		if (!currentEditor) {
@@ -75,7 +54,7 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 		}
 
 		console.log(
-			`[CanvasAgentProvider] Applying ${payload.changes.length} changes to canvas`
+			`[CanvasAgentProvider] Applying ${payload.changes.length} changes to canvas`,
 		)
 
 		try {
@@ -85,13 +64,13 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 					applyCanvasAgentChange(currentEditor, change)
 					console.log(
 						`[CanvasAgentProvider] Applied change: ${change.type}`,
-						change
+						change,
 					)
 				} catch (err) {
 					console.error(
-						`[CanvasAgentProvider] Failed to apply change:`,
+						"[CanvasAgentProvider] Failed to apply change:",
 						change,
-						err
+						err,
 					)
 				}
 			}
@@ -106,6 +85,37 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 		}
 	}, [])
 
+	const setEditor = useCallback(
+		(editor: Editor | null) => {
+			editorRef.current = editor
+			const pendingCount = pendingChangesRef.current.length
+			console.log(
+				"[CanvasAgentProvider] Editor registered:",
+				!!editor,
+				"pending:",
+				pendingCount,
+			)
+
+			// Apply any pending changes that arrived before the editor was ready
+			if (editor && pendingCount > 0) {
+				const queued = [...pendingChangesRef.current]
+				pendingChangesRef.current = []
+				for (const payload of queued) {
+					try {
+						applyChanges(payload)
+						console.log("[CanvasAgentProvider] Flushed pending changes")
+					} catch (err) {
+						console.error(
+							"[CanvasAgentProvider] Failed to flush pending change:",
+							err,
+						)
+					}
+				}
+			}
+		},
+		[applyChanges],
+	)
+
 	const processToolOutput = useCallback(
 		(toolName: string, outputText: string): boolean => {
 			console.log("[CanvasAgentProvider] processToolOutput called:", {
@@ -116,7 +126,9 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 
 			// Check if this is a canvas changes tool
 			if (!toolName.includes("canvasApplyChanges")) {
-				console.log("[CanvasAgentProvider] Tool name doesn't match canvasApplyChanges")
+				console.log(
+					"[CanvasAgentProvider] Tool name doesn't match canvasApplyChanges",
+				)
 				return false
 			}
 
@@ -128,21 +140,23 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 				})
 				if (parsed && parsed.kind === "canvasChanges") {
 					return applyChanges(parsed as CanvasChangesPayload)
-				} else {
-					console.warn("[CanvasAgentProvider] Invalid payload - kind is not 'canvasChanges':", parsed?.kind)
 				}
+				console.warn(
+					"[CanvasAgentProvider] Invalid payload - kind is not 'canvasChanges':",
+					parsed?.kind,
+				)
 			} catch (err) {
 				console.error(
 					"[CanvasAgentProvider] Failed to parse canvas changes:",
 					err,
 					"outputText:",
-					outputText?.substring(0, 200)
+					outputText?.substring(0, 200),
 				)
 			}
 
 			return false
 		},
-		[applyChanges]
+		[applyChanges],
 	)
 
 	const getCanvasContext = useCallback((): CanvasContextItem[] => {
@@ -200,9 +214,10 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 				const text = typeof props?.text === "string" ? props.text : undefined
 
 				// Include geo type for geo shapes
-				const geoType = shape.type === "geo" && typeof props?.geo === "string"
-					? props.geo
-					: undefined
+				const geoType =
+					shape.type === "geo" && typeof props?.geo === "string"
+						? props.geo
+						: undefined
 
 				return {
 					...baseInfo,

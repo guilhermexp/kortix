@@ -175,7 +175,7 @@ function formatToolType(type: string): string {
 function formatJSON(value: unknown) {
 	try {
 		return JSON.stringify(value, null, 2)
-	} catch (error) {
+	} catch (_error) {
 		return String(value)
 	}
 }

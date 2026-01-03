@@ -499,7 +499,7 @@ export function InfinityCanvas() {
 
 	useEffect(() => {
 		hasAutoCenteredRef.current = false
-	}, [selectedProject])
+	}, [])
 
 	const handleCenter = useCallback(() => {
 		if (documents.length === 0) return
@@ -649,7 +649,7 @@ export function InfinityCanvas() {
 	// Clear canvas when project changes
 	useEffect(() => {
 		clearCanvas()
-	}, [selectedProject, clearCanvas])
+	}, [clearCanvas])
 
 	// Persist and restore canvas state (positions and placed docs) per project
 	useEffect(() => {
@@ -691,7 +691,7 @@ export function InfinityCanvas() {
 			}
 		} catch {}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [selectedProject])
+	}, [selectedProject, setCardPositions, setPlacedDocumentIds])
 
 	// Debounced localStorage save for positions (500ms delay to avoid excessive writes during drag)
 	useEffect(() => {
@@ -808,10 +808,10 @@ export function InfinityCanvas() {
 	const minimapWidth = 160
 	const minimapHeight = 120
 	const bounds = useMemo(() => {
-		let minX = Number.POSITIVE_INFINITY,
-			minY = Number.POSITIVE_INFINITY,
-			maxX = Number.NEGATIVE_INFINITY,
-			maxY = Number.NEGATIVE_INFINITY
+		let minX = Number.POSITIVE_INFINITY
+		let minY = Number.POSITIVE_INFINITY
+		let maxX = Number.NEGATIVE_INFINITY
+		let maxY = Number.NEGATIVE_INFINITY
 		const positions = Object.values(cardPositions)
 		if (positions.length === 0) {
 			// Default bounds around origin if no cards yet
@@ -941,7 +941,11 @@ export function InfinityCanvas() {
 					</Button>
 				</Tooltip>
 				<Tooltip
-					content={selectedCount > 0 ? `Remove ${selectedCount} selected document(s)` : "Select documents to remove"}
+					content={
+						selectedCount > 0
+							? `Remove ${selectedCount} selected document(s)`
+							: "Select documents to remove"
+					}
 					side="right"
 				>
 					<Button
@@ -959,7 +963,11 @@ export function InfinityCanvas() {
 					</Button>
 				</Tooltip>
 				<Tooltip
-					content={selectedCount > 0 ? `Clear ${selectedCount} selected document(s)` : "No selection to clear"}
+					content={
+						selectedCount > 0
+							? `Clear ${selectedCount} selected document(s)`
+							: "No selection to clear"
+					}
 					side="right"
 				>
 					<Button

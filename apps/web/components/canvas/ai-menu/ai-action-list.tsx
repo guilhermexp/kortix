@@ -1,31 +1,34 @@
 "use client"
 
-import { useCallback, useState } from "react"
 import {
-	Pencil,
-	Check,
-	MessageSquare,
-	Languages,
-	Waves,
-	Sparkles,
-	AlignLeft,
-	AlignJustify,
-	PenLine,
-	FileText,
-	Twitter,
-	BookOpen,
-	Lightbulb,
-	ChevronRight,
-	CornerDownLeft,
-	Code,
 	AlertCircle,
+	AlignJustify,
+	AlignLeft,
+	BookOpen,
+	Check,
+	ChevronRight,
+	Code,
+	CornerDownLeft,
+	FileText,
+	Languages,
+	Lightbulb,
+	MessageSquare,
+	Pencil,
+	PenLine,
+	Sparkles,
+	Twitter,
+	Waves,
 } from "lucide-react"
-import type { AIAction, AIActionGroup } from "./types"
-import { TRANSLATE_LANGUAGES, TEXT_TONES } from "./types"
+import { useCallback, useState } from "react"
 import { AISubMenu } from "./ai-sub-menu"
+import type { AIAction, AIActionGroup } from "./types"
+import { TEXT_TONES, TRANSLATE_LANGUAGES } from "./types"
 
 interface AIActionListProps {
-	onActionSelect: (action: AIAction, options?: { lang?: string; tone?: string }) => void
+	onActionSelect: (
+		action: AIAction,
+		options?: { lang?: string; tone?: string },
+	) => void
 	selectedText: string
 }
 
@@ -35,40 +38,118 @@ const createActionGroups = (hasCode: boolean): AIActionGroup[] => {
 		{
 			name: "REVIEW TEXT",
 			items: [
-				{ id: "fixSpelling", name: "Fix spelling", icon: <Pencil className="h-5 w-5" /> },
-				{ id: "fixGrammar", name: "Fix grammar", icon: <Pencil className="h-5 w-5" /> },
-				{ id: "explain", name: "Explain selection", icon: <MessageSquare className="h-5 w-5" /> },
+				{
+					id: "fixSpelling",
+					name: "Fix spelling",
+					icon: <Pencil className="h-5 w-5" />,
+				},
+				{
+					id: "fixGrammar",
+					name: "Fix grammar",
+					icon: <Pencil className="h-5 w-5" />,
+				},
+				{
+					id: "explain",
+					name: "Explain selection",
+					icon: <MessageSquare className="h-5 w-5" />,
+				},
 			],
 		},
 		{
 			name: "EDIT TEXT",
 			items: [
-				{ id: "translate", name: "Translate to", icon: <Languages className="h-5 w-5" /> },
-				{ id: "changeTone", name: "Change tone to", icon: <Waves className="h-5 w-5" /> },
-				{ id: "improveWriting", name: "Improve writing", icon: <Sparkles className="h-5 w-5" /> },
-				{ id: "makeLonger", name: "Make it longer", icon: <AlignJustify className="h-5 w-5" /> },
-				{ id: "makeShorter", name: "Make it shorter", icon: <AlignLeft className="h-5 w-5" /> },
-				{ id: "continueWriting", name: "Continue writing", icon: <PenLine className="h-5 w-5" /> },
+				{
+					id: "translate",
+					name: "Translate to",
+					icon: <Languages className="h-5 w-5" />,
+				},
+				{
+					id: "changeTone",
+					name: "Change tone to",
+					icon: <Waves className="h-5 w-5" />,
+				},
+				{
+					id: "improveWriting",
+					name: "Improve writing",
+					icon: <Sparkles className="h-5 w-5" />,
+				},
+				{
+					id: "makeLonger",
+					name: "Make it longer",
+					icon: <AlignJustify className="h-5 w-5" />,
+				},
+				{
+					id: "makeShorter",
+					name: "Make it shorter",
+					icon: <AlignLeft className="h-5 w-5" />,
+				},
+				{
+					id: "continueWriting",
+					name: "Continue writing",
+					icon: <PenLine className="h-5 w-5" />,
+				},
 			],
 		},
 		{
 			name: "GENERATE FROM TEXT",
 			items: [
-				{ id: "summarize", name: "Summarize", icon: <FileText className="h-5 w-5" /> },
-				{ id: "generateHeadings", name: "Generate headings", icon: <FileText className="h-5 w-5" />, beta: true },
-				{ id: "generateOutline", name: "Generate outline", icon: <FileText className="h-5 w-5" /> },
-				{ id: "brainstormMindmap", name: "Brainstorm ideas with mind map", icon: <Lightbulb className="h-5 w-5" /> },
-				{ id: "findActions", name: "Find actions", icon: <Check className="h-5 w-5" />, beta: true },
+				{
+					id: "summarize",
+					name: "Summarize",
+					icon: <FileText className="h-5 w-5" />,
+				},
+				{
+					id: "generateHeadings",
+					name: "Generate headings",
+					icon: <FileText className="h-5 w-5" />,
+					beta: true,
+				},
+				{
+					id: "generateOutline",
+					name: "Generate outline",
+					icon: <FileText className="h-5 w-5" />,
+				},
+				{
+					id: "brainstormMindmap",
+					name: "Brainstorm ideas with mind map",
+					icon: <Lightbulb className="h-5 w-5" />,
+				},
+				{
+					id: "findActions",
+					name: "Find actions",
+					icon: <Check className="h-5 w-5" />,
+					beta: true,
+				},
 			],
 		},
 		{
 			name: "DRAFT FROM TEXT",
 			items: [
-				{ id: "writeArticle", name: "Write an article about this", icon: <BookOpen className="h-5 w-5" /> },
-				{ id: "writeTweet", name: "Write a tweet about this", icon: <Twitter className="h-5 w-5" /> },
-				{ id: "writePoem", name: "Write a poem about this", icon: <PenLine className="h-5 w-5" /> },
-				{ id: "writeBlogPost", name: "Write a blog post about this", icon: <BookOpen className="h-5 w-5" /> },
-				{ id: "brainstormIdeas", name: "Brainstorm ideas about this", icon: <Lightbulb className="h-5 w-5" /> },
+				{
+					id: "writeArticle",
+					name: "Write an article about this",
+					icon: <BookOpen className="h-5 w-5" />,
+				},
+				{
+					id: "writeTweet",
+					name: "Write a tweet about this",
+					icon: <Twitter className="h-5 w-5" />,
+				},
+				{
+					id: "writePoem",
+					name: "Write a poem about this",
+					icon: <PenLine className="h-5 w-5" />,
+				},
+				{
+					id: "writeBlogPost",
+					name: "Write a blog post about this",
+					icon: <BookOpen className="h-5 w-5" />,
+				},
+				{
+					id: "brainstormIdeas",
+					name: "Brainstorm ideas about this",
+					icon: <Lightbulb className="h-5 w-5" />,
+				},
 			],
 		},
 	]
@@ -78,8 +159,16 @@ const createActionGroups = (hasCode: boolean): AIActionGroup[] => {
 		groups.splice(1, 0, {
 			name: "REVIEW CODE",
 			items: [
-				{ id: "explainCode", name: "Explain this code", icon: <Code className="h-5 w-5" /> },
-				{ id: "checkCodeErrors", name: "Check code error", icon: <AlertCircle className="h-5 w-5" /> },
+				{
+					id: "explainCode",
+					name: "Explain this code",
+					icon: <Code className="h-5 w-5" />,
+				},
+				{
+					id: "checkCodeErrors",
+					name: "Check code error",
+					icon: <AlertCircle className="h-5 w-5" />,
+				},
 			],
 		})
 	}
@@ -100,9 +189,15 @@ function looksLikeCode(text: string): boolean {
 	return codePatterns.some((pattern) => pattern.test(text))
 }
 
-export function AIActionList({ onActionSelect, selectedText }: AIActionListProps) {
+export function AIActionList({
+	onActionSelect,
+	selectedText,
+}: AIActionListProps) {
 	const [hoveredAction, setHoveredAction] = useState<string | null>(null)
-	const [subMenuPosition, setSubMenuPosition] = useState<{ x: number; y: number } | null>(null)
+	const [subMenuPosition, setSubMenuPosition] = useState<{
+		x: number
+		y: number
+	} | null>(null)
 
 	const hasCode = looksLikeCode(selectedText)
 	const actionGroups = createActionGroups(hasCode)
@@ -162,15 +257,16 @@ export function AIActionList({ onActionSelect, selectedText }: AIActionListProps
 	return (
 		<div className="ai-action-list">
 			{actionGroups.map((group) => (
-				<div key={group.name} className="ai-action-group">
+				<div className="ai-action-group" key={group.name}>
 					<div className="ai-action-group-name">{group.name}</div>
 					{group.items.map((action) => {
-						const hasSubMenu = action.id === "translate" || action.id === "changeTone"
+						const hasSubMenu =
+							action.id === "translate" || action.id === "changeTone"
 
 						return (
 							<div
-								key={action.id}
 								className="ai-action-item"
+								key={action.id}
 								onClick={() => handleActionClick(action)}
 								onMouseEnter={(e) => handleMouseEnter(action, e)}
 								onMouseLeave={handleMouseLeave}
@@ -178,7 +274,9 @@ export function AIActionList({ onActionSelect, selectedText }: AIActionListProps
 								<span className="ai-action-icon">{action.icon}</span>
 								<span className="ai-action-name">
 									{action.name}
-									{action.beta && <span className="ai-action-beta">(Beta)</span>}
+									{action.beta && (
+										<span className="ai-action-beta">(Beta)</span>
+									)}
 								</span>
 								{hasSubMenu ? (
 									<ChevronRight className="ai-action-arrow h-4 w-4" />
@@ -195,26 +293,26 @@ export function AIActionList({ onActionSelect, selectedText }: AIActionListProps
 			{hoveredAction === "translate" && subMenuPosition && (
 				<AISubMenu
 					items={[...TRANSLATE_LANGUAGES]}
-					position={subMenuPosition}
-					onSelect={handleSubMenuSelect}
 					onMouseEnter={() => setHoveredAction("translate")}
 					onMouseLeave={() => {
 						setHoveredAction(null)
 						setSubMenuPosition(null)
 					}}
+					onSelect={handleSubMenuSelect}
+					position={subMenuPosition}
 				/>
 			)}
 
 			{hoveredAction === "changeTone" && subMenuPosition && (
 				<AISubMenu
 					items={[...TEXT_TONES]}
-					position={subMenuPosition}
-					onSelect={handleSubMenuSelect}
 					onMouseEnter={() => setHoveredAction("changeTone")}
 					onMouseLeave={() => {
 						setHoveredAction(null)
 						setSubMenuPosition(null)
 					}}
+					onSelect={handleSubMenuSelect}
+					position={subMenuPosition}
 				/>
 			)}
 		</div>

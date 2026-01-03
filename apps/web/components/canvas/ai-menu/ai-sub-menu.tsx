@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback } from "react"
 import { motion } from "framer-motion"
+import { useCallback } from "react"
 
 interface AISubMenuProps {
 	items: string[]
@@ -27,25 +27,25 @@ export function AISubMenu({
 
 	return (
 		<motion.div
-			initial={{ opacity: 0, x: -10 }}
 			animate={{ opacity: 1, x: 0 }}
-			exit={{ opacity: 0, x: -10 }}
-			transition={{ duration: 0.1 }}
 			className="ai-sub-menu"
+			exit={{ opacity: 0, x: -10 }}
+			initial={{ opacity: 0, x: -10 }}
+			onMouseEnter={onMouseEnter}
+			onMouseLeave={onMouseLeave}
 			style={{
 				position: "fixed",
 				left: position.x,
 				top: position.y,
 				zIndex: 10000,
 			}}
-			onMouseEnter={onMouseEnter}
-			onMouseLeave={onMouseLeave}
+			transition={{ duration: 0.1 }}
 		>
 			<div className="ai-sub-menu-container">
 				{items.map((item) => (
 					<div
-						key={item}
 						className="ai-sub-menu-item"
+						key={item}
 						onClick={() => handleClick(item)}
 					>
 						{item}

@@ -51,7 +51,7 @@ export async function urlToBlob(url: string): Promise<Blob> {
 
 // Get image dimensions
 export function getImageSize(
-	src: string
+	src: string,
 ): Promise<{ width: number; height: number }> {
 	return new Promise((resolve, reject) => {
 		const img = new Image()
@@ -65,7 +65,7 @@ export function getImageSize(
 // Convert aspect ratio to dimensions
 export function aspectToSize(
 	ratio: string,
-	base = 1024
+	base = 1024,
 ): { width: number; height: number } {
 	const parts = ratio.split(":").map(Number)
 	const w = parts[0] ?? 1
@@ -125,7 +125,7 @@ function buildSafePrompt(
 		allowPeople?: boolean
 		hasReferenceImage?: boolean
 		aspectRatio?: string
-	}
+	},
 ): string {
 	const trimmed = prompt.trim()
 	const hasReferenceImage = Boolean(options?.hasReferenceImage)
@@ -134,7 +134,7 @@ function buildSafePrompt(
 	const base =
 		trimmed ||
 		(hasReferenceImage
-			? `Generate a new and different variant of this reference image. Keep the main subject recognizable, but change pose, composition, camera angle, lighting, and background. Do not reproduce the exact scene.`
+			? "Generate a new and different variant of this reference image. Keep the main subject recognizable, but change pose, composition, camera angle, lighting, and background. Do not reproduce the exact scene."
 			: "")
 	if (!base) return ""
 
@@ -154,7 +154,7 @@ function buildSafePrompt(
 export async function generateTextToImage(
 	prompt: string,
 	numberOfImages = 1,
-	aspectRatio = "1:1"
+	aspectRatio = "1:1",
 ): Promise<string[]> {
 	const size = aspectToSize(aspectRatio, 1024)
 	const res = await fetch("/api/fal", {
@@ -175,7 +175,7 @@ export async function generateImageToImage(
 	prompt: string,
 	imageDataUrl: string,
 	numberOfImages = 1,
-	aspectRatio = "1:1"
+	aspectRatio = "1:1",
 ): Promise<string[]> {
 	const size = aspectToSize(aspectRatio, 1024)
 	const res = await fetch("/api/fal", {
@@ -200,7 +200,7 @@ export async function generateImageToImage(
 export async function inpaintImage(
 	prompt: string,
 	imageDataUrl: string,
-	maskDataUrl: string
+	maskDataUrl: string,
 ): Promise<string[]> {
 	const res = await fetch("/api/fal", {
 		method: "POST",
@@ -223,7 +223,7 @@ export async function generateSeedream(
 		image_size?: { width: number; height: number }
 		max_images?: number
 		seed?: number
-	}
+	},
 ): Promise<string[]> {
 	const res = await fetch("/api/fal", {
 		method: "POST",
@@ -254,7 +254,7 @@ export async function generateSeedream(
 // VIDEO GENERATION (Veo3)
 export async function generateVideo(
 	prompt: string,
-	imageDataUrl?: string
+	imageDataUrl?: string,
 ): Promise<string[]> {
 	const res = await fetch("/api/fal", {
 		method: "POST",
@@ -295,7 +295,7 @@ export async function generateContent(
 	prompt: string,
 	action: GenerationAction,
 	options: GenerationOptions,
-	imageDataUrl?: string
+	imageDataUrl?: string,
 ): Promise<{ type: "image" | "video"; urls: string[] }> {
 	const normalizedPrompt = buildSafePrompt(prompt, {
 		allowPeople: imageDataUrl ? true : undefined,
@@ -324,7 +324,7 @@ export async function generateContent(
 			normalizedPrompt,
 			imageDataUrl,
 			options.numberOfImages,
-			options.aspectRatio
+			options.aspectRatio,
 		)
 		return { type: "image", urls }
 	}
@@ -333,7 +333,7 @@ export async function generateContent(
 	const urls = await generateTextToImage(
 		normalizedPrompt,
 		options.numberOfImages,
-		options.aspectRatio
+		options.aspectRatio,
 	)
 	return { type: "image", urls }
 }
@@ -344,7 +344,7 @@ export async function generateContent(
 
 export async function describeImage(
 	imageDataUrl: string,
-	language: "pt-BR" | "en" = "pt-BR"
+	language: "pt-BR" | "en" = "pt-BR",
 ): Promise<string> {
 	const res = await fetch("/api/describe", {
 		method: "POST",
@@ -364,7 +364,7 @@ export async function describeImage(
 export async function addImageToCanvas(
 	editor: Editor,
 	imageSrc: string,
-	position?: { x: number; y: number }
+	position?: { x: number; y: number },
 ): Promise<string> {
 	// 1. Get image dimensions
 	const { width, height } = await getImageSize(imageSrc)
@@ -424,7 +424,7 @@ export async function addImageToCanvas(
 // Add multiple images to canvas in a grid
 export async function addImagesToCanvas(
 	editor: Editor,
-	imageSrcs: string[]
+	imageSrcs: string[],
 ): Promise<string[]> {
 	const shapeIds: string[] = []
 	const viewportCenter = editor.getViewportScreenCenter()
@@ -451,7 +451,7 @@ export async function addImagesToCanvas(
 export async function updateImageAsset(
 	editor: Editor,
 	assetId: TLAssetId,
-	newSrc: string
+	newSrc: string,
 ) {
 	const { width, height } = await getImageSize(newSrc)
 

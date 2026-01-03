@@ -1,6 +1,17 @@
 "use client"
 
-import { cn } from "@lib/utils"
+import {
+	asRecord,
+	cn,
+	formatPreviewLabel,
+	getYouTubeThumbnail,
+	isInlineSvgDataUrl,
+	isYouTubeUrl,
+	PROCESSING_STATUSES,
+	pickFirstUrlSameHost,
+	proxyImageUrl,
+	safeHttpUrl,
+} from "@lib/utils"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -31,6 +42,7 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { z } from "zod"
+import { MarkdownContent } from "@/components/markdown-content"
 import { cancelDocument } from "@/lib/api/documents-client"
 import { getDocumentIcon } from "@/lib/document-icon"
 import {
@@ -39,22 +51,6 @@ import {
 	getSourceUrl,
 	stripMarkdown,
 } from "../memories"
-import { MarkdownContent } from "@/components/markdown-content"
-import {
-	asRecord,
-	safeHttpUrl,
-	pickFirstUrl,
-	pickFirstUrlSameHost,
-	sameHostOrTrustedCdn,
-	formatPreviewLabel,
-	isYouTubeUrl,
-	getYouTubeId,
-	getYouTubeThumbnail,
-	isInlineSvgDataUrl,
-	PROCESSING_STATUSES,
-	proxyImageUrl,
-	type BaseRecord,
-} from "@lib/utils"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
@@ -136,8 +132,8 @@ const getDocumentPreview = (
 		safeHttpUrl((metadata as any)?.sourceUrl) ??
 		safeHttpUrl(document.url) ??
 		safeHttpUrl(rawYoutube?.url)
-	const geminiFileUri = safeHttpUrl(rawGemini?.["uri"], originalUrl)
-	const geminiFileUrl = safeHttpUrl(rawGemini?.["url"], originalUrl)
+	const geminiFileUri = safeHttpUrl(rawGemini?.uri, originalUrl)
+	const geminiFileUrl = safeHttpUrl(rawGemini?.url, originalUrl)
 
 	// No special-casing by domain for main preview
 
@@ -187,7 +183,7 @@ const getDocumentPreview = (
 		return out
 	})()
 
-	const preferredFromExtracted =
+	const _preferredFromExtracted =
 		extractedImages.find((u) => !isLikelyGeneric(u)) || extractedImages[0]
 
 	const isDisallowedBadgeDomain = (u?: string) => {
@@ -343,7 +339,7 @@ const getDocumentPreview = (
 	const documentPreviewImage = (() => {
 		const url = safeHttpUrl(document.previewImage)
 		// Block SVG placeholders - they're generic and provide no value
-		if (url && url.includes("data:image/svg+xml")) {
+		if (url?.includes("data:image/svg+xml")) {
 			return undefined
 		}
 		return url
@@ -451,14 +447,14 @@ export const DocumentCard = memo(
 			if (!createdAt) return false
 			const created = new Date(createdAt).getTime()
 			const now = Date.now()
-			return (now - created) < 10000 // Less than 10 seconds
+			return now - created < 10000 // Less than 10 seconds
 		})()
 
 		const [stickyPreview, setStickyPreview] = useState<PreviewData | null>(null)
 
 		useEffect(() => {
 			setStickyPreview(null)
-		}, [document.id])
+		}, [])
 
 		useEffect(() => {
 			if (!isProcessing) {
@@ -525,7 +521,7 @@ export const DocumentCard = memo(
 				setProgressPct(s.from)
 				startRef.current = performance.now()
 			}
-		}, [document.status])
+		}, [document.status, stageForStatus])
 
 		useEffect(() => {
 			if (!isProcessing) return
@@ -543,9 +539,9 @@ export const DocumentCard = memo(
 			}
 			rafId = requestAnimationFrame(tick)
 			return () => cancelAnimationFrame(rafId)
-		}, [isProcessing])
+		}, [isProcessing, stageForStatus])
 
-		const getProgressInfo = () => {
+		const _getProgressInfo = () => {
 			const st = String(document.status || "unknown").toLowerCase()
 			switch (st) {
 				case "queued":
@@ -642,120 +638,116 @@ export const DocumentCard = memo(
 					</button>
 				)}
 
-			{/* Processing overlay - shows different states */}
-			{isOptimisticDoc ? (
-				/* Optimistic - still sending to backend */
-				<div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center pointer-events-none">
-					<div className="flex flex-col items-center gap-2">
-						<svg
-							className="animate-spin h-5 w-5 text-white/70"
-							viewBox="0 0 24 24"
-						>
-							<circle
-								className="opacity-25"
-								cx="12"
-								cy="12"
+				{/* Processing overlay - shows different states */}
+				{isOptimisticDoc ? (
+					/* Optimistic - still sending to backend */
+					<div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center pointer-events-none">
+						<div className="flex flex-col items-center gap-2">
+							<svg
+								className="animate-spin h-5 w-5 text-white/70"
+								viewBox="0 0 24 24"
+							>
+								<circle
+									className="opacity-25"
+									cx="12"
+									cy="12"
+									fill="none"
+									r="10"
+									stroke="currentColor"
+									strokeWidth="3"
+								/>
+								<path
+									className="opacity-75"
+									d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+									fill="currentColor"
+								/>
+							</svg>
+							<div className="text-[11px] text-white/80">Enviando...</div>
+						</div>
+					</div>
+				) : isQueued && isRecentlyCreated ? (
+					/* Recently created - show "Iniciando..." */
+					<div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center pointer-events-none">
+						<div className="flex flex-col items-center gap-2">
+							<svg
+								className="animate-spin h-5 w-5 text-white/70"
+								viewBox="0 0 24 24"
+							>
+								<circle
+									className="opacity-25"
+									cx="12"
+									cy="12"
+									fill="none"
+									r="10"
+									stroke="currentColor"
+									strokeWidth="3"
+								/>
+								<path
+									className="opacity-75"
+									d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+									fill="currentColor"
+								/>
+							</svg>
+							<div className="text-[11px] text-white/80">Iniciando...</div>
+						</div>
+					</div>
+				) : isQueued ? (
+					/* Queued for a while - in backend queue */
+					<div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center pointer-events-none">
+						<div className="flex flex-col items-center gap-2">
+							{/* Clock icon */}
+							<svg
+								className="h-5 w-5 text-white/70"
 								fill="none"
-								r="10"
 								stroke="currentColor"
-								strokeWidth="3"
-							/>
-							<path
-								className="opacity-75"
-								d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-								fill="currentColor"
-							/>
-						</svg>
-						<div className="text-[11px] text-white/80">
-							Enviando...
+								strokeWidth="2"
+								viewBox="0 0 24 24"
+							>
+								<circle cx="12" cy="12" r="10" />
+								<polyline points="12,6 12,12 16,14" />
+							</svg>
+							<div className="text-[11px] text-white/80">Na fila</div>
 						</div>
 					</div>
-				</div>
-			) : isQueued && isRecentlyCreated ? (
-				/* Recently created - show "Iniciando..." */
-				<div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center pointer-events-none">
-					<div className="flex flex-col items-center gap-2">
-						<svg
-							className="animate-spin h-5 w-5 text-white/70"
-							viewBox="0 0 24 24"
-						>
-							<circle
-								className="opacity-25"
-								cx="12"
-								cy="12"
-								fill="none"
-								r="10"
-								stroke="currentColor"
-								strokeWidth="3"
-							/>
-							<path
-								className="opacity-75"
-								d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-								fill="currentColor"
-							/>
-						</svg>
-						<div className="text-[11px] text-white/80">
-							Iniciando...
+				) : (
+					isProcessing && (
+						/* Active processing state */
+						<div className="absolute inset-0 z-20 bg-black/60 flex items-end justify-center pb-8 pointer-events-none">
+							<div className="flex flex-col items-center gap-2">
+								<svg
+									className="animate-spin h-5 w-5 text-white/70"
+									viewBox="0 0 24 24"
+								>
+									<circle
+										className="opacity-25"
+										cx="12"
+										cy="12"
+										fill="none"
+										r="10"
+										stroke="currentColor"
+										strokeWidth="3"
+									/>
+									<path
+										className="opacity-75"
+										d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+										fill="currentColor"
+									/>
+								</svg>
+								<div className="text-[11px] text-white/80">
+									{progressLabel} • {Math.floor(progressPct)}%
+								</div>
+								<div className="h-1 w-24 rounded bg-white/20">
+									<div
+										className="h-1 rounded bg-white"
+										style={{
+											width: `${Math.max(0, Math.min(100, progressPct))}%`,
+										}}
+									/>
+								</div>
+							</div>
 						</div>
-					</div>
-				</div>
-			) : isQueued ? (
-				/* Queued for a while - in backend queue */
-				<div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center pointer-events-none">
-					<div className="flex flex-col items-center gap-2">
-						{/* Clock icon */}
-						<svg
-							className="h-5 w-5 text-white/70"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth="2"
-						>
-							<circle cx="12" cy="12" r="10" />
-							<polyline points="12,6 12,12 16,14" />
-						</svg>
-						<div className="text-[11px] text-white/80">
-							Na fila
-						</div>
-					</div>
-				</div>
-			) : isProcessing && (
-				/* Active processing state */
-				<div className="absolute inset-0 z-20 bg-black/60 flex items-end justify-center pb-8 pointer-events-none">
-					<div className="flex flex-col items-center gap-2">
-						<svg
-							className="animate-spin h-5 w-5 text-white/70"
-							viewBox="0 0 24 24"
-						>
-							<circle
-								className="opacity-25"
-								cx="12"
-								cy="12"
-								fill="none"
-								r="10"
-								stroke="currentColor"
-								strokeWidth="3"
-							/>
-							<path
-								className="opacity-75"
-								d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-								fill="currentColor"
-							/>
-						</svg>
-						<div className="text-[11px] text-white/80">
-							{progressLabel} • {Math.floor(progressPct)}%
-						</div>
-						<div className="h-1 w-24 rounded bg-white/20">
-							<div
-								className="h-1 rounded bg-white"
-								style={{
-									width: `${Math.max(0, Math.min(100, progressPct))}%`,
-								}}
-							/>
-						</div>
-					</div>
-				</div>
-			)}
+					)
+				)}
 
 				<CardHeader className="relative z-10 px-0">
 					<div className="flex items-center justify-between gap-2">
@@ -774,7 +766,9 @@ export const DocumentCard = memo(
 										.trim()
 										.replace(/^['"""''`]+|['"""''`]+$/g, "")
 									if (isData || !cleaned) {
-										return (isProcessing || isOptimisticDoc || isQueued) ? "Processando..." : "Sem título"
+										return isProcessing || isOptimisticDoc || isQueued
+											? "Processando..."
+											: "Sem título"
 									}
 									return cleaned
 								})()}
@@ -838,7 +832,10 @@ export const DocumentCard = memo(
 											priority={false}
 											referrerPolicy="no-referrer"
 											sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-											src={proxyImageUrl(previewToRender.src) || previewToRender.src}
+											src={
+												proxyImageUrl(previewToRender.src) ||
+												previewToRender.src
+											}
 										/>
 									))}
 								<div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45 z-20" />
@@ -893,11 +890,13 @@ export const DocumentCard = memo(
 						const isValidTag = (t: string): boolean => {
 							if (!t || t.length < 2 || t.length > 30) return false
 							// Filter tags that look like URL parts or repo names
-							if (t.startsWith("/") || t.endsWith(":") || t.endsWith("/")) return false
+							if (t.startsWith("/") || t.endsWith(":") || t.endsWith("/"))
+								return false
 							// Filter tags with only special characters
 							if (/^[^a-z0-9]+$/i.test(t)) return false
 							// Filter common URL/path fragments
-							if (/^(http|https|www|com|org|io|github|hugging)$/i.test(t)) return false
+							if (/^(http|https|www|com|org|io|github|hugging)$/i.test(t))
+								return false
 							return true
 						}
 

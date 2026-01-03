@@ -9,9 +9,9 @@ import type { WheelEvent } from "react"
 import {
 	BaseBoxShapeUtil,
 	HTMLContainer,
+	resizeBox,
 	T,
 	type TLBaseShape,
-	resizeBox,
 	type TLResizeInfo,
 } from "tldraw"
 
@@ -90,16 +90,12 @@ export class ResponseShapeUtil extends BaseBoxShapeUtil<ResponseShape> {
 						<div className="response-shape-footer">
 							{thumbnail && (
 								<img
-									src={thumbnail}
 									alt="Source"
 									className="response-shape-thumbnail"
+									src={thumbnail}
 								/>
 							)}
-							{prompt && (
-								<div className="response-shape-prompt">
-									{prompt}
-								</div>
-							)}
+							{prompt && <div className="response-shape-prompt">{prompt}</div>}
 						</div>
 					)}
 				</div>
@@ -193,13 +189,6 @@ export class ResponseShapeUtil extends BaseBoxShapeUtil<ResponseShape> {
 	}
 
 	indicator(shape: ResponseShape) {
-		return (
-			<rect
-				width={shape.props.w}
-				height={shape.props.h}
-				rx={16}
-				ry={16}
-			/>
-		)
+		return <rect height={shape.props.h} rx={16} ry={16} width={shape.props.w} />
 	}
 }

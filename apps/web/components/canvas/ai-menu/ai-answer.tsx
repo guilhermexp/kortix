@@ -1,14 +1,14 @@
 "use client"
 
-import { useCallback, useRef, useEffect } from "react"
 import {
-	Copy,
 	ArrowDownToLine,
-	Replace,
-	RefreshCw,
-	Trash2,
+	Copy,
 	MessageSquare,
+	RefreshCw,
+	Replace,
+	Trash2,
 } from "lucide-react"
+import { useCallback, useEffect, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 
 interface AIAnswerProps {
@@ -37,7 +37,7 @@ export function AIAnswer({
 		if (isStreaming && contentRef.current) {
 			contentRef.current.scrollTop = contentRef.current.scrollHeight
 		}
-	}, [content, isStreaming])
+	}, [isStreaming])
 
 	const handleCopy = useCallback(async () => {
 		try {
@@ -51,14 +51,16 @@ export function AIAnswer({
 
 	return (
 		<div className="ai-answer">
-			<div ref={contentRef} className="ai-answer-content">
+			<div className="ai-answer-content" ref={contentRef}>
 				<ReactMarkdown
 					components={{
 						p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
 						code: ({ children, className }) => {
 							const isInline = !className
 							return isInline ? (
-								<code className="bg-zinc-800 px-1 py-0.5 rounded text-sm">{children}</code>
+								<code className="bg-zinc-800 px-1 py-0.5 rounded text-sm">
+									{children}
+								</code>
 							) : (
 								<code className="block bg-zinc-800 p-2 rounded text-sm overflow-x-auto">
 									{children}
@@ -66,14 +68,26 @@ export function AIAnswer({
 							)
 						},
 						pre: ({ children }) => (
-							<pre className="bg-zinc-800 p-2 rounded my-2 overflow-x-auto">{children}</pre>
+							<pre className="bg-zinc-800 p-2 rounded my-2 overflow-x-auto">
+								{children}
+							</pre>
 						),
-						ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
-						ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
+						ul: ({ children }) => (
+							<ul className="list-disc pl-4 mb-2">{children}</ul>
+						),
+						ol: ({ children }) => (
+							<ol className="list-decimal pl-4 mb-2">{children}</ol>
+						),
 						li: ({ children }) => <li className="mb-1">{children}</li>,
-						h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
-						h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
-						h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+						h1: ({ children }) => (
+							<h1 className="text-lg font-bold mb-2">{children}</h1>
+						),
+						h2: ({ children }) => (
+							<h2 className="text-base font-bold mb-2">{children}</h2>
+						),
+						h3: ({ children }) => (
+							<h3 className="text-sm font-bold mb-1">{children}</h3>
+						),
 					}}
 				>
 					{content}
@@ -90,10 +104,10 @@ export function AIAnswer({
 							<div className="ai-answer-actions-buttons">
 								{onInsertBelow && (
 									<button
-										type="button"
-										onClick={onInsertBelow}
 										className="ai-answer-action-btn"
+										onClick={onInsertBelow}
 										title="Insert below"
+										type="button"
 									>
 										<ArrowDownToLine className="h-4 w-4" />
 										<span>Insert below</span>
@@ -101,10 +115,10 @@ export function AIAnswer({
 								)}
 								{onReplace && (
 									<button
-										type="button"
-										onClick={onReplace}
 										className="ai-answer-action-btn"
+										onClick={onReplace}
 										title="Replace selection"
+										type="button"
 									>
 										<Replace className="h-4 w-4" />
 										<span>Replace selection</span>
@@ -117,19 +131,19 @@ export function AIAnswer({
 					{/* Common actions */}
 					<div className="ai-answer-common-actions">
 						<button
-							type="button"
-							onClick={handleCopy}
 							className="ai-answer-action-btn"
+							onClick={handleCopy}
 							title="Copy"
+							type="button"
 						>
 							<Copy className="h-4 w-4" />
 						</button>
 						{onContinueChat && (
 							<button
-								type="button"
-								onClick={onContinueChat}
 								className="ai-answer-action-btn"
+								onClick={onContinueChat}
 								title="Continue in chat"
+								type="button"
 							>
 								<MessageSquare className="h-4 w-4" />
 								<span>Continue in chat</span>
@@ -137,10 +151,10 @@ export function AIAnswer({
 						)}
 						{onRegenerate && (
 							<button
-								type="button"
-								onClick={onRegenerate}
 								className="ai-answer-action-btn"
+								onClick={onRegenerate}
 								title="Regenerate"
+								type="button"
 							>
 								<RefreshCw className="h-4 w-4" />
 								<span>Regenerate</span>
@@ -148,10 +162,10 @@ export function AIAnswer({
 						)}
 						{onDiscard && (
 							<button
-								type="button"
-								onClick={onDiscard}
 								className="ai-answer-action-btn discard"
+								onClick={onDiscard}
 								title="Discard"
+								type="button"
 							>
 								<Trash2 className="h-4 w-4" />
 								<span>Discard</span>

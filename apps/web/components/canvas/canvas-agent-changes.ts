@@ -1,7 +1,7 @@
 "use client"
 
 import type { BoxModel, TLShapeId } from "tldraw"
-import { Box, type Editor, createShapeId, toRichText } from "tldraw"
+import { Box, createShapeId, type Editor, toRichText } from "tldraw"
 
 // Minimal change format that Claude (via MCP) can produce
 // and the canvas can apply locally.
@@ -56,7 +56,9 @@ function ensureShapeId(shape: Record<string, any>): TLShapeId {
  * Prepare shape for TLDraw createShape API.
  * Ensures proper ID format and sets defaults.
  */
-function prepareShapeForCreate(shape: Record<string, any>): Record<string, any> {
+function prepareShapeForCreate(
+	shape: Record<string, any>,
+): Record<string, any> {
 	const id = ensureShapeId(shape)
 	const type = shape.type || "note"
 
@@ -122,7 +124,7 @@ function prepareShapeForCreate(shape: Record<string, any>): Record<string, any> 
 			const normalizeArrowEndpoint = (
 				endpoint: any,
 				defaultX: number,
-				defaultY: number
+				defaultY: number,
 			): { x: number; y: number } => {
 				if (!endpoint) {
 					return { x: defaultX, y: defaultY }
@@ -144,7 +146,7 @@ function prepareShapeForCreate(shape: Record<string, any>): Record<string, any> 
 				// The arrow will be placed at default and user can reconnect manually
 				if (endpoint.type === "binding") {
 					console.warn(
-						"[prepareShapeForCreate] Arrow binding not supported, using default position"
+						"[prepareShapeForCreate] Arrow binding not supported, using default position",
 					)
 					return { x: defaultX, y: defaultY }
 				}
@@ -180,17 +182,26 @@ function prepareShapeForCreate(shape: Record<string, any>): Record<string, any> 
 	return prepared
 }
 
-export function applyCanvasAgentChange(editor: Editor, change: CanvasAgentChange) {
+export function applyCanvasAgentChange(
+	editor: Editor,
+	change: CanvasAgentChange,
+) {
 	switch (change.type) {
 		case "createShape": {
 			if (change.shape && typeof change.shape === "object") {
-				console.log("[applyCanvasAgentChange] Input shape:", JSON.stringify(change.shape, null, 2))
+				console.log(
+					"[applyCanvasAgentChange] Input shape:",
+					JSON.stringify(change.shape, null, 2),
+				)
 				const prepared = prepareShapeForCreate(change.shape)
 				// Ensure the shape has a parent page to avoid TLDraw rejecting the shape
 				if (!prepared.parentId) {
 					prepared.parentId = editor.getCurrentPageId()
 				}
-				console.log("[applyCanvasAgentChange] Prepared shape:", JSON.stringify(prepared, null, 2))
+				console.log(
+					"[applyCanvasAgentChange] Prepared shape:",
+					JSON.stringify(prepared, null, 2),
+				)
 				try {
 					editor.createShape(prepared as any)
 					console.log("[applyCanvasAgentChange] Shape created successfully")
@@ -213,7 +224,7 @@ export function applyCanvasAgentChange(editor: Editor, change: CanvasAgentChange
 		case "selectShapes": {
 			// Convert string IDs to TLShapeId format
 			const shapeIds = change.ids.map((id) =>
-				id.startsWith("shape:") ? id : createShapeId(id)
+				id.startsWith("shape:") ? id : createShapeId(id),
 			) as TLShapeId[]
 			editor.select(...shapeIds)
 			break
@@ -234,9 +245,9 @@ export function applyCanvasAgentChange(editor: Editor, change: CanvasAgentChange
 		}
 		case "focusOnShape": {
 			// Convert string ID to TLShapeId format
-			const shapeId = (change.id.startsWith("shape:")
-				? change.id
-				: createShapeId(change.id)) as TLShapeId
+			const shapeId = (
+				change.id.startsWith("shape:") ? change.id : createShapeId(change.id)
+			) as TLShapeId
 			const shape = editor.getShape(shapeId)
 			if (!shape) break
 			const shapeBounds = editor.getShapePageBounds(shape)

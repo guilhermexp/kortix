@@ -5,61 +5,45 @@
 // ============================================================
 
 import {
-	Image as ImageIcon,
-	X,
-	Loader2,
-	Settings,
-	Palette,
-	Send,
+	ArrowUpRight,
 	ChevronDown,
 	ChevronUp,
-	Target,
 	Crosshair,
-	Square,
-	Eye,
-	Plus,
-	MousePointer2,
-	Hand,
-	Pencil,
 	Eraser,
-	ArrowUpRight,
-	Type,
-	StickyNote,
+	Eye,
+	Hand,
+	Image as ImageIcon,
+	Loader2,
+	MousePointer2,
+	Palette,
+	Pencil,
+	Plus,
 	RectangleHorizontal,
+	Send,
+	Settings,
+	Square,
+	StickyNote,
+	Target,
+	Type,
+	X,
 } from "lucide-react"
-import { useRef, useState, useCallback, useEffect } from "react"
-import { useValue, toRichText } from "tldraw"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { Editor, TLShapeId } from "tldraw"
-import { createShapeId } from "tldraw"
+import { createShapeId, toRichText, useValue } from "tldraw"
 import {
 	$canvasContextItems,
-	$chatHistoryItems,
-	$isAgentProcessing,
-	$requestsSchedule,
-	$streamingResponse,
-	$isChatExpanded,
-	addChatHistoryItem,
-	updateChatHistoryItem,
-	clearChatHistory,
-	setAgentProcessing,
-	setStreamingResponse,
-	enqueueRequest,
-	dequeueRequest,
-	clearCanvasContext,
-	moveToPendingContext,
 	addCanvasContextItem,
-	removeCanvasContextItem,
 	type CanvasContextItem,
-	type ChatHistoryItem,
+	clearCanvasContext,
+	removeCanvasContextItem,
 } from "./agent-context"
-import { applyCanvasAgentChange, type CanvasAgentChange } from "./canvas-agent-changes"
+import { useCanvasAgentOptional } from "./canvas-agent-provider"
 import {
 	fileToBase64,
-	generateContent,
-	type GenerationModel,
 	type GenerationAction,
+	type GenerationModel,
+	generateContent,
 } from "./canvas-ai-utils"
-import { useCanvasAgentOptional } from "./canvas-agent-provider"
 
 // ============================================================
 // TYPES
@@ -104,17 +88,21 @@ interface ToolButtonProps {
 }
 
 function ToolButton({ icon, tool, editor, title }: ToolButtonProps) {
-	const currentTool = useValue("current tool", () => editor.getCurrentToolId(), [editor])
+	const currentTool = useValue(
+		"current tool",
+		() => editor.getCurrentToolId(),
+		[editor],
+	)
 	const isActive = currentTool === tool
 
 	return (
 		<button
-			onClick={() => editor.setCurrentTool(tool)}
 			className={`p-2 rounded-lg transition-colors ${
 				isActive
 					? "bg-foreground/15 text-foreground"
 					: "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
 			}`}
+			onClick={() => editor.setCurrentTool(tool)}
 			title={title}
 		>
 			{icon}
@@ -166,7 +154,10 @@ const idTransform = createIdTransform()
 // CANVAS CONTENT SERIALIZER
 // ============================================================
 
-function serializeCanvasContent(editor: Editor, contextItems: CanvasContextItem[]) {
+function serializeCanvasContent(
+	editor: Editor,
+	contextItems: CanvasContextItem[],
+) {
 	const shapes = editor.getCurrentPageShapes()
 	const viewport = editor.getViewportPageBounds()
 
@@ -212,7 +203,10 @@ function serializeCanvasContent(editor: Editor, contextItems: CanvasContextItem[
 // ============================================================
 
 function applyStreamEvent(editor: Editor, event: StreamEvent): string | null {
-	console.log("[applyStreamEvent] Received event:", JSON.stringify(event, null, 2))
+	console.log(
+		"[applyStreamEvent] Received event:",
+		JSON.stringify(event, null, 2),
+	)
 
 	switch (event.type) {
 		case "create": {
@@ -311,7 +305,10 @@ function applyStreamEvent(editor: Editor, event: StreamEvent): string | null {
 					parentId,
 					props,
 				}
-				console.log("[applyStreamEvent] Creating shape directly:", JSON.stringify(shapeToCreate, null, 2))
+				console.log(
+					"[applyStreamEvent] Creating shape directly:",
+					JSON.stringify(shapeToCreate, null, 2),
+				)
 				editor.createShape(shapeToCreate as any)
 				console.log("[applyStreamEvent] Shape created successfully!")
 				return `Created ${event.shapeType}`
@@ -328,7 +325,10 @@ function applyStreamEvent(editor: Editor, event: StreamEvent): string | null {
 				const existingShape = editor.getShape(id)
 				if (existingShape) {
 					// Convert text to richText for TLDraw v4+ if present in updates
-					const updates = { ...(event.updates || {}) } as Record<string, unknown>
+					const updates = { ...(event.updates || {}) } as Record<
+						string,
+						unknown
+					>
 					if (typeof updates.text === "string") {
 						updates.richText = toRichText(updates.text as string)
 						delete updates.text
@@ -338,7 +338,7 @@ function applyStreamEvent(editor: Editor, event: StreamEvent): string | null {
 						type: existingShape.type,
 						props: updates,
 					})
-					return `Updated shape`
+					return "Updated shape"
 				}
 			} catch (error) {
 				console.error("[applyStreamEvent] Error updating shape:", error)
@@ -392,7 +392,7 @@ function applyStreamEvent(editor: Editor, event: StreamEvent): string | null {
 						type: existingShape.type,
 						props: { richText: toRichText(event.text || "") },
 					})
-					return `Updated label`
+					return "Updated label"
 				}
 			} catch (error) {
 				console.error("[applyStreamEvent] Error updating label:", error)
@@ -416,7 +416,9 @@ function applyStreamEvent(editor: Editor, event: StreamEvent): string | null {
 export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 	const [inputValue, setInputValue] = useState("")
 	const [isGenerating, setIsGenerating] = useState(false)
-	const [messages, setMessages] = useState<{ id: string; role: "user" | "assistant"; content: string }[]>([])
+	const [messages, setMessages] = useState<
+		{ id: string; role: "user" | "assistant"; content: string }[]
+	>([])
 	const [isExpanded, setIsExpanded] = useState(false)
 	const chatRef = useRef<HTMLDivElement>(null)
 
@@ -427,52 +429,61 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 	const [selectedAction, setSelectedAction] = useState<ExtendedAction>("shapes")
 	const [showOptions, setShowOptions] = useState(false)
 	const [showContextMenu, setShowContextMenu] = useState(false)
-	const [numberOfImages, setNumberOfImages] = useState(1)
+	const [numberOfImages, _setNumberOfImages] = useState(1)
 	const [aspectRatio, setAspectRatio] = useState("16:9")
 	const [model, setModel] = useState<GenerationModel>("gemini")
 
-	const canvasAgent = useCanvasAgentOptional()
+	const _canvasAgent = useCanvasAgentOptional()
 
 	// Subscribe to atoms for context
 	const contextItems = useValue($canvasContextItems)
 
 	// Context actions
-	const handleAddContextAction = useCallback((action: "pick-shapes" | "pick-area" | "current-selection" | "current-viewport") => {
-		if (!editor) return
-		setShowContextMenu(false)
+	const handleAddContextAction = useCallback(
+		(
+			action:
+				| "pick-shapes"
+				| "pick-area"
+				| "current-selection"
+				| "current-viewport",
+		) => {
+			if (!editor) return
+			setShowContextMenu(false)
 
-		switch (action) {
-			case "pick-shapes":
-				editor.setCurrentTool("target-shape")
-				break
-			case "pick-area":
-				editor.setCurrentTool("target-area")
-				break
-			case "current-selection": {
-				const selectedShapes = editor.getSelectedShapes()
-				for (const shape of selectedShapes) {
-					const bounds = editor.getShapePageBounds(shape)
+			switch (action) {
+				case "pick-shapes":
+					editor.setCurrentTool("target-shape")
+					break
+				case "pick-area":
+					editor.setCurrentTool("target-area")
+					break
+				case "current-selection": {
+					const selectedShapes = editor.getSelectedShapes()
+					for (const shape of selectedShapes) {
+						const bounds = editor.getShapePageBounds(shape)
+						addCanvasContextItem({
+							type: "shape",
+							shapeId: shape.id,
+							shapeType: shape.type,
+							bounds: bounds?.toJson(),
+							source: "user",
+						})
+					}
+					break
+				}
+				case "current-viewport": {
+					const viewportBounds = editor.getViewportPageBounds()
 					addCanvasContextItem({
-						type: "shape",
-						shapeId: shape.id,
-						shapeType: shape.type,
-						bounds: bounds?.toJson(),
+						type: "area",
+						bounds: viewportBounds.toJson(),
 						source: "user",
 					})
+					break
 				}
-				break
 			}
-			case "current-viewport": {
-				const viewportBounds = editor.getViewportPageBounds()
-				addCanvasContextItem({
-					type: "area",
-					bounds: viewportBounds.toJson(),
-					source: "user",
-				})
-				break
-			}
-		}
-	}, [editor])
+		},
+		[editor],
+	)
 
 	const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0]
@@ -491,18 +502,21 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 		if (chatRef.current) {
 			chatRef.current.scrollTop = chatRef.current.scrollHeight
 		}
-	}, [messages])
-
-	const addMessage = useCallback((role: "user" | "assistant", content: string) => {
-		const msg = {
-			id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-			role,
-			content,
-		}
-		setMessages(prev => [...prev, msg])
-		setIsExpanded(true)
-		return msg.id
 	}, [])
+
+	const addMessage = useCallback(
+		(role: "user" | "assistant", content: string) => {
+			const msg = {
+				id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+				role,
+				content,
+			}
+			setMessages((prev) => [...prev, msg])
+			setIsExpanded(true)
+			return msg.id
+		},
+		[],
+	)
 
 	const handleShapesGeneration = useCallback(async () => {
 		if (!inputValue || !editor) return
@@ -573,15 +587,19 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 			} else if (changesApplied > 0) {
 				addMessage("assistant", `${changesApplied} alteracoes aplicadas`)
 			}
-
 		} catch (error) {
 			console.error("Generation error:", error)
-			addMessage("assistant", `Erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`)
+			addMessage(
+				"assistant",
+				`Erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
+			)
 		}
-	}, [inputValue, editor, canvasAgent, addMessage, contextItems])
+	}, [inputValue, editor, addMessage, contextItems])
 
 	// Extract image from context items (selected shapes)
-	const getImageFromContext = useCallback(async (): Promise<string | undefined> => {
+	const getImageFromContext = useCallback(async (): Promise<
+		string | undefined
+	> => {
 		if (!editor || contextItems.length === 0) return undefined
 
 		// Find first image shape in context
@@ -622,11 +640,14 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 						)
 					})
 					if (shapesInArea.length > 0) {
-						const result = await editor.toImage(shapesInArea.map(s => s.id), {
-							format: "png",
-							scale: 1,
-							background: true,
-						})
+						const result = await editor.toImage(
+							shapesInArea.map((s) => s.id),
+							{
+								format: "png",
+								scale: 1,
+								background: true,
+							},
+						)
 						const blob = result.blob
 						return new Promise<string>((resolve, reject) => {
 							const reader = new FileReader()
@@ -669,7 +690,7 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 				inputValue,
 				selectedAction as GenerationAction,
 				{ numberOfImages, aspectRatio, model },
-				imageDataUrl
+				imageDataUrl,
 			)
 
 			onGenerate?.({
@@ -707,16 +728,15 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 	return (
 		<div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[480px]">
 			<input
-				type="file"
-				ref={fileInputRef}
-				onChange={handleFileChange}
-				className="hidden"
 				accept="image/*"
+				className="hidden"
+				onChange={handleFileChange}
+				ref={fileInputRef}
+				type="file"
 			/>
 
 			{/* Unified container */}
 			<div className="bg-background border border-border rounded-2xl shadow-2xl overflow-hidden">
-
 				{/* Chat messages */}
 				{messages.length > 0 && (
 					<>
@@ -731,11 +751,16 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 								) : (
 									<ChevronUp className="w-4 h-4 text-muted-foreground" />
 								)}
-								<span className="text-xs text-muted-foreground">{messages.length} mensagens</span>
+								<span className="text-xs text-muted-foreground">
+									{messages.length} mensagens
+								</span>
 							</div>
 							<button
-								onClick={(e) => { e.stopPropagation(); clearChat() }}
 								className="text-muted-foreground hover:text-foreground transition-colors text-xs"
+								onClick={(e) => {
+									e.stopPropagation()
+									clearChat()
+								}}
 							>
 								limpar
 							</button>
@@ -743,20 +768,26 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 
 						{/* Messages */}
 						{isExpanded && (
-							<div ref={chatRef} className="max-h-[200px] overflow-y-auto">
+							<div className="max-h-[200px] overflow-y-auto" ref={chatRef}>
 								{messages.map((msg) => (
 									<div
-										key={msg.id}
 										className={`px-4 py-2 text-sm ${
 											msg.role === "user"
 												? "bg-transparent"
 												: "bg-foreground/[0.02]"
 										}`}
+										key={msg.id}
 									>
 										<span className="text-muted-foreground text-xs mr-2">
 											{msg.role === "user" ? "voce:" : "ai:"}
 										</span>
-										<span className={msg.role === "user" ? "text-muted-foreground" : "text-foreground"}>
+										<span
+											className={
+												msg.role === "user"
+													? "text-muted-foreground"
+													: "text-foreground"
+											}
+										>
 											{msg.content}
 										</span>
 									</div>
@@ -776,29 +807,35 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 				{showOptions && (
 					<div className="px-4 py-3 border-b border-border dark:border-neutral-800/50 space-y-3">
 						<div className="flex gap-2">
-							{(["flux", "seedream4", "gemini"] as GenerationModel[]).map((m) => (
-								<button
-									key={m}
-									className={`px-2 py-1 rounded text-xs transition-colors ${
-										model === m
-											? "bg-foreground/10 text-foreground"
-											: "text-muted-foreground hover:text-foreground"
-									}`}
-									onClick={() => setModel(m)}
-								>
-									{m === "flux" ? "Flux" : m === "seedream4" ? "Seedream" : "Gemini"}
-								</button>
-							))}
+							{(["flux", "seedream4", "gemini"] as GenerationModel[]).map(
+								(m) => (
+									<button
+										className={`px-2 py-1 rounded text-xs transition-colors ${
+											model === m
+												? "bg-foreground/10 text-foreground"
+												: "text-muted-foreground hover:text-foreground"
+										}`}
+										key={m}
+										onClick={() => setModel(m)}
+									>
+										{m === "flux"
+											? "Flux"
+											: m === "seedream4"
+												? "Seedream"
+												: "Gemini"}
+									</button>
+								),
+							)}
 						</div>
 						<div className="flex gap-2">
 							{["16:9", "1:1", "9:16"].map((ar) => (
 								<button
-									key={ar}
 									className={`px-2 py-1 rounded text-xs transition-colors ${
 										aspectRatio === ar
 											? "bg-foreground/10 text-foreground"
 											: "text-muted-foreground hover:text-foreground"
 									}`}
+									key={ar}
 									onClick={() => setAspectRatio(ar)}
 								>
 									{ar}
@@ -812,10 +849,10 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 				{imagePreview && (
 					<div className="px-4 py-2 border-b border-border dark:border-neutral-800/50">
 						<div className="relative inline-block">
-							<img src={imagePreview} alt="Preview" className="h-12 rounded" />
+							<img alt="Preview" className="h-12 rounded" src={imagePreview} />
 							<button
-								onClick={handleRemoveImage}
 								className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center"
+								onClick={handleRemoveImage}
 							>
 								<X className="w-2.5 h-2.5" />
 							</button>
@@ -830,27 +867,30 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 							<span className="text-xs text-muted-foreground">Contexto:</span>
 							{contextItems.map((item, index) => (
 								<div
-									key={index}
 									className="flex items-center gap-1 px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs"
+									key={index}
 								>
 									{item.type === "shape" && <Square className="w-3 h-3" />}
 									{item.type === "area" && <Crosshair className="w-3 h-3" />}
 									{item.type === "point" && <Target className="w-3 h-3" />}
 									<span>
-										{item.type === "shape" ? `Shape ${item.shapeType || ""}` :
-										 item.type === "area" ? "Área" : "Ponto"}
+										{item.type === "shape"
+											? `Shape ${item.shapeType || ""}`
+											: item.type === "area"
+												? "Área"
+												: "Ponto"}
 									</span>
 									<button
-										onClick={() => removeCanvasContextItem(index)}
 										className="ml-1 hover:text-red-400"
+										onClick={() => removeCanvasContextItem(index)}
 									>
 										<X className="w-3 h-3" />
 									</button>
 								</div>
 							))}
 							<button
-								onClick={clearCanvasContext}
 								className="text-xs text-muted-foreground hover:text-foreground"
+								onClick={clearCanvasContext}
 							>
 								limpar
 							</button>
@@ -863,29 +903,29 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 					<div className="px-4 py-2 border-b border-border dark:border-neutral-800/50">
 						<div className="flex flex-wrap gap-2">
 							<button
-								onClick={() => handleAddContextAction("pick-shapes")}
 								className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 hover:bg-foreground/10 rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors"
+								onClick={() => handleAddContextAction("pick-shapes")}
 							>
 								<Target className="w-3 h-3" />
 								Pick Shapes
 							</button>
 							<button
-								onClick={() => handleAddContextAction("pick-area")}
 								className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 hover:bg-foreground/10 rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors"
+								onClick={() => handleAddContextAction("pick-area")}
 							>
 								<Crosshair className="w-3 h-3" />
 								Pick Area
 							</button>
 							<button
-								onClick={() => handleAddContextAction("current-selection")}
 								className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 hover:bg-foreground/10 rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors"
+								onClick={() => handleAddContextAction("current-selection")}
 							>
 								<Square className="w-3 h-3" />
 								Current Selection
 							</button>
 							<button
-								onClick={() => handleAddContextAction("current-viewport")}
 								className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 hover:bg-foreground/10 rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors"
+								onClick={() => handleAddContextAction("current-viewport")}
 							>
 								<Eye className="w-3 h-3" />
 								Current Viewport
@@ -898,52 +938,52 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 				{editor && (
 					<div className="flex items-center justify-center gap-1 px-4 py-2 border-b border-border/50">
 						<ToolButton
+							editor={editor}
 							icon={<MousePointer2 className="w-4 h-4" />}
-							tool="select"
-							editor={editor}
 							title="Selecionar"
+							tool="select"
 						/>
 						<ToolButton
+							editor={editor}
 							icon={<Hand className="w-4 h-4" />}
-							tool="hand"
-							editor={editor}
 							title="Mover"
+							tool="hand"
 						/>
 						<ToolButton
+							editor={editor}
 							icon={<Pencil className="w-4 h-4" />}
-							tool="draw"
-							editor={editor}
 							title="Desenhar"
+							tool="draw"
 						/>
 						<ToolButton
+							editor={editor}
 							icon={<Eraser className="w-4 h-4" />}
-							tool="eraser"
-							editor={editor}
 							title="Apagar"
+							tool="eraser"
 						/>
 						<ToolButton
+							editor={editor}
 							icon={<ArrowUpRight className="w-4 h-4" />}
-							tool="arrow"
-							editor={editor}
 							title="Seta"
+							tool="arrow"
 						/>
 						<ToolButton
+							editor={editor}
 							icon={<Type className="w-4 h-4" />}
-							tool="text"
-							editor={editor}
 							title="Texto"
+							tool="text"
 						/>
 						<ToolButton
+							editor={editor}
 							icon={<StickyNote className="w-4 h-4" />}
-							tool="note"
-							editor={editor}
 							title="Nota"
+							tool="note"
 						/>
-							<ToolButton
-							icon={<RectangleHorizontal className="w-4 h-4" />}
-							tool="geo"
+						<ToolButton
 							editor={editor}
+							icon={<RectangleHorizontal className="w-4 h-4" />}
 							title="Forma"
+							tool="geo"
 						/>
 					</div>
 				)}
@@ -952,31 +992,33 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 				<div className="flex items-center gap-3 px-4 py-3">
 					{/* Add Context button */}
 					<button
-						onClick={() => setShowContextMenu(!showContextMenu)}
 						className={`p-1.5 rounded-lg transition-colors ${
 							showContextMenu || contextItems.length > 0
 								? "bg-blue-500/20 text-blue-400"
 								: "text-muted-foreground hover:text-foreground"
 						}`}
+						onClick={() => setShowContextMenu(!showContextMenu)}
 						title="Add Context"
 					>
 						<Plus className="w-4 h-4" />
 					</button>
 
 					<input
-						type="text"
-						value={inputValue}
+						className="flex-1 bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground text-sm"
+						disabled={isGenerating}
 						onChange={(e) => setInputValue(e.target.value)}
 						onKeyDown={handleKeyDown}
 						placeholder="Ex: 'crie um retangulo azul'"
-						disabled={isGenerating}
-						className="flex-1 bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground text-sm"
+						type="text"
+						value={inputValue}
 					/>
 
 					<div className="flex items-center gap-1">
 						<button
 							className={`p-1.5 rounded-lg transition-colors ${
-								selectedAction === "shapes" ? "bg-foreground/10 text-foreground" : "text-muted-foreground hover:text-foreground"
+								selectedAction === "shapes"
+									? "bg-foreground/10 text-foreground"
+									: "text-muted-foreground hover:text-foreground"
 							}`}
 							onClick={() => setSelectedAction("shapes")}
 							title="Canvas"
@@ -986,7 +1028,9 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 
 						<button
 							className={`p-1.5 rounded-lg transition-colors ${
-								selectedAction === "image" ? "bg-foreground/10 text-foreground" : "text-muted-foreground hover:text-foreground"
+								selectedAction === "image"
+									? "bg-foreground/10 text-foreground"
+									: "text-muted-foreground hover:text-foreground"
 							}`}
 							onClick={() => setSelectedAction("image")}
 							title="Imagem"
@@ -996,7 +1040,9 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 
 						<button
 							className={`p-1.5 rounded-lg transition-colors ${
-								showOptions ? "bg-foreground/10 text-foreground" : "text-muted-foreground hover:text-foreground"
+								showOptions
+									? "bg-foreground/10 text-foreground"
+									: "text-muted-foreground hover:text-foreground"
 							}`}
 							onClick={() => setShowOptions(!showOptions)}
 							title="Opcoes"
@@ -1010,9 +1056,9 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 							</div>
 						) : (
 							<button
-								onClick={handleSubmit}
-								disabled={!inputValue && !imageFile}
 								className="p-1.5 rounded-lg bg-foreground/10 text-foreground hover:bg-foreground/20 transition-colors disabled:opacity-30"
+								disabled={!inputValue && !imageFile}
+								onClick={handleSubmit}
 								title="Enviar"
 							>
 								<Send className="w-4 h-4" />

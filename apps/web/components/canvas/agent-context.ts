@@ -4,13 +4,16 @@
 // Canvas Agent Context - tldraw Atoms (Reactive State)
 // ============================================================
 
-import { Box, type BoxModel, Vec, type VecModel, atom } from "tldraw"
+import { atom, Box, type BoxModel, Vec, type VecModel } from "tldraw"
 
 // ============================================================
 // TYPES
 // ============================================================
 
-export type CanvasContextItem = ShapeContextItem | AreaContextItem | PointContextItem
+export type CanvasContextItem =
+	| ShapeContextItem
+	| AreaContextItem
+	| PointContextItem
 
 export interface ShapeContextItem {
 	type: "shape"
@@ -63,20 +66,32 @@ export interface ScheduledAgentRequest {
 // ============================================================
 
 // Current context items selected by user
-export const $canvasContextItems = atom<CanvasContextItem[]>("canvas context items", [])
+export const $canvasContextItems = atom<CanvasContextItem[]>(
+	"canvas context items",
+	[],
+)
 
 // Context items being processed (moved from selection)
-export const $pendingContextItems = atom<CanvasContextItem[]>("pending context items", [])
+export const $pendingContextItems = atom<CanvasContextItem[]>(
+	"pending context items",
+	[],
+)
 
 // ============================================================
 // ATOMS - Chat State
 // ============================================================
 
 // Chat history for the current session
-export const $chatHistoryItems = atom<ChatHistoryItem[]>("chat history items", [])
+export const $chatHistoryItems = atom<ChatHistoryItem[]>(
+	"chat history items",
+	[],
+)
 
 // Current assistant response being streamed
-export const $streamingResponse = atom<string | null>("streaming response", null)
+export const $streamingResponse = atom<string | null>(
+	"streaming response",
+	null,
+)
 
 // Is the agent currently processing
 export const $isAgentProcessing = atom<boolean>("is agent processing", false)
@@ -86,7 +101,10 @@ export const $isAgentProcessing = atom<boolean>("is agent processing", false)
 // ============================================================
 
 // Queue of requests to be processed
-export const $requestsSchedule = atom<ScheduledAgentRequest[]>("requests schedule", [])
+export const $requestsSchedule = atom<ScheduledAgentRequest[]>(
+	"requests schedule",
+	[],
+)
 
 // Current request being processed
 export const $currentRequestId = atom<string | null>("current request id", null)
@@ -99,7 +117,10 @@ export const $currentRequestId = atom<string | null>("current request id", null)
 export const $isChatExpanded = atom<boolean>("is chat expanded", true)
 
 // Show context highlights on canvas
-export const $showContextHighlights = atom<boolean>("show context highlights", true)
+export const $showContextHighlights = atom<boolean>(
+	"show context highlights",
+	true,
+)
 
 // ============================================================
 // CONTEXT ACTIONS
@@ -135,7 +156,9 @@ export function clearPendingContext() {
 // CHAT ACTIONS
 // ============================================================
 
-export function addChatHistoryItem(item: Omit<ChatHistoryItem, "id" | "timestamp">) {
+export function addChatHistoryItem(
+	item: Omit<ChatHistoryItem, "id" | "timestamp">,
+) {
 	const newItem: ChatHistoryItem = {
 		...item,
 		id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -145,9 +168,12 @@ export function addChatHistoryItem(item: Omit<ChatHistoryItem, "id" | "timestamp
 	return newItem.id
 }
 
-export function updateChatHistoryItem(id: string, updates: Partial<ChatHistoryItem>) {
+export function updateChatHistoryItem(
+	id: string,
+	updates: Partial<ChatHistoryItem>,
+) {
 	$chatHistoryItems.update((items) =>
-		items.map((item) => (item.id === id ? { ...item, ...updates } : item))
+		items.map((item) => (item.id === id ? { ...item, ...updates } : item)),
 	)
 }
 
@@ -167,7 +193,9 @@ export function setAgentProcessing(processing: boolean) {
 // REQUEST QUEUE ACTIONS
 // ============================================================
 
-export function enqueueRequest(request: Omit<ScheduledAgentRequest, "id" | "timestamp">) {
+export function enqueueRequest(
+	request: Omit<ScheduledAgentRequest, "id" | "timestamp">,
+) {
 	const newRequest: ScheduledAgentRequest = {
 		...request,
 		id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,

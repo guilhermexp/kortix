@@ -2,6 +2,12 @@
 
 import { $fetch } from "@repo/lib/api"
 import { Button } from "@repo/ui/components/button"
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
 	LayoutGrid,
@@ -13,14 +19,8 @@ import {
 	Trash2,
 	X,
 } from "lucide-react"
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@repo/ui/components/dropdown-menu"
 import { AnimatePresence, motion } from "motion/react"
-import { useState, useMemo } from "react"
+import { useMemo, useState } from "react"
 
 interface CanvasProject {
 	id: string
@@ -84,22 +84,22 @@ function ProjectFolderCard({
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button
-							variant="ghost"
-							size="icon"
 							className="h-7 w-7 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-full shadow-sm"
 							onClick={(e) => e.stopPropagation()}
+							size="icon"
+							variant="ghost"
 						>
 							<MoreHorizontal className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end" className="w-40 z-[10000]">
 						<DropdownMenuItem
+							className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+							disabled={isDeleting}
 							onClick={(e) => {
 								e.stopPropagation()
 								onDelete()
 							}}
-							className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
-							disabled={isDeleting}
 						>
 							{isDeleting ? (
 								<Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -112,10 +112,7 @@ function ProjectFolderCard({
 				</DropdownMenu>
 			</div>
 
-			<button
-				onClick={onClick}
-				className="flex flex-col items-center w-full"
-			>
+			<button className="flex flex-col items-center w-full" onClick={onClick}>
 				{/* Folder container */}
 				<div className="relative w-full aspect-[4/3]">
 					{/* Back tab (folder ear) */}
@@ -127,9 +124,9 @@ function ProjectFolderCard({
 						<div className="absolute inset-3 transform rotate-[-2deg] origin-bottom-left transition-transform duration-300 group-hover:rotate-[-3deg] group-hover:-translate-y-1">
 							{project.thumbnail ? (
 								<img
-									src={project.thumbnail}
 									alt={project.name}
 									className="w-full h-full object-cover rounded-md shadow-sm"
+									src={project.thumbnail}
 								/>
 							) : (
 								<div className="w-full h-full bg-neutral-200 dark:bg-neutral-700 rounded-md flex items-center justify-center">
@@ -194,12 +191,8 @@ function CreateProjectCard({
 					{/* Folder body with form */}
 					<div className="relative w-full h-full bg-neutral-100 dark:bg-neutral-800 rounded-lg shadow-md overflow-hidden border-2 border-primary/50 dark:border-primary/50 z-10 p-4 flex flex-col justify-center">
 						<input
-							type="text"
-							placeholder="Project name"
-							value={newProjectName}
-							onChange={(e) => setNewProjectName(e.target.value)}
 							className="w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 mb-3"
-							autoFocus
+							onChange={(e) => setNewProjectName(e.target.value)}
 							onKeyDown={(e) => {
 								if (e.key === "Enter" && newProjectName.trim()) {
 									onSubmit()
@@ -208,22 +201,25 @@ function CreateProjectCard({
 									onCancel()
 								}
 							}}
+							placeholder="Project name"
+							type="text"
+							value={newProjectName}
 						/>
 
 						<div className="flex gap-2">
 							<Button
-								onClick={onCancel}
-								variant="ghost"
-								size="sm"
 								className="flex-1 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+								onClick={onCancel}
+								size="sm"
+								variant="ghost"
 							>
 								Cancel
 							</Button>
 							<Button
-								onClick={onSubmit}
-								size="sm"
 								className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
 								disabled={!newProjectName.trim() || isPending}
+								onClick={onSubmit}
+								size="sm"
 							>
 								{isPending ? (
 									<Loader2 className="w-4 h-4 animate-spin" />
@@ -243,8 +239,8 @@ function CreateProjectCard({
 
 	return (
 		<motion.button
-			onClick={onCreateClick}
 			className="group flex flex-col items-center w-full"
+			onClick={onCreateClick}
 			whileHover={{ y: -4 }}
 			whileTap={{ scale: 0.98 }}
 		>
@@ -287,7 +283,9 @@ export function ProjectSelectionModal({
 			})
 
 			if (response.error) {
-				throw new Error(response.error?.message || "Failed to load canvas projects")
+				throw new Error(
+					response.error?.message || "Failed to load canvas projects",
+				)
 			}
 
 			return response.data?.projects || []
@@ -297,7 +295,9 @@ export function ProjectSelectionModal({
 
 	const projects: CanvasProject[] = projectsData || []
 
-	const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null)
+	const [deletingProjectId, setDeletingProjectId] = useState<string | null>(
+		null,
+	)
 
 	const createProjectMutation = useMutation({
 		mutationFn: async (payload: { name: string }) => {
@@ -345,9 +345,7 @@ export function ProjectSelectionModal({
 		if (!searchQuery.trim()) return projects
 
 		const query = searchQuery.toLowerCase()
-		return projects.filter((p) =>
-			p.name.toLowerCase().includes(query)
-		)
+		return projects.filter((p) => p.name.toLowerCase().includes(query))
 	}, [projects, searchQuery])
 
 	const handleProjectSelect = (projectId: string) => {
@@ -368,10 +366,10 @@ export function ProjectSelectionModal({
 		<AnimatePresence>
 			{/* Full-screen page */}
 			<motion.div
-				className="fixed inset-0 z-[9999] bg-background"
-				initial={{ opacity: 0 }}
 				animate={{ opacity: 1 }}
+				className="fixed inset-0 z-[9999] bg-background"
 				exit={{ opacity: 0 }}
+				initial={{ opacity: 0 }}
 			>
 				{/* Header */}
 				<header className="flex items-center justify-between px-6 py-4 border-b border-border">
@@ -394,21 +392,21 @@ export function ProjectSelectionModal({
 						<div className="relative">
 							<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
 							<input
-								type="text"
-								placeholder="Search projects..."
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
 								className="pl-10 pr-4 py-2 w-64 bg-muted border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+								onChange={(e) => setSearchQuery(e.target.value)}
+								placeholder="Search projects..."
+								type="text"
+								value={searchQuery}
 							/>
 						</div>
 
 						{/* Close button */}
 						{onClose && (
 							<Button
-								variant="ghost"
-								size="icon"
-								onClick={onClose}
 								className="text-muted-foreground hover:text-foreground"
+								onClick={onClose}
+								size="icon"
+								variant="ghost"
 							>
 								<X className="w-5 h-5" />
 							</Button>
@@ -433,37 +431,40 @@ export function ProjectSelectionModal({
 						<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 md:gap-8 ml-[72px]">
 							{filteredProjects.map((project, index) => (
 								<motion.div
-									key={project.id}
-									initial={{ opacity: 0, y: 20 }}
 									animate={{ opacity: 1, y: 0 }}
+									initial={{ opacity: 0, y: 20 }}
+									key={project.id}
 									transition={{ delay: index * 0.03, duration: 0.3 }}
 								>
 									<ProjectFolderCard
-										project={project}
+										isDeleting={deletingProjectId === project.id}
 										onClick={() => handleProjectSelect(project.id)}
 										onDelete={() => deleteProjectMutation.mutate(project.id)}
-										isDeleting={deletingProjectId === project.id}
+										project={project}
 									/>
 								</motion.div>
 							))}
 
 							{/* Create new project card */}
 							<motion.div
-								initial={{ opacity: 0, y: 20 }}
 								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: filteredProjects.length * 0.03, duration: 0.3 }}
+								initial={{ opacity: 0, y: 20 }}
+								transition={{
+									delay: filteredProjects.length * 0.03,
+									duration: 0.3,
+								}}
 							>
 								<CreateProjectCard
-									onCreateClick={() => setShowCreateForm(true)}
-									showForm={showCreateForm}
+									isPending={createProjectMutation.isPending}
 									newProjectName={newProjectName}
-									setNewProjectName={setNewProjectName}
-									onSubmit={handleCreateProject}
 									onCancel={() => {
 										setShowCreateForm(false)
 										setNewProjectName("")
 									}}
-									isPending={createProjectMutation.isPending}
+									onCreateClick={() => setShowCreateForm(true)}
+									onSubmit={handleCreateProject}
+									setNewProjectName={setNewProjectName}
+									showForm={showCreateForm}
 								/>
 							</motion.div>
 						</div>
