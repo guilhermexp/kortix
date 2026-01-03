@@ -65,7 +65,10 @@ export async function listProjects(
 				.eq("org_id", organizationId)
 
 			if (countError) {
-				console.error(`Error counting documents for space ${space.id}:`, countError)
+				console.error(
+					`Error counting documents for space ${space.id}:`,
+					countError,
+				)
 			}
 
 			return {
@@ -240,7 +243,10 @@ export async function updateProject(
 		.eq("org_id", organizationId)
 
 	if (countError) {
-		console.error(`Error counting documents for space ${projectId}:`, countError)
+		console.error(
+			`Error counting documents for space ${projectId}:`,
+			countError,
+		)
 	}
 
 	return mapSpaceToProject({ ...data, document_count: count ?? 0 })

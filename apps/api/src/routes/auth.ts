@@ -3,10 +3,10 @@ import { createClient } from "@supabase/supabase-js"
 import type { Context } from "hono"
 import { z } from "zod"
 import { env } from "../env"
-import { ensureMembershipForUser, supabaseAdmin } from "../supabase"
 import { extractAccessToken } from "../session"
+import { ensureMembershipForUser, supabaseAdmin } from "../supabase"
 import { parseCookies, serializeCookie } from "../utils/cookies"
-import { hashPassword, verifyPassword } from "../utils/password"
+import { verifyPassword } from "../utils/password"
 
 const SESSION_COOKIE = "kortix_session"
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7 // 7 days
@@ -125,22 +125,29 @@ export async function signIn(c: Context) {
 	// If user exists but doesn't have auth_id, migrate them to Supabase Auth
 	if (existingUser && !existingUser.auth_id) {
 		// Verify legacy password first
-		if (!existingUser.password_hash || !verifyPassword(password, existingUser.password_hash)) {
+		if (
+			!existingUser.password_hash ||
+			!verifyPassword(password, existingUser.password_hash)
+		) {
 			return c.json({ error: { message: "Invalid email or password" } }, 401)
 		}
 
 		// Create Supabase Auth user
-		const { data: newAuthUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-			email: normalizedEmail,
-			password,
-			email_confirm: true,
-			user_metadata: {
-				name: normalizedEmail.split("@")[0],
-			},
-		})
+		const { data: newAuthUser, error: createError } =
+			await supabaseAdmin.auth.admin.createUser({
+				email: normalizedEmail,
+				password,
+				email_confirm: true,
+				user_metadata: {
+					name: normalizedEmail.split("@")[0],
+				},
+			})
 
 		if (createError) {
-			console.error("signIn: failed to migrate user to Supabase Auth", createError)
+			console.error(
+				"signIn: failed to migrate user to Supabase Auth",
+				createError,
+			)
 			// Fall back to legacy auth
 			return legacySignIn(c, existingUser, password)
 		}
@@ -152,10 +159,11 @@ export async function signIn(c: Context) {
 			.eq("id", existingUser.id)
 
 		// Now sign in with Supabase Auth
-		const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
-			email: normalizedEmail,
-			password,
-		})
+		const { data: authData, error: signInError } =
+			await supabase.auth.signInWithPassword({
+				email: normalizedEmail,
+				password,
+			})
 
 		if (signInError || !authData.session) {
 			console.error("signIn: failed to sign in after migration", signInError)
@@ -180,10 +188,11 @@ export async function signIn(c: Context) {
 	}
 
 	// Standard Supabase Auth sign in
-	const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-		email: normalizedEmail,
-		password,
-	})
+	const { data: authData, error: authError } =
+		await supabase.auth.signInWithPassword({
+			email: normalizedEmail,
+			password,
+		})
 
 	if (authError) {
 		console.error("signIn: Supabase Auth error", authError)
@@ -214,7 +223,11 @@ export async function signIn(c: Context) {
 /**
  * @deprecated Legacy sign in for users not yet migrated
  */
-async function legacySignIn(c: Context, user: { id: string; password_hash: string | null }, password: string) {
+async function legacySignIn(
+	c: Context,
+	user: { id: string; password_hash: string | null },
+	password: string,
+) {
 	if (!user.password_hash || !verifyPassword(password, user.password_hash)) {
 		return c.json({ error: { message: "Invalid email or password" } }, 401)
 	}
@@ -272,10 +285,12 @@ export async function refreshSession(c: Context) {
 			refresh_token: data.session.refresh_token,
 			expires_at: data.session.expires_at,
 		},
-		user: data.user ? {
-			id: data.user.id,
-			email: data.user.email,
-		} : null,
+		user: data.user
+			? {
+					id: data.user.id,
+					email: data.user.email,
+				}
+			: null,
 	})
 }
 
@@ -285,7 +300,10 @@ export async function signOut(c: Context) {
 	// Clear legacy session if present
 	const legacyToken = cookies[SESSION_COOKIE]
 	if (legacyToken) {
-		await supabaseAdmin.from("sessions").delete().eq("session_token", legacyToken)
+		await supabaseAdmin
+			.from("sessions")
+			.delete()
+			.eq("session_token", legacyToken)
 	}
 
 	const isProduction = process.env.NODE_ENV === "production"
@@ -316,7 +334,10 @@ export async function getSession(c: Context) {
 			global: { headers: { Authorization: `Bearer ${accessToken}` } },
 		})
 
-		const { data: { user }, error } = await supabase.auth.getUser()
+		const {
+			data: { user },
+			error,
+		} = await supabase.auth.getUser()
 
 		if (!error && user) {
 			// Get internal user data

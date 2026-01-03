@@ -1,9 +1,9 @@
 /**
  * Documents API Routes
  *
- * Architecture: Async-first document ingestion
- * - Documents are created with status="queued"
- * - Worker polls ingestion_jobs and processes asynchronously
+ * Architecture: Inline document processing
+ * - Documents are created and processed immediately (async, non-blocking)
+ * - No separate polling worker needed
  * - Preview image extracted immediately for fast UI feedback
  */
 
@@ -19,15 +19,14 @@ import {
 } from "@repo/validation/api"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { z } from "zod"
+import { processDocumentInline } from "../services/document-processor-inline"
+import { sanitizeJson, sanitizeString } from "../services/ingestion/utils"
 import {
 	documentCache,
 	documentListCache,
 	generateCacheKey,
 } from "../services/query-cache"
 import { findRelatedLinks, type RelatedLink } from "../services/related-links"
-import { sanitizeString, sanitizeJson } from "../services/ingestion/utils"
-// Redis queue disabled - using DB polling worker only
-// import { addDocumentJob, isRedisEnabled } from "../services/queue"
 
 const defaultContainerTag = "sm_project_default"
 
@@ -35,7 +34,10 @@ const defaultContainerTag = "sm_project_default"
  * Quick OG image extraction for immediate preview loading
  * Fetches first 50KB of HTML to find og:image meta tag
  */
-async function extractOgImageQuick(url: string, timeoutMs = 3000): Promise<string | null> {
+async function extractOgImageQuick(
+	url: string,
+	timeoutMs = 3000,
+): Promise<string | null> {
 	try {
 		const controller = new AbortController()
 		const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
@@ -44,8 +46,9 @@ async function extractOgImageQuick(url: string, timeoutMs = 3000): Promise<strin
 			method: "GET",
 			signal: controller.signal,
 			headers: {
-				"User-Agent": "Mozilla/5.0 (compatible; KortixBot/1.0; +https://kortix.ai)",
-				"Accept": "text/html,application/xhtml+xml",
+				"User-Agent":
+					"Mozilla/5.0 (compatible; KortixBot/1.0; +https://kortix.ai)",
+				Accept: "text/html,application/xhtml+xml",
 			},
 			redirect: "follow",
 		})
@@ -148,7 +151,7 @@ type MemoryRow = {
 	updated_at: string
 }
 
-function isDocumentSpaceRelation(
+function _isDocumentSpaceRelation(
 	value: unknown,
 ): value is DocumentSpaceRelation {
 	if (value === null || typeof value !== "object") return false
@@ -208,7 +211,7 @@ function normalizeProcessingMetadata(value: unknown):
 	}
 }
 
-const DocumentDetailSchema = z.object({
+const _DocumentDetailSchema = z.object({
 	id: z.string(),
 	status: z.string().default("unknown"),
 	content: z.string().nullable().optional(),
@@ -467,10 +470,15 @@ export async function addDocument({
 	// Deduplicate: check for existing documents with same URL or content hash
 	// For URLs: check by URL
 	// For text: check by content hash (if content is short enough to be exact match)
-	const shouldCheckDuplicates = isUrl || (initialContent && initialContent.length < 1000)
+	const shouldCheckDuplicates =
+		isUrl || (initialContent && initialContent.length < 1000)
 
 	if (shouldCheckDuplicates) {
-		let existing: { id: string; status: string | null; space_id: string | null } | null = null
+		let existing: {
+			id: string
+			status: string | null
+			space_id: string | null
+		} | null = null
 
 		if (isUrl && inferredUrl) {
 			// Check by URL
@@ -489,7 +497,9 @@ export async function addDocument({
 		} else if (initialContent) {
 			// For short text documents, check by exact content match
 			// Only check recent documents (last 7 days) to avoid performance issues
-			const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+			const sevenDaysAgo = new Date(
+				Date.now() - 7 * 24 * 60 * 60 * 1000,
+			).toISOString()
 			const { data: contentDoc, error: contentError } = await client
 				.from("documents")
 				.select("id, status, space_id")
@@ -554,12 +564,12 @@ export async function addDocument({
 					throw updateError
 				}
 
-				// Check if there's already a queued job for this document
+				// Check if there's already a pending job for this document (queued or processing)
 				const { data: existingJob } = await client
 					.from("ingestion_jobs")
 					.select("id")
 					.eq("document_id", existing.id)
-					.eq("status", "queued")
+					.in("status", ["queued", "processing"])
 					.maybeSingle()
 
 				if (!existingJob) {
@@ -615,7 +625,10 @@ export async function addDocument({
 	if (insertError) {
 		console.error("[addDocument] Failed to insert document", insertError)
 		// Check if it's a duplicate key error (race condition)
-		if (insertError.code === "23505" || insertError.message.includes("duplicate")) {
+		if (
+			insertError.code === "23505" ||
+			insertError.message.includes("duplicate")
+		) {
 			// Document was created by another request - try to find it
 			if (isUrl && inferredUrl) {
 				const { data: existing } = await client
@@ -654,30 +667,39 @@ export async function addDocument({
 	// Quick OG image extraction for immediate preview (non-blocking)
 	// This runs in the background and updates the document when done
 	if (isUrl && inferredUrl) {
-		extractOgImageQuick(inferredUrl).then(async (ogImage) => {
-			if (ogImage) {
-				try {
-					await client
-						.from("documents")
-						.update({ preview_image: ogImage })
-						.eq("id", docId)
-						.eq("org_id", organizationId)
-					console.log("[addDocument] Quick OG image set for document", { docId, ogImage: ogImage.slice(0, 100) })
-				} catch (e) {
-					console.log("[addDocument] Failed to update OG image:", e instanceof Error ? e.message : String(e))
+		extractOgImageQuick(inferredUrl)
+			.then(async (ogImage) => {
+				if (ogImage) {
+					try {
+						await client
+							.from("documents")
+							.update({ preview_image: ogImage })
+							.eq("id", docId)
+							.eq("org_id", organizationId)
+						console.log("[addDocument] Quick OG image set for document", {
+							docId,
+							ogImage: ogImage.slice(0, 100),
+						})
+					} catch (e) {
+						console.log(
+							"[addDocument] Failed to update OG image:",
+							e instanceof Error ? e.message : String(e),
+						)
+					}
 				}
-			}
-		}).catch(() => {
-			// Silently ignore - preview is optional
-		})
+			})
+			.catch(() => {
+				// Silently ignore - preview is optional
+			})
 	}
 
 	// Check if job already exists (race condition protection)
+	// Include both queued and processing status to prevent duplicate jobs
 	const { data: existingJob } = await client
 		.from("ingestion_jobs")
 		.select("id")
 		.eq("document_id", docId)
-		.eq("status", "queued")
+		.in("status", ["queued", "processing"])
 		.maybeSingle()
 
 	let jobId: string | undefined
@@ -715,31 +737,32 @@ export async function addDocument({
 		jobId = existingJob.id
 	}
 
-	// NOTE: Redis queue is disabled for now - using DB polling worker only
-	// Enable this when running the queue-worker alongside the API server:
-	// bun run dev:queue
-	//
-	// if (isRedisEnabled()) {
-	// 	try {
-	// 		await addDocumentJob(docId, organizationId, userId, {
-	// 			containerTags: parsed.containerTags ?? [containerTag],
-	// 			content: rawContent,
-	// 			metadata,
-	// 			url: inferredUrl,
-	// 			type: inferredType,
-	// 			source: inferredSource,
-	// 		})
-	// 		console.log("[addDocument] Job added to Redis queue", { documentId: docId })
-	// 	} catch (queueError) {
-	// 		console.warn("[addDocument] Failed to add to Redis queue, falling back to DB worker", {
-	// 			documentId: docId,
-	// 			error: queueError instanceof Error ? queueError.message : String(queueError),
-	// 		})
-	// 	}
-	// }
+	// Process document inline (async - doesn't block response)
+	// No more polling worker needed!
+	if (jobId) {
+		// Fire and forget - process in background
+		processDocumentInline({
+			documentId: docId,
+			jobId,
+			orgId: organizationId,
+			payload: {
+				containerTags: parsed.containerTags ?? [containerTag],
+				content: rawContent,
+				metadata,
+				url: inferredUrl,
+				type: inferredType,
+				source: inferredSource,
+			},
+		}).catch((err) => {
+			console.error("[addDocument] Background processing failed", {
+				documentId: docId,
+				error: err instanceof Error ? err.message : String(err),
+			})
+		})
+	}
 
 	invalidateDocumentCaches()
-	return MemoryResponseSchema.parse({ id: docId, status: "queued" })
+	return MemoryResponseSchema.parse({ id: docId, status: "processing" })
 }
 
 export async function listDocuments(
@@ -914,7 +937,7 @@ export async function listDocumentsWithMemories(
 			.in("id", docIds)
 
 		// Apply search filter if provided
-		if (query.search && query.search.trim()) {
+		if (query.search?.trim()) {
 			const searchTerm = `%${query.search.trim()}%`
 			queryBuilder = queryBuilder.or(
 				`title.ilike.${searchTerm},summary.ilike.${searchTerm}`,
@@ -940,7 +963,7 @@ export async function listDocumentsWithMemories(
 			.eq("org_id", organizationId)
 
 		// Apply search filter if provided
-		if (query.search && query.search.trim()) {
+		if (query.search?.trim()) {
 			const searchTerm = `%${query.search.trim()}%`
 			queryBuilder = queryBuilder.or(
 				`title.ilike.${searchTerm},summary.ilike.${searchTerm}`,
