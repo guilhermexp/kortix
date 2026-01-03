@@ -7,7 +7,7 @@
     "dev": "turbo run dev",
     "dev:all": "turbo run dev",
     "test": "turbo run test",
-    "format-lint": "bunx biome check --write",
+    "format-lint": "bunx biome check --write apps/ packages/hooks/ packages/lib/ packages/validation/",
     "check-types": "turbo run check-types"
   },
   "engines": {
