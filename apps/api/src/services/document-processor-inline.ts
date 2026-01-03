@@ -21,9 +21,17 @@ async function getOrchestrator() {
 	if (!orchestrator) {
 		const extractorService = createDocumentExtractorService()
 		const processorService = createDocumentProcessorService()
+		const previewSvc = createPreviewGeneratorService({
+			enableImageExtraction: true,
+			enableFaviconExtraction: false,
+			fallbackChain: ["image"],
+			timeout: 15000,
+			strategyTimeout: 5000,
+		})
 		orchestrator = createIngestionOrchestrator()
 		orchestrator.setExtractorService(extractorService)
 		orchestrator.setProcessorService(processorService)
+		orchestrator.setPreviewService(previewSvc)
 		await orchestrator.initialize()
 	}
 	return orchestrator
