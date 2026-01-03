@@ -32,7 +32,7 @@ var __awaiter =
 			}
 			function rejected(value) {
 				try {
-					step(generator["throw"](value))
+					step(generator.throw(value))
 				} catch (e) {
 					reject(e)
 				}
@@ -49,18 +49,18 @@ var __generator =
 	(this && this.__generator) ||
 	((thisArg, body) => {
 		var _ = {
-				label: 0,
-				sent: () => {
-					if (t[0] & 1) throw t[1]
-					return t[1]
-				},
-				trys: [],
-				ops: [],
+			label: 0,
+			sent: () => {
+				if (t[0] & 1) throw t[1]
+				return t[1]
 			},
-			f,
-			y,
-			t,
-			g
+			trys: [],
+			ops: [],
+		}
+		var f
+		var y
+		var t
+		var g
 		return (
 			(g = { next: verb(0), throw: verb(1), return: verb(2) }),
 			typeof Symbol === "function" &&
@@ -81,9 +81,9 @@ var __generator =
 						y &&
 							(t =
 								op[0] & 2
-									? y["return"]
+									? y.return
 									: op[0]
-										? y["throw"] || ((t = y["return"]) && t.call(y), 0)
+										? y.throw || ((t = y.return) && t.call(y), 0)
 										: y.next) &&
 							!(t = t.call(y, op[1])).done)
 					)
@@ -189,7 +189,7 @@ exports.createHandleBlockDragStart = createHandleBlockDragStart
  * Handle drag enter
  */
 function createHandleDragEnter() {
-	return (e, nodeId) => {
+	return (e, _nodeId) => {
 		e.preventDefault()
 		e.stopPropagation()
 	}
@@ -200,10 +200,10 @@ exports.createHandleDragEnter = createHandleDragEnter
  */
 function createHandleDragOver(params) {
 	return (e, nodeId) => {
-		var container = params.container,
-			draggingNodeId = params.draggingNodeId,
-			setDragOverNodeId = params.setDragOverNodeId,
-			setDropPosition = params.setDropPosition
+		var container = params.container
+		var draggingNodeId = params.draggingNodeId
+		var setDragOverNodeId = params.setDragOverNodeId
+		var setDropPosition = params.setDropPosition
 		e.preventDefault()
 		e.stopPropagation()
 		// Check if we're dragging an existing block (image) or files from outside
@@ -363,75 +363,78 @@ exports.createHandleDragLeave = createHandleDragLeave
 function createHandleDrop(params, dropPosition) {
 	return (e, nodeId) =>
 		__awaiter(this, void 0, void 0, function () {
-			var container,
-				dispatch,
-				toast,
-				draggingNodeId,
-				setDraggingNodeId,
-				setDragOverNodeId,
-				setDropPosition,
-				setIsUploading,
-				onUploadImage,
-				draggedNodeId,
-				draggingResult,
-				targetResult,
-				draggingNode,
-				targetNode,
-				inSameFlexContainer,
-				parent_2,
-				newChildren,
-				dragIndex,
-				targetIndex,
-				draggedItem,
-				adjustedTargetIndex,
-				parent_3,
-				targetIndex,
-				newChildren,
-				targetRootIndex,
-				draggingRootIndex,
-				referenceNodeId,
-				insertPosition,
-				firstIndex,
-				refNode,
-				i,
-				childNode,
-				timestamp,
-				flexContainer,
-				actions,
-				parent_4,
-				remainingChildren,
-				insertPos,
-				actions,
-				parentIndex,
-				isTargetTheFlexContainer,
-				referenceNodeId,
-				referencePosition,
-				prevNode,
-				nextNode,
-				remainingChild,
-				fallbackChild,
-				targetIndex,
-				isTargetBeforeFlex,
-				isTargetAfterFlex,
-				adjacentChild,
-				standardChild,
-				prevNode,
-				nextNode,
-				draggingNodeAtRoot,
-				targetNodeAtRoot,
-				isDraggingImage,
-				isTargetImage,
-				insertPos,
-				files,
-				items,
-				mediaFile,
-				isVideo,
-				mediaUrl,
-				result,
-				mediaNode,
-				insertPos,
-				error_1
-			var _a, _b, _c, _d
+			var container
+			var dispatch
+			var toast
+			var draggingNodeId
+			var setDraggingNodeId
+			var setDragOverNodeId
+			var setDropPosition
+			var setIsUploading
+			var onUploadImage
+			var draggedNodeId
+			var draggingResult
+			var targetResult
+			var draggingNode
+			var targetNode
+			var inSameFlexContainer
+			var parent_2
+			var _newChildren
+			var dragIndex
+			var _targetIndex
+			var draggedItem
+			var adjustedTargetIndex
+			var parent_3
+			var targetIndex
+			var newChildren
+			var targetRootIndex
+			var draggingRootIndex
+			var _referenceNodeId
+			var insertPosition
+			var firstIndex
+			var refNode
+			var i
+			var childNode
+			var timestamp
+			var flexContainer
+			var _actions
+			var parent_4
+			var remainingChildren
+			var _insertPos
+			var actions
+			var parentIndex
+			var isTargetTheFlexContainer
+			var referenceNodeId
+			var referencePosition
+			var _prevNode
+			var _nextNode
+			var remainingChild
+			var fallbackChild
+			var targetIndex
+			var isTargetBeforeFlex
+			var isTargetAfterFlex
+			var adjacentChild
+			var standardChild
+			var prevNode
+			var nextNode
+			var draggingNodeAtRoot
+			var targetNodeAtRoot
+			var isDraggingImage
+			var isTargetImage
+			var insertPos
+			var files
+			var items
+			var mediaFile
+			var isVideo
+			var mediaUrl
+			var result
+			var mediaNode
+			var insertPos
+			var error_1
+			var _a
+			var _b
+			var _c
+			var _d
 			return __generator(this, (_e) => {
 				switch (_e.label) {
 					case 0:

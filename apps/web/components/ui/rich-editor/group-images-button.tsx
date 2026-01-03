@@ -2,7 +2,6 @@
 
 import { AnimatePresence, motion } from "framer-motion"
 import { ArrowLeftRight, Images, Package, X } from "lucide-react"
-import React from "react"
 
 import { Button } from "../button"
 

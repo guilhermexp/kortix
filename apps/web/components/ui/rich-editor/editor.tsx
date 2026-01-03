@@ -1,9 +1,7 @@
 "use client"
 
-import { Eye } from "lucide-react"
 import React, { useCallback, useEffect, useRef, useState } from "react"
 
-import { Button } from "../button"
 import { Card, CardContent } from "../card"
 import { AddBlockButton } from "./add-block-button"
 import { Block } from "./block"
@@ -68,22 +66,12 @@ import { useToast } from "./hooks/use-toast"
 import {
 	type ContainerNode,
 	EditorActions,
-	type EditorNode,
-	type EditorState,
-	findNodeById,
-	getNodeTextContent,
-	hasInlineChildren,
-	isContainerNode,
 	isTextNode,
-	type SelectionInfo,
-	serializeToHtml,
 	type TextNode,
 	useEditor,
-	useSelection,
 	useSelectionManager,
 } from "./index"
 import { LinkPopover } from "./link-popover"
-import { TableBuilder } from "./table-builder"
 import { TableDialog } from "./table-dialog"
 import { useDragAutoScroll } from "./utils/drag-auto-scroll"
 
@@ -109,7 +97,7 @@ export function Editor({
 	const multipleFileInputRef = useRef<HTMLInputElement>(null)
 	const videoInputRef = useRef<HTMLInputElement>(null)
 	const editorContentRef = useRef<HTMLDivElement>(null)
-	const [readOnly, setReadOnly] = useState(initialReadOnly)
+	const [readOnly, _setReadOnly] = useState(initialReadOnly)
 
 	// Enable auto-scroll when dragging near viewport edges
 	useDragAutoScroll(editorContentRef, {
@@ -207,33 +195,29 @@ export function Editor({
 	// Create all handlers
 	const handleSelectionChange = useCallback(
 		createHandleSelectionChange(selectionParams, selectionDispatchTimerRef),
-		[container, state.activeNodeId, selectionManager, dispatch],
+		[],
 	)
 
-	const handleFormat = useCallback(createHandleFormat(selectionParams), [
-		container,
-		dispatch,
-		selectionManager,
-	])
+	const handleFormat = useCallback(createHandleFormat(selectionParams), [])
 
 	const handleApplyColor = useCallback(
 		createHandleApplyColor(selectionParams, toast, setSelectedColor),
-		[dispatch, selectionManager, toast],
+		[],
 	)
 
 	const handleApplyFontSize = useCallback(
 		createHandleApplyFontSize(selectionParams, toast),
-		[dispatch, selectionManager, toast],
+		[],
 	)
 
 	const handleTypeChange = useCallback(
 		createHandleTypeChange(selectionParams, currentNode, handleSelectionChange),
-		[currentNode, dispatch, selectionManager, handleSelectionChange],
+		[],
 	)
 
 	const handleToggleImageSelection = useCallback(
 		createHandleToggleImageSelection(selectedImageIds, setSelectedImageIds),
-		[selectedImageIds],
+		[],
 	)
 
 	const handleContentChange = useCallback(
@@ -247,7 +231,7 @@ export function Editor({
 			},
 			contentUpdateTimers,
 		),
-		[container, dispatch, handleToggleImageSelection],
+		[],
 	)
 
 	const handleKeyDown = useCallback(
@@ -258,7 +242,7 @@ export function Editor({
 			lastEnterTime,
 			onToggleImageSelection: handleToggleImageSelection,
 		}),
-		[container, dispatch, nodeRefs, lastEnterTime, handleToggleImageSelection],
+		[],
 	)
 
 	const handleClickWithModifier = useCallback(
@@ -269,57 +253,57 @@ export function Editor({
 			lastEnterTime,
 			onToggleImageSelection: handleToggleImageSelection,
 		}),
-		[container, handleToggleImageSelection],
+		[],
 	)
 
 	const handleNodeClick = useCallback(
 		createHandleNodeClick({ container, dispatch }),
-		[container, dispatch],
+		[],
 	)
 
 	const handleDeleteNode = useCallback(
 		createHandleDeleteNode({ container, dispatch, toast }),
-		[container, dispatch, toast],
+		[],
 	)
 
 	const handleAddBlock = useCallback(
 		createHandleAddBlock({ dispatch, nodeRefs }),
-		[dispatch, nodeRefs],
+		[],
 	)
 
 	const handleCreateNested = useCallback(
 		createHandleCreateNested({ container, dispatch, toast }),
-		[container, dispatch, toast],
+		[],
 	)
 
 	const handleChangeBlockType = useCallback(
 		createHandleChangeBlockType({ dispatch, nodeRefs }),
-		[dispatch, nodeRefs],
+		[],
 	)
 
 	const handleInsertImageFromCommand = useCallback(
 		createHandleInsertImageFromCommand({ dispatch, nodeRefs }, fileInputRef),
-		[dispatch, fileInputRef],
+		[],
 	)
 
 	const handleCreateList = useCallback(
 		createHandleCreateList(nodeOperationParams),
-		[container, dispatch, toast, editorContentRef],
+		[],
 	)
 
 	const handleCreateListFromCommand = useCallback(
 		createHandleCreateListFromCommand({ dispatch, toast, nodeRefs }),
-		[dispatch, toast, nodeRefs],
+		[],
 	)
 
 	const handleCreateLink = useCallback(
 		createHandleCreateLink(nodeOperationParams),
-		[container, dispatch, toast, editorContentRef],
+		[],
 	)
 
 	const handleCreateTable = useCallback(
 		createHandleCreateTable(nodeOperationParams),
-		[container, dispatch, toast, editorContentRef],
+		[],
 	)
 
 	const handleImportMarkdownTable = useCallback(
@@ -370,7 +354,7 @@ export function Editor({
 				}
 			}, 150)
 		},
-		[container, dispatch, toast, editorContentRef],
+		[container, dispatch, toast],
 	)
 
 	const handleCopyHtml = useCallback(
@@ -405,7 +389,7 @@ export function Editor({
 			setDragOverNodeId,
 			setDropPosition,
 		}),
-		[container, draggingNodeId],
+		[],
 	)
 
 	const handleDragLeave = useCallback(
@@ -415,17 +399,17 @@ export function Editor({
 
 	const handleDrop = useCallback(
 		createHandleDrop(dragDropParams, dropPosition),
-		[container, dispatch, toast, draggingNodeId, dropPosition, onUploadImage],
+		[],
 	)
 
 	const handleFileChange = useCallback(
 		createHandleFileChange(fileUploadParams),
-		[container, dispatch, state, toast, onUploadImage],
+		[],
 	)
 
 	const handleMultipleFilesChange = useCallback(
 		createHandleMultipleFilesChange(fileUploadParams),
-		[container, dispatch, state, toast, onUploadImage],
+		[],
 	)
 
 	const handleImageUploadClick = useCallback(
@@ -445,7 +429,7 @@ export function Editor({
 
 	const handleVideoFileChange = useCallback(
 		createHandleFileChange(videoUploadParams),
-		[container, dispatch, state.activeNodeId, toast, onUploadImage],
+		[],
 	)
 
 	const handleClearImageSelection = useCallback(
@@ -459,7 +443,7 @@ export function Editor({
 			selectedImageIds,
 			handleClearImageSelection,
 		),
-		[container, dispatch, toast, selectedImageIds, handleClearImageSelection],
+		[],
 	)
 
 	// Check if selected images are in same flex container
@@ -479,7 +463,7 @@ export function Editor({
 			selectedImageIds,
 			flexInfo.flexParentId || "",
 		),
-		[container, dispatch, toast, selectedImageIds, flexInfo.flexParentId],
+		[],
 	)
 
 	const handleExtractFromFlex = useCallback(
@@ -489,14 +473,7 @@ export function Editor({
 			flexInfo.flexParentId || "",
 			handleClearImageSelection,
 		),
-		[
-			container,
-			dispatch,
-			toast,
-			selectedImageIds,
-			flexInfo.flexParentId,
-			handleClearImageSelection,
-		],
+		[],
 	)
 
 	const handleFlexContainerDragOver = useCallback(
@@ -508,7 +485,7 @@ export function Editor({
 			setDragOverFlexId,
 			setFlexDropPosition,
 		}),
-		[container, dispatch, toast, draggingNodeId],
+		[],
 	)
 
 	const handleFlexContainerDragLeave = useCallback(
@@ -525,7 +502,7 @@ export function Editor({
 			setDragOverFlexId,
 			setFlexDropPosition,
 		}),
-		[container, dispatch, toast, draggingNodeId],
+		[],
 	)
 
 	// Selection change listener
@@ -586,7 +563,7 @@ export function Editor({
 				if (!selection) return
 
 				const currentBlock = activeElement as HTMLElement
-				if (currentBlock && currentBlock.isContentEditable) {
+				if (currentBlock?.isContentEditable) {
 					const range = document.createRange()
 					range.selectNodeContents(currentBlock)
 					selection.removeAllRanges()
@@ -659,7 +636,7 @@ export function Editor({
 		return () => {
 			document.removeEventListener("keydown", handleGlobalKeyDown)
 		}
-	}, [state.historyIndex, state.history.length, dispatch, toast, handleFormat])
+	}, [state.historyIndex, state.history.length, dispatch, handleFormat])
 
 	return (
 		<div className="bg-transparent flex flex-1 flex-col transition-colors duration-300">

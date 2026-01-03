@@ -18,7 +18,7 @@ var __awaiter =
 			}
 			function rejected(value) {
 				try {
-					step(generator["throw"](value))
+					step(generator.throw(value))
 				} catch (e) {
 					reject(e)
 				}
@@ -35,18 +35,18 @@ var __generator =
 	(this && this.__generator) ||
 	((thisArg, body) => {
 		var _ = {
-				label: 0,
-				sent: () => {
-					if (t[0] & 1) throw t[1]
-					return t[1]
-				},
-				trys: [],
-				ops: [],
+			label: 0,
+			sent: () => {
+				if (t[0] & 1) throw t[1]
+				return t[1]
 			},
-			f,
-			y,
-			t,
-			g
+			trys: [],
+			ops: [],
+		}
+		var f
+		var y
+		var t
+		var g
 		return (
 			(g = { next: verb(0), throw: verb(1), return: verb(2) }),
 			typeof Symbol === "function" &&
@@ -67,9 +67,9 @@ var __generator =
 						y &&
 							(t =
 								op[0] & 2
-									? y["return"]
+									? y.return
 									: op[0]
-										? y["throw"] || ((t = y["return"]) && t.call(y), 0)
+										? y.throw || ((t = y.return) && t.call(y), 0)
 										: y.next) &&
 							!(t = t.call(y, op[1])).done)
 					)
@@ -143,22 +143,23 @@ var image_upload_1 = require("../utils/image-upload")
 function createHandleFileChange(params) {
 	return (e) =>
 		__awaiter(this, void 0, void 0, function () {
-			var container,
-				dispatch,
-				state,
-				toast,
-				setIsUploading,
-				fileInputRef,
-				onUploadImage,
-				file,
-				isVideo,
-				isImage,
-				fileUrl,
-				result,
-				mediaNode,
-				targetId,
-				error_1
-			var _a, _b
+			var container
+			var dispatch
+			var state
+			var toast
+			var setIsUploading
+			var fileInputRef
+			var onUploadImage
+			var file
+			var isVideo
+			var isImage
+			var fileUrl
+			var result
+			var mediaNode
+			var targetId
+			var error_1
+			var _a
+			var _b
 			return __generator(this, (_c) => {
 				switch (_c.label) {
 					case 0:
@@ -274,25 +275,25 @@ exports.createHandleFileChange = createHandleFileChange
 function createHandleMultipleFilesChange(params) {
 	return (e) =>
 		__awaiter(this, void 0, void 0, function () {
-			var container,
-				dispatch,
-				state,
-				toast,
-				setIsUploading,
-				multipleFileInputRef,
-				onUploadImage,
-				files,
-				validFiles_1,
-				uploadPromises,
-				mediaUrls,
-				timestamp_1,
-				mediaNodes,
-				flexContainer,
-				targetId,
-				videoCount,
-				imageCount,
-				description,
-				error_2
+			var container
+			var dispatch
+			var state
+			var toast
+			var setIsUploading
+			var multipleFileInputRef
+			var onUploadImage
+			var files
+			var validFiles_1
+			var uploadPromises
+			var mediaUrls
+			var timestamp_1
+			var mediaNodes
+			var flexContainer
+			var targetId
+			var videoCount
+			var imageCount
+			var description
+			var error_2
 			var _a
 			return __generator(this, (_b) => {
 				switch (_b.label) {

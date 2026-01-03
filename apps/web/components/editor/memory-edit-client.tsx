@@ -36,10 +36,10 @@ import { ChatRewrite } from "@/components/views/chat"
 import type { DocumentWithMemories } from "@/lib/types/document"
 import { useChatMentionQueue, useChatOpen, useProject } from "@/stores"
 import { useCanvasSelection } from "@/stores/canvas"
-import { stripMarkdown, getDocumentSnippet, formatDate } from "../memories"
+import { formatDate, getDocumentSnippet, stripMarkdown } from "../memories"
 import { DocumentProjectTransfer } from "./document-project-transfer"
 
-const LazyMemoryEntriesSidebar = dynamic(
+const _LazyMemoryEntriesSidebar = dynamic(
 	() =>
 		import("./memory-entries-sidebar").then((mod) => mod.MemoryEntriesSidebar),
 	{
@@ -71,12 +71,14 @@ const safeHttpUrl = (value: unknown, baseUrl?: string): string | undefined => {
 	if (trimmed.startsWith("data:image/")) return trimmed
 	try {
 		const url = new URL(trimmed)
-		if (url.protocol === "http:" || url.protocol === "https:") return url.toString()
+		if (url.protocol === "http:" || url.protocol === "https:")
+			return url.toString()
 	} catch {
 		if (baseUrl) {
 			try {
 				const url = new URL(trimmed, baseUrl)
-				if (url.protocol === "http:" || url.protocol === "https:") return url.toString()
+				if (url.protocol === "http:" || url.protocol === "https:")
+					return url.toString()
 			} catch {}
 		}
 	}
@@ -104,7 +106,8 @@ const getYouTubeThumbnail = (value?: string): string | undefined => {
 		} else if (parsed.searchParams.has("v")) {
 			videoId = parsed.searchParams.get("v") ?? undefined
 		}
-		if (videoId) return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+		if (videoId)
+			return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
 	} catch {}
 	return undefined
 }
@@ -131,8 +134,8 @@ const proxyImageUrl = (url: string | undefined | null): string | undefined => {
 		const parsed = new URL(url)
 		const hostname = parsed.hostname.toLowerCase()
 		// Only skip proxying for safe domains
-		const isSafe = SAFE_DOMAINS.some(domain =>
-			hostname === domain || hostname.endsWith(`.${domain}`)
+		const isSafe = SAFE_DOMAINS.some(
+			(domain) => hostname === domain || hostname.endsWith(`.${domain}`),
 		)
 		if (isSafe) return url
 		// Proxy all other external images
@@ -142,14 +145,18 @@ const proxyImageUrl = (url: string | undefined | null): string | undefined => {
 	}
 }
 
-const extractDocumentImages = (document: DocumentWithMemories): { mainImage: string | null; relatedImages: string[] } => {
+const extractDocumentImages = (
+	document: DocumentWithMemories,
+): { mainImage: string | null; relatedImages: string[] } => {
 	const metadata = asRecord(document.metadata)
 	const raw = asRecord(document.raw)
 	const rawExtraction = asRecord(raw?.extraction)
-	const rawFirecrawl = asRecord(raw?.firecrawl) ?? asRecord(rawExtraction?.firecrawl)
+	const rawFirecrawl =
+		asRecord(raw?.firecrawl) ?? asRecord(rawExtraction?.firecrawl)
 	const rawFirecrawlMetadata = asRecord(rawFirecrawl?.metadata) ?? rawFirecrawl
 
-	const documentPreviewImage = (document as any).previewImage ?? (document as any).preview_image
+	const documentPreviewImage =
+		(document as any).previewImage ?? (document as any).preview_image
 
 	const originalUrl =
 		safeHttpUrl(metadata?.originalUrl) ??
@@ -175,7 +182,8 @@ const extractDocumentImages = (document: DocumentWithMemories): { mainImage: str
 			lower.includes("profile_images") ||
 			// Skip small icons
 			lower.endsWith(".ico")
-		) return
+		)
+			return
 		seen.add(src)
 		allImages.push(src)
 	}
@@ -186,7 +194,16 @@ const extractDocumentImages = (document: DocumentWithMemories): { mainImage: str
 	}
 
 	// OpenGraph images
-	const imageKeys = ["ogImage", "og_image", "twitterImage", "twitter_image", "previewImage", "preview_image", "image", "thumbnail"]
+	const imageKeys = [
+		"ogImage",
+		"og_image",
+		"twitterImage",
+		"twitter_image",
+		"previewImage",
+		"preview_image",
+		"image",
+		"thumbnail",
+	]
 	for (const key of imageKeys) {
 		addImage(safeHttpUrl(metadata?.[key], originalUrl))
 		addImage(safeHttpUrl(rawExtraction?.[key], originalUrl))
@@ -199,7 +216,9 @@ const extractDocumentImages = (document: DocumentWithMemories): { mainImage: str
 	}
 
 	// Extraction images array
-	const extractionImages = Array.isArray((rawExtraction as any)?.images) ? (rawExtraction as any).images : []
+	const extractionImages = Array.isArray((rawExtraction as any)?.images)
+		? (rawExtraction as any).images
+		: []
 	for (const img of extractionImages) {
 		addImage(safeHttpUrl(img, originalUrl))
 	}
@@ -215,7 +234,9 @@ const extractDocumentImages = (document: DocumentWithMemories): { mainImage: str
 				addImage(safeHttpUrl((img as any).url, originalUrl))
 			}
 		}
-		const thumbs = Array.isArray((meta as any).thumbnails) ? (meta as any).thumbnails : []
+		const thumbs = Array.isArray((meta as any).thumbnails)
+			? (meta as any).thumbnails
+			: []
 		for (const thumb of thumbs) {
 			if (typeof thumb === "string") addImage(safeHttpUrl(thumb, originalUrl))
 		}
@@ -294,7 +315,9 @@ export function MemoryEditClient({
 
 	// Related links state
 	const [isLoadingRelatedLinks, setIsLoadingRelatedLinks] = useState(false)
-	const [relatedLinksError, setRelatedLinksError] = useState<string | null>(null)
+	const [relatedLinksError, setRelatedLinksError] = useState<string | null>(
+		null,
+	)
 
 	// Hidden items (local state for deletion)
 	const [hiddenImages, setHiddenImages] = useState<Set<string>>(new Set())
@@ -344,11 +367,14 @@ export function MemoryEditClient({
 		setRelatedLinksError(null)
 
 		try {
-			const response = await fetch(`${BACKEND_URL}/v3/documents/${document.id}/related-links`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-			})
+			const response = await fetch(
+				`${BACKEND_URL}/v3/documents/${document.id}/related-links`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					credentials: "include",
+				},
+			)
 
 			const result = await response.json()
 
@@ -479,18 +505,21 @@ export function MemoryEditClient({
 	// Extract images for Pinterest-style layout
 	const { mainImage, relatedImages } = useMemo(
 		() => extractDocumentImages(document),
-		[document]
+		[document],
 	)
 
 	// Extract related links from document
-	const relatedLinks = useMemo(
-		() => extractRelatedLinks(document),
-		[document]
-	)
+	const relatedLinks = useMemo(() => extractRelatedLinks(document), [document])
 
-	const documentSnippet = useMemo(() => getDocumentSnippet(document), [document])
+	const documentSnippet = useMemo(
+		() => getDocumentSnippet(document),
+		[document],
+	)
 	const activeMemories = document.memoryEntries.filter((m) => !m.isForgotten)
-	const sourceUrl = document.url || (document.metadata as any)?.originalUrl || (document.metadata as any)?.source_url
+	const sourceUrl =
+		document.url ||
+		(document.metadata as any)?.originalUrl ||
+		(document.metadata as any)?.source_url
 	const isVideo = isYouTubeUrl(sourceUrl) || document.type === "video"
 
 	return (
@@ -577,7 +606,8 @@ export function MemoryEditClient({
 										{activeMemories.length > 0 && (
 											<span className="flex items-center gap-1.5">
 												<Brain className="h-4 w-4" />
-												{activeMemories.length} {activeMemories.length === 1 ? "memory" : "memories"}
+												{activeMemories.length}{" "}
+												{activeMemories.length === 1 ? "memory" : "memories"}
 											</span>
 										)}
 									</div>
@@ -601,18 +631,27 @@ export function MemoryEditClient({
 										<div className="mt-2 rounded-xl border border-border/60 bg-card/60 p-3 max-h-64 overflow-y-auto shadow-inner">
 											<div className="prose prose-sm prose-invert max-w-none prose-headings:mb-2 prose-headings:mt-1 prose-p:my-1.5 prose-strong:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-code:text-foreground prose-code:bg-muted">
 												<ReactMarkdown
-													remarkPlugins={[remarkGfm]}
 													components={{
 														h1: ({ node, ...props }) => (
-															<h3 className="text-base font-semibold text-primary leading-snug" {...props} />
+															<h3
+																className="text-base font-semibold text-primary leading-snug"
+																{...props}
+															/>
 														),
 														h2: ({ node, ...props }) => (
-															<h4 className="text-sm font-semibold text-primary/90 leading-snug" {...props} />
+															<h4
+																className="text-sm font-semibold text-primary/90 leading-snug"
+																{...props}
+															/>
 														),
 														h3: ({ node, ...props }) => (
-															<h5 className="text-sm font-semibold text-primary/80 leading-snug" {...props} />
+															<h5
+																className="text-sm font-semibold text-primary/80 leading-snug"
+																{...props}
+															/>
 														),
 													}}
+													remarkPlugins={[remarkGfm]}
 												>
 													{documentSnippet}
 												</ReactMarkdown>
@@ -622,13 +661,18 @@ export function MemoryEditClient({
 								</div>
 
 								{/* Original content collapsible */}
-								<Collapsible onOpenChange={setIsContentOpen} open={isContentOpen}>
+								<Collapsible
+									onOpenChange={setIsContentOpen}
+									open={isContentOpen}
+								>
 									<CollapsibleTrigger asChild>
 										<button
 											className="flex w-full items-center justify-between rounded-2xl border border-border/50 bg-card px-5 py-4 text-left text-foreground transition hover:border-border hover:bg-card/80"
 											type="button"
 										>
-											<span className="text-sm font-semibold">Conteúdo original</span>
+											<span className="text-sm font-semibold">
+												Conteúdo original
+											</span>
 											<ChevronDown
 												className={cn(
 													"h-4 w-4 transition-transform duration-200",
@@ -666,8 +710,8 @@ export function MemoryEditClient({
 					{/* Right panel - Related content gallery with internal scroll */}
 					<motion.div
 						animate={{ width: isOpen ? "30vw" : "45vw" }}
-						transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
 						className="hidden lg:flex flex-col shrink-0 border-l border-border/30 bg-background/50"
+						transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
 					>
 						{/* Header with discover button */}
 						<div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
@@ -686,7 +730,9 @@ export function MemoryEditClient({
 									) : (
 										<Sparkles className="w-3 h-3" />
 									)}
-									<span>{isLoadingRelatedLinks ? "Buscando..." : "Descobrir links"}</span>
+									<span>
+										{isLoadingRelatedLinks ? "Buscando..." : "Descobrir links"}
+									</span>
 								</button>
 							)}
 						</div>
@@ -698,108 +744,112 @@ export function MemoryEditClient({
 
 						{/* Scrollable gallery */}
 						<div className="flex-1 overflow-y-auto p-4">
-							{(relatedImages.length > 0 || relatedLinks.length > 0) ? (
+							{relatedImages.length > 0 || relatedLinks.length > 0 ? (
 								<div className="columns-2 gap-3">
 									{/* Related images */}
 									{relatedImages
 										.filter((img) => !hiddenImages.has(img))
 										.map((img, index) => (
-										<div
-											className="mb-3 break-inside-avoid rounded-xl overflow-hidden bg-muted group cursor-pointer relative"
-											key={`img-${img}-${index}`}
-										>
-											<img
-												alt={`Imagem relacionada ${index + 1}`}
-												className="w-full object-cover transition-transform duration-300 group-hover:scale-105"
-												loading="lazy"
-												onClick={() => window.open(img, "_blank")}
-												referrerPolicy="no-referrer"
-												src={proxyImageUrl(img) || img}
-											/>
-											{/* Delete button */}
-											<button
-												className="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
-												onClick={(e) => {
-													e.stopPropagation()
-													setHiddenImages((prev) => new Set([...prev, img]))
-												}}
-												type="button"
+											<div
+												className="mb-3 break-inside-avoid rounded-xl overflow-hidden bg-muted group cursor-pointer relative"
+												key={`img-${img}-${index}`}
 											>
-												<X className="w-3 h-3" />
-											</button>
-										</div>
-									))}
+												<img
+													alt={`Imagem relacionada ${index + 1}`}
+													className="w-full object-cover transition-transform duration-300 group-hover:scale-105"
+													loading="lazy"
+													onClick={() => window.open(img, "_blank")}
+													referrerPolicy="no-referrer"
+													src={proxyImageUrl(img) || img}
+												/>
+												{/* Delete button */}
+												<button
+													className="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
+													onClick={(e) => {
+														e.stopPropagation()
+														setHiddenImages((prev) => new Set([...prev, img]))
+													}}
+													type="button"
+												>
+													<X className="w-3 h-3" />
+												</button>
+											</div>
+										))}
 
 									{/* Related links as preview cards */}
 									{relatedLinks
 										.filter((link) => !hiddenLinks.has(link.url))
 										.map((link, index) => (
-										<div
-											className="mb-3 break-inside-avoid rounded-xl overflow-hidden bg-muted group cursor-pointer relative"
-											key={`link-${link.url}-${index}`}
-										>
-											<a
-												className="block"
-												href={link.url}
-												rel="noopener noreferrer"
-												target="_blank"
+											<div
+												className="mb-3 break-inside-avoid rounded-xl overflow-hidden bg-muted group cursor-pointer relative"
+												key={`link-${link.url}-${index}`}
 											>
-												{/* Preview image */}
-												{link.image ? (
-													<img
-														alt={link.title}
-														className="w-full object-cover transition-transform duration-300 group-hover:scale-105"
-														loading="lazy"
-														referrerPolicy="no-referrer"
-														src={proxyImageUrl(link.image) || link.image}
-													/>
-												) : (
-													<div className="w-full aspect-video flex items-center justify-center bg-gradient-to-br from-muted to-muted/80">
-														{link.favicon ? (
-															<img
-																alt=""
-																className="w-10 h-10 rounded-lg opacity-60"
-																referrerPolicy="no-referrer"
-																src={proxyImageUrl(link.favicon) || link.favicon}
-															/>
-														) : (
-															<LinkIcon className="w-6 h-6 text-muted-foreground/40" />
-														)}
+												<a
+													className="block"
+													href={link.url}
+													rel="noopener noreferrer"
+													target="_blank"
+												>
+													{/* Preview image */}
+													{link.image ? (
+														<img
+															alt={link.title}
+															className="w-full object-cover transition-transform duration-300 group-hover:scale-105"
+															loading="lazy"
+															referrerPolicy="no-referrer"
+															src={proxyImageUrl(link.image) || link.image}
+														/>
+													) : (
+														<div className="w-full aspect-video flex items-center justify-center bg-gradient-to-br from-muted to-muted/80">
+															{link.favicon ? (
+																<img
+																	alt=""
+																	className="w-10 h-10 rounded-lg opacity-60"
+																	referrerPolicy="no-referrer"
+																	src={
+																		proxyImageUrl(link.favicon) || link.favicon
+																	}
+																/>
+															) : (
+																<LinkIcon className="w-6 h-6 text-muted-foreground/40" />
+															)}
+														</div>
+													)}
+													{/* Overlay with title on hover */}
+													<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 pointer-events-none">
+														<span className="text-white text-xs font-medium line-clamp-2">
+															{link.title}
+														</span>
+														<span className="text-white/60 text-[10px] mt-1">
+															{(() => {
+																try {
+																	return new URL(link.url).hostname
+																} catch {
+																	return link.url
+																}
+															})()}
+														</span>
 													</div>
-												)}
-												{/* Overlay with title on hover */}
-												<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 pointer-events-none">
-													<span className="text-white text-xs font-medium line-clamp-2">
-														{link.title}
-													</span>
-													<span className="text-white/60 text-[10px] mt-1">
-														{(() => {
-															try {
-																return new URL(link.url).hostname
-															} catch {
-																return link.url
-															}
-														})()}
-													</span>
+												</a>
+												{/* Type badge - always visible */}
+												<div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-medium backdrop-blur-sm bg-black/60 text-white">
+													{getTypeBadge(link)}
 												</div>
-											</a>
-											{/* Type badge - always visible */}
-											<div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-medium backdrop-blur-sm bg-black/60 text-white">
-												{getTypeBadge(link)}
+												{/* Delete button */}
+												<button
+													className="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
+													onClick={(e) => {
+														e.stopPropagation()
+														setHiddenLinks(
+															(prev) => new Set([...prev, link.url]),
+														)
+													}}
+													type="button"
+												>
+													<X className="w-3 h-3" />
+												</button>
 											</div>
-											{/* Delete button */}
-											<button
-												className="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
-												onClick={(e) => {
-													e.stopPropagation()
-													setHiddenLinks((prev) => new Set([...prev, link.url]))
-												}}
-												type="button"
-											>
-												<X className="w-3 h-3" />
-											</button>
-										</div>
-									))}
+										))}
 								</div>
 							) : (
 								<div className="rounded-2xl border border-dashed border-border/50 bg-muted/30 p-8 text-center">

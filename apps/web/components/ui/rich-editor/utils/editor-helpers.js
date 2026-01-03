@@ -141,8 +141,10 @@ exports.parseDOMToInlineChildren = parseDOMToInlineChildren
  * Detect which formats are active in a given range of a node
  */
 function detectFormatsInRange(node, start, end) {
-	var _a, _b, _c
-	var formats = {
+	var _a
+	var _b
+	var _c
+	var _formats = {
 		bold: false,
 		italic: false,
 		underline: false,
@@ -174,9 +176,9 @@ function detectFormatsInRange(node, start, end) {
 	}
 	// Node has children array - analyze the range
 	var currentPos = 0
-	var hasAnyBold = false
-	var hasAnyItalic = false
-	var hasAnyUnderline = false
+	var _hasAnyBold = false
+	var _hasAnyItalic = false
+	var _hasAnyUnderline = false
 	var allBold = true
 	var allItalic = true
 	var allUnderline = true
@@ -199,17 +201,17 @@ function detectFormatsInRange(node, start, end) {
 		if (overlaps) {
 			charsInRange += Math.min(childEnd, end) - Math.max(childStart, start)
 			if (child.bold) {
-				hasAnyBold = true
+				_hasAnyBold = true
 			} else {
 				allBold = false
 			}
 			if (child.italic) {
-				hasAnyItalic = true
+				_hasAnyItalic = true
 			} else {
 				allItalic = false
 			}
 			if (child.underline) {
-				hasAnyUnderline = true
+				_hasAnyUnderline = true
 			} else {
 				allUnderline = false
 			}
@@ -308,7 +310,8 @@ exports.findNodeAnywhere = findNodeAnywhere
  * Helper to restore selection after formatting
  */
 function restoreSelection(element, start, end) {
-	var _a, _b
+	var _a
+	var _b
 	var range = document.createRange()
 	var sel = window.getSelection()
 	var currentPos = 0

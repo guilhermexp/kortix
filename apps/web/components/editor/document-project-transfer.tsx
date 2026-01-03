@@ -2,7 +2,6 @@
 
 import { $fetch } from "@lib/api"
 import { DEFAULT_PROJECT_ID } from "@repo/lib/constants"
-import { Button } from "@repo/ui/components/button"
 import {
 	Select,
 	SelectContent,
@@ -93,7 +92,7 @@ export function DocumentProjectTransfer({
 			const result = await moveDocumentToProject(documentId, targetTag)
 			return { targetTag, result }
 		},
-		onSuccess: ({ targetTag }, variables) => {
+		onSuccess: ({ targetTag }, _variables) => {
 			const projectName = projectOptions.find(
 				(p) => p.containerTag === targetTag,
 			)?.name

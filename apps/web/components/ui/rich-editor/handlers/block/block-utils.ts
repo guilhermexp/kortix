@@ -46,7 +46,7 @@ export function getTypeClassName(type: string): string {
 /**
  * Build HTML content from children or lines
  */
-export function buildHTML(textNode: TextNode, readOnly: boolean): string {
+export function buildHTML(textNode: TextNode, _readOnly: boolean): string {
 	// Check if node has inline children with formatting
 	const hasChildren =
 		Array.isArray(textNode.children) && textNode.children.length > 0
@@ -58,8 +58,8 @@ export function buildHTML(textNode: TextNode, readOnly: boolean): string {
 
 	// If node has multiple lines (e.g., ordered list with multiple items)
 	if (hasLines) {
-		return textNode
-			.lines!.map((line, index) => {
+		return textNode.lines
+			?.map((line, _index) => {
 				let lineContent = ""
 
 				// If line has inline children with formatting
@@ -67,8 +67,7 @@ export function buildHTML(textNode: TextNode, readOnly: boolean): string {
 					lineContent = line.children
 						.map((child) => {
 							// Check if className is a hex color or Tailwind class
-							const isHexColor =
-								child.className && child.className.startsWith("#")
+							const isHexColor = child.className?.startsWith("#")
 							const colorStyle = isHexColor ? child.className : ""
 							const className = isHexColor ? "" : child.className
 
@@ -135,8 +134,8 @@ export function buildHTML(textNode: TextNode, readOnly: boolean): string {
 
 	// If node has inline children with formatting (single line)
 	if (hasChildren) {
-		return textNode
-			.children!.map((child) => {
+		return textNode.children
+			?.map((child) => {
 				// Build inline styles from the styles object
 				let inlineStyles = ""
 				if (child.styles) {

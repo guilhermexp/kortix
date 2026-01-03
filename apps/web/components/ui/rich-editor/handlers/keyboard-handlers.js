@@ -25,8 +25,8 @@ var editor_helpers_1 = require("../utils/editor-helpers")
  */
 function createHandleContentChange(params, contentUpdateTimers) {
 	return (nodeId, element) => {
-		var container = params.container,
-			dispatch = params.dispatch
+		var container = params.container
+		var dispatch = params.dispatch
 		var result = (0, editor_helpers_1.findNodeInTree)(nodeId, container)
 		if (!result || !(0, types_1.isTextNode)(result.node)) return
 		var node = result.node
@@ -46,9 +46,9 @@ function createHandleContentChange(params, contentUpdateTimers) {
 				var orderedListMatch = newContent.match(/^(\d+)\.\s(.+)$/)
 				if (orderedListMatch && node.type === "p") {
 					// Convert to list item and remove only the number prefix
-					var _ = orderedListMatch[0],
-						number = orderedListMatch[1],
-						content = orderedListMatch[2]
+					var _ = orderedListMatch[0]
+					var _number = orderedListMatch[1]
+					var content = orderedListMatch[2]
 					dispatch(
 						actions_1.EditorActions.updateNode(node.id, {
 							type: "li",
@@ -96,7 +96,7 @@ function createHandleContentChange(params, contentUpdateTimers) {
 					)
 				}
 				// Clean up the timer reference
-				contentUpdateTimers.current["delete"](nodeId)
+				contentUpdateTimers.current.delete(nodeId)
 			}, 150)
 			// Store the timer reference
 			contentUpdateTimers.current.set(nodeId, timer)
@@ -109,8 +109,8 @@ exports.createHandleContentChange = createHandleContentChange
  */
 function createHandleClickWithModifier(params) {
 	return (e, nodeId) => {
-		var container = params.container,
-			onToggleImageSelection = params.onToggleImageSelection
+		var container = params.container
+		var onToggleImageSelection = params.onToggleImageSelection
 		// Check if Ctrl (Windows/Linux) or Cmd (Mac) is pressed
 		var isCtrlOrCmd = e.ctrlKey || e.metaKey
 		if (isCtrlOrCmd && onToggleImageSelection) {
@@ -134,10 +134,10 @@ exports.createHandleClickWithModifier = createHandleClickWithModifier
  */
 function createHandleKeyDown(params) {
 	return (e, nodeId) => {
-		var container = params.container,
-			dispatch = params.dispatch,
-			nodeRefs = params.nodeRefs,
-			lastEnterTime = params.lastEnterTime
+		var container = params.container
+		var dispatch = params.dispatch
+		var nodeRefs = params.nodeRefs
+		var lastEnterTime = params.lastEnterTime
 		// CRITICAL: Get the actual node ID from the DOM element's data attribute
 		// This ensures we get the correct ID for nested list items, not the container's ID
 		var actualNodeId = e.currentTarget.getAttribute("data-node-id") || nodeId
@@ -169,7 +169,7 @@ function createHandleKeyDown(params) {
 						selection_1.addRange(range)
 						var element_1 = nodeRefs.current.get(actualNodeId)
 						if (element_1) {
-							var createHandleContentChange_1 =
+							var _createHandleContentChange_1 =
 								require("./keyboard-handlers").createHandleContentChange
 							// This would need contentUpdateTimers which is not available here
 							// So we need to pass it from the calling context
@@ -188,7 +188,7 @@ function createHandleKeyDown(params) {
 						range.collapse(true)
 						selection_2.removeAllRanges()
 						selection_2.addRange(range)
-						var element_2 = nodeRefs.current.get(actualNodeId)
+						var _element_2 = nodeRefs.current.get(actualNodeId)
 						// Content change handling would be done by the parent
 					}
 				}
@@ -196,7 +196,7 @@ function createHandleKeyDown(params) {
 			}
 			e.preventDefault()
 			var currentTime_1 = Date.now()
-			var timeSinceLastEnter = currentTime_1 - lastEnterTime.current
+			var _timeSinceLastEnter = currentTime_1 - lastEnterTime.current
 			// Get cursor position
 			var selection = window.getSelection()
 			var element = nodeRefs.current.get(actualNodeId)
@@ -226,7 +226,7 @@ function createHandleKeyDown(params) {
 				if (!beforeCursor.trim() && !afterCursor.trim()) {
 					// Convert to paragraph and exit list
 					var newNode_1 = {
-						id: "p-" + Date.now(),
+						id: `p-${Date.now()}`,
 						type: "p",
 						content: "",
 						attributes: {},

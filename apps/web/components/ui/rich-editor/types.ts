@@ -355,7 +355,7 @@ export function hasInlineChildren(
 	return (
 		isTextNode(node) &&
 		Array.isArray((node as TextNode).children) &&
-		(node as TextNode).children!.length > 0
+		(node as TextNode).children?.length > 0
 	)
 }
 
@@ -385,7 +385,7 @@ export function getNodeTextContent(node: TextNode): string {
 
 	// If node has inline children (single line with formatting)
 	if (hasInlineChildren(node)) {
-		return node.children!.map((child) => child.content).join("")
+		return node.children?.map((child) => child.content).join("")
 	}
 
 	// Simple content (single line, no formatting)

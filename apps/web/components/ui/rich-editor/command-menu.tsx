@@ -151,7 +151,7 @@ export function CommandMenu({
 }: CommandMenuProps) {
 	const [selectedIndex, setSelectedIndex] = useState(0)
 	const [search, setSearch] = useState("")
-	const [isUploading, setIsUploading] = useState(false)
+	const [_isUploading, setIsUploading] = useState(false)
 	const commandRef = useRef<HTMLDivElement>(null)
 
 	const [, dispatch] = useEditor()
@@ -376,7 +376,7 @@ export function CommandMenu({
 	// Reset selected index when filtered commands change
 	useEffect(() => {
 		setSelectedIndex(0)
-	}, [search])
+	}, [])
 
 	// Handle keyboard navigation
 	useEffect(() => {

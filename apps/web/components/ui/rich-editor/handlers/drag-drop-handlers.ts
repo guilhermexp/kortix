@@ -1,5 +1,5 @@
 import { EditorActions } from "../reducer/actions"
-import type { ContainerNode, EditorNode, TextNode } from "../types"
+import type { ContainerNode, TextNode } from "../types"
 import { isContainerNode, isTextNode } from "../types"
 import { findNodeAnywhere } from "../utils/editor-helpers"
 import { uploadImage } from "../utils/image-upload"
@@ -42,7 +42,7 @@ export function createHandleBlockDragStart(
  * Handle drag enter
  */
 export function createHandleDragEnter() {
-	return (e: React.DragEvent, nodeId: string) => {
+	return (e: React.DragEvent, _nodeId: string) => {
 		e.preventDefault()
 		e.stopPropagation()
 	}

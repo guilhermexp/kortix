@@ -202,7 +202,7 @@ export function createHandleFormat(params: SelectionHandlerParams) {
 
 		// After state updates, check what happened
 		setTimeout(() => {
-			const updatedNode = container.children.find((n) => n.id === nodeId)
+			const _updatedNode = container.children.find((n) => n.id === nodeId)
 		}, 100)
 
 		// Restore selection after formatting

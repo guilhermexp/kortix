@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion"
 import { Code2, Pencil, Search } from "lucide-react"
-import React, { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { Button } from "../button"
 import { Input } from "../input"
@@ -107,7 +107,7 @@ export function CustomClassPopover() {
 				savedSelectionRef.current = null
 			}
 		}
-	}, [state.currentSelection, state.selectionKey, isOpen])
+	}, [state.currentSelection, isOpen])
 	// Close keyboard on mobile
 	const closeKeyboard = () => {
 		if (isMobile && document.activeElement instanceof HTMLElement) {
@@ -188,10 +188,9 @@ export function CustomClassPopover() {
 			</div>
 			<ScrollArea className="h-[500px] pr-4">
 				<div className="space-y-4">
-					{devMode ? (
-						// Dev Mode: Show Tailwind classes
-						<>
-							{filteredClasses.map((group) => (
+					{devMode
+						? // Dev Mode: Show Tailwind classes
+							filteredClasses.map((group) => (
 								<div key={group.category}>
 									<h4 className="text-muted-foreground mb-2 text-xs font-semibold">
 										{group.category}
@@ -210,12 +209,9 @@ export function CustomClassPopover() {
 										))}
 									</div>
 								</div>
-							))}
-						</>
-					) : (
-						// User Mode: Show user-friendly names
-						<>
-							{filteredClasses.map((group) => (
+							))
+						: // User Mode: Show user-friendly names
+							filteredClasses.map((group) => (
 								<div key={group.category}>
 									<h4 className="text-muted-foreground mb-2 text-xs font-semibold">
 										{group.category}
@@ -238,8 +234,6 @@ export function CustomClassPopover() {
 									</div>
 								</div>
 							))}
-						</>
-					)}
 					{filteredClasses.length === 0 && (
 						<div className="text-muted-foreground py-8 text-center text-sm">
 							No classes found matching &quot;{searchQuery}&quot;

@@ -1,43 +1,27 @@
 "use client"
 
-import { cn } from "@lib/utils"
-import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
 import {
-	AlertCircle,
-	CheckCircle2,
-	Clock,
-	Edit2,
-	Loader2,
-	Play,
-	Plus,
-	Save,
-	Trash2,
-	X,
-} from "lucide-react"
+	asRecord,
+	cn,
+	formatPreviewLabel,
+	getYouTubeId,
+	isInlineSvgDataUrl,
+	pickFirstUrlSameHost,
+	safeHttpUrl,
+} from "@lib/utils"
+import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
+import { AlertCircle, Loader2, Play, Plus, Save, Trash2, X } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import type { z } from "zod"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import {
 	createMemoryEntry,
 	deleteMemoryEntry,
 	getMemoryEntriesForDocument,
 } from "@/lib/api/memory-entries"
-import {
-	asRecord,
-	safeHttpUrl,
-	pickFirstUrl,
-	pickFirstUrlSameHost,
-	sameHostOrTrustedCdn,
-	formatPreviewLabel,
-	getYouTubeId,
-	isInlineSvgDataUrl,
-	type BaseRecord,
-} from "@lib/utils"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type MemoryEntry = DocumentsResponse["documents"][0]["memoryEntries"][0]
@@ -409,7 +393,7 @@ export function MemoryEntriesSidebar({
 			return out
 		})()
 
-		const preferredFromExtracted =
+		const _preferredFromExtracted =
 			extractedImages.find((u) => !isLikelyGeneric(u)) || extractedImages[0]
 
 		const youtubeFallback = (() => {
@@ -555,7 +539,7 @@ export function MemoryEntriesSidebar({
 		}
 
 		return null
-	}, [document])
+	}, [document, buildYouTubeEmbedUrl])
 
 	const sanitizedDocumentPreview = useMemo<DocumentPreviewData | null>(() => {
 		if (!documentPreview) return null
@@ -593,7 +577,7 @@ export function MemoryEntriesSidebar({
 
 	useEffect(() => {
 		setStickyPreview(null)
-	}, [document?.id])
+	}, [])
 
 	useEffect(() => {
 		if (!isProcessing) {
@@ -606,7 +590,7 @@ export function MemoryEntriesSidebar({
 				? current
 				: sanitizedDocumentPreview,
 		)
-	}, [isProcessing, sanitizedDocumentPreview])
+	}, [isProcessing, sanitizedDocumentPreview, previewsEqual])
 
 	const previewToRender = isProcessing
 		? (stickyPreview ?? sanitizedDocumentPreview)
@@ -616,7 +600,7 @@ export function MemoryEntriesSidebar({
 
 	useEffect(() => {
 		setIsVideoPlaying(false)
-	}, [document?.id])
+	}, [])
 
 	// Build small gallery of additional images for web/repository URLs
 	const additionalImages = useMemo(() => {

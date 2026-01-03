@@ -19,12 +19,12 @@ const extractFontSize = (fontSizeValue?: string): number => {
 
 	// Check if it's a pixel value
 	if (fontSizeValue.includes("px")) {
-		return Number.parseInt(fontSizeValue.replace("px", "")) || 16
+		return Number.parseInt(fontSizeValue.replace("px", ""), 10) || 16
 	}
 
 	// If it's just a number
-	const parsed = Number.parseInt(fontSizeValue)
-	if (!isNaN(parsed)) {
+	const parsed = Number.parseInt(fontSizeValue, 10)
+	if (!Number.isNaN(parsed)) {
 		return parsed
 	}
 
@@ -59,7 +59,7 @@ export function FontSizePicker({
 	}
 
 	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const value = Number.parseInt(e.target.value) || 16
+		const value = Number.parseInt(e.target.value, 10) || 16
 		const clampedValue = Math.max(8, Math.min(value, 128))
 		setFontSize(clampedValue)
 	}

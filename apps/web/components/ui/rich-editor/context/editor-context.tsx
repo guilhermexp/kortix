@@ -2,7 +2,6 @@
 
 import React, {
 	createContext,
-	useCallback,
 	useContext,
 	useMemo,
 	useReducer,
@@ -138,7 +137,7 @@ export function EditorProvider({
 				console.group(`🎬 [Mina Editor] Action: ${action.type}`)
 				if ("payload" in action) {
 				}
-				const currentContainer = state.history[state.historyIndex]
+				const _currentContainer = state.history[state.historyIndex]
 			}
 
 			// Dispatch the action
@@ -151,7 +150,7 @@ export function EditorProvider({
 				console.groupEnd()
 			}
 		}
-	}, [dispatch, debug, state])
+	}, [debug, state])
 
 	// Call onChange when state changes
 	React.useEffect(() => {

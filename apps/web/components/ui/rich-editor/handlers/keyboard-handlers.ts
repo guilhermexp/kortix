@@ -44,7 +44,7 @@ export function createHandleContentChange(
 
 				if (orderedListMatch && node.type === "p") {
 					// Convert to list item and remove only the number prefix
-					const [_, number, content] = orderedListMatch
+					const [_, _number, content] = orderedListMatch
 
 					dispatch(
 						EditorActions.updateNode(node.id, {
@@ -193,7 +193,7 @@ export function createHandleKeyDown(params: KeyboardHandlerParams) {
 						selection.removeAllRanges()
 						selection.addRange(range)
 
-						const element = nodeRefs.current.get(actualNodeId)
+						const _element = nodeRefs.current.get(actualNodeId)
 						// Content change handling would be done by the parent
 					}
 				}
@@ -204,7 +204,7 @@ export function createHandleKeyDown(params: KeyboardHandlerParams) {
 			e.preventDefault()
 
 			const currentTime = Date.now()
-			const timeSinceLastEnter = currentTime - lastEnterTime.current
+			const _timeSinceLastEnter = currentTime - lastEnterTime.current
 
 			// Get cursor position
 			const selection = window.getSelection()
@@ -237,7 +237,7 @@ export function createHandleKeyDown(params: KeyboardHandlerParams) {
 				if (!beforeCursor.trim() && !afterCursor.trim()) {
 					// Convert to paragraph and exit list
 					const newNode: TextNode = {
-						id: "p-" + Date.now(),
+						id: `p-${Date.now()}`,
 						type: "p",
 						content: "",
 						attributes: {},
@@ -341,7 +341,7 @@ export function createHandleKeyDown(params: KeyboardHandlerParams) {
 							if (offsetInChild > 0) {
 								beforeChildren.push({
 									...child,
-									content: child.content!.substring(0, offsetInChild),
+									content: child.content?.substring(0, offsetInChild),
 								})
 							}
 
@@ -349,7 +349,7 @@ export function createHandleKeyDown(params: KeyboardHandlerParams) {
 							if (offsetInChild < childLength) {
 								afterChildren.push({
 									...child,
-									content: child.content!.substring(offsetInChild),
+									content: child.content?.substring(offsetInChild),
 								})
 							}
 
@@ -370,7 +370,7 @@ export function createHandleKeyDown(params: KeyboardHandlerParams) {
 
 					// Create new node with children after cursor (deep copy with all properties)
 					const newNode: TextNode = {
-						id: `${node.type}-` + Date.now(),
+						id: `${node.type}-${Date.now()}`,
 						type: node.type,
 						content: afterChildren.length === 0 ? afterCursor : node.content,
 						children: afterChildren.length > 0 ? afterChildren : undefined,
@@ -390,7 +390,7 @@ export function createHandleKeyDown(params: KeyboardHandlerParams) {
 
 					// Create new node with content after cursor (deep copy all properties)
 					const newNode: TextNode = {
-						id: `${node.type}-` + Date.now(),
+						id: `${node.type}-${Date.now()}`,
 						type: node.type,
 						content: afterCursor,
 						attributes: { ...node.attributes },
@@ -404,7 +404,7 @@ export function createHandleKeyDown(params: KeyboardHandlerParams) {
 
 				// Focus the new node after a brief delay and place cursor at start
 				setTimeout(() => {
-					const newElement = nodeRefs.current.get(`${node.type}-` + currentTime)
+					const newElement = nodeRefs.current.get(`${node.type}-${currentTime}`)
 					if (newElement) {
 						newElement.focus()
 						// Place cursor at the start of the new node

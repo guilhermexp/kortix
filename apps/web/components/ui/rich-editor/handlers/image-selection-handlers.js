@@ -43,9 +43,9 @@ function createHandleGroupSelectedImages(
 	clearSelection,
 ) {
 	return () => {
-		var container = params.container,
-			dispatch = params.dispatch,
-			toast = params.toast
+		var container = params.container
+		var dispatch = params.dispatch
+		var toast = params.toast
 		if (selectedImageIds.size < 2) {
 			toast({
 				variant: "destructive",
@@ -78,8 +78,10 @@ function createHandleGroupSelectedImages(
 			return
 		}
 		// Check if images are in different flex containers - we can't group them
-		var parentIds = new Set(imageResults.map((r) => r.parentId).filter(Boolean))
-		var hasFlexParent = imageResults.some((r) => {
+		var _parentIds = new Set(
+			imageResults.map((r) => r.parentId).filter(Boolean),
+		)
+		var _hasFlexParent = imageResults.some((r) => {
 			var _a
 			return (
 				r.parent &&
@@ -179,7 +181,7 @@ function createHandleToggleImageSelection(
 	return (imageId) => {
 		var newSelection = new Set(selectedImageIds)
 		if (newSelection.has(imageId)) {
-			newSelection["delete"](imageId)
+			newSelection.delete(imageId)
 		} else {
 			newSelection.add(imageId)
 		}
@@ -200,7 +202,9 @@ exports.createHandleClearImageSelection = createHandleClearImageSelection
  * Check if selected images are in the same flex container
  */
 function checkImagesInSameFlex(params, selectedImageIds) {
-	var _a, _b, _c
+	var _a
+	var _b
+	var _c
 	var container = params.container
 	if (selectedImageIds.size < 2) {
 		return { inSameFlex: false, flexParentId: null }
@@ -233,7 +237,8 @@ function checkImagesInSameFlex(params, selectedImageIds) {
 	}
 	// Check all images have the same flex parent
 	var allSameParent = imageResults.every((r) => {
-		var _a, _b
+		var _a
+		var _b
 		return (
 			r.parentId === firstParentId &&
 			((_b =
@@ -258,9 +263,9 @@ function createHandleReverseImagesInFlex(
 	flexParentId,
 ) {
 	return () => {
-		var container = params.container,
-			dispatch = params.dispatch,
-			toast = params.toast
+		var container = params.container
+		var dispatch = params.dispatch
+		var toast = params.toast
 		// Find the flex container
 		var flexResult = (0, editor_helpers_1.findNodeAnywhere)(
 			flexParentId,
@@ -315,10 +320,11 @@ function createHandleExtractFromFlex(
 	clearSelection,
 ) {
 	return () => {
-		var _a, _b
-		var container = params.container,
-			dispatch = params.dispatch,
-			toast = params.toast
+		var _a
+		var _b
+		var container = params.container
+		var dispatch = params.dispatch
+		var toast = params.toast
 		// Find the flex container
 		var flexResult = (0, editor_helpers_1.findNodeAnywhere)(
 			flexParentId,
@@ -398,7 +404,8 @@ function createHandleExtractFromFlex(
 					}
 				}
 				imagesToExtract.forEach((image) => {
-					var _a, _b
+					var _a
+					var _b
 					actions.push(
 						actions_1.EditorActions.insertNode(
 							image,

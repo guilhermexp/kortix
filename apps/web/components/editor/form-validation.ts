@@ -193,7 +193,7 @@ export function hasFieldError(
 	errors: Record<string, string[]> | null,
 	field: string,
 ): boolean {
-	return !!(errors && errors[field] && errors[field].length > 0)
+	return !!(errors?.[field] && errors[field].length > 0)
 }
 
 /**

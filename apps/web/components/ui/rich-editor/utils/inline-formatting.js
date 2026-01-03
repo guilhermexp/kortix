@@ -79,10 +79,10 @@ function applyFormatting(node, startOffset, endOffset, className) {
 	var inlineNode = convertToInlineFormat(node)
 	var fullText = (0, types_1.getNodeTextContent)(inlineNode)
 	// Split the text
-	var _a = splitTextAtSelection(fullText, startOffset, endOffset),
-		before = _a.before,
-		selected = _a.selected,
-		after = _a.after
+	var _a = splitTextAtSelection(fullText, startOffset, endOffset)
+	var before = _a.before
+	var selected = _a.selected
+	var after = _a.after
 	// Build new children array
 	var newChildren = []
 	// Add "before" text if it exists
@@ -116,7 +116,8 @@ exports.applyFormatting = applyFormatting
  * @returns Merged array
  */
 function mergeAdjacentTextNodes(children) {
-	var _a, _b
+	var _a
+	var _b
 	if (children.length <= 1) return children
 	var merged = []
 	var current = children[0]
@@ -157,7 +158,7 @@ exports.mergeAdjacentTextNodes = mergeAdjacentTextNodes
  * @param className - Class name to remove
  * @returns New node with formatting removed
  */
-function removeFormatting(node, startOffset, endOffset, className) {
+function removeFormatting(node, _startOffset, _endOffset, _className) {
 	if (!(0, types_1.hasInlineChildren)(node)) {
 		return node // Nothing to remove
 	}

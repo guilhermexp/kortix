@@ -14,11 +14,11 @@ var tree_operations_1 = require("../utils/tree-operations")
  */
 function createHandleSelectionChange(params, selectionDispatchTimerRef) {
 	return () => {
-		var container = params.container,
-			state = params.state,
-			dispatch = params.dispatch,
-			selectionManager = params.selectionManager,
-			nodeRefs = params.nodeRefs
+		var container = params.container
+		var state = params.state
+		var dispatch = params.dispatch
+		var selectionManager = params.selectionManager
+		var nodeRefs = params.nodeRefs
 		var selection = window.getSelection()
 		var hasText =
 			selection !== null &&
@@ -162,10 +162,10 @@ exports.createHandleSelectionChange = createHandleSelectionChange
  */
 function createHandleFormat(params) {
 	return (format) => {
-		var container = params.container,
-			dispatch = params.dispatch,
-			selectionManager = params.selectionManager,
-			nodeRefs = params.nodeRefs
+		var container = params.container
+		var dispatch = params.dispatch
+		var selectionManager = params.selectionManager
+		var nodeRefs = params.nodeRefs
 		console.group("🔘 [handleFormat] Button clicked")
 		// Get fresh selection from ref (more up-to-date than state)
 		var refSelection = selectionManager.getSelection()
@@ -175,15 +175,15 @@ function createHandleFormat(params) {
 			return
 		}
 		// Save selection for restoration
-		var start = refSelection.start,
-			end = refSelection.end,
-			nodeId = refSelection.nodeId,
-			formats = refSelection.formats
+		var start = refSelection.start
+		var end = refSelection.end
+		var nodeId = refSelection.nodeId
+		var _formats = refSelection.formats
 		// Dispatch toggle format action - reducer handles everything!
 		dispatch(actions_1.EditorActions.toggleFormat(format))
 		// After state updates, check what happened
 		setTimeout(() => {
-			var updatedNode = container.children.find((n) => n.id === nodeId)
+			var _updatedNode = container.children.find((n) => n.id === nodeId)
 		}, 100)
 		// Restore selection after formatting
 		setTimeout(() => {
@@ -203,15 +203,15 @@ exports.createHandleFormat = createHandleFormat
  */
 function createHandleApplyColor(params, toast, setSelectedColor) {
 	return (color) => {
-		var dispatch = params.dispatch,
-			selectionManager = params.selectionManager,
-			nodeRefs = params.nodeRefs
+		var dispatch = params.dispatch
+		var selectionManager = params.selectionManager
+		var nodeRefs = params.nodeRefs
 		// Get fresh selection from ref
 		var refSelection = selectionManager.getSelection()
 		if (!refSelection) return
-		var nodeId = refSelection.nodeId,
-			start = refSelection.start,
-			end = refSelection.end
+		var nodeId = refSelection.nodeId
+		var start = refSelection.start
+		var end = refSelection.end
 		// Apply color as inline style
 		dispatch(actions_1.EditorActions.applyInlineStyle("color", color))
 		setSelectedColor(color)
@@ -234,15 +234,15 @@ exports.createHandleApplyColor = createHandleApplyColor
  */
 function createHandleApplyFontSize(params, toast) {
 	return (fontSize) => {
-		var dispatch = params.dispatch,
-			selectionManager = params.selectionManager,
-			nodeRefs = params.nodeRefs
+		var dispatch = params.dispatch
+		var selectionManager = params.selectionManager
+		var nodeRefs = params.nodeRefs
 		// Get fresh selection from ref
 		var refSelection = selectionManager.getSelection()
 		if (!refSelection) return
-		var nodeId = refSelection.nodeId,
-			start = refSelection.start,
-			end = refSelection.end
+		var nodeId = refSelection.nodeId
+		var start = refSelection.start
+		var end = refSelection.end
 		// Apply font size as inline style
 		dispatch(actions_1.EditorActions.applyInlineStyle("fontSize", fontSize))
 		toast({
@@ -264,17 +264,17 @@ exports.createHandleApplyFontSize = createHandleApplyFontSize
  */
 function createHandleTypeChange(params, currentNode, handleSelectionChange) {
 	return (type) => {
-		var dispatch = params.dispatch,
-			selectionManager = params.selectionManager,
-			nodeRefs = params.nodeRefs
+		var dispatch = params.dispatch
+		var selectionManager = params.selectionManager
+		var nodeRefs = params.nodeRefs
 		if (!currentNode) return
 		// Check if there's a selection (use ref for freshest data)
 		var refSelection = selectionManager.getSelection()
 		if (refSelection) {
 			// Save selection info before dispatch
-			var start_1 = refSelection.start,
-				end_1 = refSelection.end,
-				nodeId_1 = refSelection.nodeId
+			var start_1 = refSelection.start
+			var end_1 = refSelection.end
+			var nodeId_1 = refSelection.nodeId
 			// Apply as inline element type to selected text only
 			var elementType = type
 			dispatch(actions_1.EditorActions.applyInlineElementType(elementType))

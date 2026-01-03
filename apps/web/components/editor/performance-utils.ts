@@ -192,7 +192,7 @@ export function usePerformanceMark(componentName: string, enabled = false) {
 			return () => {
 				try {
 					performance.clearMarks(markName)
-				} catch (e) {
+				} catch (_e) {
 					// Ignore errors
 				}
 			}
@@ -377,7 +377,7 @@ export function prefetchResource(href: string, as = "fetch") {
  * Preload images
  * Preloads images for instant display
  */
-export function preloadImages(urls: string[]): Promise<void[]> {
+export function preloadImages(urls: string[]): Promise<undefined[]> {
 	return Promise.all(
 		urls.map(
 			(url) =>

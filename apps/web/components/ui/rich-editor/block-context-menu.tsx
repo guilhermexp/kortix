@@ -1,6 +1,6 @@
 "use client"
 
-import { Church, PaintBucket } from "lucide-react"
+import { PaintBucket } from "lucide-react"
 import { useTheme } from "next-themes"
 import React, { useMemo, useState } from "react"
 

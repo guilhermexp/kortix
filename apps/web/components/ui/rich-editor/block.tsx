@@ -144,8 +144,8 @@ export function Block({
 			| string
 			| undefined
 		const isFlexContainer = layoutType === "flex"
-		const gap = containerNode.attributes?.gap as string | undefined
-		const flexWrap = containerNode.attributes?.flexWrap as string | undefined
+		const _gap = containerNode.attributes?.gap as string | undefined
+		const _flexWrap = containerNode.attributes?.flexWrap as string | undefined
 
 		// Determine if this container holds list items
 		const listTypeFromAttribute = containerNode.attributes?.listType as
@@ -439,7 +439,7 @@ export function Block({
 			setCommandMenuAnchor,
 			shouldPreserveSelectionRef,
 		}),
-		[textNode, readOnly, onInput, onChangeBlockType, showCommandMenu],
+		[],
 	)
 
 	const handleKeyDown = useCallback(
@@ -462,21 +462,10 @@ export function Block({
 			setShowCommandMenu,
 			setCommandMenuAnchor,
 		}),
-		[
-			textNode,
-			readOnly,
-			onKeyDown,
-			onCreateNested,
-			showCommandMenu,
-			currentContainer,
-			dispatch,
-		],
+		[],
 	)
 
-	const handleClick = useCallback(createHandleClick({ readOnly, onClick }), [
-		readOnly,
-		onClick,
-	])
+	const handleClick = useCallback(createHandleClick({ readOnly, onClick }), [])
 
 	const handleCommandSelect = useCallback(
 		createHandleCommandSelect({
@@ -488,17 +477,17 @@ export function Block({
 			setShowCommandMenu,
 			setCommandMenuAnchor,
 		}),
-		[textNode, onChangeBlockType, onInsertImage, onCreateList],
+		[],
 	)
 
 	const handleBackgroundColorChange = useCallback(
 		createHandleBackgroundColorChange(textNode, dispatch),
-		[textNode, dispatch],
+		[],
 	)
 
 	const handleBlockDragStartFn = useCallback(
 		createHandleBlockDragStart(textNode, onBlockDragStart),
-		[textNode, onBlockDragStart],
+		[],
 	)
 
 	const handleBlockDragEndFn = useCallback(createHandleBlockDragEnd(), [])

@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion"
 import { Link as LinkIcon, Trash2 } from "lucide-react"
-import React, { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { Button } from "../button"
 import { Input } from "../input"
@@ -99,7 +99,7 @@ export function LinkPopover() {
 				savedSelectionRef.current = null
 			}
 		}
-	}, [state.currentSelection, state.selectionKey, isOpen])
+	}, [state.currentSelection, isOpen])
 
 	// Handle link application
 	const handleApplyLink = () => {

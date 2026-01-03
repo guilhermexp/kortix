@@ -50,10 +50,10 @@ export function createHandleGroupSelectedImages(
 		}
 
 		// Check if images are in different flex containers - we can't group them
-		const parentIds = new Set(
+		const _parentIds = new Set(
 			imageResults.map((r) => r.parentId).filter(Boolean),
 		)
-		const hasFlexParent = imageResults.some(
+		const _hasFlexParent = imageResults.some(
 			(r) => r.parent && r.parent.attributes?.layoutType === "flex",
 		)
 
