@@ -21,6 +21,7 @@
 		"@anthropic-ai/sdk": "^0.67.0",
 		"@google/generative-ai": "^0.24.1",
 		"@hono/node-server": "^1.9.0",
+		"@standard-community/standard-json": "^0.3.5",
 		"@supabase/supabase-js": "^2.76.1",
 		"bullmq": "^5.66.2",
 		"hono": "^4.10.2",
@@ -31,8 +32,8 @@
 		"zod": "^4.1.12"
 	},
 	"devDependencies": {
+		"@modelcontextprotocol/sdk": "1.7.0",
 		"@types/node": "^22.10.1",
-		"typescript": "5.9.3",
-		"@modelcontextprotocol/sdk": "1.7.0"
+		"typescript": "5.9.3"
 	}
 }
