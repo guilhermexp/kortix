@@ -1,10 +1,10 @@
-export { redis, redisSubscriber, isRedisEnabled } from "./redis-client";
 export {
-	documentQueue,
 	addDocumentJob,
+	cleanQueue,
+	type DocumentJobData,
+	documentQueue,
 	getQueueStats,
 	pauseQueue,
 	resumeQueue,
-	cleanQueue,
-	type DocumentJobData,
-} from "./document-queue";
+} from "./document-queue"
+export { isRedisEnabled, redis, redisSubscriber } from "./redis-client"
