@@ -2,11 +2,9 @@ const DEFAULT_API_URL = "http://localhost:4000"
 const DEFAULT_APP_URL = "http://localhost:3000"
 
 const KORTIX_API =
-	(import.meta.env.VITE_KORTIX_API as string | undefined) ??
-	DEFAULT_API_URL
+	(import.meta.env.VITE_KORTIX_API as string | undefined) ?? DEFAULT_API_URL
 const KORTIX_WEB =
-	(import.meta.env.VITE_KORTIX_APP as string | undefined) ??
-	DEFAULT_APP_URL
+	(import.meta.env.VITE_KORTIX_APP as string | undefined) ?? DEFAULT_APP_URL
 
 /**
  * API Endpoints

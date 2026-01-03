@@ -4,10 +4,10 @@
 import { API_ENDPOINTS, STORAGE_KEYS } from "./constants"
 import {
 	AuthenticationError,
+	KortixAPIError,
 	type MemoryPayload,
 	type Project,
 	type ProjectsResponse,
-	KortixAPIError,
 } from "./types"
 
 /**

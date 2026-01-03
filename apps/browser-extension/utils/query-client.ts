@@ -1,25 +1,25 @@
 /**
  * React Query configuration for Kortix browser extension
  */
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query"
 
 export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes (previously cacheTime)
-      retry: (failureCount, error) => {
-        // Don't retry on authentication errors
-        if (error?.constructor?.name === "AuthenticationError") {
-          return false;
-        }
-        return failureCount < 3;
-      },
-      refetchOnMount: "stale", // Only refetch on mount if data is stale (not every mount)
-      refetchOnWindowFocus: false,
-    },
-    mutations: {
-      retry: 1,
-    },
-  },
-});
+	defaultOptions: {
+		queries: {
+			staleTime: 5 * 60 * 1000, // 5 minutes
+			gcTime: 10 * 60 * 1000, // 10 minutes (previously cacheTime)
+			retry: (failureCount, error) => {
+				// Don't retry on authentication errors
+				if (error?.constructor?.name === "AuthenticationError") {
+					return false
+				}
+				return failureCount < 3
+			},
+			refetchOnMount: "stale", // Only refetch on mount if data is stale (not every mount)
+			refetchOnWindowFocus: false,
+		},
+		mutations: {
+			retry: 1,
+		},
+	},
+})

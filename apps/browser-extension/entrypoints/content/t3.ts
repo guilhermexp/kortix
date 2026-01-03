@@ -150,9 +150,7 @@ async function getRelatedMemoriesForT3(actionSource: string) {
 		const kortixContainer = document.querySelector(
 			'[data-kortix-icon-added="true"]',
 		)
-		if (
-			kortixContainer?.parentElement?.parentElement?.previousElementSibling
-		) {
+		if (kortixContainer?.parentElement?.parentElement?.previousElementSibling) {
 			const textareaElement =
 				kortixContainer.parentElement.parentElement.previousElementSibling.querySelector(
 					"textarea",
@@ -221,8 +219,7 @@ async function getRelatedMemoriesForT3(actionSource: string) {
 				'[data-kortix-icon-added="true"]',
 			)
 			if (
-				kortixContainer?.parentElement?.parentElement
-					?.previousElementSibling
+				kortixContainer?.parentElement?.parentElement?.previousElementSibling
 			) {
 				textareaElement =
 					kortixContainer.parentElement.parentElement.previousElementSibling.querySelector(

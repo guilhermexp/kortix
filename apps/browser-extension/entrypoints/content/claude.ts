@@ -156,9 +156,7 @@ async function getRelatedMemoriesForClaude(actionSource: string) {
 		)
 		if (kortixContainer?.parentElement?.previousElementSibling) {
 			const pTag =
-				kortixContainer.parentElement.previousElementSibling.querySelector(
-					"p",
-				)
+				kortixContainer.parentElement.previousElementSibling.querySelector("p")
 			userQuery = pTag?.innerText || pTag?.textContent || ""
 		}
 

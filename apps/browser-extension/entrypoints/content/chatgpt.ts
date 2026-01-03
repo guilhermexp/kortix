@@ -248,10 +248,7 @@ function addKortixButtonToMemoriesDialog() {
 		await saveMemoriesToKortix()
 	})
 
-	deleteAllContainer.insertBefore(
-		kortixButton,
-		deleteAllContainer.firstChild,
-	)
+	deleteAllContainer.insertBefore(kortixButton, deleteAllContainer.firstChild)
 }
 
 async function saveMemoriesToKortix() {
