@@ -4,7 +4,7 @@
  */
 
 // Document types
-export * from './document'
+export * from "./document"
 
 // Preview types
-export * from './preview'
+export * from "./preview"

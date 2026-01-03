@@ -23,7 +23,7 @@ export const QueryProvider = ({ children }: { children: React.ReactNode }) => {
 	)
 }
 
-function DevtoolsDock() {
+function _DevtoolsDock() {
 	const [open, setOpen] = useState(false)
 	return (
 		<>

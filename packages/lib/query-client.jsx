@@ -28,9 +28,9 @@ var QueryProvider = (_a) => {
 }
 exports.QueryProvider = QueryProvider
 function DevtoolsDock() {
-	var _a = (0, react_1.useState)(false),
-		open = _a[0],
-		setOpen = _a[1]
+	var _a = (0, react_1.useState)(false)
+	var open = _a[0]
+	var setOpen = _a[1]
 	return (
 		<>
 			<button

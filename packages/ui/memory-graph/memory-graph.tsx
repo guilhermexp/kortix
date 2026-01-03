@@ -3,7 +3,6 @@
 import { GlassMenuEffect } from "@repo/ui/other/glass-effect";
 import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { colors } from "./constants";
 import { GraphWebGLCanvas as GraphCanvas } from "./graph-webgl-canvas";
 import { useGraphData } from "./hooks/use-graph-data";
 import { useGraphInteractions } from "./hooks/use-graph-interactions";

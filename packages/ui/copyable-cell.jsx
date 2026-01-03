@@ -20,7 +20,7 @@ var __awaiter =
 			}
 			function rejected(value) {
 				try {
-					step(generator["throw"](value));
+					step(generator.throw(value));
 				} catch (e) {
 					reject(e);
 				}
@@ -69,9 +69,9 @@ var __generator =
 						y &&
 							(t =
 								op[0] & 2
-									? y["return"]
+									? y.return
 									: op[0]
-										? y["throw"] || ((t = y["return"]) && t.call(y), 0)
+										? y.throw || ((t = y.return) && t.call(y), 0)
 										: y.next) &&
 							!(t = t.call(y, op[1])).done)
 					)
@@ -178,7 +178,7 @@ function CopyableCell(_a) {
 						e.stopPropagation();
 						_a.label = 1;
 					case 1:
-						_a.trys.push([1, 3, , 4]);
+						_a.trys.push([1, 3, undefined, 4]);
 						return [4 /*yield*/, navigator.clipboard.writeText(value)];
 					case 2:
 						_a.sent();

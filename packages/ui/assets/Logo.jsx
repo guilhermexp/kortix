@@ -13,9 +13,23 @@ var Logo = (_a) => {
 		>
 			<title>Kortix</title>
 			<g fill="currentColor" transform="translate(50, 50)">
-				<rect x="-6" y="-28" width="12" height="56" rx="3"/>
-				<rect x="-6" y="-28" width="12" height="56" rx="3" transform="rotate(60)"/>
-				<rect x="-6" y="-28" width="12" height="56" rx="3" transform="rotate(-60)"/>
+				<rect x="-6" y="-28" width="12" height="56" rx="3" />
+				<rect
+					x="-6"
+					y="-28"
+					width="12"
+					height="56"
+					rx="3"
+					transform="rotate(60)"
+				/>
+				<rect
+					x="-6"
+					y="-28"
+					width="12"
+					height="56"
+					rx="3"
+					transform="rotate(-60)"
+				/>
 			</g>
 		</svg>
 	);
@@ -34,9 +48,23 @@ var LogoFull = (_a) => {
 		>
 			<title>Kortix</title>
 			<g fill="currentColor" transform="translate(25, 25)">
-				<rect x="-3" y="-14" width="6" height="28" rx="1.5"/>
-				<rect x="-3" y="-14" width="6" height="28" rx="1.5" transform="rotate(60)"/>
-				<rect x="-3" y="-14" width="6" height="28" rx="1.5" transform="rotate(-60)"/>
+				<rect x="-3" y="-14" width="6" height="28" rx="1.5" />
+				<rect
+					x="-3"
+					y="-14"
+					width="6"
+					height="28"
+					rx="1.5"
+					transform="rotate(60)"
+				/>
+				<rect
+					x="-3"
+					y="-14"
+					width="6"
+					height="28"
+					rx="1.5"
+					transform="rotate(-60)"
+				/>
 			</g>
 			<text
 				x="55"

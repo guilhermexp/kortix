@@ -28,7 +28,8 @@ function useErrorTracking() {
 	var session = (0, auth_1.useSession)().data
 	var pathname = (0, navigation_1.usePathname)()
 	var trackError = (error, context) => {
-		var _a, _b
+		var _a
+		var _b
 		var errorDetails = __assign(
 			{
 				error_message: error instanceof Error ? error.message : String(error),
