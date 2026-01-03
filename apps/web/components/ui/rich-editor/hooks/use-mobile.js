@@ -3,9 +3,9 @@ exports.useIsMobile = void 0
 var React = require("react")
 var MOBILE_BREAKPOINT = 768
 function useIsMobile() {
-	var _a = React.useState(undefined),
-		isMobile = _a[0],
-		setIsMobile = _a[1]
+	var _a = React.useState(undefined)
+	var isMobile = _a[0]
+	var setIsMobile = _a[1]
 	React.useEffect(() => {
 		var mql = window.matchMedia(
 			"(max-width: ".concat(MOBILE_BREAKPOINT - 1, "px)"),

@@ -31,14 +31,14 @@ exports.createHandleCompositionEnd = createHandleCompositionEnd
  */
 function createHandleInput(params) {
 	return (e) => {
-		var textNode = params.textNode,
-			readOnly = params.readOnly,
-			onInput = params.onInput,
-			onChangeBlockType = params.onChangeBlockType,
-			showCommandMenu = params.showCommandMenu,
-			setShowCommandMenu = params.setShowCommandMenu,
-			setCommandMenuAnchor = params.setCommandMenuAnchor,
-			shouldPreserveSelectionRef = params.shouldPreserveSelectionRef
+		var _textNode = params.textNode
+		var readOnly = params.readOnly
+		var onInput = params.onInput
+		var onChangeBlockType = params.onChangeBlockType
+		var showCommandMenu = params.showCommandMenu
+		var setShowCommandMenu = params.setShowCommandMenu
+		var setCommandMenuAnchor = params.setCommandMenuAnchor
+		var shouldPreserveSelectionRef = params.shouldPreserveSelectionRef
 		var element = e.currentTarget
 		var text = element.textContent || ""
 		// Check if the block is empty and user typed "/"
@@ -65,14 +65,14 @@ exports.createHandleInput = createHandleInput
  */
 function createHandleKeyDown(params) {
 	return (e) => {
-		var textNode = params.textNode,
-			onKeyDown = params.onKeyDown,
-			onCreateNested = params.onCreateNested,
-			showCommandMenu = params.showCommandMenu,
-			setShowCommandMenu = params.setShowCommandMenu,
-			setCommandMenuAnchor = params.setCommandMenuAnchor,
-			currentContainer = params.currentContainer,
-			dispatch = params.dispatch
+		var textNode = params.textNode
+		var onKeyDown = params.onKeyDown
+		var onCreateNested = params.onCreateNested
+		var showCommandMenu = params.showCommandMenu
+		var setShowCommandMenu = params.setShowCommandMenu
+		var setCommandMenuAnchor = params.setCommandMenuAnchor
+		var currentContainer = params.currentContainer
+		var dispatch = params.dispatch
 		// Close command menu on Escape
 		if (e.key === "Escape" && showCommandMenu) {
 			e.preventDefault()
@@ -154,8 +154,8 @@ exports.createHandleKeyDown = createHandleKeyDown
  */
 function createHandleClick(params) {
 	return (e) => {
-		var readOnly = params.readOnly,
-			onClick = params.onClick
+		var readOnly = params.readOnly
+		var onClick = params.onClick
 		// Check if the click target is a link
 		var target = e.target
 		if (target.tagName === "A" && target.hasAttribute("href")) {
@@ -177,13 +177,13 @@ exports.createHandleClick = createHandleClick
  */
 function createHandleCommandSelect(params) {
 	return (commandValue) => {
-		var textNode = params.textNode,
-			onChangeBlockType = params.onChangeBlockType,
-			onInsertImage = params.onInsertImage,
-			onCreateList = params.onCreateList,
-			localRef = params.localRef,
-			setShowCommandMenu = params.setShowCommandMenu,
-			setCommandMenuAnchor = params.setCommandMenuAnchor
+		var textNode = params.textNode
+		var onChangeBlockType = params.onChangeBlockType
+		var onInsertImage = params.onInsertImage
+		var onCreateList = params.onCreateList
+		var localRef = params.localRef
+		var setShowCommandMenu = params.setShowCommandMenu
+		var setCommandMenuAnchor = params.setCommandMenuAnchor
 		if (!localRef.current) return
 		// Clear the "/" character
 		localRef.current.textContent = ""

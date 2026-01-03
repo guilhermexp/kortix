@@ -79,7 +79,9 @@ function addToHistory(state, newContainer) {
  * ```
  */
 function editorReducer(state, action) {
-	var _a, _b, _c
+	var _a
+	var _b
+	var _c
 	var _d
 	// Helper to safely get current container (history always has at least one item)
 	var getCurrentContainer = () => {
@@ -90,9 +92,9 @@ function editorReducer(state, action) {
 	}
 	switch (action.type) {
 		case "UPDATE_NODE": {
-			var _e = action.payload,
-				id = _e.id,
-				updates_1 = _e.updates
+			var _e = action.payload
+			var id = _e.id
+			var updates_1 = _e.updates
 			var currentContainer = getCurrentContainer()
 			if (!currentContainer) return state
 			var newContainer = (0, tree_operations_1.updateNodeById)(
@@ -110,11 +112,11 @@ function editorReducer(state, action) {
 			)
 		}
 		case "UPDATE_ATTRIBUTES": {
-			var _f = action.payload,
-				id = _f.id,
-				attributes_1 = _f.attributes,
-				_g = _f.merge,
-				merge_1 = _g === void 0 ? true : _g
+			var _f = action.payload
+			var id = _f.id
+			var attributes_1 = _f.attributes
+			var _g = _f.merge
+			var merge_1 = _g === void 0 ? true : _g
 			var currentContainer = getCurrentContainer()
 			var newContainer = (0, tree_operations_1.updateNodeById)(
 				currentContainer,
@@ -135,9 +137,9 @@ function editorReducer(state, action) {
 			)
 		}
 		case "UPDATE_CONTENT": {
-			var _h = action.payload,
-				id_1 = _h.id,
-				content_1 = _h.content
+			var _h = action.payload
+			var id_1 = _h.id
+			var content_1 = _h.content
 			var currentContainer = getCurrentContainer()
 			var newContainer = (0, tree_operations_1.updateNodeById)(
 				currentContainer,
@@ -178,10 +180,10 @@ function editorReducer(state, action) {
 			)
 		}
 		case "INSERT_NODE": {
-			var _j = action.payload,
-				node = _j.node,
-				targetId = _j.targetId,
-				position = _j.position
+			var _j = action.payload
+			var node = _j.node
+			var targetId = _j.targetId
+			var position = _j.position
 			var currentContainer = getCurrentContainer()
 			var newContainer = (0, tree_operations_1.insertNode)(
 				currentContainer,
@@ -199,10 +201,10 @@ function editorReducer(state, action) {
 			)
 		}
 		case "MOVE_NODE": {
-			var _k = action.payload,
-				nodeId = _k.nodeId,
-				targetId = _k.targetId,
-				position = _k.position
+			var _k = action.payload
+			var nodeId = _k.nodeId
+			var targetId = _k.targetId
+			var position = _k.position
 			var currentContainer = getCurrentContainer()
 			var newContainer = (0, tree_operations_1.moveNode)(
 				currentContainer,
@@ -220,9 +222,9 @@ function editorReducer(state, action) {
 			)
 		}
 		case "SWAP_NODES": {
-			var _l = action.payload,
-				nodeId1_1 = _l.nodeId1,
-				nodeId2_1 = _l.nodeId2
+			var _l = action.payload
+			var nodeId1_1 = _l.nodeId1
+			var nodeId2_1 = _l.nodeId2
 			var currentContainer = getCurrentContainer()
 			// Find indices of both nodes
 			var index1 = currentContainer.children.findIndex(
@@ -256,9 +258,9 @@ function editorReducer(state, action) {
 			)
 		}
 		case "DUPLICATE_NODE": {
-			var _m = action.payload,
-				id = _m.id,
-				newId = _m.newId
+			var _m = action.payload
+			var id = _m.id
+			var newId = _m.newId
 			var currentContainer = getCurrentContainer()
 			// Clone the node with a new ID
 			var nodeToClone = (0, tree_operations_1.updateNodeById)(
@@ -337,10 +339,10 @@ function editorReducer(state, action) {
 				console.groupEnd()
 				return state
 			}
-			var _o = state.currentSelection,
-				nodeId = _o.nodeId,
-				start = _o.start,
-				end = _o.end
+			var _o = state.currentSelection
+			var nodeId = _o.nodeId
+			var start = _o.start
+			var end = _o.end
 			var currentContainer = getCurrentContainer()
 			var node = (0, tree_operations_1.findNodeById)(currentContainer, nodeId)
 			if (!node || !(0, types_1.isTextNode)(node)) {
@@ -423,11 +425,11 @@ function editorReducer(state, action) {
 				console.groupEnd()
 				return state
 			}
-			var _p = state.currentSelection,
-				nodeId = _p.nodeId,
-				start = _p.start,
-				end = _p.end,
-				formats = _p.formats
+			var _p = state.currentSelection
+			var nodeId = _p.nodeId
+			var start = _p.start
+			var end = _p.end
+			var formats = _p.formats
 			var currentContainer = getCurrentContainer()
 			var node = (0, tree_operations_1.findNodeById)(currentContainer, nodeId)
 			if (!node || !(0, types_1.isTextNode)(node)) {
@@ -522,10 +524,10 @@ function editorReducer(state, action) {
 				console.groupEnd()
 				return state
 			}
-			var _r = state.currentSelection,
-				nodeId = _r.nodeId,
-				start = _r.start,
-				end = _r.end
+			var _r = state.currentSelection
+			var nodeId = _r.nodeId
+			var start = _r.start
+			var end = _r.end
 			var currentContainer = getCurrentContainer()
 			var node = (0, tree_operations_1.findNodeById)(currentContainer, nodeId)
 			if (!node || !(0, types_1.isTextNode)(node)) {
@@ -618,9 +620,9 @@ function editorReducer(state, action) {
 			)
 		}
 		case "APPLY_INLINE_STYLE": {
-			var _t = action.payload,
-				property = _t.property,
-				value = _t.value
+			var _t = action.payload
+			var property = _t.property
+			var value = _t.value
 			console.group(
 				"\uD83C\uDFA8 [APPLY_INLINE_STYLE] Applying "
 					.concat(property, ": ")
@@ -631,10 +633,10 @@ function editorReducer(state, action) {
 				console.groupEnd()
 				return state
 			}
-			var _u = state.currentSelection,
-				nodeId = _u.nodeId,
-				start = _u.start,
-				end = _u.end
+			var _u = state.currentSelection
+			var nodeId = _u.nodeId
+			var start = _u.start
+			var end = _u.end
 			var currentContainer = getCurrentContainer()
 			var node = (0, tree_operations_1.findNodeById)(currentContainer, nodeId)
 			if (!node || !(0, types_1.isTextNode)(node)) {
@@ -722,10 +724,10 @@ function editorReducer(state, action) {
 				console.groupEnd()
 				return state
 			}
-			var _w = state.currentSelection,
-				nodeId = _w.nodeId,
-				start = _w.start,
-				end = _w.end
+			var _w = state.currentSelection
+			var nodeId = _w.nodeId
+			var start = _w.start
+			var end = _w.end
 			var currentContainer = getCurrentContainer()
 			var node = (0, tree_operations_1.findNodeById)(currentContainer, nodeId)
 			if (!node || !(0, types_1.isTextNode)(node)) {
@@ -808,10 +810,10 @@ function editorReducer(state, action) {
 				console.groupEnd()
 				return state
 			}
-			var _y = state.currentSelection,
-				nodeId = _y.nodeId,
-				start = _y.start,
-				end = _y.end
+			var _y = state.currentSelection
+			var nodeId = _y.nodeId
+			var start = _y.start
+			var end = _y.end
 			var currentContainer = getCurrentContainer()
 			var node = (0, tree_operations_1.findNodeById)(currentContainer, nodeId)
 			if (!node || !(0, types_1.isTextNode)(node)) {
@@ -910,7 +912,7 @@ function editorReducer(state, action) {
 			// If all blocks were deleted, create a new empty paragraph
 			if (newChildren.length === 0) {
 				var newNode = {
-					id: "p-" + Date.now(),
+					id: `p-${Date.now()}`,
 					type: "p",
 					content: "",
 					attributes: {},
@@ -967,7 +969,8 @@ exports.editorReducer = editorReducer
  * ```
  */
 function createInitialState(container) {
-	var _a, _b
+	var _a
+	var _b
 	// If container is provided, use it; otherwise create with at least one empty block
 	var defaultChildren =
 		container === null || container === void 0 ? void 0 : container.children

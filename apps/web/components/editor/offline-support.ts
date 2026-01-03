@@ -53,7 +53,7 @@ export function useConnectionStatus(): ConnectionStatus {
 		}
 
 		const handleOffline = () => {
-			setStatus((prev) => ({
+			setStatus((_prev) => ({
 				isOnline: false,
 				lastOnline: Date.now(),
 				reconnectedAt: null,

@@ -57,7 +57,7 @@ export function TableBuilder({
 	const bodyRows = tbody?.children as StructuralNode[] | undefined
 
 	const numCols = headerRow?.children.length || 0
-	const numRows = (bodyRows?.length || 0) + 1 // +1 for header
+	const _numRows = (bodyRows?.length || 0) + 1 // +1 for header
 
 	// Initialize column widths if not set (using 'auto' for natural sizing)
 	React.useEffect(() => {

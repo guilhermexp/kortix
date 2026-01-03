@@ -6,24 +6,14 @@ import {
 	Copy,
 	Download,
 	Eye,
-	EyeOff,
-	ImagePlus,
 	Italic,
-	LayoutGrid,
 	Link as LinkIcon,
 	List,
 	ListOrdered,
-	Menu,
-	Moon,
-	Redo,
-	Sun,
 	Table as TableIcon,
 	Type,
 	Underline,
-	Undo,
 } from "lucide-react"
-import { useTheme } from "next-themes"
-import React from "react"
 
 import { Button } from "../button"
 import { ButtonGroup } from "../button-group"
@@ -45,13 +35,6 @@ import {
 	SelectValue,
 } from "../select"
 import { Separator } from "../separator"
-import {
-	Sheet,
-	SheetContent,
-	SheetHeader,
-	SheetTitle,
-	SheetTrigger,
-} from "../sheet"
 import { Switch } from "../switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs"
 import { ToggleGroup, ToggleGroupItem } from "../toggle-group"

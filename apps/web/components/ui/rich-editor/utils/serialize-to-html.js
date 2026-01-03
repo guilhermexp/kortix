@@ -101,16 +101,15 @@ function serializeInlineChildren(node) {
 			// Build inline styles from the styles object
 			var inlineStyles = ""
 			if (child.styles) {
-				inlineStyles =
-					Object.entries(child.styles)
-						.map((_a) => {
-							var key = _a[0],
-								value = _a[1]
-							// Convert camelCase to kebab-case (fontSize -> font-size)
-							var kebabKey = key.replace(/([A-Z])/g, "-$1").toLowerCase()
-							return "".concat(kebabKey, ": ").concat(value)
-						})
-						.join("; ") + ";"
+				inlineStyles = `${Object.entries(child.styles)
+					.map((_a) => {
+						var key = _a[0]
+						var value = _a[1]
+						// Convert camelCase to kebab-case (fontSize -> font-size)
+						var kebabKey = key.replace(/([A-Z])/g, "-$1").toLowerCase()
+						return "".concat(kebabKey, ": ").concat(value)
+					})
+					.join("; ")};`
 			}
 			var allClasses = [elementTypeClasses, formattingClasses, child.className]
 				.filter(Boolean)
@@ -160,8 +159,8 @@ function serializeTextNode(node, indent) {
 	if (indent === void 0) {
 		indent = ""
 	}
-	var type = node.type,
-		attributes = node.attributes
+	var type = node.type
+	var attributes = node.attributes
 	// Handle BR elements
 	if (type === "br") {
 		return "".concat(indent, "<br />\n")
@@ -263,7 +262,7 @@ function serializeTableNode(node, indent) {
 		for (var _i = 0, _a = node.children; _i < _a.length; _i++) {
 			var child = _a[_i]
 			if ((0, types_1.isStructuralNode)(child)) {
-				html += serializeTableNode(child, indent + "  ")
+				html += serializeTableNode(child, `${indent}  `)
 			}
 		}
 		html += "".concat(indent, "</table>\n")
@@ -275,7 +274,7 @@ function serializeTableNode(node, indent) {
 		for (var _b = 0, _c = node.children; _b < _c.length; _b++) {
 			var child = _c[_b]
 			if ((0, types_1.isStructuralNode)(child)) {
-				html += serializeTableNode(child, indent + "  ")
+				html += serializeTableNode(child, `${indent}  `)
 			}
 		}
 		html += "".concat(indent, "</thead>\n")
@@ -287,7 +286,7 @@ function serializeTableNode(node, indent) {
 		for (var _d = 0, _e = node.children; _d < _e.length; _d++) {
 			var child = _e[_d]
 			if ((0, types_1.isStructuralNode)(child)) {
-				html += serializeTableNode(child, indent + "  ")
+				html += serializeTableNode(child, `${indent}  `)
 			}
 		}
 		html += "".concat(indent, "</tbody>\n")
@@ -323,7 +322,12 @@ function serializeTableNode(node, indent) {
  * Serialize a container node to HTML (recursive)
  */
 function serializeContainerNode(node, indent) {
-	var _a, _b, _c, _d, _e, _f
+	var _a
+	var _b
+	var _c
+	var _d
+	var _e
+	var _f
 	if (indent === void 0) {
 		indent = ""
 	}
@@ -410,7 +414,7 @@ function serializeContainerNode(node, indent) {
 					indent,
 					'  <div class="flex-1 min-w-[280px] max-w-full">\n',
 				)
-				html += serializeTextNode(textNode, indent + "    ")
+				html += serializeTextNode(textNode, `${indent}    `)
 				html += "".concat(indent, "  </div>\n")
 				i++
 			}
@@ -432,7 +436,7 @@ function serializeContainerNode(node, indent) {
 						var content = serializeInlineChildren(listItem)
 						var isEmpty = !content || content.trim() === ""
 						if (!isEmpty) {
-							var liIndent = indent + "    "
+							var liIndent = `${indent}    `
 							var liClasses = getBlockTypeClasses("li")
 							html += ""
 								.concat(liIndent, '<li class="')
@@ -448,7 +452,7 @@ function serializeContainerNode(node, indent) {
 				html += "".concat(indent, "  </ol>\n")
 			} else {
 				// Regular text node
-				html += serializeTextNode(textNode, indent + "  ")
+				html += serializeTextNode(textNode, `${indent}  `)
 				i++
 			}
 		} else if ((0, types_1.isContainerNode)(child)) {
@@ -458,12 +462,12 @@ function serializeContainerNode(node, indent) {
 					indent,
 					'  <div class="flex-1 min-w-[280px] max-w-full">\n',
 				)
-				html += serializeContainerNode(child, indent + "    ")
+				html += serializeContainerNode(child, `${indent}    `)
 				html += "".concat(indent, "  </div>\n")
 				i++
 			} else {
 				// Nested container - recurse!
-				html += serializeContainerNode(child, indent + "  ")
+				html += serializeContainerNode(child, `${indent}  `)
 				i++
 			}
 		} else {
@@ -476,7 +480,7 @@ function serializeContainerNode(node, indent) {
 /**
  * Serialize any editor node (TextNode or ContainerNode) to HTML
  */
-function serializeEditorNode(node, indent) {
+function _serializeEditorNode(node, indent) {
 	if (indent === void 0) {
 		indent = ""
 	}
@@ -507,12 +511,12 @@ function serializeToHtml(container, options) {
 	if (options === void 0) {
 		options = {}
 	}
-	var _a = options.wrapperClass,
-		wrapperClass = _a === void 0 ? "editor-content" : _a,
-		_b = options.includeWrapper,
-		includeWrapper = _b === void 0 ? true : _b,
-		_c = options.indent,
-		indent = _c === void 0 ? "  " : _c
+	var _a = options.wrapperClass
+	var wrapperClass = _a === void 0 ? "editor-content" : _a
+	var _b = options.includeWrapper
+	var includeWrapper = _b === void 0 ? true : _b
+	var _c = options.indent
+	var indent = _c === void 0 ? "  " : _c
 	var html = ""
 	// Add wrapper div if requested
 	if (includeWrapper) {
@@ -546,7 +550,7 @@ function serializeToHtml(container, options) {
 						var content = serializeInlineChildren(listItem)
 						var isEmpty = !content || content.trim() === ""
 						if (!isEmpty) {
-							var liIndent = includeWrapper ? indent + "  " : "  "
+							var liIndent = includeWrapper ? `${indent}  ` : "  "
 							var liClasses = getBlockTypeClasses("li")
 							html += ""
 								.concat(liIndent, '<li class="')

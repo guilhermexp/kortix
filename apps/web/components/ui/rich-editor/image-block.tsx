@@ -7,7 +7,6 @@ import { useState } from "react"
 import { Button } from "../button"
 import { Card } from "../card"
 import { Checkbox } from "../checkbox"
-import { Skeleton } from "../skeleton"
 import type { TextNode } from "./types"
 
 interface ImageBlockProps {
@@ -61,7 +60,7 @@ export function ImageBlock({
 		}
 	}
 
-	const handleDragEnd = (e: React.DragEvent) => {}
+	const handleDragEnd = (_e: React.DragEvent) => {}
 
 	const imageUrl = node.attributes?.src as string | undefined
 	const altText = node.attributes?.alt as string | undefined

@@ -44,10 +44,10 @@ function setupDragAutoScroll(containerRef, config) {
 		}
 		var container = containerRef.current
 		var rect = container.getBoundingClientRect()
-		var scrollZone = finalConfig.scrollZone,
-			scrollSpeed = finalConfig.scrollSpeed,
-			enableVertical = finalConfig.enableVertical,
-			enableHorizontal = finalConfig.enableHorizontal
+		var scrollZone = finalConfig.scrollZone
+		var scrollSpeed = finalConfig.scrollSpeed
+		var enableVertical = finalConfig.enableVertical
+		var enableHorizontal = finalConfig.enableHorizontal
 		var scrollX = 0
 		var scrollY = 0
 		// Check vertical scrolling
@@ -166,15 +166,15 @@ exports.setupDragAutoScroll = setupDragAutoScroll
  * React hook for drag auto-scroll
  */
 function useDragAutoScroll(containerRef, config) {
-	var configRef = react_1["default"].useRef(config)
-	react_1["default"].useEffect(() => {
+	var configRef = react_1.default.useRef(config)
+	react_1.default.useEffect(() => {
 		configRef.current = config
 	}, [config])
-	react_1["default"].useEffect(() => {
+	react_1.default.useEffect(() => {
 		var cleanup = setupDragAutoScroll(containerRef, configRef.current)
 		return cleanup
 	}, [containerRef])
 }
 exports.useDragAutoScroll = useDragAutoScroll
 // For non-React usage
-exports["default"] = setupDragAutoScroll
+exports.default = setupDragAutoScroll

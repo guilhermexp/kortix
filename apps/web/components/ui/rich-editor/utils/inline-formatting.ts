@@ -160,9 +160,9 @@ export function mergeAdjacentTextNodes(children: TextNode[]): TextNode[] {
  */
 export function removeFormatting(
 	node: TextNode,
-	startOffset: number,
-	endOffset: number,
-	className: string,
+	_startOffset: number,
+	_endOffset: number,
+	_className: string,
 ): TextNode {
 	if (!hasInlineChildren(node)) {
 		return node // Nothing to remove

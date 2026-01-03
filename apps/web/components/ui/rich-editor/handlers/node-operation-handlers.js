@@ -32,7 +32,7 @@ var __awaiter =
 			}
 			function rejected(value) {
 				try {
-					step(generator["throw"](value))
+					step(generator.throw(value))
 				} catch (e) {
 					reject(e)
 				}
@@ -49,18 +49,18 @@ var __generator =
 	(this && this.__generator) ||
 	((thisArg, body) => {
 		var _ = {
-				label: 0,
-				sent: () => {
-					if (t[0] & 1) throw t[1]
-					return t[1]
-				},
-				trys: [],
-				ops: [],
+			label: 0,
+			sent: () => {
+				if (t[0] & 1) throw t[1]
+				return t[1]
 			},
-			f,
-			y,
-			t,
-			g
+			trys: [],
+			ops: [],
+		}
+		var f
+		var y
+		var t
+		var g
 		return (
 			(g = { next: verb(0), throw: verb(1), return: verb(2) }),
 			typeof Symbol === "function" &&
@@ -81,9 +81,9 @@ var __generator =
 						y &&
 							(t =
 								op[0] & 2
-									? y["return"]
+									? y.return
 									: op[0]
-										? y["throw"] || ((t = y["return"]) && t.call(y), 0)
+										? y.throw || ((t = y.return) && t.call(y), 0)
 										: y.next) &&
 							!(t = t.call(y, op[1])).done)
 					)
@@ -165,8 +165,8 @@ var editor_helpers_1 = require("../utils/editor-helpers")
  */
 function createHandleNodeClick(params) {
 	return (nodeId) => {
-		var container = params.container,
-			dispatch = params.dispatch
+		var container = params.container
+		var dispatch = params.dispatch
 		// Don't set container nodes as active - they're not focusable
 		// Only text nodes and image nodes can be focused
 		var result = (0, editor_helpers_1.findNodeInTree)(nodeId, container)
@@ -184,9 +184,9 @@ exports.createHandleNodeClick = createHandleNodeClick
  */
 function createHandleDeleteNode(params) {
 	return (nodeId) => {
-		var container = params.container,
-			dispatch = params.dispatch,
-			toast = params.toast
+		var container = params.container
+		var dispatch = params.dispatch
+		var toast = params.toast
 		// Check if the node is inside a flex container
 		var parentContainer = container.children.find(
 			(child) =>
@@ -256,11 +256,11 @@ function createHandleAddBlock(params) {
 		if (position === void 0) {
 			position = "after"
 		}
-		var dispatch = params.dispatch,
-			nodeRefs = params.nodeRefs
+		var dispatch = params.dispatch
+		var nodeRefs = params.nodeRefs
 		// Create new paragraph node
 		var newNode = {
-			id: "p-" + Date.now(),
+			id: `p-${Date.now()}`,
 			type: "p",
 			content: "",
 			attributes: {},
@@ -282,20 +282,20 @@ exports.createHandleAddBlock = createHandleAddBlock
  */
 function createHandleCreateNested(params) {
 	return (nodeId) => {
-		var container = params.container,
-			dispatch = params.dispatch,
-			toast = params.toast
+		var container = params.container
+		var dispatch = params.dispatch
+		var toast = params.toast
 		var result = (0, editor_helpers_1.findNodeInTree)(nodeId, container)
 		if (!result) return
-		var node = result.node,
-			parentId = result.parentId
+		var node = result.node
+		var parentId = result.parentId
 		// If the node is inside a nested container (not root), we need to handle it differently
 		// We only allow 1 level of nesting, so if we're already nested, add to the parent container
 		var isAlreadyNested = parentId !== container.id
 		if (isAlreadyNested) {
 			// We're inside a nested container, so just add a new paragraph to the parent container
 			var newParagraph_1 = {
-				id: "p-" + Date.now(),
+				id: `p-${Date.now()}`,
 				type: "p",
 				content: "",
 				attributes: {},
@@ -312,7 +312,7 @@ function createHandleCreateNested(params) {
 		if (!(0, types_1.isTextNode)(node)) return
 		var textNode = node
 		// Create the new paragraph that will be focused
-		var newParagraphId = "p-" + Date.now()
+		var newParagraphId = `p-${Date.now()}`
 		var newParagraph = {
 			id: newParagraphId,
 			type: "p",
@@ -321,7 +321,7 @@ function createHandleCreateNested(params) {
 		}
 		// Create a nested container with the current node inside it
 		var nestedContainer = {
-			id: "container-" + Date.now(),
+			id: `container-${Date.now()}`,
 			type: "container",
 			children: [
 				__assign({}, textNode),
@@ -371,8 +371,8 @@ exports.createHandleCreateNested = createHandleCreateNested
  */
 function createHandleChangeBlockType(params) {
 	return (nodeId, newType) => {
-		var dispatch = params.dispatch,
-			nodeRefs = params.nodeRefs
+		var dispatch = params.dispatch
+		var nodeRefs = params.nodeRefs
 		// Special handling for list items - initialize with empty content
 		if (newType === "li") {
 			dispatch(
@@ -417,10 +417,10 @@ exports.createHandleInsertImageFromCommand = createHandleInsertImageFromCommand
  */
 function createHandleCreateList(params) {
 	return (listType) => {
-		var container = params.container,
-			dispatch = params.dispatch,
-			toast = params.toast,
-			editorContentRef = params.editorContentRef
+		var container = params.container
+		var dispatch = params.dispatch
+		var toast = params.toast
+		var editorContentRef = params.editorContentRef
 		var timestamp = Date.now()
 		// Create a container with a header and 1 nested item
 		var listContainer = {
@@ -494,9 +494,9 @@ exports.createHandleCreateList = createHandleCreateList
  */
 function createHandleCreateListFromCommand(params) {
 	return (nodeId, listType) => {
-		var dispatch = params.dispatch,
-			toast = params.toast,
-			nodeRefs = params.nodeRefs
+		var dispatch = params.dispatch
+		var toast = params.toast
+		var nodeRefs = params.nodeRefs
 		var timestamp = Date.now()
 		var firstItemId = "li-".concat(timestamp, "-1")
 		// Create a container with 1 list item (always "li", regardless of ul/ol)
@@ -551,10 +551,10 @@ exports.createHandleCreateListFromCommand = createHandleCreateListFromCommand
  */
 function createHandleCreateLink(params) {
 	return () => {
-		var container = params.container,
-			dispatch = params.dispatch,
-			toast = params.toast,
-			editorContentRef = params.editorContentRef
+		var container = params.container
+		var dispatch = params.dispatch
+		var toast = params.toast
+		var editorContentRef = params.editorContentRef
 		var timestamp = Date.now()
 		// Create a paragraph with a link
 		var linkNode = {
@@ -613,10 +613,10 @@ exports.createHandleCreateLink = createHandleCreateLink
  */
 function createHandleCreateTable(params) {
 	return (rows, cols) => {
-		var container = params.container,
-			dispatch = params.dispatch,
-			toast = params.toast,
-			editorContentRef = params.editorContentRef
+		var container = params.container
+		var dispatch = params.dispatch
+		var toast = params.toast
+		var editorContentRef = params.editorContentRef
 		var timestamp = Date.now()
 		// Create header cells
 		var headerCells = Array.from({ length: cols }, (_, i) => ({
@@ -721,7 +721,10 @@ exports.createHandleCreateTable = createHandleCreateTable
 function createHandleCopyHtml(params, enhanceSpaces, setCopiedHtml) {
 	return (container) =>
 		__awaiter(this, void 0, void 0, function () {
-			var toast, serializeToHtml, html, error_1
+			var toast
+			var serializeToHtml
+			var html
+			var _error_1
 			return __generator(this, (_a) => {
 				switch (_a.label) {
 					case 0:
@@ -738,7 +741,7 @@ function createHandleCopyHtml(params, enhanceSpaces, setCopiedHtml) {
 						}
 						_a.label = 1
 					case 1:
-						_a.trys.push([1, 3, , 4])
+						_a.trys.push([1, 3, undefined, 4])
 						return [4 /*yield*/, navigator.clipboard.writeText(html)]
 					case 2:
 						_a.sent()
@@ -750,7 +753,7 @@ function createHandleCopyHtml(params, enhanceSpaces, setCopiedHtml) {
 						setTimeout(() => setCopiedHtml(false), 2000)
 						return [3 /*break*/, 4]
 					case 3:
-						error_1 = _a.sent()
+						_error_1 = _a.sent()
 						toast({
 							variant: "destructive",
 							title: "Copy failed",
@@ -770,7 +773,9 @@ exports.createHandleCopyHtml = createHandleCopyHtml
 function createHandleCopyJson(params, setCopiedJson) {
 	return (container) =>
 		__awaiter(this, void 0, void 0, function () {
-			var toast, json, error_2
+			var toast
+			var json
+			var _error_2
 			return __generator(this, (_a) => {
 				switch (_a.label) {
 					case 0:
@@ -778,7 +783,7 @@ function createHandleCopyJson(params, setCopiedJson) {
 						json = JSON.stringify(container.children, null, 2)
 						_a.label = 1
 					case 1:
-						_a.trys.push([1, 3, , 4])
+						_a.trys.push([1, 3, undefined, 4])
 						return [4 /*yield*/, navigator.clipboard.writeText(json)]
 					case 2:
 						_a.sent()
@@ -790,7 +795,7 @@ function createHandleCopyJson(params, setCopiedJson) {
 						setTimeout(() => setCopiedJson(false), 2000)
 						return [3 /*break*/, 4]
 					case 3:
-						error_2 = _a.sent()
+						_error_2 = _a.sent()
 						toast({
 							variant: "destructive",
 							title: "Copy failed",

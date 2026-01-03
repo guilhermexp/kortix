@@ -986,9 +986,9 @@ exports.classMappings = [
 function getUserFriendlyClasses() {
 	var grouped = new Map()
 	exports.classMappings.forEach((_a) => {
-		var category = _a.category,
-			userFriendly = _a.userFriendly,
-			tailwindClass = _a.tailwindClass
+		var category = _a.category
+		var userFriendly = _a.userFriendly
+		var tailwindClass = _a.tailwindClass
 		if (!grouped.has(category)) {
 			grouped.set(category, [])
 		}
@@ -998,8 +998,8 @@ function getUserFriendlyClasses() {
 		})
 	})
 	return Array.from(grouped.entries()).map((_a) => {
-		var category = _a[0],
-			items = _a[1]
+		var category = _a[0]
+		var items = _a[1]
 		return {
 			category: category,
 			items: items,
@@ -1015,17 +1015,17 @@ function searchUserFriendlyClasses(query) {
 	var grouped = new Map()
 	exports.classMappings
 		.filter((_a) => {
-			var userFriendly = _a.userFriendly,
-				tailwindClass = _a.tailwindClass
+			var userFriendly = _a.userFriendly
+			var tailwindClass = _a.tailwindClass
 			return (
 				userFriendly.toLowerCase().includes(lowerQuery) ||
 				tailwindClass.toLowerCase().includes(lowerQuery)
 			)
 		})
 		.forEach((_a) => {
-			var category = _a.category,
-				userFriendly = _a.userFriendly,
-				tailwindClass = _a.tailwindClass
+			var category = _a.category
+			var userFriendly = _a.userFriendly
+			var tailwindClass = _a.tailwindClass
 			if (!grouped.has(category)) {
 				grouped.set(category, [])
 			}
@@ -1035,8 +1035,8 @@ function searchUserFriendlyClasses(query) {
 			})
 		})
 	return Array.from(grouped.entries()).map((_a) => {
-		var category = _a[0],
-			items = _a[1]
+		var category = _a[0]
+		var items = _a[1]
 		return {
 			category: category,
 			items: items,

@@ -1019,7 +1019,7 @@ export function getUserFriendlyClasses(): {
 		if (!grouped.has(category)) {
 			grouped.set(category, [])
 		}
-		grouped.get(category)!.push({
+		grouped.get(category)?.push({
 			label: userFriendly,
 			value: tailwindClass,
 		})
@@ -1048,7 +1048,7 @@ export function searchUserFriendlyClasses(query: string) {
 			if (!grouped.has(category)) {
 				grouped.set(category, [])
 			}
-			grouped.get(category)!.push({
+			grouped.get(category)?.push({
 				label: userFriendly,
 				value: tailwindClass,
 			})

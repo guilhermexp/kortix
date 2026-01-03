@@ -1,10 +1,4 @@
-import type {
-	ContainerNode,
-	EditorNode,
-	InlineText,
-	SelectionInfo,
-	TextNode,
-} from "../types"
+import type { ContainerNode, EditorNode, TextNode } from "../types"
 import { isContainerNode } from "../types"
 
 /**
@@ -223,9 +217,9 @@ export function detectFormatsInRange(
 
 	// Node has children array - analyze the range
 	let currentPos = 0
-	let hasAnyBold = false
-	let hasAnyItalic = false
-	let hasAnyUnderline = false
+	let _hasAnyBold = false
+	let _hasAnyItalic = false
+	let _hasAnyUnderline = false
 	let allBold = true
 	let allItalic = true
 	let allUnderline = true
@@ -251,19 +245,19 @@ export function detectFormatsInRange(
 			charsInRange += Math.min(childEnd, end) - Math.max(childStart, start)
 
 			if (child.bold) {
-				hasAnyBold = true
+				_hasAnyBold = true
 			} else {
 				allBold = false
 			}
 
 			if (child.italic) {
-				hasAnyItalic = true
+				_hasAnyItalic = true
 			} else {
 				allItalic = false
 			}
 
 			if (child.underline) {
-				hasAnyUnderline = true
+				_hasAnyUnderline = true
 			} else {
 				allUnderline = false
 			}

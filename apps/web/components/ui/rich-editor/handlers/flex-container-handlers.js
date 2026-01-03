@@ -23,10 +23,10 @@ var editor_helpers_1 = require("../utils/editor-helpers")
  */
 function createHandleFlexContainerDragOver(params) {
 	return (e, flexContainerId, position) => {
-		var container = params.container,
-			draggingNodeId = params.draggingNodeId,
-			setDragOverFlexId = params.setDragOverFlexId,
-			setFlexDropPosition = params.setFlexDropPosition
+		var container = params.container
+		var draggingNodeId = params.draggingNodeId
+		var setDragOverFlexId = params.setDragOverFlexId
+		var setFlexDropPosition = params.setFlexDropPosition
 		e.preventDefault()
 		e.stopPropagation()
 		// Check if we're dragging something
@@ -84,12 +84,12 @@ exports.createHandleFlexContainerDragLeave = createHandleFlexContainerDragLeave
  */
 function createHandleFlexContainerDrop(params) {
 	return (e, flexContainerId, position) => {
-		var container = params.container,
-			dispatch = params.dispatch,
-			toast = params.toast,
-			draggingNodeId = params.draggingNodeId,
-			setDragOverFlexId = params.setDragOverFlexId,
-			setFlexDropPosition = params.setFlexDropPosition
+		var container = params.container
+		var dispatch = params.dispatch
+		var toast = params.toast
+		var draggingNodeId = params.draggingNodeId
+		var setDragOverFlexId = params.setDragOverFlexId
+		var setFlexDropPosition = params.setFlexDropPosition
 		e.preventDefault()
 		e.stopPropagation()
 		console.log("🎯 Flex Container Drop")

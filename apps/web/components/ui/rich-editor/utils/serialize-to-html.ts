@@ -106,8 +106,8 @@ function serializeInlineChildren(node: TextNode): string {
 		return escapeHtml(node.content || "")
 	}
 
-	return node
-		.children!.map((child) => {
+	return node.children
+		?.map((child) => {
 			const formattingClasses = getInlineFormattingClasses(
 				child.bold,
 				child.italic,
@@ -121,14 +121,13 @@ function serializeInlineChildren(node: TextNode): string {
 			// Build inline styles from the styles object
 			let inlineStyles = ""
 			if (child.styles) {
-				inlineStyles =
-					Object.entries(child.styles)
-						.map(([key, value]) => {
-							// Convert camelCase to kebab-case (fontSize -> font-size)
-							const kebabKey = key.replace(/([A-Z])/g, "-$1").toLowerCase()
-							return `${kebabKey}: ${value}`
-						})
-						.join("; ") + ";"
+				inlineStyles = `${Object.entries(child.styles)
+					.map(([key, value]) => {
+						// Convert camelCase to kebab-case (fontSize -> font-size)
+						const kebabKey = key.replace(/([A-Z])/g, "-$1").toLowerCase()
+						return `${kebabKey}: ${value}`
+					})
+					.join("; ")};`
 			}
 
 			const allClasses = [
@@ -266,7 +265,7 @@ function serializeTableNode(
 		// Serialize children (thead, tbody)
 		for (const child of node.children) {
 			if (isStructuralNode(child)) {
-				html += serializeTableNode(child, indent + "  ")
+				html += serializeTableNode(child, `${indent}  `)
 			}
 		}
 
@@ -279,7 +278,7 @@ function serializeTableNode(
 		// Serialize children (tr)
 		for (const child of node.children) {
 			if (isStructuralNode(child)) {
-				html += serializeTableNode(child, indent + "  ")
+				html += serializeTableNode(child, `${indent}  `)
 			}
 		}
 
@@ -292,7 +291,7 @@ function serializeTableNode(
 		// Serialize children (tr)
 		for (const child of node.children) {
 			if (isStructuralNode(child)) {
-				html += serializeTableNode(child, indent + "  ")
+				html += serializeTableNode(child, `${indent}  `)
 			}
 		}
 
@@ -400,7 +399,7 @@ function serializeContainerNode(node: ContainerNode, indent = ""): string {
 			// For flex containers, wrap each child in a flex item div
 			if (isFlexContainer) {
 				html += `${indent}  <div class="flex-1 min-w-[280px] max-w-full">\n`
-				html += serializeTextNode(textNode, indent + "    ")
+				html += serializeTextNode(textNode, `${indent}    `)
 				html += `${indent}  </div>\n`
 				i++
 			}
@@ -421,7 +420,7 @@ function serializeContainerNode(node: ContainerNode, indent = ""): string {
 						const isEmpty = !content || content.trim() === ""
 
 						if (!isEmpty) {
-							const liIndent = indent + "    "
+							const liIndent = `${indent}    `
 							const liClasses = getBlockTypeClasses("li")
 							html += `${liIndent}<li class="${liClasses}">${content}</li>\n`
 						}
@@ -435,19 +434,19 @@ function serializeContainerNode(node: ContainerNode, indent = ""): string {
 				html += `${indent}  </ol>\n`
 			} else {
 				// Regular text node
-				html += serializeTextNode(textNode, indent + "  ")
+				html += serializeTextNode(textNode, `${indent}  `)
 				i++
 			}
 		} else if (isContainerNode(child)) {
 			// For flex containers, wrap nested containers in flex items
 			if (isFlexContainer) {
 				html += `${indent}  <div class="flex-1 min-w-[280px] max-w-full">\n`
-				html += serializeContainerNode(child as ContainerNode, indent + "    ")
+				html += serializeContainerNode(child as ContainerNode, `${indent}    `)
 				html += `${indent}  </div>\n`
 				i++
 			} else {
 				// Nested container - recurse!
-				html += serializeContainerNode(child as ContainerNode, indent + "  ")
+				html += serializeContainerNode(child as ContainerNode, `${indent}  `)
 				i++
 			}
 		} else {
@@ -462,7 +461,7 @@ function serializeContainerNode(node: ContainerNode, indent = ""): string {
 /**
  * Serialize any editor node (TextNode or ContainerNode) to HTML
  */
-function serializeEditorNode(node: EditorNode, indent = ""): string {
+function _serializeEditorNode(node: EditorNode, indent = ""): string {
 	if (isContainerNode(node)) {
 		return serializeContainerNode(node as ContainerNode, indent)
 	}
@@ -537,7 +536,7 @@ export function serializeToHtml(
 						const isEmpty = !content || content.trim() === ""
 
 						if (!isEmpty) {
-							const liIndent = includeWrapper ? indent + "  " : "  "
+							const liIndent = includeWrapper ? `${indent}  ` : "  "
 							const liClasses = getBlockTypeClasses("li")
 							html += `${liIndent}<li class="${liClasses}">${content}</li>\n`
 						}

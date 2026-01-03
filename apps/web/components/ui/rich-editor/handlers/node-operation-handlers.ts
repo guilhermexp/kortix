@@ -1,10 +1,5 @@
 import { EditorActions } from "../reducer/actions"
-import type {
-	ContainerNode,
-	EditorNode,
-	StructuralNode,
-	TextNode,
-} from "../types"
+import type { ContainerNode, StructuralNode, TextNode } from "../types"
 import { isContainerNode, isTextNode } from "../types"
 import { findNodeInTree } from "../utils/editor-helpers"
 
@@ -114,7 +109,7 @@ export function createHandleAddBlock(
 		const { dispatch, nodeRefs } = params
 		// Create new paragraph node
 		const newNode: TextNode = {
-			id: "p-" + Date.now(),
+			id: `p-${Date.now()}`,
 			type: "p",
 			content: "",
 			attributes: {},
@@ -153,7 +148,7 @@ export function createHandleCreateNested(
 		if (isAlreadyNested) {
 			// We're inside a nested container, so just add a new paragraph to the parent container
 			const newParagraph: TextNode = {
-				id: "p-" + Date.now(),
+				id: `p-${Date.now()}`,
 				type: "p",
 				content: "",
 				attributes: {},
@@ -172,7 +167,7 @@ export function createHandleCreateNested(
 		const textNode = node as TextNode
 
 		// Create the new paragraph that will be focused
-		const newParagraphId = "p-" + Date.now()
+		const newParagraphId = `p-${Date.now()}`
 		const newParagraph: TextNode = {
 			id: newParagraphId,
 			type: "p",
@@ -182,7 +177,7 @@ export function createHandleCreateNested(
 
 		// Create a nested container with the current node inside it
 		const nestedContainer: ContainerNode = {
-			id: "container-" + Date.now(),
+			id: `container-${Date.now()}`,
 			type: "container",
 			children: [
 				// Copy the current node
@@ -605,7 +600,7 @@ export function createHandleCopyHtml(
 				description: "HTML code has been copied to clipboard.",
 			})
 			setTimeout(() => setCopiedHtml(false), 2000)
-		} catch (error) {
+		} catch (_error) {
 			toast({
 				variant: "destructive",
 				title: "Copy failed",
@@ -633,7 +628,7 @@ export function createHandleCopyJson(
 				description: "JSON data has been copied to clipboard.",
 			})
 			setTimeout(() => setCopiedJson(false), 2000)
-		} catch (error) {
+		} catch (_error) {
 			toast({
 				variant: "destructive",
 				title: "Copy failed",

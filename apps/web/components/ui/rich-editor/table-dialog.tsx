@@ -1,7 +1,7 @@
 "use client"
 
 import { AlertCircle, Table } from "lucide-react"
-import React, { useState } from "react"
+import { useState } from "react"
 
 import { Button } from "../button"
 import { Checkbox } from "../checkbox"
@@ -11,7 +11,6 @@ import {
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-	DialogTrigger,
 } from "../dialog"
 import { Input } from "../input"
 import { Label } from "../label"
@@ -146,7 +145,7 @@ export function TableDialog({
 									max="20"
 									min="1"
 									onChange={(e) =>
-										setRows(Number.parseInt(e.target.value) || 1)
+										setRows(Number.parseInt(e.target.value, 10) || 1)
 									}
 									type="number"
 									value={rows}
@@ -162,7 +161,7 @@ export function TableDialog({
 									max="10"
 									min="1"
 									onChange={(e) =>
-										setCols(Number.parseInt(e.target.value) || 1)
+										setCols(Number.parseInt(e.target.value, 10) || 1)
 									}
 									type="number"
 									value={cols}

@@ -332,7 +332,7 @@ export function detectLongTasks(threshold = 50) {
 			})
 
 			observer.observe({ entryTypes: ["longtask"] })
-		} catch (error) {
+		} catch (_error) {
 			// Long task API not supported
 		}
 	}
@@ -352,7 +352,7 @@ export function monitorWebVitals() {
 			}
 		})
 		observer.observe({ entryTypes: ["largest-contentful-paint"] })
-	} catch (e) {
+	} catch (_e) {
 		// Not supported
 	}
 
@@ -366,7 +366,7 @@ export function monitorWebVitals() {
 			}
 		})
 		observer.observe({ entryTypes: ["first-input"] })
-	} catch (e) {
+	} catch (_e) {
 		// Not supported
 	}
 
@@ -384,7 +384,7 @@ export function monitorWebVitals() {
 			console.log(`[Web Vitals] CLS: ${cls.toFixed(4)}`)
 		})
 		observer.observe({ entryTypes: ["layout-shift"] })
-	} catch (e) {
+	} catch (_e) {
 		// Not supported
 	}
 }

@@ -1,6 +1,5 @@
 import type { ContainerNode, EditorState, TextNode } from "../types"
 import { hasInlineChildren, isTextNode } from "../types"
-import { applyFormatting } from "../utils/inline-formatting"
 import {
 	cloneNode,
 	deleteNodeById,
@@ -403,14 +402,14 @@ export function editorReducer(
 					if (childStart < overlapStart) {
 						newChildren.push({
 							...child,
-							content: child.content!.substring(0, overlapStart - childStart),
+							content: child.content?.substring(0, overlapStart - childStart),
 						})
 					}
 
 					// Overlapping part - apply the element type
 					newChildren.push({
 						...child,
-						content: child.content!.substring(
+						content: child.content?.substring(
 							overlapStart - childStart,
 							overlapEnd - childStart,
 						),
@@ -421,7 +420,7 @@ export function editorReducer(
 					if (childEnd > overlapEnd) {
 						newChildren.push({
 							...child,
-							content: child.content!.substring(overlapEnd - childStart),
+							content: child.content?.substring(overlapEnd - childStart),
 						})
 					}
 				}
@@ -500,14 +499,14 @@ export function editorReducer(
 					if (childStart < overlapStart) {
 						newChildren.push({
 							...child,
-							content: child.content!.substring(0, overlapStart - childStart),
+							content: child.content?.substring(0, overlapStart - childStart),
 						})
 					}
 
 					// Overlapping part - toggle the format
 					newChildren.push({
 						...child,
-						content: child.content!.substring(
+						content: child.content?.substring(
 							overlapStart - childStart,
 							overlapEnd - childStart,
 						),
@@ -520,7 +519,7 @@ export function editorReducer(
 					if (childEnd > overlapEnd) {
 						newChildren.push({
 							...child,
-							content: child.content!.substring(overlapEnd - childStart),
+							content: child.content?.substring(overlapEnd - childStart),
 						})
 					}
 				}
@@ -609,7 +608,7 @@ export function editorReducer(
 					if (childStart < overlapStart) {
 						newChildren.push({
 							...child,
-							content: child.content!.substring(0, overlapStart - childStart),
+							content: child.content?.substring(0, overlapStart - childStart),
 						})
 					}
 
@@ -625,7 +624,7 @@ export function editorReducer(
 
 					newChildren.push({
 						...child,
-						content: child.content!.substring(
+						content: child.content?.substring(
 							overlapStart - childStart,
 							overlapEnd - childStart,
 						),
@@ -636,7 +635,7 @@ export function editorReducer(
 					if (childEnd > overlapEnd) {
 						newChildren.push({
 							...child,
-							content: child.content!.substring(overlapEnd - childStart),
+							content: child.content?.substring(overlapEnd - childStart),
 						})
 					}
 				}
@@ -715,7 +714,7 @@ export function editorReducer(
 					if (childStart < overlapStart) {
 						newChildren.push({
 							...child,
-							content: child.content!.substring(0, overlapStart - childStart),
+							content: child.content?.substring(0, overlapStart - childStart),
 						})
 					}
 
@@ -727,7 +726,7 @@ export function editorReducer(
 
 					newChildren.push({
 						...child,
-						content: child.content!.substring(
+						content: child.content?.substring(
 							overlapStart - childStart,
 							overlapEnd - childStart,
 						),
@@ -738,7 +737,7 @@ export function editorReducer(
 					if (childEnd > overlapEnd) {
 						newChildren.push({
 							...child,
-							content: child.content!.substring(overlapEnd - childStart),
+							content: child.content?.substring(overlapEnd - childStart),
 						})
 					}
 				}
@@ -817,14 +816,14 @@ export function editorReducer(
 					if (childStart < overlapStart) {
 						newChildren.push({
 							...child,
-							content: child.content!.substring(0, overlapStart - childStart),
+							content: child.content?.substring(0, overlapStart - childStart),
 						})
 					}
 
 					// Overlapping part - apply the link
 					newChildren.push({
 						...child,
-						content: child.content!.substring(
+						content: child.content?.substring(
 							overlapStart - childStart,
 							overlapEnd - childStart,
 						),
@@ -835,7 +834,7 @@ export function editorReducer(
 					if (childEnd > overlapEnd) {
 						newChildren.push({
 							...child,
-							content: child.content!.substring(overlapEnd - childStart),
+							content: child.content?.substring(overlapEnd - childStart),
 						})
 					}
 				}
@@ -912,14 +911,14 @@ export function editorReducer(
 					if (childStart < overlapStart) {
 						newChildren.push({
 							...child,
-							content: child.content!.substring(0, overlapStart - childStart),
+							content: child.content?.substring(0, overlapStart - childStart),
 						})
 					}
 
 					// Overlapping part - remove the link
 					newChildren.push({
 						...child,
-						content: child.content!.substring(
+						content: child.content?.substring(
 							overlapStart - childStart,
 							overlapEnd - childStart,
 						),
@@ -930,7 +929,7 @@ export function editorReducer(
 					if (childEnd > overlapEnd) {
 						newChildren.push({
 							...child,
-							content: child.content!.substring(overlapEnd - childStart),
+							content: child.content?.substring(overlapEnd - childStart),
 						})
 					}
 				}
@@ -991,7 +990,7 @@ export function editorReducer(
 			// If all blocks were deleted, create a new empty paragraph
 			if (newChildren.length === 0) {
 				const newNode: TextNode = {
-					id: "p-" + Date.now(),
+					id: `p-${Date.now()}`,
 					type: "p",
 					content: "",
 					attributes: {},

@@ -51,7 +51,7 @@ exports.getTypeClassName = getTypeClassName
 /**
  * Build HTML content from children or lines
  */
-function buildHTML(textNode, readOnly) {
+function buildHTML(textNode, _readOnly) {
 	// Check if node has inline children with formatting
 	var hasChildren =
 		Array.isArray(textNode.children) && textNode.children.length > 0
@@ -62,15 +62,14 @@ function buildHTML(textNode, readOnly) {
 	// If node has multiple lines (e.g., ordered list with multiple items)
 	if (hasLines) {
 		return textNode.lines
-			.map((line, index) => {
+			.map((line, _index) => {
 				var lineContent = ""
 				// If line has inline children with formatting
 				if (line.children && line.children.length > 0) {
 					lineContent = line.children
 						.map((child) => {
 							// Check if className is a hex color or Tailwind class
-							var isHexColor =
-								child.className && child.className.startsWith("#")
+							var isHexColor = child.className?.startsWith("#")
 							var colorStyle = isHexColor ? child.className : ""
 							var className = isHexColor ? "" : child.className
 							var classes = [
@@ -150,8 +149,8 @@ function buildHTML(textNode, readOnly) {
 				if (child.styles) {
 					inlineStyles = Object.entries(child.styles)
 						.map((_a) => {
-							var key = _a[0],
-								value = _a[1]
+							var key = _a[0]
+							var value = _a[1]
 							// Convert camelCase to kebab-case (fontSize -> font-size)
 							var kebabKey = key.replace(/([A-Z])/g, "-$1").toLowerCase()
 							return "".concat(kebabKey, ": ").concat(value)
@@ -248,7 +247,8 @@ exports.saveSelection = saveSelection
  * Restore selection to saved position
  */
 function restoreSelection(localRef, savedSelection) {
-	var _a, _b
+	var _a
+	var _b
 	if (!savedSelection || !localRef.current) return
 	var selection = window.getSelection()
 	if (!selection) return
