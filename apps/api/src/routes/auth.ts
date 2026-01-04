@@ -422,8 +422,9 @@ function setSessionCookie(c: Context, token: string) {
 		maxAge: SESSION_TTL_SECONDS,
 		httpOnly: true,
 		secure: isProduction,
-		// Use "lax" for same-domain cookies (via Next.js proxy)
-		sameSite: "lax",
+		// Use "none" for cross-site cookies (API on different domain than frontend)
+		// This requires Secure=true which is set in production
+		sameSite: isProduction ? "none" : "lax",
 	})
 	c.header("Set-Cookie", cookie)
 }
