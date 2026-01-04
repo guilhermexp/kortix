@@ -2,8 +2,8 @@
 
 /**
  * QueryProvider - Provides React Query context to the application
- * Build: 2025-01-04-v10 - Fixed for Next.js App Router SSR/hydration
- * Force Railway rebuild - timestamp: 1767512800
+ * Build: 2025-01-04-v11 - Fixed page.tsx server/client component boundary
+ * Force Railway rebuild - timestamp: 1767516000
  * This component provides React Query client to the entire application.
  * It uses a singleton pattern for the browser to avoid creating new clients on re-renders.
  *
