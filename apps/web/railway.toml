@@ -7,8 +7,10 @@
 
 [build]
 builder = "NIXPACKS"
+# Include packages directory in watch patterns for monorepo
+watchPatterns = ["apps/web/**", "packages/**", "bun.lockb"]
 # Install all dependencies from monorepo root, then build the web app
-# Force fresh build: v8
+# Force fresh build: v9
 buildCommand = "cd /app && rm -rf apps/web/.next apps/web/node_modules/.cache node_modules/.cache packages/lib/*.jsx 2>/dev/null || true && bun install --force && bun run --cwd apps/web build"
 
 [deploy]
