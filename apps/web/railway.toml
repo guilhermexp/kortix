@@ -10,8 +10,8 @@ builder = "NIXPACKS"
 # Watch all files to force rebuild on any change
 watchPatterns = ["**/*"]
 # Install all dependencies from monorepo root, then build the web app
-# Force fresh build: v12
-buildCommand = "echo 'Build v12 - $(date)' && cd /app && rm -rf apps/web/.next apps/web/node_modules/.cache node_modules/.cache packages/lib/*.jsx 2>/dev/null || true && bun install --force && bun run --cwd apps/web build"
+# Force fresh build: v13 - also clear Railway cache mounts
+buildCommand = "echo 'Build v13' && cd /app && rm -rf .next/cache apps/web/.next apps/web/node_modules/.cache node_modules/.cache packages/lib/*.jsx 2>/dev/null || true && bun install --force && NEXT_TURBO_DISABLE_CACHE=1 bun run --cwd apps/web build"
 
 [deploy]
 # Start Next.js from monorepo root to access @repo/* packages
