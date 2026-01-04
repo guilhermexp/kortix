@@ -37,7 +37,7 @@ async function getOrchestrator() {
 	return orchestrator
 }
 
-function getPreviewService() {
+async function getPreviewService() {
 	if (!previewService) {
 		previewService = createPreviewGeneratorService({
 			enableImageExtraction: true,
@@ -46,6 +46,7 @@ function getPreviewService() {
 			timeout: 15000,
 			strategyTimeout: 5000,
 		})
+		await previewService.initialize()
 	}
 	return previewService
 }
@@ -120,7 +121,8 @@ export async function processDocumentInline(
 			}
 
 			if (!previewUrl && document.url) {
-				const previewResult = await getPreviewService().generate({
+				const svc = await getPreviewService()
+				const previewResult = await svc.generate({
 					title: document.title || "Untitled",
 					text: document.content || "",
 					url: document.url,

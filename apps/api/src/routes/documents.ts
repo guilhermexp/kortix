@@ -1591,6 +1591,46 @@ export async function migrateMcpDocuments(
  * Find related links for a document
  * Extracts mentions from content and searches for related resources
  */
+/**
+ * Check if a URL already exists in the organization's documents
+ * Returns the existing document info if found
+ */
+export async function checkUrlExists(
+	client: SupabaseClient,
+	organizationId: string,
+	url: string,
+): Promise<{
+	exists: boolean
+	document?: { id: string; status: string; title: string | null }
+}> {
+	const { data: existing, error } = await client
+		.from("documents")
+		.select("id, status, title")
+		.eq("org_id", organizationId)
+		.eq("url", url)
+		.order("created_at", { ascending: false })
+		.limit(1)
+		.maybeSingle()
+
+	if (error) {
+		console.error("[checkUrlExists] Error checking URL:", error)
+		throw error
+	}
+
+	if (!existing) {
+		return { exists: false }
+	}
+
+	return {
+		exists: true,
+		document: {
+			id: existing.id,
+			status: existing.status ?? "unknown",
+			title: existing.title ?? null,
+		},
+	}
+}
+
 export async function findDocumentRelatedLinks(
 	supabase: SupabaseClient,
 	documentId: string,
