@@ -187,6 +187,9 @@
 | 162 | GitHub - openai/apps-sdk-ui | https://github.com/openai/apps-sdk-ui/ | done | 2025-11-25 |
 | 163 | GitHub - ZHO-ZHO-ZHO/BananaBattle | https://github.com/ZHO-ZHO-ZHO/BananaBattle | done | 2025-11-25 |
 | 164 | GitHub - NitroRCr/AIaW | https://github.com/NitroRCr/AIaW/ | done | 2025-11-25 |
+
+
+_____________ Aqui!
 | 165 | Assistants - AI as Workspace | https://aiaw.app/assistants | done | 2025-11-25 |
 | 166 | GitHub - showlab/Code2Video | https://github.com/showlab/Code2Video/ | done | 2025-11-25 |
 | 167 | GitHub - LinwoodDev/Butterfly | https://github.com/LinwoodDev/Butterfly/ | done | 2025-11-25 |
@@ -283,8 +286,6 @@
 | 258 | GitHub - davialabs/davia | https://github.com/davialabs/davia | done | 2025-11-17 |
 | 259 | Arcade MCP Framework | https://www.arcade.dev/mcp?ref=manuagi | done | 2025-11-17 |
 | 260 | Metorial | https://metorial.com/?ref=manuagi | done | 2025-11-17 |
-| 261 | BlogBowl - AI Blog That Ranks on Google & LLMs | https://www.blogbowl.io/?ref=manuagi | done | 2025-11-17 |
-| 262 | Analyze Live Video Streams | Moondream | https://moondream.ai/solutions/analyze-live-video | done | 2025-11-17 |
 | 263 | GitHub - m87-labs/Analyze-Live-Video-Solution | https://github.com/m87-labs/Analyze-Live-Video-Solution | done | 2025-11-17 |
 | 264 | GitHub - virattt/ai-financial-agent | https://github.com/virattt/ai-financial-agent/ | done | 2025-11-17 |
 | 265 | Stop Telling Claude Code What To Do | https://www.youtube.com/watch?v=8_7Sq6Vu0S4&t=560s | done | 2025-11-17 |

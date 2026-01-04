@@ -37,13 +37,14 @@ import {
 	DialogTitle,
 } from "@repo/ui/components/dialog"
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
 	AlertTriangle,
 	Brain,
 	Clock,
 	Expand,
 	ExternalLink,
+	Folder,
 	Loader,
 	Pause,
 	Play,
@@ -55,11 +56,41 @@ import type { CSSProperties } from "react"
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { z } from "zod"
+import { $fetch } from "@lib/api"
 import { analytics } from "@/lib/analytics"
 import { cancelDocument } from "@/lib/api/documents-client"
 import { useProject } from "@/stores"
 import { DocumentProjectTransfer } from "./editor/document-project-transfer"
 import { MarkdownContent } from "./markdown-content"
+
+// Project interface for type safety
+interface Project {
+	id: string
+	name: string
+	containerTag: string
+}
+
+// Simple hook to get projects list (shared with DocumentProjectTransfer)
+function useProjectsList() {
+	return useQuery<Project[]>({
+		queryKey: ["projects"],
+		queryFn: async () => {
+			const response = await $fetch("@get/projects")
+			if (response.error) {
+				throw new Error(response.error?.message || "Failed to load projects")
+			}
+			return response.data?.projects ?? []
+		},
+		staleTime: 30_000,
+	})
+}
+
+// Helper to get project name from containerTag
+function getProjectName(projects: Project[] | undefined, containerTag: string | null | undefined): string | null {
+	if (!containerTag || !projects?.length) return null
+	const project = projects.find(p => p.containerTag === containerTag)
+	return project?.name ?? null
+}
 import {
 	getDocumentSnippet,
 	getDocumentSummaryFormatted,
@@ -455,7 +486,7 @@ function DocumentPreviewModal({
 				{/* Top right actions: Project selector + Expand button */}
 				<div className="absolute top-4 right-12 z-20 flex items-center gap-2">
 					<DocumentProjectTransfer
-						currentProject={document.containerTag}
+						currentProject={(document as any).containerTags?.[0]}
 						documentId={document.id}
 						onProjectChanged={() => {
 							// Optionally close modal or refresh
@@ -571,6 +602,17 @@ const MasonryCard = memo(
 		const hasPrefetchedRef = useRef(false)
 		const activeMemories = document.memoryEntries.filter((m) => !m.isForgotten)
 		const preview = useMemo(() => getDocumentPreview(document), [document])
+
+		// Get projects list for showing project name
+		const { data: projects } = useProjectsList()
+		// containerTag comes from document.containerTags[0] (now properly included in schema)
+		const containerTag =
+			(document as any).containerTags?.[0] ??
+			document.memoryEntries?.[0]?.spaceContainerTag
+		const projectName = useMemo(
+			() => getProjectName(projects, containerTag),
+			[projects, containerTag]
+		)
 
 		const sanitizedPreview = useMemo(() => {
 			if (!preview) return null
@@ -1076,12 +1118,22 @@ const MasonryCard = memo(
 
 							{/* Footer with memory count and delete */}
 							<div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
-								<div className="flex items-center gap-1.5">
+								<div className="flex items-center gap-2">
 									{activeMemories.length > 0 && (
 										<span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
 											<Brain className="w-3 h-3" />
 											{activeMemories.length}{" "}
 											{activeMemories.length === 1 ? "memory" : "memories"}
+										</span>
+									)}
+									{/* Project badge */}
+									{projectName && (
+										<span
+											className="inline-flex items-center gap-1 text-gray-500 max-w-[70px]"
+											title={projectName}
+										>
+											<Folder className="w-3 h-3 flex-shrink-0" />
+											<span className="truncate text-[9px]">{projectName}</span>
 										</span>
 									)}
 								</div>

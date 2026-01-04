@@ -1171,6 +1171,7 @@ export async function listDocumentsWithMemories(
 			createdAt: doc.created_at,
 			updatedAt: doc.updated_at,
 			memoryEntries,
+			containerTags,
 		}
 	})
 
