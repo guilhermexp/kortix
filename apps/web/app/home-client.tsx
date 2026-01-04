@@ -1,5 +1,6 @@
 "use client"
 
+// Build: 2025-01-04-v7 - QueryClient fix with isMounted check
 import { useIsMobile } from "@hooks/use-mobile"
 import { useAuth } from "@lib/auth-context"
 import { $fetch } from "@repo/lib/api"
