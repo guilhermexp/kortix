@@ -8,7 +8,7 @@
 builder = "NIXPACKS"
 # Install all dependencies from monorepo root, then build the web app
 # Note: Don't remove node_modules/.cache as Railway mounts it as a volume
-buildCommand = "cd /app && rm -rf apps/web/.next apps/web/node_modules/.cache 2>/dev/null || true && bun install && bun run --cwd apps/web build"
+buildCommand = "cd /app && rm -rf apps/web/.next apps/web/node_modules/.cache packages/lib/*.jsx 2>/dev/null || true && bun install && bun run --cwd apps/web build"
 
 [deploy]
 # Start Next.js from monorepo root to access @repo/* packages
