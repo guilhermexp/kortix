@@ -144,8 +144,8 @@ export function DocumentProjectTransfer({
 	const triggerLabel = (() => {
 		if (moveMutation.isPending) {
 			return (
-				<span className="flex items-center gap-2 text-xs">
-					<Loader2 className="h-3 w-3 animate-spin" />
+				<span className="flex items-center gap-2">
+					<Loader2 className="h-4 w-4 animate-spin" />
 					Movendo...
 				</span>
 			)
@@ -154,22 +154,10 @@ export function DocumentProjectTransfer({
 			(project) => project.containerTag === selection,
 		)
 
-		console.log("[DocumentProjectTransfer] Rendering trigger:", {
-			selection,
-			currentOption,
-			projectOptionsCount: projectOptions.length,
-			projectTags: projectOptions.map((p) => ({
-				tag: p.containerTag,
-				name: p.name,
-			})),
-		})
-
 		return (
-			<span className="flex items-center gap-2 text-xs">
-				<FolderIcon className="h-3.5 w-3.5 text-muted-foreground" />
-				<span className="truncate">
-					{currentOption ? currentOption.name : selection}
-				</span>
+			<span className="flex items-center gap-1.5">
+				<FolderIcon className="h-3.5 w-3.5" />
+				{currentOption ? currentOption.name : selection}
 			</span>
 		)
 	})()
@@ -182,7 +170,7 @@ export function DocumentProjectTransfer({
 			onValueChange={handleChange}
 			value={selection}
 		>
-			<SelectTrigger className="h-6 w-auto min-w-[80px] max-w-[120px] gap-1 px-1.5 text-[10px] border-0 bg-transparent hover:bg-muted/30">
+			<SelectTrigger className="h-8 w-auto gap-2 px-2.5 text-xs border-0 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md">
 				{triggerLabel}
 			</SelectTrigger>
 			<SelectContent>
