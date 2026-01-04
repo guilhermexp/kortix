@@ -2,7 +2,10 @@
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-// Import and re-export the client component
+// Import the client component
 import HomePage from "./home-client"
 
-export default HomePage
+// Render the client component properly from the server component
+export default function Page() {
+	return <HomePage />
+}

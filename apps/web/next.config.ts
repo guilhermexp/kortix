@@ -15,21 +15,23 @@ const nextConfig: NextConfig = {
 		ignoreBuildErrors: true,
 	},
 	// Transpile monorepo packages to ensure shared module instances
+	// Include @tanstack/react-query to prevent context isolation across chunks
 	transpilePackages: [
 		"@repo/lib",
 		"@repo/ui",
 		"@repo/validation",
 		"@repo/hooks",
+		"@tanstack/react-query",
 	],
 	turbopack: {}, // Empty config to silence warning
 	outputFileTracingRoot: workspaceRoot,
 	experimental: {
 		viewTransition: true,
 		// Optimize preloading to prevent unused resource warnings
+		// Note: @tanstack/react-query removed to prevent context isolation issues
 		optimizePackageImports: [
 			"lucide-react",
 			"framer-motion",
-			"@tanstack/react-query",
 		],
 	},
 	poweredByHeader: false,

@@ -1,6 +1,6 @@
 "use client"
 
-// Build: 2025-01-04-v7 - QueryClient fix with isMounted check
+// Build: 2025-01-04-v8 - Fixed page.tsx server/client boundary
 import { useIsMobile } from "@hooks/use-mobile"
 import { useAuth } from "@lib/auth-context"
 import { $fetch } from "@repo/lib/api"
@@ -1039,7 +1039,7 @@ const MemoryGraphPage = () => {
 }
 
 // Wrapper component to handle auth and waitlist checks
-export default function Page() {
+export default function HomePage() {
 	const { user, session, isLoading } = useAuth()
 	// Track if component is mounted (client-side) to prevent SSR/hydration issues
 	const [isMounted, setIsMounted] = useState(false)
