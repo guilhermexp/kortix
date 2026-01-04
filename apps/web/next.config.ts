@@ -4,6 +4,8 @@ import type { NextConfig } from "next"
 const workspaceRoot = path.resolve(__dirname, "..", "..")
 
 const nextConfig: NextConfig = {
+	// Enable standalone output for Docker deployment
+	output: "standalone",
 	// Force new build ID to bust all caches
 	generateBuildId: async () => {
 		return `build-${Date.now()}`
