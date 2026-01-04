@@ -1,15 +1,15 @@
 # Railway Configuration for Kortix Web
-# Using custom Dockerfile to bypass Nixpacks caching issues
-# Build: v15 - 2025-01-04
+# Build: v16 - 2025-01-04 - build at start to bypass caching
+#
+# IMPORTANT: This is a shared monorepo - builds must install from root
+# to ensure @repo/* dependencies are available
 
 [build]
-builder = "DOCKERFILE"
-dockerfilePath = "apps/web/Dockerfile"
-# Watch all files to force rebuild on any change
+builder = "NIXPACKS"
 watchPatterns = ["**/*"]
 
 [deploy]
+# Build at container start to bypass Nixpacks caching issues
+startCommand = "cd /app && rm -rf apps/web/.next && bun run --cwd apps/web build && bun run --cwd apps/web start"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
-
-# Next.js will automatically use PORT environment variable provided by Railway
