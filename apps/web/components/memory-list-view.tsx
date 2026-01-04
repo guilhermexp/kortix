@@ -58,6 +58,7 @@ import type { z } from "zod"
 import { analytics } from "@/lib/analytics"
 import { cancelDocument } from "@/lib/api/documents-client"
 import { useProject } from "@/stores"
+import { DocumentProjectTransfer } from "./editor/document-project-transfer"
 import { MarkdownContent } from "./markdown-content"
 import {
 	getDocumentSnippet,
@@ -451,20 +452,29 @@ function DocumentPreviewModal({
 	return (
 		<Dialog onOpenChange={(open) => !open && onClose()} open>
 			<DialogContent className="!max-w-[85vw] !w-[1000px] max-h-[90vh] overflow-hidden p-0 sm:!max-w-[85vw]">
-				{/* Expand button - top right */}
-				<Button
-					className="absolute top-4 right-12 z-20 gap-2"
-					onClick={(e) => {
-						e.stopPropagation()
-						e.preventDefault()
-						router.push(`/memory/${document.id}/edit`)
-					}}
-					size="sm"
-					variant="secondary"
-				>
-					<Expand className="w-4 h-4" />
-					Expandir
-				</Button>
+				{/* Top right actions: Project selector + Expand button */}
+				<div className="absolute top-4 right-12 z-20 flex items-center gap-2">
+					<DocumentProjectTransfer
+						currentProject={document.containerTag}
+						documentId={document.id}
+						onProjectChanged={() => {
+							// Optionally close modal or refresh
+						}}
+					/>
+					<Button
+						onClick={(e) => {
+							e.stopPropagation()
+							e.preventDefault()
+							router.push(`/memory/${document.id}/edit`)
+						}}
+						size="sm"
+						variant="secondary"
+						className="gap-2"
+					>
+						<Expand className="w-4 h-4" />
+						Expandir
+					</Button>
+				</div>
 
 				{/* Scrollable container */}
 				<div className="h-[85vh] overflow-y-auto">
