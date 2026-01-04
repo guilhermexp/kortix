@@ -529,34 +529,44 @@ export async function addDocument({
 				"indexing",
 			])
 
-			// Always ensure document is mapped to requested space
-			let addedToProject = false
-			try {
-				addedToProject = await ensureDocumentInSpace(existing.id, spaceId)
-			} catch (e) {
-				console.error("[addDocument] Failed mapping doc to project", {
-					documentId: existing.id,
-					spaceId,
-					error: e instanceof Error ? e.message : String(e),
-				})
-				// Don't fail the request, but log the error
+			// If document already exists and is done or processing, reject the submission
+			// This saves resources and provides clear feedback to the user
+			if (currentStatus === "done") {
+				const error = new Error(
+					"Este documento já existe na sua biblioteca. URL duplicada.",
+				)
+				;(error as any).code = "DUPLICATE_DOCUMENT"
+				;(error as any).existingDocumentId = existing.id
+				;(error as any).status = 409
+				throw error
 			}
 
-			if (processingStates.has(currentStatus) || currentStatus === "done") {
-				// Document already exists and is processing or done
-				return {
-					id: existing.id,
-					status: existing.status ?? "queued",
-					alreadyExists: true,
-					addedToProject,
-				}
+			if (processingStates.has(currentStatus)) {
+				const error = new Error(
+					"Este documento já está sendo processado. Aguarde a conclusão.",
+				)
+				;(error as any).code = "DOCUMENT_PROCESSING"
+				;(error as any).existingDocumentId = existing.id
+				;(error as any).status = 409
+				throw error
 			}
 
 			if (currentStatus === "failed") {
 				// Requeue existing failed document rather than creating a new one
+				// First ensure it's in the right space
+				try {
+					await ensureDocumentInSpace(existing.id, spaceId)
+				} catch (e) {
+					console.error("[addDocument] Failed mapping doc to project", {
+						documentId: existing.id,
+						spaceId,
+						error: e instanceof Error ? e.message : String(e),
+					})
+				}
+
 				const { error: updateError } = await client
 					.from("documents")
-					.update({ status: "queued" })
+					.update({ status: "queued", error: null })
 					.eq("id", existing.id)
 					.eq("org_id", organizationId)
 				if (updateError) {
@@ -572,8 +582,9 @@ export async function addDocument({
 					.in("status", ["queued", "processing"])
 					.maybeSingle()
 
+				let jobId: string | undefined
 				if (!existingJob) {
-					const { error: jobError } = await client
+					const { data: jobRecord, error: jobError } = await client
 						.from("ingestion_jobs")
 						.insert({
 							document_id: existing.id,
@@ -588,18 +599,44 @@ export async function addDocument({
 								source: inferredSource,
 							},
 						})
+						.select("id")
+						.single()
 					if (jobError) {
 						console.error("[addDocument] Failed to create job", jobError)
 						throw jobError
 					}
+					jobId = jobRecord?.id
+				} else {
+					jobId = existingJob.id
 				}
 
-				return {
-					id: existing.id,
-					status: "queued",
-					alreadyExists: true,
-					addedToProject,
+				// Process document inline (async - doesn't block response)
+				if (jobId) {
+					processDocumentInline({
+						documentId: existing.id,
+						jobId,
+						orgId: organizationId,
+						payload: {
+							containerTags: parsed.containerTags ?? [containerTag],
+							content: rawContent,
+							metadata,
+							url: inferredUrl,
+							type: inferredType,
+							source: inferredSource,
+						},
+					}).catch((err) => {
+						console.error("[addDocument] Background reprocessing failed", {
+							documentId: existing.id,
+							error: err instanceof Error ? err.message : String(err),
+						})
+					})
 				}
+
+				invalidateDocumentCaches()
+				return MemoryResponseSchema.parse({
+					id: existing.id,
+					status: "processing",
+				})
 			}
 		}
 	}

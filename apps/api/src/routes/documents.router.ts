@@ -49,20 +49,23 @@ documentsRouter.post("/", zValidator("json", MemoryAddSchema), async (c) => {
 			payload,
 			client: supabase,
 		})
-		const statusCode = (doc as { alreadyExists?: boolean })?.alreadyExists
-			? 200
-			: 201
-		return c.json(doc, statusCode)
+		return c.json(doc, 201)
 	} catch (error) {
 		console.error("Failed to add document", error)
+		// Use custom status code if provided (e.g., 409 for duplicates)
+		const statusCode = (error as any)?.status ?? 400
+		const errorCode = (error as any)?.code
+		const existingDocumentId = (error as any)?.existingDocumentId
 		return c.json(
 			{
 				error: {
 					message:
 						error instanceof Error ? error.message : "Failed to add document",
+					code: errorCode,
+					existingDocumentId,
 				},
 			},
-			400,
+			statusCode,
 		)
 	}
 })
@@ -178,20 +181,23 @@ documentsRouter.post("/file", async (c) => {
 			payload,
 			client: supabase,
 		})
-		const statusCode = (doc as { alreadyExists?: boolean })?.alreadyExists
-			? 200
-			: 201
-		return c.json(doc, statusCode)
+		return c.json(doc, 201)
 	} catch (error) {
 		console.error("File upload failed", error)
+		// Use custom status code if provided (e.g., 409 for duplicates)
+		const statusCode = (error as any)?.status ?? 500
+		const errorCode = (error as any)?.code
+		const existingDocumentId = (error as any)?.existingDocumentId
 		return c.json(
 			{
 				error: {
 					message:
 						error instanceof Error ? error.message : "File upload failed",
+					code: errorCode,
+					existingDocumentId,
 				},
 			},
-			500,
+			statusCode,
 		)
 	}
 })
