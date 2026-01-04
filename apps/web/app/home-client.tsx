@@ -1040,8 +1040,16 @@ const MemoryGraphPage = () => {
 // Wrapper component to handle auth and waitlist checks
 export default function Page() {
 	const { user, session, isLoading } = useAuth()
+	// Track if component is mounted (client-side) to prevent SSR/hydration issues
+	const [isMounted, setIsMounted] = useState(false)
 
 	useEffect(() => {
+		setIsMounted(true)
+	}, [])
+
+	useEffect(() => {
+		if (!isMounted) return
+
 		const url = new URL(window.location.href)
 		const authenticateChromeExtension = url.searchParams.get(
 			"extension-auth-success",
@@ -1062,10 +1070,10 @@ export default function Page() {
 				window.history.replaceState({}, "", url.toString())
 			}
 		}
-	}, [user, session])
+	}, [user, session, isMounted])
 
-	// Show loading state only while actually loading
-	if (isLoading) {
+	// Wait for client-side mount before rendering anything that uses React Query
+	if (!isMounted || isLoading) {
 		return (
 			<div className="min-h-screen flex items-center justify-center bg-background">
 				<div className="flex flex-col items-center gap-4">
