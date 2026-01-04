@@ -2,8 +2,10 @@
 
 /**
  * QueryProvider - Provides React Query context to the application
- * Build: 2025-01-04-v8 - Fixed for Next.js App Router SSR/hydration
- * Force Railway rebuild
+ * Build: 2025-01-04-v10 - Fixed for Next.js App Router SSR/hydration
+ * Force Railway rebuild - timestamp: 1767512800
+ * This component provides React Query client to the entire application.
+ * It uses a singleton pattern for the browser to avoid creating new clients on re-renders.
  *
  * Uses the recommended pattern from TanStack Query docs:
  * - Server: always create a new QueryClient per request
@@ -55,4 +57,3 @@ export function QueryProvider({ children }: { children: ReactNode }) {
 		<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 	)
 }
-// Force rebuild: 1767512681
