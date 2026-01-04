@@ -1,6 +1,6 @@
 # Railway Configuration for Kortix Web
 # This file tells Railway how to build and deploy the Next.js web service
-# Cache bust: v8 - 2025-01-04
+# Cache bust: v14 - 2025-01-04 - disable all caching
 #
 # IMPORTANT: This is a shared monorepo - builds must install from root
 # to ensure @repo/* dependencies are available
@@ -9,9 +9,11 @@
 builder = "NIXPACKS"
 # Watch all files to force rebuild on any change
 watchPatterns = ["**/*"]
+# Disable Nixpacks build caching completely
+nixpacksBuildCache = false
 # Install all dependencies from monorepo root, then build the web app
-# Force fresh build: v13 - also clear Railway cache mounts
-buildCommand = "echo 'Build v13' && cd /app && rm -rf .next/cache apps/web/.next apps/web/node_modules/.cache node_modules/.cache packages/lib/*.jsx 2>/dev/null || true && bun install --force && NEXT_TURBO_DISABLE_CACHE=1 bun run --cwd apps/web build"
+# Force fresh build: v14 - disable all caching
+buildCommand = "echo 'Build v14 - FRESH' && cd /app && rm -rf .next .next/cache apps/web/.next apps/web/node_modules/.cache node_modules/.cache packages/lib/*.jsx 2>/dev/null || true && bun install --force && NEXT_PRIVATE_STANDALONE=true bun run --cwd apps/web build"
 
 [deploy]
 # Start Next.js from monorepo root to access @repo/* packages

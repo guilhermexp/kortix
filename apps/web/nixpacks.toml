@@ -1,13 +1,16 @@
 [phases.setup]
 nixPkgs = ["nodejs_22", "bun"]
 
+# Disable all Nixpacks caching
 [phases.install]
-# Force fresh install - cache bust v6
-cmds = ["cd ../.. && rm -rf apps/web/.next && bun install --force"]
+# Force fresh install - cache bust v7
+cmds = ["cd ../.. && rm -rf apps/web/.next apps/web/.next/cache .next/cache node_modules/.cache && bun install --force"]
+cacheDirectories = []
 
 [phases.build]
-# Clean build without cache
-cmds = ["cd ../.. && cd apps/web && rm -rf .next && bun run build"]
+# Clean build without any cache
+cmds = ["cd ../.. && cd apps/web && rm -rf .next && rm -rf /app/.next/cache 2>/dev/null || true && NEXT_CACHE_DIR=/tmp/next-cache bun run build"]
+cacheDirectories = []
 
 [start]
 cmd = "cd ../.. && cd apps/web && bun run start"
