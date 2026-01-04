@@ -1,4 +1,5 @@
 "use client"
+// Auth module - v2 - includes web domain cookie support
 
 import useSWR, { mutate } from "swr"
 
