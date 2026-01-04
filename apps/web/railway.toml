@@ -7,8 +7,8 @@
 [build]
 builder = "NIXPACKS"
 # Install all dependencies from monorepo root, then build the web app
-# Cache bust: 2025-12-02-v5 - aggressive cache invalidation
-buildCommand = "cd /app && rm -rf apps/web/.next apps/web/node_modules/.cache node_modules/.cache && bun install --force && bun run --cwd apps/web build"
+# Note: Don't remove node_modules/.cache as Railway mounts it as a volume
+buildCommand = "cd /app && rm -rf apps/web/.next apps/web/node_modules/.cache 2>/dev/null || true && bun install && bun run --cwd apps/web build"
 
 [deploy]
 # Start Next.js from monorepo root to access @repo/* packages
