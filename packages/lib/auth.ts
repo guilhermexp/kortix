@@ -19,6 +19,10 @@ function storeTokens(accessToken: string, refreshToken?: string) {
 		if (refreshToken) {
 			localStorage.setItem(AUTH_REFRESH_KEY, refreshToken)
 		}
+		// Also set a cookie on the web domain for server-side auth checks (middleware/proxy)
+		// This is needed because the API sets its cookie on the API domain, not the web domain
+		const maxAge = 60 * 60 * 24 * 7 // 7 days
+		document.cookie = `kortix_session=${accessToken}; path=/; max-age=${maxAge}; secure; samesite=lax`
 	}
 }
 
@@ -26,6 +30,8 @@ function clearTokens() {
 	if (typeof window !== "undefined") {
 		localStorage.removeItem(AUTH_TOKEN_KEY)
 		localStorage.removeItem(AUTH_REFRESH_KEY)
+		// Also clear the web domain cookie
+		document.cookie = "kortix_session=; path=/; max-age=0; secure; samesite=lax"
 	}
 }
 
