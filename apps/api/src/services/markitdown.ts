@@ -173,12 +173,85 @@ function isValidYouTubeTranscript(markdown: string, url: string): boolean {
  * Run MarkItDown via Python API (convert_url method)
  * This is specifically for URLs that need special handling like YouTube
  * Implements retry with exponential backoff for rate limiting
+ *
+ * For YouTube videos, we use youtube-transcript-api directly since
+ * MarkItDown 0.0.2 uses an incompatible old API version
  */
 async function runMarkItDownPythonAPI(
 	url: string,
 ): Promise<MarkItDownResponse> {
 	return new Promise((resolve, reject) => {
-		const pythonScript = `
+		// Check if it's a YouTube URL
+		const isYouTube =
+			url.toLowerCase().includes("youtube.com") ||
+			url.toLowerCase().includes("youtu.be")
+
+		const pythonScript = isYouTube
+			? `
+import json
+import re
+import requests
+from youtube_transcript_api import YouTubeTranscriptApi
+
+url = '${url.replace(/'/g, "\\'")}'
+
+def extract_video_id(url):
+    patterns = [
+        r'(?:youtube\\.com/watch\\?v=|youtu\\.be/|youtube\\.com/embed/)([^&\\n?#]+)',
+        r'youtube\\.com/shorts/([^&\\n?#]+)',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
+def get_video_title(url):
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        resp = requests.get(url, headers=headers, timeout=10)
+        html = resp.text
+        # Try og:title
+        match = re.search(r'<meta\\s+property=["\\'']og:title["\\'']\\s+content=["\\'']([^"\\'\\']+)["\\'']', html, re.I)
+        if match:
+            return match.group(1)
+        # Try title tag
+        match = re.search(r'<title>([^<]+)</title>', html, re.I)
+        if match:
+            return match.group(1).replace(' - YouTube', '').strip()
+    except:
+        pass
+    return None
+
+try:
+    video_id = extract_video_id(url)
+    if not video_id:
+        raise ValueError('Could not extract video ID from URL')
+
+    api = YouTubeTranscriptApi()
+    transcript = api.fetch(video_id)
+    full_text = ' '.join([e.text for e in transcript])
+    title = get_video_title(url)
+
+    markdown = f"# YouTube\\n\\n"
+    if title:
+        markdown += f"## {title}\\n\\n"
+    markdown += f"### Transcript\\n\\n{full_text}"
+
+    output = {
+        'markdown': markdown,
+        'title': title,
+        'success': True
+    }
+    print(json.dumps(output))
+except Exception as e:
+    output = {
+        'success': False,
+        'error': str(e)
+    }
+    print(json.dumps(output))
+`
+			: `
 import json
 from markitdown import MarkItDown
 
