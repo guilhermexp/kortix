@@ -21,6 +21,7 @@ import { createClientForSession } from "../supabase"
 import {
 	addDocument,
 	cancelDocument,
+	checkUrlExists,
 	DocumentsByIdsSchema,
 	deleteDocument,
 	findDocumentRelatedLinks,
@@ -35,6 +36,33 @@ import {
 export const documentsRouter = new Hono<{
 	Variables: { session: SessionContext }
 }>()
+
+// Check if URL already exists (for duplicate validation before submission)
+documentsRouter.post(
+	"/check-url",
+	zValidator("json", z.object({ url: z.string().url() })),
+	async (c) => {
+		const { organizationId } = c.var.session
+		const { url } = c.req.valid("json")
+		const supabase = createClientForSession(c.var.session)
+
+		try {
+			const result = await checkUrlExists(supabase, organizationId, url)
+			return c.json(result)
+		} catch (error) {
+			console.error("Failed to check URL", error)
+			return c.json(
+				{
+					error: {
+						message:
+							error instanceof Error ? error.message : "Failed to check URL",
+					},
+				},
+				500,
+			)
+		}
+	},
+)
 
 // Add document (text or URL)
 documentsRouter.post("/", zValidator("json", MemoryAddSchema), async (c) => {

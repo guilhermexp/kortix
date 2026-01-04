@@ -36,7 +36,7 @@ import {
 } from "lucide-react"
 import { motion } from "motion/react"
 import dynamic from "next/dynamic"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 // Removed dropdown; inline toggle buttons are used instead
 import { z } from "zod"
@@ -335,6 +335,94 @@ export function AddMemoryView({
 		addedToProject: false,
 	})
 
+	// URL duplicate check state (inline validation before submission)
+	const [urlDuplicateCheck, setUrlDuplicateCheck] = useState<{
+		checking: boolean
+		isDuplicate: boolean
+		documentId: string | null
+		documentTitle: string | null
+	}>({
+		checking: false,
+		isDuplicate: false,
+		documentId: null,
+		documentTitle: null,
+	})
+
+	// Debounced URL duplicate check
+	const urlCheckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const checkUrlDuplicate = useCallback((url: string) => {
+		// Clear previous timeout
+		if (urlCheckTimeoutRef.current) {
+			clearTimeout(urlCheckTimeoutRef.current)
+		}
+
+		// Only check valid URLs
+		try {
+			new URL(url)
+		} catch {
+			setUrlDuplicateCheck({
+				checking: false,
+				isDuplicate: false,
+				documentId: null,
+				documentTitle: null,
+			})
+			return
+		}
+
+		// Set checking state and debounce the actual check
+		setUrlDuplicateCheck((prev) => ({ ...prev, checking: true }))
+
+		urlCheckTimeoutRef.current = setTimeout(async () => {
+			try {
+				const response = await $fetch("@post/documents/check-url", {
+					body: { url },
+				})
+
+				if (response.error) {
+					setUrlDuplicateCheck({
+						checking: false,
+						isDuplicate: false,
+						documentId: null,
+						documentTitle: null,
+					})
+					return
+				}
+
+				if (response.data?.exists) {
+					setUrlDuplicateCheck({
+						checking: false,
+						isDuplicate: true,
+						documentId: response.data.document?.id ?? null,
+						documentTitle: response.data.document?.title ?? null,
+					})
+				} else {
+					setUrlDuplicateCheck({
+						checking: false,
+						isDuplicate: false,
+						documentId: null,
+						documentTitle: null,
+					})
+				}
+			} catch {
+				setUrlDuplicateCheck({
+					checking: false,
+					isDuplicate: false,
+					documentId: null,
+					documentTitle: null,
+				})
+			}
+		}, 500)
+	}, [])
+
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (urlCheckTimeoutRef.current) {
+				clearTimeout(urlCheckTimeoutRef.current)
+			}
+		}
+	}, [])
+
 	// Check memory limits
 	const { data: memoriesCheck } = fetchMemoriesFeature(autumn)
 
@@ -433,6 +521,15 @@ export function AddMemoryView({
 			if (currentValue) {
 				addContentForm.validateField("content", "change")
 			}
+		}
+		// Clear duplicate check when switching away from link tab
+		if (activeTab !== "link") {
+			setUrlDuplicateCheck({
+				checking: false,
+				isDuplicate: false,
+				documentId: null,
+				documentTitle: null,
+			})
 		}
 	}, [activeTab])
 
@@ -1531,19 +1628,36 @@ export function AddMemoryView({
 													>
 														{({ state, handleChange, handleBlur }) => (
 															<>
-																<Input
-																	className={`bg-background border-white/20 text-foreground dark:text-white ${
-																		addContentMutation.isPending
-																			? "opacity-50"
-																			: ""
-																	}`}
-																	disabled={addContentMutation.isPending}
-																	id="link-content"
-																	onBlur={handleBlur}
-																	onChange={(e) => handleChange(e.target.value)}
-																	placeholder="https://example.com/article"
-																	value={state.value}
-																/>
+																<div className="relative">
+																	<Input
+																		className={`bg-background border-white/20 text-foreground dark:text-white ${
+																			addContentMutation.isPending
+																				? "opacity-50"
+																				: ""
+																		} ${
+																			urlDuplicateCheck.isDuplicate
+																				? "border-amber-500/50 focus-visible:ring-amber-500/30"
+																				: ""
+																		}`}
+																		disabled={addContentMutation.isPending}
+																		id="link-content"
+																		onBlur={handleBlur}
+																		onChange={(e) => {
+																			handleChange(e.target.value)
+																			// Trigger duplicate check
+																			if (activeTab === "link") {
+																				checkUrlDuplicate(e.target.value)
+																			}
+																		}}
+																		placeholder="https://example.com/article"
+																		value={state.value}
+																	/>
+																	{urlDuplicateCheck.checking && (
+																		<div className="absolute right-3 top-1/2 -translate-y-1/2">
+																			<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+																		</div>
+																	)}
+																</div>
 																{state.meta.errors.length > 0 && (
 																	<motion.p
 																		animate={{ opacity: 1, height: "auto" }}
@@ -1561,22 +1675,55 @@ export function AddMemoryView({
 																			.join(", ")}
 																	</motion.p>
 																)}
+																{urlDuplicateCheck.isDuplicate && (
+																	<motion.div
+																		animate={{ opacity: 1, height: "auto" }}
+																		className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 overflow-hidden"
+																		exit={{ opacity: 0, height: 0 }}
+																		initial={{ opacity: 0, height: 0 }}
+																	>
+																		<div className="flex items-start sm:items-center gap-2 flex-1 min-w-0">
+																			<AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5 sm:mt-0" />
+																			<div className="flex-1 min-w-0 overflow-hidden">
+																				<p className="text-sm text-amber-500">
+																					Este link já existe na sua biblioteca
+																				</p>
+																				{urlDuplicateCheck.documentTitle && (
+																					<p className="text-xs text-amber-500/70 break-words line-clamp-2">
+																						{urlDuplicateCheck.documentTitle}
+																					</p>
+																				)}
+																			</div>
+																		</div>
+																		{urlDuplicateCheck.documentId && (
+																			<button
+																				className="text-xs text-amber-500 hover:text-amber-400 underline flex-shrink-0 self-start sm:self-center"
+																				onClick={() => {
+																					window.open(
+																						`/memory/${urlDuplicateCheck.documentId}/edit`,
+																						"_blank",
+																					)
+																				}}
+																				type="button"
+																			>
+																				Ver documento
+																			</button>
+																		)}
+																	</motion.div>
+																)}
 															</>
 														)}
 													</addContentForm.Field>
 												</motion.div>
 
-												{/* Processing Mode Toggle */}
+												{/* Processing Mode Toggle + Project Selection */}
 												<motion.div
 													animate={{ opacity: 1, y: 0 }}
-													className="flex flex-col gap-2"
+													className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
 													initial={{ opacity: 0, y: 10 }}
 													transition={{ delay: 0.15 }}
 												>
-													<label className="text-sm font-medium">
-														Processing Mode
-													</label>
-													<div className="flex items-center gap-2">
+													<div className="flex items-center gap-2 flex-wrap">
 														<button
 															className={`text-xs px-3 py-1.5 rounded-md border transition-all ${
 																useAgentForLink
@@ -1612,50 +1759,51 @@ export function AddMemoryView({
 														>
 															Standard
 														</button>
-														<span className="text-xs text-foreground/50 dark:text-white/40 ml-2">
+														<span className="text-xs text-foreground/50 dark:text-white/40 hidden sm:inline">
 															{useAgentForLink
-																? "AI-enhanced extraction"
-																: "Basic extraction"}
+																? "AI-enhanced"
+																: "Basic"}
 														</span>
+													</div>
+													<div className={addContentMutation.isPending ? "opacity-50" : ""}>
+														<addContentForm.Field name="project">
+															{({ state, handleChange }) => (
+																<ProjectSelection
+																	disabled={addContentMutation.isPending}
+																	id="link-project-2"
+																	isLoading={isLoadingProjects}
+																	onCreateProject={() =>
+																		setShowCreateProjectDialog(true)
+																	}
+																	onProjectChange={handleChange}
+																	projects={projects}
+																	selectedProject={state.value}
+																/>
+															)}
+														</addContentForm.Field>
 													</div>
 												</motion.div>
 											</div>
 
-											{/* Footer with Project and Actions */}
-											<div className="mt-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
-												{/* Project Selection */}
-												<motion.div
-													animate={{ opacity: 1, y: 0 }}
-													className={`flex flex-col gap-2 ${
-														addContentMutation.isPending ? "opacity-50" : ""
-													}`}
-													initial={{ opacity: 0, y: 10 }}
-													transition={{ delay: 0.2 }}
-												>
-													<addContentForm.Field name="project">
-														{({ state, handleChange }) => (
-															<ProjectSelection
-																disabled={addContentMutation.isPending}
-																id="link-project-2"
-																isLoading={isLoadingProjects}
-																onCreateProject={() =>
-																	setShowCreateProjectDialog(true)
-																}
-																onProjectChange={handleChange}
-																projects={projects}
-																selectedProject={state.value}
-															/>
-														)}
-													</addContentForm.Field>
-												</motion.div>
-
+											{/* Footer with Actions */}
+											<div className="mt-6 flex justify-center">
 												<ActionButtons
-													isSubmitDisabled={!addContentForm.state.canSubmit}
+													isSubmitDisabled={
+														!addContentForm.state.canSubmit ||
+														urlDuplicateCheck.isDuplicate ||
+														urlDuplicateCheck.checking
+													}
 													isSubmitting={addContentMutation.isPending}
 													onCancel={() => {
 														setShowAddDialog(false)
 														onClose?.()
 														addContentForm.reset()
+														setUrlDuplicateCheck({
+															checking: false,
+															isDuplicate: false,
+															documentId: null,
+															documentTitle: null,
+														})
 													}}
 													submitIcon={Plus}
 													submitText="Add Link"
