@@ -2,7 +2,8 @@
 
 /**
  * QueryProvider - Provides React Query context to the application
- * Build: 2025-01-04-v6 - Fixed for Next.js App Router SSR/hydration
+ * Build: 2025-01-04-v8 - Fixed for Next.js App Router SSR/hydration
+ * Force Railway rebuild
  *
  * Uses the recommended pattern from TanStack Query docs:
  * - Server: always create a new QueryClient per request
