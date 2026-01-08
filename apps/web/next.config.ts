@@ -16,12 +16,21 @@ const nextConfig: NextConfig = {
 	},
 	// Transpile monorepo packages to ensure shared module instances
 	// Include @tanstack/react-query to prevent context isolation across chunks
+	// Include tldraw packages to prevent duplicate imports
 	transpilePackages: [
 		"@repo/lib",
 		"@repo/ui",
 		"@repo/validation",
 		"@repo/hooks",
 		"@tanstack/react-query",
+		"tldraw",
+		"@tldraw/editor",
+		"@tldraw/state",
+		"@tldraw/state-react",
+		"@tldraw/store",
+		"@tldraw/tlschema",
+		"@tldraw/utils",
+		"@tldraw/validate",
 	],
 	turbopack: {}, // Empty config to silence warning
 	outputFileTracingRoot: workspaceRoot,
@@ -125,9 +134,17 @@ const nextConfig: NextConfig = {
 	webpack: (config, { isServer }) => {
 		// Suppress redi warning by marking it as external if loaded
 		if (!isServer) {
+			// Force single instance of tldraw packages to prevent duplicate imports
 			config.resolve.alias = {
 				...config.resolve.alias,
-				// Suppress console warnings from redi library
+				"tldraw": path.resolve(workspaceRoot, "node_modules/tldraw"),
+				"@tldraw/editor": path.resolve(workspaceRoot, "node_modules/@tldraw/editor"),
+				"@tldraw/state": path.resolve(workspaceRoot, "node_modules/@tldraw/state"),
+				"@tldraw/state-react": path.resolve(workspaceRoot, "node_modules/@tldraw/state-react"),
+				"@tldraw/store": path.resolve(workspaceRoot, "node_modules/@tldraw/store"),
+				"@tldraw/tlschema": path.resolve(workspaceRoot, "node_modules/@tldraw/tlschema"),
+				"@tldraw/utils": path.resolve(workspaceRoot, "node_modules/@tldraw/utils"),
+				"@tldraw/validate": path.resolve(workspaceRoot, "node_modules/@tldraw/validate"),
 			}
 			config.ignoreWarnings = [
 				...(config.ignoreWarnings || []),

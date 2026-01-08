@@ -198,8 +198,8 @@ const MemoryGraphPage = () => {
 	const IS_DEV = process.env.NODE_ENV === "development"
 	const PAGE_SIZE = IS_DEV ? 100 : 100
 	const MAX_TOTAL = 1000
-	const REFETCH_MS = 10_000 // 10 seconds - balanced between responsiveness and database load
-	const REFETCH_MS_PROCESSING = 3_000 // 3 seconds when documents are being processed
+	const REFETCH_MS = 30_000 // 30 seconds - reduced database load
+	const REFETCH_MS_PROCESSING = 10_000 // 10 seconds when documents are being processed
 	const RATE_LIMIT_BACKOFF_MS = 90_000 // backoff after 429 responses
 
 	useEffect(() => {
@@ -355,10 +355,11 @@ const MemoryGraphPage = () => {
 			}
 			return undefined
 		},
-		staleTime: 5 * 60 * 1000, // 5 minutes
+		staleTime: 10 * 60 * 1000, // 10 minutes - data stays fresh longer to reduce refetches
 		refetchInterval: effectiveRefetchInterval, // Avoid hammering the API; pause in background/when optimistic docs exist
 		refetchIntervalInBackground: false,
 		refetchOnWindowFocus: false,
+		refetchOnMount: false, // Don't refetch on every mount - use cached data
 		retry: (failureCount, error) => {
 			const status = (error as any)?.status ?? (error as any)?.statusCode
 			// Don't retry on authentication errors (401, 403) or rate limits (429)

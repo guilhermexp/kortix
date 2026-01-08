@@ -103,7 +103,8 @@ export function DocumentProjectTransfer({
 
 			// Invalidar queries relacionadas
 			queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY })
-			queryClient.invalidateQueries({ queryKey: ["documents"] })
+			// Use specific query key to avoid invalidating all document-related queries
+			queryClient.invalidateQueries({ queryKey: ["documents-with-memories"] })
 		},
 		onError: (error, targetTag) => {
 			// Reverter para o projeto original em caso de erro
