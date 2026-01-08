@@ -25,7 +25,9 @@ function makeQueryClient() {
 			queries: {
 				refetchIntervalInBackground: false,
 				refetchOnWindowFocus: false,
-				staleTime: 60 * 1000,
+				refetchOnMount: false, // Use cached data on mount - reduces database calls
+				staleTime: 5 * 60 * 1000, // 5 minutes default stale time
+				gcTime: 30 * 60 * 1000, // 30 minutes garbage collection - keep cache longer
 				retry: 1,
 			},
 		},

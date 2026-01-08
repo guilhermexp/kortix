@@ -1,6 +1,5 @@
-// Force dynamic rendering - disable ISR cache
-export const dynamic = "force-dynamic"
-export const revalidate = 0
+// Page can be statically rendered - client component handles data fetching
+// Removed force-dynamic to enable Next.js Router Cache and reduce RSC calls
 
 // Import the client component
 import HomePage from "./home-client"
