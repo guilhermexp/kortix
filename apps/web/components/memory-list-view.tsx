@@ -7,6 +7,7 @@ import {
 	asRecord,
 	cn,
 	formatPreviewLabel,
+	getYouTubeId,
 	getYouTubeThumbnail,
 	isInlineSvgDataUrl,
 	isLowResolutionImage,
@@ -480,6 +481,10 @@ function DocumentPreviewModal({
 		(document.metadata as any)?.originalUrl ||
 		(document.metadata as any)?.source_url
 
+	// Check if this is a YouTube video
+	const youtubeId = getYouTubeId(originalUrl)
+	const isYouTube = !!youtubeId
+
 	return (
 		<Dialog onOpenChange={(open) => !open && onClose()} open>
 			<DialogContent className="!max-w-[85vw] !w-[1000px] max-h-[90vh] overflow-hidden p-0 sm:!max-w-[85vw]">
@@ -509,8 +514,23 @@ function DocumentPreviewModal({
 
 				{/* Scrollable container */}
 				<div className="h-[85vh] overflow-y-auto">
-					{/* Preview Image - Sticky at top */}
-					{preview?.src && (
+					{/* YouTube Video Player */}
+					{isYouTube && (
+						<div className="sticky top-0 w-full aspect-video min-h-[300px] max-h-[50vh] overflow-hidden z-0 bg-black">
+							<iframe
+								src={`https://www.youtube.com/embed/${youtubeId}?rel=0&modestbranding=1`}
+								title={cleanedTitle}
+								className="w-full h-full"
+								allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+								allowFullScreen
+							/>
+							{/* Gradient overlay at bottom */}
+							<div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+						</div>
+					)}
+
+					{/* Preview Image - Sticky at top (only if not YouTube) */}
+					{!isYouTube && preview?.src && (
 						<div className="sticky top-0 w-full h-[50vh] min-h-[300px] overflow-hidden z-0">
 							<img
 								alt={cleanedTitle}
@@ -523,11 +543,11 @@ function DocumentPreviewModal({
 						</div>
 					)}
 
-					{/* Content area - scrolls over image */}
+					{/* Content area - scrolls over image/video */}
 					<div
 						className={cn(
 							"relative z-10 bg-background rounded-t-3xl p-8 min-h-[50vh]",
-							preview?.src ? "-mt-16" : "",
+							(isYouTube || preview?.src) ? "-mt-16" : "",
 						)}
 					>
 						{/* Title */}
