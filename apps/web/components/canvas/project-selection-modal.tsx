@@ -288,7 +288,7 @@ export function ProjectSelectionModal({
 				)
 			}
 
-			return response.data?.projects || []
+			return (response.data as { projects?: CanvasProject[] })?.projects || []
 		},
 		staleTime: 30 * 1000,
 	})
@@ -308,7 +308,7 @@ export function ProjectSelectionModal({
 			if (response.error) {
 				throw new Error(response.error?.message || "Failed to create project")
 			}
-			return response.data
+			return response.data as { id?: string } | undefined
 		},
 		onSuccess: (newProject) => {
 			queryClient.invalidateQueries({ queryKey: ["canvas-projects"] })

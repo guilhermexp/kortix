@@ -195,7 +195,7 @@ const updateOptimisticByContentOrUrl = (
 	const applyUpdate = (
 		list?: DocumentsListData,
 	): DocumentsListData | undefined => {
-		if (!list) return list
+		if (!list || !list.documents) return list
 		const updatedDocuments = list.documents.map((doc) => {
 			// Match by content/URL and isOptimistic flag
 			const isMatch =
@@ -243,7 +243,7 @@ const promoteOptimisticMemory = (
 	const applyPatch = (
 		list?: DocumentsListData,
 	): DocumentsListData | undefined => {
-		if (!list) return list
+		if (!list || !list.documents) return list
 		const updatedDocuments = list.documents.map((doc) => {
 			if (doc.id !== optimisticId) return doc
 			replaced = true
@@ -388,12 +388,13 @@ export function AddMemoryView({
 					return
 				}
 
-				if (response.data?.exists) {
+				const data = response.data as { exists?: boolean; document?: { id?: string; title?: string } } | undefined
+				if (data?.exists) {
 					setUrlDuplicateCheck({
 						checking: false,
 						isDuplicate: true,
-						documentId: response.data.document?.id ?? null,
-						documentTitle: response.data.document?.title ?? null,
+						documentId: data.document?.id ?? null,
+						documentTitle: data.document?.title ?? null,
 					})
 				} else {
 					setUrlDuplicateCheck({
@@ -713,7 +714,7 @@ export function AddMemoryView({
 				exact: false,
 			})
 			const previousMemories =
-				matchingQueries.length > 0 ? matchingQueries[0][1] : undefined
+				matchingQueries.length > 0 ? matchingQueries[0]?.[1] : undefined
 
 			// Create optimistic memory
 			const getLinkHostname = (linkUrl: string) => {
@@ -922,8 +923,9 @@ export function AddMemoryView({
 							const deep = await $fetch("@post/deep-agent/analyze", {
 								body: { url: content, mode: "auto" },
 							})
-							if (!deep.error && deep.data) {
-								const pm = deep.data.previewMetadata || {}
+							const deepData = deep.data as { summary?: string; mode?: string; title?: string | null; previewMetadata?: Record<string, unknown> } | undefined
+							if (!deep.error && deepData) {
+								const pm = deepData.previewMetadata || {}
 								metadata = {
 									...metadata,
 									deep_agent: true,
@@ -1056,7 +1058,7 @@ export function AddMemoryView({
 
 			// Store the first matching query's data for rollback
 			const previousMemories =
-				matchingQueries.length > 0 ? matchingQueries[0][1] : undefined
+				matchingQueries.length > 0 ? matchingQueries[0]?.[1] : undefined
 			console.log("📸 Previous memories:", previousMemories)
 
 			// Create optimistic memory
@@ -1262,7 +1264,7 @@ export function AddMemoryView({
 				exact: false,
 			})
 			const previousMemories =
-				matchingQueries.length > 0 ? matchingQueries[0][1] : undefined
+				matchingQueries.length > 0 ? matchingQueries[0]?.[1] : undefined
 
 			// Create optimistic memory for the file
 			const optimisticId = `temp-file-${Date.now()}`
@@ -1732,9 +1734,6 @@ export function AddMemoryView({
 															}`}
 															onClick={() => {
 																setUseAgentForLink(true)
-																try {
-																	addContentForm.validate()
-																} catch {}
 															}}
 															type="button"
 														>
@@ -1751,9 +1750,6 @@ export function AddMemoryView({
 															}`}
 															onClick={() => {
 																setUseAgentForLink(false)
-																try {
-																	addContentForm.validate()
-																} catch {}
 															}}
 															type="button"
 														>

@@ -317,7 +317,6 @@ export function usePerformanceMonitor(
 export function detectLongTasks(threshold = 50) {
 	if (typeof window === "undefined") return
 
-	// @ts-expect-error - PerformanceObserver not fully typed
 	if ("PerformanceObserver" in window) {
 		try {
 			const observer = new PerformanceObserver((list) => {

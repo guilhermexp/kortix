@@ -66,7 +66,10 @@ export function ViewModeProvider({ children }: { children: ReactNode }) {
 
 	// Save to cookie whenever view mode changes
 	const handleSetViewMode = (mode: ViewMode) => {
-		analytics.viewModeChanged(mode)
+		// Only track non-infinity modes for analytics
+		if (mode !== "infinity") {
+			analytics.viewModeChanged(mode)
+		}
 		setViewModeState(mode)
 		persistViewMode(mode)
 	}

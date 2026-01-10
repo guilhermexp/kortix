@@ -506,6 +506,7 @@ export function InfinityCanvas() {
 		// Center on the first document or center of all documents
 		if (documents.length === 1) {
 			const doc = documents[0]
+			if (!doc) return
 			const pos = cardPositions[doc.id] ?? { x: 0, y: 0 }
 			centerViewportOn(
 				pos.x + CARD_HALF_WIDTH,
@@ -1062,7 +1063,6 @@ export function InfinityCanvas() {
 										document={document}
 										key={document.id}
 										onRemove={handleRemoveDocument}
-										// @ts-expect-error pass zoom to convert drag delta to world coords
 										zoom={zoom}
 									/>
 								))}
@@ -1185,7 +1185,7 @@ export function InfinityCanvas() {
 															// Position and zoom will be handled by effect automatically
 														}
 													}}
-													size="xs"
+													size="sm"
 													style={{
 														color: colors.text.secondary,
 														borderColor: "rgba(255,255,255,0.1)",
