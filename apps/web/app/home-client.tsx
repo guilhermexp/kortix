@@ -199,7 +199,7 @@ const MemoryGraphPage = () => {
 	const PAGE_SIZE = IS_DEV ? 100 : 100
 	const MAX_TOTAL = 1000
 	const REFETCH_MS = 30_000 // 30 seconds - reduced database load
-	const REFETCH_MS_PROCESSING = 10_000 // 10 seconds when documents are being processed
+	const REFETCH_MS_PROCESSING = 3_000 // 3 seconds when documents are being processed - fast preview updates
 	const RATE_LIMIT_BACKOFF_MS = 90_000 // backoff after 429 responses
 
 	useEffect(() => {

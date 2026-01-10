@@ -22,7 +22,7 @@ export async function openRouterChat(
 		return null
 	}
 
-	const model = options?.model || env.OPENROUTER_MODEL || "x-ai/grok-4-fast"
+	const model = options?.model || env.OPENROUTER_MODEL || "x-ai/grok-4.1-fast"
 	const temperature = options?.temperature ?? env.OPENROUTER_TEMPERATURE ?? 0.2
 	const maxTokens = options?.maxTokens ?? env.OPENROUTER_MAX_TOKENS ?? 1024
 	const timeoutMs = options?.timeoutMs ?? 12_000

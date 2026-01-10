@@ -61,18 +61,21 @@ type PreviewData =
 			src: string
 			label: string
 			href?: string
+			isFavicon?: boolean
 	  }
 	| {
 			kind: "video"
 			src?: string
 			label: string
 			href?: string
+			isFavicon?: boolean
 	  }
 	| {
 			kind: "link"
 			src?: string
 			label: string
 			href: string
+			isFavicon?: boolean
 	  }
 
 const previewsEqual = (
@@ -109,6 +112,17 @@ const getDocumentPreview = (
 			s.includes("favicon") ||
 			s.includes("sprite") ||
 			s.includes("logo")
+		)
+	}
+
+	const isFaviconUrl = (v?: string) => {
+		if (!v) return false
+		const s = v.toLowerCase()
+		return (
+			s.includes("favicon") ||
+			s.includes("apple-touch-icon") ||
+			s.endsWith(".ico") ||
+			(s.includes("icon") && (s.includes("32") || s.includes("64") || s.includes("128") || s.includes("180") || s.includes("192")))
 		)
 	}
 
@@ -372,6 +386,7 @@ const getDocumentPreview = (
 			src: documentPreviewImage,
 			href: originalUrl ?? undefined,
 			label: label || "Preview",
+			isFavicon: isFaviconUrl(documentPreviewImage),
 		}
 	}
 
@@ -381,6 +396,7 @@ const getDocumentPreview = (
 			src: finalPreviewImage,
 			href: originalUrl ?? undefined,
 			label: label || "Preview",
+			isFavicon: isFaviconUrl(finalPreviewImage),
 		}
 	}
 
@@ -441,6 +457,11 @@ export const DocumentCard = memo(
 		// Check if document is just waiting in queue vs actively processing
 		const isQueued = String(document.status ?? "").toLowerCase() === "queued"
 
+		// Check if document finished processing but preview hasn't loaded yet
+		const isDone = String(document.status ?? "").toLowerCase() === "done"
+		const hasPreviewImage = !!document.previewImage
+		const isAwaitingPreview = isDone && !hasPreviewImage && !sanitizedPreview
+
 		// Check if document was recently created (< 10 seconds) - show "Iniciando..." instead of "Na fila"
 		const isRecentlyCreated = (() => {
 			const createdAt = document.createdAt || (document as any).created_at
@@ -448,6 +469,16 @@ export const DocumentCard = memo(
 			const created = new Date(createdAt).getTime()
 			const now = Date.now()
 			return now - created < 10000 // Less than 10 seconds
+		})()
+
+		// Check if document was recently completed (< 30 seconds) and still loading preview
+		const isRecentlyCompleted = (() => {
+			if (!isDone) return false
+			const updatedAt = (document as any).updatedAt || (document as any).updated_at || document.createdAt
+			if (!updatedAt) return false
+			const updated = new Date(updatedAt).getTime()
+			const now = Date.now()
+			return now - updated < 30000 // Less than 30 seconds
 		})()
 
 		const [stickyPreview, setStickyPreview] = useState<PreviewData | null>(null)
@@ -665,6 +696,32 @@ export const DocumentCard = memo(
 							<div className="text-[11px] text-white/80">Enviando...</div>
 						</div>
 					</div>
+				) : (isAwaitingPreview || (isRecentlyCompleted && !sanitizedPreview)) ? (
+					/* Document done but preview not loaded yet */
+					<div className="absolute inset-0 z-20 bg-black/40 flex items-center justify-center pointer-events-none">
+						<div className="flex flex-col items-center gap-2">
+							<svg
+								className="animate-spin h-5 w-5 text-white/60"
+								viewBox="0 0 24 24"
+							>
+								<circle
+									className="opacity-25"
+									cx="12"
+									cy="12"
+									fill="none"
+									r="10"
+									stroke="currentColor"
+									strokeWidth="3"
+								/>
+								<path
+									className="opacity-75"
+									d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+									fill="currentColor"
+								/>
+							</svg>
+							<div className="text-[11px] text-white/70">Carregando preview...</div>
+						</div>
+					</div>
 				) : isQueued && isRecentlyCreated ? (
 					/* Recently created - show "Iniciando..." */
 					<div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center pointer-events-none">
@@ -809,7 +866,42 @@ export const DocumentCard = memo(
 							<div className="relative w-full aspect-[16/10] overflow-hidden">
 								<div className="absolute inset-0 bg-gradient-to-br from-[#0f1624] via-[#101c2d] to-[#161f33] z-0" />
 								{previewToRender.src &&
-									(previewToRender.src.startsWith("data:") ? (
+									(previewToRender.isFavicon ? (
+										/* Favicon display - smaller and centered */
+										<div className="absolute inset-0 flex items-center justify-center z-10">
+											<div className="relative w-16 h-16 rounded-xl overflow-hidden shadow-lg ring-1 ring-white/10">
+												{previewToRender.src.startsWith("data:") ? (
+													<img
+														alt={`${previewToRender.label} icon`}
+														className="w-full h-full object-contain"
+														loading="lazy"
+														onError={(e) => {
+															const target = e.target as HTMLImageElement
+															target.style.display = "none"
+														}}
+														src={previewToRender.src}
+													/>
+												) : (
+													<Image
+														alt={`${previewToRender.label} icon`}
+														className="object-contain"
+														fill
+														onError={(e) => {
+															const target = e.target as HTMLImageElement
+															target.style.display = "none"
+														}}
+														priority={false}
+														referrerPolicy="no-referrer"
+														sizes="64px"
+														src={
+															proxyImageUrl(previewToRender.src) ||
+															previewToRender.src
+														}
+													/>
+												)}
+											</div>
+										</div>
+									) : previewToRender.src.startsWith("data:") ? (
 										<img
 											alt={`${previewToRender.label} preview`}
 											className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] z-10"
@@ -846,7 +938,7 @@ export const DocumentCard = memo(
 										</div>
 									</div>
 								)}
-								{PreviewBadgeIcon && (
+								{PreviewBadgeIcon && !previewToRender.isFavicon && (
 									<div
 										className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium"
 										style={{

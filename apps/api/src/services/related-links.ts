@@ -74,7 +74,7 @@ export async function extractMentionsFromContent(
 				{ role: "user", content: truncated },
 			],
 			{
-				model: "x-ai/grok-4-fast", // Fast model for quick extraction
+				model: "x-ai/grok-4.1-fast", // Fast model for quick extraction
 				temperature: 0.1,
 				maxTokens: 1024,
 			},
