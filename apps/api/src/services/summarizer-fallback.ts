@@ -35,7 +35,7 @@ export async function summarizeWithOpenRouter(
 			"[OpenRouterFallback] Attempting text-based summary via OpenRouter",
 			{
 				hasUrl: Boolean(context?.url),
-				model: "x-ai/grok-4-fast",
+				model: "x-ai/grok-4.1-fast",
 			},
 		)
 		const answer = await openRouterChat(
@@ -70,7 +70,7 @@ export async function summarizeWithOpenRouter(
 			"[OpenRouterFallback] Attempting URL-based summary via OpenRouter",
 			{
 				url: context.url,
-				model: "x-ai/grok-4-fast",
+				model: "x-ai/grok-4.1-fast",
 			},
 		)
 		const answer = await openRouterChat(

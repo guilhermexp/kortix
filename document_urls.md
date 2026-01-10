@@ -195,7 +195,7 @@ _____________ Aqui!
 | 167 | GitHub - LinwoodDev/Butterfly | https://github.com/LinwoodDev/Butterfly/ | done | 2025-11-25 |
 | 168 | GitHub - Ryandonofrio3/osgrep | https://github.com/Ryandonofrio3/osgrep | done | 2025-11-25 |
 | 169 | Design is intentioning - Ben Issen | https://benissen.com/ideas/design | done | 2025-11-25 |
-| 170 | Supertonic TTS WebGPU - Hugging Face | https://huggingface.co/spaces/webml-community/Supertonic-TTS-WebGPU | done | 2025-11-25 |
+| 170 | Supertonic TTS WebGPU - Hugging Face | | done | 2025-11-25 |
 | 171 | Gemini's New File Search Just Leveled Up RAG Agents | https://www.youtube.com/watch?v=irg-2IfAjpo | done | 2025-11-24 |
 | 172 | Claude Skills - 13000+ GitHub Skills Repository | https://skillsmp.com/ | done | 2025-11-24 |
 | 173 | ANON® | https://www.becomeanon.com/#pricing | done | 2025-11-24 |

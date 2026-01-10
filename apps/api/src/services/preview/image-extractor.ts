@@ -376,6 +376,17 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 				}
 			}
 
+			// Fallback: Try to get favicon
+			const faviconUrl = await this.extractFavicon(url, html)
+			if (faviconUrl) {
+				tracker.end(true)
+				return {
+					imageUrl: faviconUrl,
+					source: "favicon",
+					metadata: await this.safeGetImageMetadata(faviconUrl),
+				}
+			}
+
 			tracker.end(false)
 			return {
 				imageUrl: null,
@@ -454,6 +465,97 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			return null
 		} catch (error) {
 			this.logger.warn("Failed to extract OpenGraph image", {
+				error: (error as Error).message,
+				url,
+			})
+			return null
+		}
+	}
+
+	/**
+	 * Extract favicon from URL
+	 */
+	async extractFavicon(url: string, html?: string): Promise<string | null> {
+		this.assertInitialized()
+
+		try {
+			const baseUrl = new URL(url)
+			const htmlContent = html || (await this.fetchHtml(url, this.defaultOptions.timeout))
+
+			// Try to find favicon in HTML (prefer larger icons)
+			const faviconPatterns = [
+				// Apple touch icons (usually larger)
+				/<link[^>]+rel=["']apple-touch-icon(?:-precomposed)?["'][^>]+href=["']([^"']+)["']/i,
+				/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']apple-touch-icon(?:-precomposed)?["']/i,
+				// Standard favicon with sizes
+				/<link[^>]+rel=["']icon["'][^>]+sizes=["'](\d+)x\d+["'][^>]+href=["']([^"']+)["']/gi,
+				// Standard favicon
+				/<link[^>]+rel=["'](?:shortcut )?icon["'][^>]+href=["']([^"']+)["']/i,
+				/<link[^>]+href=["']([^"']+)["'][^>]+rel=["'](?:shortcut )?icon["']/i,
+			]
+
+			// First try apple-touch-icon (usually 180x180)
+			for (const pattern of faviconPatterns.slice(0, 2)) {
+				const match = htmlContent.match(pattern)
+				if (match?.[1]) {
+					const iconUrl = this.resolveUrl(match[1], url)
+					if (await this.validateImageUrl(iconUrl)) {
+						this.logger.debug("Apple touch icon found", { iconUrl })
+						return iconUrl
+					}
+				}
+			}
+
+			// Try to find largest icon with sizes attribute
+			const sizedIconPattern = /<link[^>]+rel=["']icon["'][^>]*sizes=["'](\d+)x\d+["'][^>]*href=["']([^"']+)["']/gi
+			const sizedIconPattern2 = /<link[^>]+href=["']([^"']+)["'][^>]*rel=["']icon["'][^>]*sizes=["'](\d+)x\d+["']/gi
+
+			let bestIcon: { url: string; size: number } | null = null
+			let match: RegExpExecArray | null
+
+			while ((match = sizedIconPattern.exec(htmlContent)) !== null) {
+				const size = Number.parseInt(match[1], 10)
+				const iconUrl = this.resolveUrl(match[2], url)
+				if (size > (bestIcon?.size || 0)) {
+					bestIcon = { url: iconUrl, size }
+				}
+			}
+
+			while ((match = sizedIconPattern2.exec(htmlContent)) !== null) {
+				const size = Number.parseInt(match[2], 10)
+				const iconUrl = this.resolveUrl(match[1], url)
+				if (size > (bestIcon?.size || 0)) {
+					bestIcon = { url: iconUrl, size }
+				}
+			}
+
+			if (bestIcon && (await this.validateImageUrl(bestIcon.url))) {
+				this.logger.debug("Sized favicon found", { iconUrl: bestIcon.url, size: bestIcon.size })
+				return bestIcon.url
+			}
+
+			// Try standard favicon patterns
+			for (const pattern of faviconPatterns.slice(2)) {
+				const match = htmlContent.match(pattern)
+				if (match) {
+					const iconUrl = this.resolveUrl(match[1] || match[2], url)
+					if (await this.validateImageUrl(iconUrl)) {
+						this.logger.debug("Standard favicon found", { iconUrl })
+						return iconUrl
+					}
+				}
+			}
+
+			// Fallback: Try default /favicon.ico
+			const defaultFavicon = `${baseUrl.origin}/favicon.ico`
+			if (await this.validateImageUrl(defaultFavicon)) {
+				this.logger.debug("Default favicon.ico found", { iconUrl: defaultFavicon })
+				return defaultFavicon
+			}
+
+			return null
+		} catch (error) {
+			this.logger.warn("Failed to extract favicon", {
 				error: (error as Error).message,
 				url,
 			})
@@ -720,7 +822,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 	 */
 	private async fetchHtml(url: string, timeout: number): Promise<string> {
 		const headers: Record<string, string> = {
-			"User-Agent": "Mozilla/5.0 (compatible; MemoryBot/1.0)",
+			"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 		}
 
 		// Add GitHub token for GitHub URLs to increase rate limit
