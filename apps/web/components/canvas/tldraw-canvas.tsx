@@ -1336,8 +1336,7 @@ export function TldrawCanvas() {
 				// Use tldraw v4's proper API to get text content via ShapeUtil
 				try {
 					const shapeUtil = editor.getShapeUtil(textCapableShape)
-					// @ts-expect-error - getText exists on shape utils but types may not be complete
-					const textContent = shapeUtil.getText?.(textCapableShape) || ""
+					const textContent = (shapeUtil as unknown as { getText?: (shape: unknown) => string }).getText?.(textCapableShape) || ""
 					console.log(
 						"[AI Menu] Extracted text via shapeUtil.getText:",
 						textContent,

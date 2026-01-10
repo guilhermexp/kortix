@@ -4,8 +4,7 @@ import { afterEach, vi } from "vitest"
 
 // Ensure window is available for all tests
 if (typeof window === "undefined") {
-	// @ts-expect-error - jsdom should provide this
-	global.window = {} as Window & typeof globalThis
+	;(global as unknown as { window: Window & typeof globalThis }).window = {} as Window & typeof globalThis
 }
 
 // Cleanup after each test

@@ -355,7 +355,7 @@ export function hasInlineChildren(
 	return (
 		isTextNode(node) &&
 		Array.isArray((node as TextNode).children) &&
-		(node as TextNode).children?.length > 0
+		((node as TextNode).children?.length ?? 0) > 0
 	)
 }
 

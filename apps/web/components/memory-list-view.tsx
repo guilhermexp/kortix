@@ -264,7 +264,7 @@ const getDocumentPreview = (
 				metadataImage,
 				rawImage,
 				rawDirectImage,
-			].find(isGitHubOpenGraph)
+			].find((u): u is string => typeof u === "string" && isGitHubOpenGraph(u))
 		: undefined
 	const ordered = [
 		sanitizedPreviewImage,
@@ -638,7 +638,7 @@ const MasonryCard = memo(
 			if (!preview) return null
 			if (preview.src && isInlineSvgDataUrl(preview.src)) {
 				if (preview.kind === "video") {
-					const fallback = getYouTubeThumbnail(document.url) ?? undefined
+					const fallback = getYouTubeThumbnail(document.url ?? undefined) ?? undefined
 					if (fallback) return { ...preview, src: fallback } as PreviewData
 				}
 				return null
@@ -890,7 +890,7 @@ const MasonryCard = memo(
 							<Button
 								onClick={(e) => {
 									e.stopPropagation()
-									onDelete?.(document.id, document.title || "Untitled")
+									onDelete?.(document)
 								}}
 								size="sm"
 								variant="ghost"

@@ -142,7 +142,9 @@ export const getDocumentSummaryFormatted = (
 
 		// Return the summary WITH markdown formatting intact
 		// Just clean up extra whitespace but preserve ## headers and bullets
-		const text = candidates[0].trim().replace(/\n{3,}/g, "\n\n") // Collapse multiple newlines
+		const firstCandidate = candidates[0]
+		if (!firstCandidate) return null
+		const text = firstCandidate.trim().replace(/\n{3,}/g, "\n\n") // Collapse multiple newlines
 
 		return text || null
 	} catch {
@@ -192,7 +194,9 @@ export const getDocumentSnippet = (
 		].filter(Boolean) as string[]
 
 		if (candidates.length === 0) return null
-		const cleaned = stripMarkdown(candidates[0])
+		const firstCandidate = candidates[0]
+		if (!firstCandidate) return null
+		const cleaned = stripMarkdown(firstCandidate)
 
 		// Remove generic heading lines like "RESUMO EXECUTIVO --" at the start
 		const sanitizeHeading = (text: string): string => {
@@ -209,6 +213,10 @@ export const getDocumentSnippet = (
 			let i = 0
 			while (i < lines.length) {
 				const original = lines[i]
+				if (!original) {
+					i++
+					continue
+				}
 				const trimmed = original.trim()
 				if (!trimmed) {
 					i++

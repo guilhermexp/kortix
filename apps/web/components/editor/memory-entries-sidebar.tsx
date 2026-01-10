@@ -5,6 +5,7 @@ import {
 	cn,
 	formatPreviewLabel,
 	getYouTubeId,
+	getYouTubeThumbnail,
 	isInlineSvgDataUrl,
 	pickFirstUrlSameHost,
 	safeHttpUrl,
@@ -237,6 +238,10 @@ export function MemoryEntriesSidebar({
 			forgetReason: null,
 			createdAt: timestamp,
 			updatedAt: timestamp,
+			sourceAddedAt: null,
+			sourceRelevanceScore: null,
+			sourceMetadata: null,
+			spaceContainerTag: null,
 		} as MemoryEntry
 	}, [document, memories.length])
 
@@ -397,7 +402,8 @@ export function MemoryEntriesSidebar({
 			extractedImages.find((u) => !isLikelyGeneric(u)) || extractedImages[0]
 
 		const youtubeFallback = (() => {
-			const id = getYouTubeId(youtube?.url ?? originalUrl)
+			const youtubeUrl = youtube?.url as string | undefined
+			const id = getYouTubeId(youtubeUrl ?? originalUrl)
 			return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : undefined
 		})()
 
@@ -550,7 +556,7 @@ export function MemoryEntriesSidebar({
 		) {
 			if (documentPreview.kind === "video") {
 				const fallback = getYouTubeThumbnail(
-					documentPreview.url ?? document?.url,
+					documentPreview.url ?? document?.url ?? undefined,
 				)
 				if (fallback) {
 					return { ...documentPreview, thumbnail: fallback }

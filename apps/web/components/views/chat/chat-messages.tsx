@@ -73,30 +73,25 @@ type TextPart = {
 	text: string
 }
 
-type SearchMemoriesPart =
-	| {
-			type: "tool-searchMemories"
-			toolUseId?: string
-			state: Exclude<ToolState, "output-available">
-			error?: string
-			durationMs?: number
-	  }
-	| {
-			type: "tool-searchMemories"
-			toolUseId?: string
-			state: "output-available"
-			output: {
-				count?: unknown
-				results?: unknown
-			}
-			error?: string
-			durationMs?: number
-	  }
+type SearchMemoriesPart = {
+	type: "tool-searchMemories"
+	toolUseId?: string
+	state: ToolState
+	output?: {
+		count?: unknown
+		results?: unknown
+	}
+	error?: string
+	durationMs?: number
+}
 
-type SearchMemoriesOutputPart = Extract<
-	SearchMemoriesPart,
-	{ state: "output-available" }
->
+type SearchMemoriesOutputPart = SearchMemoriesPart & {
+	state: "output-available"
+	output: {
+		count?: unknown
+		results?: unknown
+	}
+}
 
 type GenericToolPart = {
 	type: "tool-generic"
@@ -112,6 +107,8 @@ type AddMemoryPart = {
 	type: "tool-addMemory"
 	toolUseId?: string
 	state: ToolState
+	durationMs?: number
+	error?: string
 }
 
 type MentionedDocsPart = {
@@ -833,7 +830,7 @@ function useClaudeChat({
 				const body = buildRequestBody(trimmed, sdkSessionId, continueSession)
 				console.log("📦 [Send Message] Request body:", {
 					...body,
-					message: `${body.message?.substring(0, 50)}...`,
+					message: `${String(body.message ?? "").substring(0, 50)}...`,
 				})
 				console.log("========================================")
 				const response = await fetch(endpoint, {

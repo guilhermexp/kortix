@@ -58,7 +58,7 @@ export function buildHTML(textNode: TextNode, _readOnly: boolean): string {
 
 	// If node has multiple lines (e.g., ordered list with multiple items)
 	if (hasLines) {
-		return textNode.lines
+		return (textNode.lines
 			?.map((line, _index) => {
 				let lineContent = ""
 
@@ -129,12 +129,12 @@ export function buildHTML(textNode: TextNode, _readOnly: boolean): string {
 
 				return lineContent
 			})
-			.join("<br>")
+			.join("<br>")) ?? ""
 	}
 
 	// If node has inline children with formatting (single line)
 	if (hasChildren) {
-		return textNode.children
+		return (textNode.children
 			?.map((child) => {
 				// Build inline styles from the styles object
 				let inlineStyles = ""
@@ -196,7 +196,7 @@ export function buildHTML(textNode: TextNode, _readOnly: boolean): string {
 				}
 				return childContent
 			})
-			.join("")
+			.join("")) ?? ""
 	}
 
 	// Simple content (single line, no formatting)

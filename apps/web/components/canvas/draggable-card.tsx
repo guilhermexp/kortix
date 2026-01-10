@@ -78,7 +78,7 @@ export const DraggableCard = memo(
 			zIndex: isDragging ? 1000 : 1,
 			transition: "none",
 			willChange: isDragging ? "transform" : "auto",
-			pointerEvents: isDragging ? "none" : "auto",
+			pointerEvents: (isDragging ? "none" : "auto") as "none" | "auto",
 		}
 
 		return (

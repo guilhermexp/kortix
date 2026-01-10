@@ -377,7 +377,7 @@ export function prefetchResource(href: string, as = "fetch") {
  * Preload images
  * Preloads images for instant display
  */
-export function preloadImages(urls: string[]): Promise<undefined[]> {
+export function preloadImages(urls: string[]): Promise<void[]> {
 	return Promise.all(
 		urls.map(
 			(url) =>

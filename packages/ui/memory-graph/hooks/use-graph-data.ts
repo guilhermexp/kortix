@@ -118,7 +118,10 @@ export function useGraphData(
 					isHovered: false,
 					isDragging: draggingNodeId === doc.id,
 				} satisfies GraphNode);
-				documentNodeMap.set(doc.id, documentNodes[documentNodes.length - 1]);
+				const lastNode = documentNodes[documentNodes.length - 1];
+				if (lastNode) {
+					documentNodeMap.set(doc.id, lastNode);
+				}
 			});
 
 			spaceIndex++;
@@ -357,10 +360,12 @@ export function useGraphData(
 					const top = neighbors[i]
 						?.sort((a, b) => b.sim - a.sim)
 						.slice(0, TOP_K_PER_DOC);
-					for (const { j } of top) {
-						const a = Math.min(i, j);
-						const b = Math.max(i, j);
-						keep.add(`${a}-${b}`);
+					if (top) {
+						for (const { j } of top) {
+							const a = Math.min(i, j);
+							const b = Math.max(i, j);
+							keep.add(`${a}-${b}`);
+						}
 					}
 				}
 
