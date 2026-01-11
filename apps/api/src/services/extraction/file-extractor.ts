@@ -45,6 +45,17 @@ const TEXT_FORMATS = [
 	"yaml",
 	"yml",
 	"csv",
+	// Web formats
+	"html",
+	"htm",
+	"js",
+	"jsx",
+	"ts",
+	"tsx",
+	"css",
+	"scss",
+	"vue",
+	"svelte",
 ] as const
 
 const SUPPORTED_FORMATS = [...OFFICE_FORMATS, ...TEXT_FORMATS] as const
@@ -452,14 +463,29 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 		try {
 			const text = buffer.toString("utf-8", 0, Math.min(1000, buffer.length))
 			if (this.isValidUtf8Text(text)) {
+				const trimmed = text.trim().toLowerCase()
 				// Try to determine text format
 				if (text.trim().startsWith("{") || text.trim().startsWith("["))
 					return "json"
+				if (text.trim().startsWith("<?xml")) return "xml"
+				// Detect HTML (before generic XML check)
 				if (
-					text.trim().startsWith("<?xml") ||
-					(text.includes("<") && text.includes(">"))
+					trimmed.startsWith("<!doctype html") ||
+					trimmed.startsWith("<html") ||
+					(trimmed.includes("<head") && trimmed.includes("<body")) ||
+					trimmed.includes("<div") ||
+					trimmed.includes("<script")
 				)
-					return "xml"
+					return "html"
+				// Detect JavaScript/TypeScript
+				if (
+					/^(import\s+|export\s+|const\s+|let\s+|var\s+|function\s+|class\s+|\/\/|\/\*)/m.test(
+						text.trim(),
+					)
+				)
+					return "js"
+				// Generic XML
+				if (text.includes("<") && text.includes(">")) return "xml"
 				if (/^[a-z_]+:\s/im.test(text)) return "yaml"
 				return "txt"
 			}
@@ -517,6 +543,15 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 			"application/x-yaml": "yaml",
 			"text/yaml": "yaml",
 			"text/csv": "csv",
+			// Web formats
+			"text/html": "html",
+			"application/xhtml+xml": "html",
+			"text/javascript": "js",
+			"application/javascript": "js",
+			"text/typescript": "ts",
+			"application/typescript": "ts",
+			"text/css": "css",
+			"text/x-scss": "scss",
 		}
 
 		return mimeMap[mimeType.toLowerCase()] || null
@@ -544,6 +579,17 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 			yaml: "application/x-yaml",
 			yml: "application/x-yaml",
 			csv: "text/csv",
+			// Web formats
+			html: "text/html",
+			htm: "text/html",
+			js: "text/javascript",
+			jsx: "text/javascript",
+			ts: "text/typescript",
+			tsx: "text/typescript",
+			css: "text/css",
+			scss: "text/x-scss",
+			vue: "text/html",
+			svelte: "text/html",
 		}
 
 		return extMap[extension.toLowerCase()] || "application/octet-stream"

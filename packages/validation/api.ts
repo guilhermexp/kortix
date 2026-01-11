@@ -1115,10 +1115,13 @@ export const DocumentWithMemoriesSchema = z
 		createdAt: DocumentSchema.shape.createdAt,
 		updatedAt: DocumentSchema.shape.updatedAt,
 		memoryEntries: z.array(MemoryEntryAPISchema),
-		containerTags: z.array(z.string()).optional().meta({
-			description: "Container tags (projects) this document belongs to",
-			example: ["sm_project_default"],
-		}),
+		containerTags: z
+			.array(z.string())
+			.optional()
+			.meta({
+				description: "Container tags (projects) this document belongs to",
+				example: ["sm_project_default"],
+			}),
 	})
 	.meta({
 		description: "Document with associated memory entries",
