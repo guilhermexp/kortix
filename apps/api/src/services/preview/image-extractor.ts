@@ -480,7 +480,8 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 
 		try {
 			const baseUrl = new URL(url)
-			const htmlContent = html || (await this.fetchHtml(url, this.defaultOptions.timeout))
+			const htmlContent =
+				html || (await this.fetchHtml(url, this.defaultOptions.timeout))
 
 			// Try to find favicon in HTML (prefer larger icons)
 			const faviconPatterns = [
@@ -507,8 +508,10 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			}
 
 			// Try to find largest icon with sizes attribute
-			const sizedIconPattern = /<link[^>]+rel=["']icon["'][^>]*sizes=["'](\d+)x\d+["'][^>]*href=["']([^"']+)["']/gi
-			const sizedIconPattern2 = /<link[^>]+href=["']([^"']+)["'][^>]*rel=["']icon["'][^>]*sizes=["'](\d+)x\d+["']/gi
+			const sizedIconPattern =
+				/<link[^>]+rel=["']icon["'][^>]*sizes=["'](\d+)x\d+["'][^>]*href=["']([^"']+)["']/gi
+			const sizedIconPattern2 =
+				/<link[^>]+href=["']([^"']+)["'][^>]*rel=["']icon["'][^>]*sizes=["'](\d+)x\d+["']/gi
 
 			let bestIcon: { url: string; size: number } | null = null
 			let match: RegExpExecArray | null
@@ -530,7 +533,10 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			}
 
 			if (bestIcon && (await this.validateImageUrl(bestIcon.url))) {
-				this.logger.debug("Sized favicon found", { iconUrl: bestIcon.url, size: bestIcon.size })
+				this.logger.debug("Sized favicon found", {
+					iconUrl: bestIcon.url,
+					size: bestIcon.size,
+				})
 				return bestIcon.url
 			}
 
@@ -549,7 +555,9 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			// Fallback: Try default /favicon.ico
 			const defaultFavicon = `${baseUrl.origin}/favicon.ico`
 			if (await this.validateImageUrl(defaultFavicon)) {
-				this.logger.debug("Default favicon.ico found", { iconUrl: defaultFavicon })
+				this.logger.debug("Default favicon.ico found", {
+					iconUrl: defaultFavicon,
+				})
 				return defaultFavicon
 			}
 
@@ -822,7 +830,8 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 	 */
 	private async fetchHtml(url: string, timeout: number): Promise<string> {
 		const headers: Record<string, string> = {
-			"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+			"User-Agent":
+				"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 		}
 
 		// Add GitHub token for GitHub URLs to increase rate limit

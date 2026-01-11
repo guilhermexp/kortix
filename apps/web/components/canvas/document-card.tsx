@@ -295,6 +295,21 @@ const getDocumentPreview = (
 				"</svg>",
 		)
 
+	const WEBAPP_PLACEHOLDER =
+		"data:image/svg+xml;utf8," +
+		encodeURIComponent(
+			'<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400">' +
+				'<defs><linearGradient id="gw" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1e3a5f"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient></defs>' +
+				'<rect width="100%" height="100%" fill="url(#gw)"/>' +
+				'<rect x="24" y="24" width="100" height="32" rx="6" fill="rgba(255,255,255,0.2)"/>' +
+				'<text x="40" y="48" font-family="system-ui,Segoe UI,Roboto" font-size="18" fill="#fff" opacity="0.9">Web App</text>' +
+				'<text x="32" y="96" font-family="system-ui,Segoe UI,Roboto" font-size="28" fill="#fff" opacity="0.95">&lt;/&gt;</text>' +
+				'<rect x="32" y="130" width="200" height="8" rx="4" fill="rgba(255,255,255,0.15)"/>' +
+				'<rect x="32" y="150" width="160" height="8" rx="4" fill="rgba(255,255,255,0.1)"/>' +
+				'<rect x="32" y="170" width="180" height="8" rx="4" fill="rgba(255,255,255,0.1)"/>' +
+				"</svg>",
+		)
+
 	if (normalizedType === "image" || contentType?.startsWith("image/")) {
 		const src = finalPreviewImage ?? originalUrl
 		if (src) {
@@ -340,6 +355,29 @@ const getDocumentPreview = (
 			src: finalPreviewImage || XLSX_PLACEHOLDER,
 			href: originalUrl ?? undefined,
 			label: label || "Spreadsheet",
+		}
+	}
+
+	// Web App (HTML/JS/CSS) preview fallback
+	const isWebApp =
+		normalizedType.includes("html") ||
+		normalizedType.includes("javascript") ||
+		normalizedType.includes("typescript") ||
+		normalizedType.includes("webapp") ||
+		normalizedType.includes("web_app") ||
+		(typeof contentType === "string" &&
+			(contentType.toLowerCase().includes("text/html") ||
+				contentType.toLowerCase().includes("text/javascript") ||
+				contentType.toLowerCase().includes("application/javascript") ||
+				contentType.toLowerCase().includes("text/typescript") ||
+				contentType.toLowerCase().includes("text/css")))
+
+	if (isWebApp) {
+		return {
+			kind: "image",
+			src: finalPreviewImage || WEBAPP_PLACEHOLDER,
+			href: originalUrl ?? undefined,
+			label: label || "Web App",
 		}
 	}
 
