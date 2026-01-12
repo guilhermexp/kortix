@@ -92,6 +92,35 @@ export function DocumentProjectTransfer({
 			const result = await moveDocumentToProject(documentId, targetTag)
 			return { targetTag, result }
 		},
+		onMutate: async (targetTag: string) => {
+			// Atualização otimista: atualizar cache imediatamente antes da requisição
+			// Isso faz a UI atualizar instantaneamente
+
+			// Atualizar todas as queries de documentos no cache
+			queryClient.setQueriesData(
+				{ queryKey: ["documents-with-memories"] },
+				(oldData: any) => {
+					if (!oldData?.documents) return oldData
+					return {
+						...oldData,
+						documents: oldData.documents.map((doc: any) =>
+							doc.id === documentId
+								? { ...doc, containerTags: [targetTag] }
+								: doc
+						),
+					}
+				}
+			)
+
+			// Atualizar query do documento específico se existir
+			queryClient.setQueriesData(
+				{ queryKey: ["document", documentId] },
+				(oldData: any) => {
+					if (!oldData) return oldData
+					return { ...oldData, containerTags: [targetTag] }
+				}
+			)
+		},
 		onSuccess: ({ targetTag }, _variables) => {
 			const projectName = projectOptions.find(
 				(p) => p.containerTag === targetTag,
@@ -101,14 +130,37 @@ export function DocumentProjectTransfer({
 			setSelection(targetTag)
 			onProjectChanged?.(targetTag)
 
-			// Invalidar queries relacionadas
+			// Invalidar queries para revalidar em background (garante consistência)
 			queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY })
-			// Use specific query key to avoid invalidating all document-related queries
-			queryClient.invalidateQueries({ queryKey: ["documents-with-memories"] })
+			queryClient.invalidateQueries({
+				queryKey: ["documents-with-memories"],
+				refetchType: "all",
+			})
+			queryClient.invalidateQueries({
+				queryKey: ["document", documentId],
+				refetchType: "all",
+			})
 		},
 		onError: (error, targetTag) => {
 			// Reverter para o projeto original em caso de erro
-			setSelection(currentProject ?? DEFAULT_PROJECT_ID)
+			const originalTag = currentProject ?? DEFAULT_PROJECT_ID
+			setSelection(originalTag)
+
+			// Reverter o cache para o estado original
+			queryClient.setQueriesData(
+				{ queryKey: ["documents-with-memories"] },
+				(oldData: any) => {
+					if (!oldData?.documents) return oldData
+					return {
+						...oldData,
+						documents: oldData.documents.map((doc: any) =>
+							doc.id === documentId
+								? { ...doc, containerTags: [originalTag] }
+								: doc
+						),
+					}
+				}
+			)
 
 			const projectName = projectOptions.find(
 				(p) => p.containerTag === targetTag,
