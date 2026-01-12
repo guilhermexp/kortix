@@ -1,5 +1,4 @@
 /* Tailwind CSS v3 directives */
-@import "tw-animate-css";
 
 @tailwind base;
 @tailwind components;
