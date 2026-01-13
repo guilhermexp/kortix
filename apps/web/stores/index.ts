@@ -9,7 +9,7 @@ interface ProjectState {
 export const useProjectStore = create<ProjectState>()(
 	persist(
 		(set) => ({
-			selectedProject: "sm_project_default",
+			selectedProject: "default",
 			setSelectedProject: (projectId) => set({ selectedProject: projectId }),
 		}),
 		{

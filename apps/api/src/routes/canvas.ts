@@ -135,13 +135,19 @@ export async function deleteCanvasProject(
 	return { success: true }
 }
 
+// Canvas state types
+export interface CanvasStateData {
+	positions?: Record<string, { x: number; y: number }>
+	documentIds?: string[]
+}
+
 // Get canvas state for a user and project
 export async function getCanvasState(
 	client: SupabaseClient,
 	userId: string,
 	_orgId: string,
 	projectId = "default",
-) {
+): Promise<{ state: CanvasStateData | null; updatedAt: string | null }> {
 	const { data, error } = await client
 		.from("canvas_states")
 		.select("id, state, updated_at")
@@ -152,7 +158,7 @@ export async function getCanvasState(
 	if (error) throw error
 
 	return {
-		state: data?.state ?? null,
+		state: (data?.state as CanvasStateData) ?? null,
 		updatedAt: data?.updated_at ?? null,
 	}
 }
@@ -162,8 +168,8 @@ export async function saveCanvasState(
 	client: SupabaseClient,
 	userId: string,
 	orgId: string,
-	projectId,
-	state: unknown,
+	projectId: string,
+	state: CanvasStateData,
 ) {
 	// Upsert the canvas state
 	const { data, error } = await client

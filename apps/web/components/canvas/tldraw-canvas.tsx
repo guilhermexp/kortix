@@ -97,16 +97,13 @@ export function TldrawCanvas() {
 	const colors = getColors()
 	const { theme, resolvedTheme } = useTheme()
 	const isDarkMode = resolvedTheme === "dark"
-	const { selectedProject } = useProject()
+	const { selectedProject, setSelectedProject } = useProject()
 	const showProjectModal = useCanvasStore((s) => s.showProjectModal)
 	const setShowProjectModal = useCanvasStore((s) => s.setShowProjectModal)
-	const [selectedCanvasProjectId, setSelectedCanvasProjectId] = useState<
-		string | null
-	>(null)
 
-	// Use selectedProject or "default" as fallback for persistence
-	const effectiveCanvasProjectId =
-		selectedCanvasProjectId || selectedProject || "default"
+	// Use selectedProject from store, falling back to "default"
+	const effectiveCanvasProjectId = selectedProject || "default"
+
 	const {
 		placedDocumentIds,
 		clearCanvas,
@@ -118,7 +115,7 @@ export function TldrawCanvas() {
 	const { toast } = useToast()
 
 	const [documents, setDocuments] = useState<DocumentWithMemories[]>([])
-	const [_isLoading, setIsLoading] = useState(false)
+	const [, setIsLoading] = useState(false)
 	const [isSelectorOpen, setIsSelectorOpen] = useState(false)
 	const isPaletteOpen = useCanvasStore((s) => s.isPaletteOpen)
 	const setIsPaletteOpen = useCanvasStore((s) => s.setIsPaletteOpen)
@@ -230,10 +227,6 @@ export function TldrawCanvas() {
 	// Register editor with CanvasAgentProvider if available
 	const canvasAgent = useCanvasAgentOptional()
 	useEffect(() => {
-		console.log("[TldrawCanvas] Editor/canvasAgent effect:", {
-			hasEditor: !!editor,
-			hasCanvasAgent: !!canvasAgent,
-		})
 		if (canvasAgent) {
 			canvasAgent.setEditor(editor)
 		}
@@ -262,10 +255,6 @@ export function TldrawCanvas() {
 	// state is updated synchronously BEFORE the next render
 	useLayoutEffect(() => {
 		if (effectiveCanvasProjectId) {
-			console.log(
-				"[TldrawCanvas] Project changed, resetting state for:",
-				effectiveCanvasProjectId,
-			)
 			setIsDbLoading(true)
 			setInitialSnapshot(undefined)
 			isInitialMountRef.current = true
@@ -283,11 +272,6 @@ export function TldrawCanvas() {
 		let cancelled = false
 
 		const loadFromDb = async () => {
-			console.log(
-				"[TldrawCanvas] Loading state for project:",
-				effectiveCanvasProjectId,
-			)
-
 			try {
 				const response = await $fetch(
 					`@get/canvas/${effectiveCanvasProjectId}`,
@@ -299,25 +283,11 @@ export function TldrawCanvas() {
 				if (cancelled) return
 
 				const data = response.data as { state?: TLEditorSnapshot } | undefined
-				console.log("[TldrawCanvas] Load response:", {
-					hasData: !!data,
-					hasState: !!data?.state,
-					stateType: typeof data?.state,
-				})
 
 				if (data?.state) {
 					const snapshot = data.state
-					console.log("[TldrawCanvas] Found state, setting snapshot:", {
-						keys: Object.keys(snapshot),
-						hasShapes: snapshot.document?.store
-							? Object.keys(snapshot.document.store).some((k) =>
-									k.startsWith("shape:"),
-								)
-							: false,
-					})
 					setInitialSnapshot(snapshot)
 				} else {
-					console.log("[TldrawCanvas] No saved state found")
 					setInitialSnapshot(undefined)
 				}
 			} catch (error) {
@@ -382,15 +352,9 @@ export function TldrawCanvas() {
 
 			// Skip if nothing changed
 			if (snapshotStr === lastSavedRef.current) {
-				console.log("[TldrawCanvas] Save skipped - no changes")
 				return
 			}
 			lastSavedRef.current = snapshotStr
-
-			console.log("[TldrawCanvas] Saving canvas state to DB...", {
-				projectId: effectiveCanvasProjectId,
-				snapshotSize: snapshotStr.length,
-			})
 
 			try {
 				// Generate thumbnail
@@ -408,8 +372,6 @@ export function TldrawCanvas() {
 						disableValidation: true,
 					})
 				}
-
-				console.log("[TldrawCanvas] Canvas state saved successfully")
 			} catch (error) {
 				console.error("[TldrawCanvas] Failed to save canvas state:", error)
 			}
@@ -420,25 +382,17 @@ export function TldrawCanvas() {
 	// Listen to editor changes and save with debounce
 	useEffect(() => {
 		if (!editor) {
-			console.log("[TldrawCanvas] No editor, skip listener setup")
 			return
 		}
 
-		console.log(
-			"[TldrawCanvas] Setting up change listener, projectId:",
-			effectiveCanvasProjectId,
-		)
-
 		// Allow saves after a delay to skip initial mount changes
 		const mountDelayTimer = setTimeout(() => {
-			console.log("[TldrawCanvas] Initial mount delay complete, enabling saves")
 			isInitialMountRef.current = false
 		}, 2000) // Wait 2 seconds after mount before allowing saves
 
 		const handleChange = () => {
 			// Skip saving during initial mount phase
 			if (isInitialMountRef.current) {
-				console.log("[TldrawCanvas] Skipping save during initial mount")
 				return
 			}
 
@@ -449,7 +403,6 @@ export function TldrawCanvas() {
 
 			// Set new debounced save
 			saveTimerRef.current = setTimeout(() => {
-				console.log("[TldrawCanvas] Change detected, triggering save...")
 				const snapshot = editor.getSnapshot()
 				saveToDb(snapshot)
 			}, 1000) // Save after 1 second of inactivity
@@ -485,7 +438,7 @@ export function TldrawCanvas() {
 		// Run once on mount and on any selection change
 		recomputeSelectedImage()
 		const cleanup = editor.store.listen(
-			(_event) => {
+			() => {
 				recomputeSelectedImage()
 			},
 			{ source: "all", scope: "document" },
@@ -1198,49 +1151,7 @@ export function TldrawCanvas() {
 		[placedDocumentIds, documents, addPlacedDocuments, toast],
 	)
 
-	// Handle AI context menu for text shapes
-	const _handleOpenAIMenu = useCallback(
-		(e: React.MouseEvent) => {
-			if (!editor) return
 
-			const selectedShapes = editor.getSelectedShapes()
-			// Check if we have a text or note shape selected
-			const textShape = selectedShapes.find(
-				(shape) =>
-					editor.isShapeOfType(shape, "text") ||
-					editor.isShapeOfType(shape, "note") ||
-					editor.isShapeOfType(shape, "geo"),
-			)
-
-			if (textShape) {
-				e.preventDefault()
-				e.stopPropagation()
-
-				// Get text content from shape
-				let textContent = ""
-				const props = textShape.props as any
-				if (props.text) {
-					textContent = props.text
-				} else if (props.richText) {
-					// Handle rich text format
-					textContent =
-						typeof props.richText === "string"
-							? props.richText
-							: props.richText?.text || ""
-				}
-
-				if (textContent.trim()) {
-					setAiMenuSelectedText(textContent)
-					setAiMenuShapeId(textShape.id)
-					setAiMenuPosition({ x: e.clientX, y: e.clientY })
-					setAiMenuOpen(true)
-				}
-			}
-		},
-		[editor],
-	)
-
-	// Handle AI result application
 	const handleApplyAIResult = useCallback(
 		(result: string, action: "replace" | "insert") => {
 			if (!editor || !aiMenuShapeId) return
@@ -1379,11 +1290,7 @@ export function TldrawCanvas() {
 	}
 
 	const handleCanvasProjectSelect = (projectId: string) => {
-		console.log(
-			"[TldrawCanvas] handleCanvasProjectSelect called with:",
-			projectId,
-		)
-		setSelectedCanvasProjectId(projectId)
+		setSelectedProject(projectId)
 		setShowProjectModal(false)
 	}
 

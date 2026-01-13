@@ -74,6 +74,7 @@ export function InfinityCanvas() {
 	const [activeDocument, setActiveDocument] =
 		useState<DocumentWithMemories | null>(null)
 	const hasAutoCenteredRef = useRef(false)
+	const [isLoadingCanvas, setIsLoadingCanvas] = useState(false)
 
 	// Palette state
 	const [paletteDocs, setPaletteDocs] = useState<DocumentWithMemories[]>([])
@@ -393,17 +394,12 @@ export function InfinityCanvas() {
 	useEffect(() => {
 		const previous = previousPlacedIdsRef.current
 		const newIds = placedDocumentIds.filter((id) => !previous.includes(id))
-		const skipInitialView =
-			previous.length === 0 &&
-			placedDocumentIds.length > 0 &&
-			hydratedFromStorageRef.current
 
 		previousPlacedIdsRef.current = placedDocumentIds
 
-		if (skipInitialView) {
-			hydratedFromStorageRef.current = false
-			return
-		}
+		// Skip if data is still loading from API
+		if (isLoadingCanvas) return
+
 		if (newIds.length === 0) return
 		if (containerSize.width <= 0 || containerSize.height <= 0) return
 
@@ -652,71 +648,64 @@ export function InfinityCanvas() {
 		clearCanvas()
 	}, [clearCanvas])
 
-	// Persist and restore canvas state (positions and placed docs) per project
+	// Load canvas state from API when project changes
 	useEffect(() => {
-		if (typeof window === "undefined") return
-		const keyPos = `sm_canvas_pos:${selectedProject || "__default__"}`
-		const keyDocs = `sm_canvas_docs:${selectedProject || "__default__"}`
-		try {
-			const rawPos = window.localStorage.getItem(keyPos)
-			if (rawPos) {
-				const parsed = JSON.parse(rawPos)
-				if (parsed && typeof parsed === "object") {
-					setCardPositions(parsed)
+		const loadCanvasState = async () => {
+			if (!selectedProject || typeof window === "undefined") return
+
+			setIsLoadingCanvas(true)
+			try {
+				const response = await $fetch(`@get/canvas/${selectedProject}`, {
+					disableValidation: true,
+				})
+
+				if (response.error) {
+					console.error("Failed to load canvas state:", response.error)
+					return
 				}
-			}
-			const rawDocs = window.localStorage.getItem(keyDocs)
-			if (rawDocs) {
-				const parsedDocs = JSON.parse(rawDocs)
-				if (
-					Array.isArray(parsedDocs) &&
-					parsedDocs.every((v) => typeof v === "string")
-				) {
-					// Filter out stale temp IDs (older than 2 minutes)
-					const STALE_TEMP_THRESHOLD_MS = 2 * 60 * 1000
-					const now = Date.now()
-					const validDocs = parsedDocs.filter((id: string) => {
-						if (!id.startsWith("temp-")) return true
-						const timestamp = Number.parseInt(id.replace("temp-", ""), 10)
-						return now - timestamp <= STALE_TEMP_THRESHOLD_MS
-					})
-					if (validDocs.length > 0) {
-						hydratedFromStorageRef.current = true
-					}
-					setPlacedDocumentIds(validDocs)
-					// Update localStorage if we filtered out stale IDs
-					if (validDocs.length !== parsedDocs.length) {
-						window.localStorage.setItem(keyDocs, JSON.stringify(validDocs))
-					}
+
+				const data = response.data as { state?: { positions?: Record<string, { x: number; y: number }>; documentIds?: string[] } } | undefined
+				const state = data?.state
+
+				if (state?.positions) {
+					setCardPositions(state.positions)
 				}
+				if (state?.documentIds && Array.isArray(state.documentIds)) {
+					setPlacedDocumentIds(state.documentIds)
+				}
+			} catch (error) {
+				console.error("Failed to load canvas state:", error)
+			} finally {
+				setIsLoadingCanvas(false)
 			}
-		} catch {}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
+		}
+
+		loadCanvasState()
 	}, [selectedProject, setCardPositions, setPlacedDocumentIds])
 
-	// Debounced localStorage save for positions (500ms delay to avoid excessive writes during drag)
+	// Debounced save to API
 	useEffect(() => {
-		if (typeof window === "undefined") return
-		const keyPos = `sm_canvas_pos:${selectedProject || "__default__"}`
-		const timeoutId = setTimeout(() => {
-			try {
-				window.localStorage.setItem(keyPos, JSON.stringify(cardPositions))
-			} catch {}
-		}, 500)
-		return () => clearTimeout(timeoutId)
-	}, [cardPositions, selectedProject])
+		if (!selectedProject || typeof window === "undefined") return
+		if (isLoadingCanvas) return
 
-	// Debounced localStorage save for placed documents
-	useEffect(() => {
-		if (typeof window === "undefined") return
-		const keyDocs = `sm_canvas_docs:${selectedProject || "__default__"}`
-		const timeoutId = setTimeout(() => {
+		const timeoutId = setTimeout(async () => {
 			try {
-				window.localStorage.setItem(keyDocs, JSON.stringify(placedDocumentIds))
-			} catch {}
-		}, 500)
+				await $fetch(`@post/canvas/${selectedProject}`, {
+					body: {
+						state: {
+							positions: cardPositions,
+							documentIds: placedDocumentIds,
+						},
+					},
+					disableValidation: true,
+				})
+			} catch (error) {
+				console.error("Failed to save canvas state:", error)
+			}
+		}, 1000)
+
 		return () => clearTimeout(timeoutId)
-	}, [placedDocumentIds, selectedProject])
+	}, [cardPositions, placedDocumentIds, selectedProject, isLoadingCanvas])
 
 	// Handle drag start
 	const handleDragStart = useCallback((event: DragStartEvent) => {
