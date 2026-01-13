@@ -429,11 +429,9 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 	const [selectedAction, setSelectedAction] = useState<ExtendedAction>("shapes")
 	const [showOptions, setShowOptions] = useState(false)
 	const [showContextMenu, setShowContextMenu] = useState(false)
-	const [numberOfImages, _setNumberOfImages] = useState(1)
+	const [numberOfImages] = useState(1)
 	const [aspectRatio, setAspectRatio] = useState("16:9")
 	const [model, setModel] = useState<GenerationModel>("gemini")
-
-	const _canvasAgent = useCanvasAgentOptional()
 
 	// Subscribe to atoms for context
 	const contextItems = useValue($canvasContextItems)
