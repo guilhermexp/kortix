@@ -112,6 +112,14 @@ class QueryCache {
 	}
 
 	/**
+	 * Reset statistics counters (useful after logging stats)
+	 */
+	resetStats(): void {
+		this.hits = 0
+		this.misses = 0
+	}
+
+	/**
 	 * Evict least recently used entry
 	 */
 	private evictLRU(): void {
@@ -156,6 +164,18 @@ export const searchCache = new QueryCache({
 declare global {
 	// eslint-disable-next-line no-var
 	var __KORTIX_QUERY_CACHE_INTERVALS_STARTED: boolean | undefined
+	// eslint-disable-next-line no-var
+	var __KORTIX_QUERY_CACHE_CLEANUP_INTERVAL: NodeJS.Timeout | undefined
+	// eslint-disable-next-line no-var
+	var __KORTIX_QUERY_CACHE_STATS_INTERVAL: NodeJS.Timeout | undefined
+}
+
+// Clear previous intervals if they exist (handles hot reload)
+if (globalThis.__KORTIX_QUERY_CACHE_CLEANUP_INTERVAL) {
+	clearInterval(globalThis.__KORTIX_QUERY_CACHE_CLEANUP_INTERVAL)
+}
+if (globalThis.__KORTIX_QUERY_CACHE_STATS_INTERVAL) {
+	clearInterval(globalThis.__KORTIX_QUERY_CACHE_STATS_INTERVAL)
 }
 
 if (!globalThis.__KORTIX_QUERY_CACHE_INTERVALS_STARTED) {
@@ -165,7 +185,7 @@ if (!globalThis.__KORTIX_QUERY_CACHE_INTERVALS_STARTED) {
 	// Increased to reduce CPU overhead from frequent cache iterations
 	const cleanupInterval =
 		process.env.NODE_ENV === "production" ? 15 * 60 * 1000 : 30 * 60 * 1000
-	setInterval(() => {
+	globalThis.__KORTIX_QUERY_CACHE_CLEANUP_INTERVAL = setInterval(() => {
 		const removedLists = documentListCache.cleanup()
 		const removedDocs = documentCache.cleanup()
 		const removedSearch = searchCache.cleanup()
@@ -180,7 +200,7 @@ if (!globalThis.__KORTIX_QUERY_CACHE_INTERVALS_STARTED) {
 
 	// Log cache stats only in production and only when there's activity
 	if (process.env.NODE_ENV === "production") {
-		setInterval(
+		globalThis.__KORTIX_QUERY_CACHE_STATS_INTERVAL = setInterval(
 			() => {
 				const stats = {
 					documentList: documentListCache.getStats(),
@@ -195,10 +215,42 @@ if (!globalThis.__KORTIX_QUERY_CACHE_INTERVALS_STARTED) {
 					stats.search.hits + stats.search.misses > 0
 
 				if (hasActivity) {
-					console.log("[Cache] Stats:", stats)
+					const totalRequests =
+						stats.documentList.hits +
+						stats.documentList.misses +
+						stats.document.hits +
+						stats.document.misses +
+						stats.search.hits +
+						stats.search.misses
+
+					console.log(
+						`[Cache] Stats (${totalRequests} requests, TTL: list=2m/doc=10m/search=5m):`,
+						{
+							documentList: {
+								...stats.documentList,
+								maxSize: 500,
+								hitRate: `${stats.documentList.hitRate.toFixed(1)}%`,
+							},
+							document: {
+								...stats.document,
+								maxSize: 2000,
+								hitRate: `${stats.document.hitRate.toFixed(1)}%`,
+							},
+							search: {
+								...stats.search,
+								maxSize: 1000,
+								hitRate: `${stats.search.hitRate.toFixed(1)}%`,
+							},
+						},
+					)
+
+					// Reset stats after logging to get fresh metrics for next interval
+					documentListCache.resetStats()
+					documentCache.resetStats()
+					searchCache.resetStats()
 				}
 			},
-			10 * 60 * 1000, // Every 10 minutes in production
+			30 * 60 * 1000, // Every 30 minutes in production (reduced from 10 to avoid log spam)
 		)
 	}
 }
