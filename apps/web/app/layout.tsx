@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
+import { NextIntlClientProvider } from "next-intl"
+import { getMessages } from "next-intl/server"
 import "../globals.css"
 import "@ui/globals.css"
 import { AuthProvider } from "@lib/auth-context"
@@ -65,35 +67,39 @@ export const metadata: Metadata = {
 	},
 }
 
-export default function RootLayout({
+export default async function RootLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode
 }>) {
+	const messages = await getMessages()
+
 	return (
-		<html lang="en" suppressHydrationWarning>
+		<html lang="pt" suppressHydrationWarning>
 			<body className={`${sans.variable} ${mono.variable} antialiased`}>
-				<ThemeProvider
-					attribute="class"
-					defaultTheme="dark"
-					disableTransitionOnChange
-					enableSystem={false}
-				>
-					<QueryProvider>
-						<AuthProvider>
-							<ViewModeProvider>
-								<MobilePanelProvider>
-									<ErrorTrackingProvider>
-										<ErrorBoundary>
-											<Suspense>{children}</Suspense>
-										</ErrorBoundary>
-										<Toaster richColors />
-									</ErrorTrackingProvider>
-								</MobilePanelProvider>
-							</ViewModeProvider>
-						</AuthProvider>
-					</QueryProvider>
-				</ThemeProvider>
+				<NextIntlClientProvider messages={messages}>
+					<ThemeProvider
+						attribute="class"
+						defaultTheme="dark"
+						disableTransitionOnChange
+						enableSystem={false}
+					>
+						<QueryProvider>
+							<AuthProvider>
+								<ViewModeProvider>
+									<MobilePanelProvider>
+										<ErrorTrackingProvider>
+											<ErrorBoundary>
+												<Suspense>{children}</Suspense>
+											</ErrorBoundary>
+											<Toaster richColors />
+										</ErrorTrackingProvider>
+									</MobilePanelProvider>
+								</ViewModeProvider>
+							</AuthProvider>
+						</QueryProvider>
+					</ThemeProvider>
+				</NextIntlClientProvider>
 			</body>
 		</html>
 	)
