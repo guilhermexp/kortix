@@ -3,6 +3,7 @@
 import {
 	asRecord,
 	cn,
+	extractGalleryImages,
 	formatPreviewLabel,
 	getYouTubeThumbnail,
 	isInlineSvgDataUrl,
@@ -520,6 +521,29 @@ export const DocumentCard = memo(
 		})()
 
 		const [stickyPreview, setStickyPreview] = useState<PreviewData | null>(null)
+		const [imageLoaded, setImageLoaded] = useState(false)
+		const [imageError, setImageError] = useState(false)
+		const [useFallbackImage, setUseFallbackImage] = useState(false)
+		const [fallbackImageSrc, setFallbackImageSrc] = useState<string | null>(null)
+
+		// Handler para erro de carregamento de imagem com fallback de galeria
+		const handleImageError = useCallback(() => {
+			// Tentar fallback de galeria se ainda não tentamos
+			if (!useFallbackImage) {
+				const galleryImages = extractGalleryImages(document, { limit: 1 })
+				const firstImage = galleryImages[0]
+				if (firstImage) {
+					setUseFallbackImage(true)
+					setFallbackImageSrc(firstImage.src)
+					setImageError(false) // Reset erro para tentar fallback
+					setImageLoaded(false) // Reset loaded para mostrar shimmer
+					return
+				}
+			}
+
+			// Se fallback também falhou ou não há imagens, mantém erro
+			setImageError(true)
+		}, [document, useFallbackImage])
 
 		useEffect(() => {
 			setStickyPreview(null)
@@ -951,22 +975,30 @@ export const DocumentCard = memo(
 											src={previewToRender.src}
 										/>
 									) : (
-										<Image
-											alt={`${previewToRender.label} preview`}
-											className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] z-10"
-											fill
-											onError={(e) => {
-												const target = e.target as HTMLImageElement
-												target.style.display = "none"
-											}}
-											priority={false}
-											referrerPolicy="no-referrer"
-											sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-											src={
-												proxyImageUrl(previewToRender.src) ||
-												previewToRender.src
-											}
-										/>
+										!imageError && (
+											<Image
+												key={
+													useFallbackImage && fallbackImageSrc
+														? `fallback-${fallbackImageSrc}`
+														: `preview-${previewToRender.src}`
+												}
+												alt={`${previewToRender.label} preview`}
+												className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] z-10"
+												fill
+												onError={() => handleImageError()}
+												onLoad={() => setImageLoaded(true)}
+												priority={false}
+												referrerPolicy="no-referrer"
+												sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+												src={
+													useFallbackImage && fallbackImageSrc
+														? proxyImageUrl(fallbackImageSrc) ||
+															fallbackImageSrc
+														: proxyImageUrl(previewToRender.src) ||
+															previewToRender.src
+												}
+											/>
+										)
 									))}
 								<div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45 z-20" />
 								{previewToRender.kind === "video" && (

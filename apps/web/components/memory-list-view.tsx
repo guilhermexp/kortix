@@ -6,6 +6,7 @@ import { useDeleteDocument } from "@lib/queries"
 import {
 	asRecord,
 	cn,
+	extractGalleryImages,
 	formatPreviewLabel,
 	getYouTubeId,
 	getYouTubeThumbnail,
@@ -428,6 +429,18 @@ const getDocumentPreview = (
 		}
 	}
 
+	// === FALLBACK: Imagens da galeria ===
+	// Se não encontrou preview em nenhuma fonte, tenta usar imagem da galeria
+	const galleryImages = extractGalleryImages(document, { limit: 1 })
+	const firstImage = galleryImages[0]
+	if (firstImage) {
+		return {
+			kind: "image",
+			src: firstImage.src,
+			label: firstImage.alt || "Image",
+		}
+	}
+
 	// For links without preview images, don't render preview at all
 	// The card will just show the title and content
 	return null
@@ -722,6 +735,27 @@ const MasonryCard = memo(
 		const [stickyPreview, setStickyPreview] = useState<PreviewData | null>(null)
 		const [imageLoaded, setImageLoaded] = useState(false)
 		const [imageError, setImageError] = useState(false)
+		const [useFallbackImage, setUseFallbackImage] = useState(false)
+		const [fallbackImageSrc, setFallbackImageSrc] = useState<string | null>(null)
+
+		// Handler para erro de carregamento de imagem com fallback de galeria
+		const handleImageError = useCallback(() => {
+			// Tentar fallback de galeria se ainda não tentamos
+			if (!useFallbackImage) {
+				const galleryImages = extractGalleryImages(document, { limit: 1 })
+				const firstImage = galleryImages[0]
+				if (firstImage) {
+					setUseFallbackImage(true)
+					setFallbackImageSrc(firstImage.src)
+					setImageError(false) // Reset erro para tentar fallback
+					setImageLoaded(false) // Reset loaded para mostrar shimmer
+					return
+				}
+			}
+
+			// Se fallback também falhou ou não há imagens, mantém erro
+			setImageError(true)
+		}, [document, useFallbackImage])
 
 		useEffect(() => {
 			setStickyPreview(null)
@@ -1062,22 +1096,31 @@ const MasonryCard = memo(
 						{/* Image/Preview area - Pinterest style variable height */}
 						{hasPreviewImage && (
 							<div className="relative w-full overflow-hidden bg-muted">
-								<img
-									alt={cleanedTitle}
-									className={cn(
-										"w-full object-cover transition-all duration-500",
-										"group-hover:scale-105",
-										imageLoaded ? "opacity-100" : "opacity-0",
-									)}
-									loading="lazy"
-									onError={() => setImageError(true)}
-									onLoad={() => setImageLoaded(true)}
-									referrerPolicy="no-referrer"
-									src={
-										proxyImageUrl(previewToRender.src) || previewToRender.src
-									}
-									style={{ display: imageError ? "none" : "block" }}
-								/>
+								{!imageError && (
+									<img
+										key={
+											useFallbackImage && fallbackImageSrc
+												? `fallback-${fallbackImageSrc}`
+												: `preview-${previewToRender.src}`
+										}
+										alt={cleanedTitle}
+										className={cn(
+											"w-full object-cover transition-all duration-500",
+											"group-hover:scale-105",
+											imageLoaded ? "opacity-100" : "opacity-0",
+										)}
+										loading="lazy"
+										onError={handleImageError}
+										onLoad={() => setImageLoaded(true)}
+										referrerPolicy="no-referrer"
+										src={
+											useFallbackImage && fallbackImageSrc
+												? proxyImageUrl(fallbackImageSrc) || fallbackImageSrc
+												: proxyImageUrl(previewToRender.src) ||
+													previewToRender.src
+										}
+									/>
+								)}
 								{/* Loading shimmer */}
 								{!imageLoaded && !imageError && (
 									<div className="absolute inset-0 bg-gradient-to-r from-muted via-muted/50 to-muted animate-pulse min-h-[120px]" />
