@@ -275,3 +275,54 @@ export const proxyImageUrl = (
 		return url
 	}
 }
+
+/**
+ * Extracts images from document gallery for use as fallback previews
+ * Applies same quality filters as getDocumentPreview()
+ */
+export const extractGalleryImages = (
+	document: any,
+	options?: { limit?: number; skipFilters?: boolean },
+): Array<{ src: string; alt: string }> => {
+	const images: Array<{ src: string; alt: string }> = []
+	const limit = options?.limit ?? 10
+	const skipFilters = options?.skipFilters ?? false
+
+	// Buscar em todas as localizações onde imagens podem estar armazenadas
+	const sources = [
+		document?.metadata?.images,
+		document?.raw?.extraction?.images,
+		document?.raw?.firecrawl?.images,
+		document?.raw?.firecrawl?.metadata?.images,
+		document?.raw?.geminiFile,
+	]
+
+	for (const source of sources) {
+		if (!source) continue
+
+		if (Array.isArray(source)) {
+			for (const item of source) {
+				const src = typeof item === "string" ? item : item?.src || item?.url
+				if (!src) continue
+
+				// Aplicar filtros de qualidade (mesmo que getDocumentPreview)
+				if (!skipFilters) {
+					if (isInlineSvgDataUrl(src)) continue
+					if (isLowResolutionImage(src)) continue
+					if (src.includes("shields.io")) continue
+					if (/logo|icon|sprite/i.test(src)) continue
+				}
+
+				const alt =
+					typeof item === "object" ? item?.alt || item?.title || "" : ""
+				images.push({ src, alt })
+
+				if (images.length >= limit) break
+			}
+		}
+
+		if (images.length >= limit) break
+	}
+
+	return images
+}
