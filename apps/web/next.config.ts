@@ -1,7 +1,9 @@
 import path from "node:path"
 import type { NextConfig } from "next"
+import createNextIntlPlugin from "next-intl/plugin"
 
 const workspaceRoot = path.resolve(__dirname, "..", "..")
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts")
 
 const nextConfig: NextConfig = {
 	// Force new build ID to bust all caches
@@ -157,5 +159,5 @@ const nextConfig: NextConfig = {
 	},
 }
 
-// Sentry has been disabled - using plain Next.js config
-export default nextConfig
+// Sentry has been disabled - using plain Next.js config with next-intl
+export default withNextIntl(nextConfig)
