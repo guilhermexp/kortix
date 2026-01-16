@@ -10,6 +10,10 @@
 			"env": {
 				"SUPABASE_ACCESS_TOKEN": "sbp_bdc3fc8278d07bdd10180d323c479d0fac988325"
 			}
+		},
+		"Railway": {
+			"command": "npx",
+			"args": ["-y", "@railway/mcp-server"]
 		}
 	}
 }
