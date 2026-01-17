@@ -474,17 +474,49 @@ export const DocumentCard = memo(
 		const preview = useMemo(() => getDocumentPreview(document), [document])
 
 		const sanitizedPreview = useMemo(() => {
-			if (!preview) return null
+			// Se não há preview válido, tenta usar galeria como fallback
+			if (!preview) {
+				const galleryImages = extractGalleryImages(document, { limit: 1 })
+				const firstImage = galleryImages[0]
+				if (firstImage) {
+					console.log(
+						`[DocumentCard sanitizedPreview] Using gallery fallback for document ${document.id}:`,
+						firstImage.src.slice(0, 100),
+					)
+					return {
+						kind: "image" as const,
+						src: firstImage.src,
+						label: firstImage.alt || "Image",
+					}
+				}
+				return null
+			}
+
+			// Se preview é SVG inválido, tenta fallback
 			if (preview.src && isInlineSvgDataUrl(preview.src)) {
 				if (preview.kind === "video") {
 					const fallback =
 						getYouTubeThumbnail(document.url ?? undefined) ?? undefined
 					if (fallback) return { ...preview, src: fallback } as PreviewData
 				}
+				// Se SVG inválido, tenta galeria
+				const galleryImages = extractGalleryImages(document, { limit: 1 })
+				const firstImage = galleryImages[0]
+				if (firstImage) {
+					console.log(
+						`[DocumentCard sanitizedPreview] SVG fallback to gallery for document ${document.id}`,
+					)
+					return {
+						kind: "image" as const,
+						src: firstImage.src,
+						label: firstImage.alt || "Image",
+					}
+				}
 				return null
 			}
+
 			return preview
-		}, [preview, document.url])
+		}, [preview, document, document.url])
 
 		const isProcessing = document.status
 			? PROCESSING_STATUSES.has(String(document.status).toLowerCase())

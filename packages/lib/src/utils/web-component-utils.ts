@@ -284,45 +284,70 @@ export const extractGalleryImages = (
 	document: any,
 	options?: { limit?: number; skipFilters?: boolean },
 ): Array<{ src: string; alt: string }> => {
+	console.log(`[extractGalleryImages] START for document ${document?.id}`, {
+		limit: options?.limit ?? 10,
+		skipFilters: options?.skipFilters ?? false,
+		hasMetadata: !!document?.metadata,
+		hasRaw: !!document?.raw,
+		memoryEntriesCount: document?.memoryEntries?.length || 0,
+	})
+
 	const images: Array<{ src: string; alt: string }> = []
 	const limit = options?.limit ?? 10
 	const skipFilters = options?.skipFilters ?? false
 
 	// Buscar em todas as localizações onde imagens podem estar armazenadas
 	const sources = [
+		document?.images, // Direto no document
 		document?.metadata?.images,
+		document?.raw?.images, // Direto no raw
 		document?.raw?.extraction?.images,
+		document?.raw?.extraction?.metadata?.images,
 		document?.raw?.firecrawl?.images,
 		document?.raw?.firecrawl?.metadata?.images,
+		document?.raw?.firecrawl?.screenshot, // Screenshot do Firecrawl (pode ser array ou string)
 		document?.raw?.geminiFile,
+		// Adicionar memoryEntries como última opção
+		...(document?.memoryEntries
+			? document.memoryEntries.map((m: any) => m.metadata?.images).filter(Boolean)
+			: []),
 	]
+
+	console.log(`[extractGalleryImages] Found ${sources.filter(s => s).length} non-null sources for ${document?.id}`)
+
 
 	for (const source of sources) {
 		if (!source) continue
 
-		if (Array.isArray(source)) {
-			for (const item of source) {
-				const src = typeof item === "string" ? item : item?.src || item?.url
-				if (!src) continue
+		// Converter string única em array para processamento uniforme
+		const items = Array.isArray(source) ? source : [source]
 
-				// Aplicar filtros de qualidade (mesmo que getDocumentPreview)
-				if (!skipFilters) {
-					if (isInlineSvgDataUrl(src)) continue
-					if (isLowResolutionImage(src)) continue
-					if (src.includes("shields.io")) continue
-					if (/logo|icon|sprite/i.test(src)) continue
-				}
+		for (const item of items) {
+			const src = typeof item === "string" ? item : item?.src || item?.url
+			if (!src || typeof src !== "string") continue
 
-				const alt =
-					typeof item === "object" ? item?.alt || item?.title || "" : ""
-				images.push({ src, alt })
-
-				if (images.length >= limit) break
+			// Aplicar filtros de qualidade (menos restritivo que getDocumentPreview)
+			if (!skipFilters) {
+				if (isInlineSvgDataUrl(src)) continue
+				if (src.includes("shields.io")) continue
+				// REMOVIDO: filtro de logo|icon|sprite - muito restritivo para documentos
+				// REMOVIDO: filtro isLowResolutionImage - thumbnails de PDF podem ser pequenas mas válidas
 			}
+
+			const alt =
+				typeof item === "object" ? item?.alt || item?.title || "" : ""
+			images.push({ src, alt })
+
+			if (images.length >= limit) break
 		}
 
 		if (images.length >= limit) break
 	}
+
+	console.log(`[extractGalleryImages] END for document ${document?.id}:`, {
+		totalImagesFound: images.length,
+		firstImageSrc: images[0]?.src?.slice(0, 100),
+	})
 
 	return images
 }

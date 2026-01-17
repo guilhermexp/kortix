@@ -146,6 +146,13 @@ const _shimmerStyle: CSSProperties = {
 const getDocumentPreview = (
 	document: DocumentWithMemories,
 ): PreviewData | null => {
+	console.log(`[getDocumentPreview] START for document ${document.id}`, {
+		title: document.title?.slice(0, 50),
+		type: document.type,
+		hasMetadata: !!document.metadata,
+		hasRaw: !!document.raw,
+	})
+
 	const metadata = asRecord(document.metadata)
 	const raw = asRecord(document.raw)
 	const rawExtraction = asRecord(raw?.extraction)
@@ -374,6 +381,15 @@ const getDocumentPreview = (
 		ordered.find((candidate) => !isLowResolutionImage(candidate)) ??
 		null
 
+	console.log(`[getDocumentPreview] Fallback image found:`, {
+		docId: document.id,
+		hasFallback: !!fallbackImage,
+		fallbackSrc: fallbackImage?.slice(0, 100),
+		finalPreviewImage: !!finalPreviewImage,
+		extractionImagesCount: extractionImages.length,
+		memoryImagesCount: memoryImages.length,
+	})
+
 	if (!fallbackImage && isGitHubHost(originalUrl)) {
 		try {
 			const parsed = new URL(originalUrl ?? "")
@@ -381,6 +397,7 @@ const getDocumentPreview = (
 			if (segments.length === 2) {
 				const repoSlug = segments.join("/")
 				fallbackImage = `https://opengraph.githubassets.com/${document.id}/${repoSlug}`
+				console.log(`[getDocumentPreview] Added GitHub OpenGraph fallback for ${document.id}`)
 			}
 		} catch {
 			// ignore
@@ -421,6 +438,7 @@ const getDocumentPreview = (
 	}
 
 	if (fallbackImage) {
+		console.log(`[getDocumentPreview] ✅ Returning fallbackImage for ${document.id}:`, fallbackImage.slice(0, 100))
 		return {
 			kind: "image",
 			src: fallbackImage,
@@ -431,15 +449,25 @@ const getDocumentPreview = (
 
 	// === FALLBACK: Imagens da galeria ===
 	// Se não encontrou preview em nenhuma fonte, tenta usar imagem da galeria
+	console.log(`[getDocumentPreview] 🔍 No fallbackImage, trying gallery for ${document.id}`)
 	const galleryImages = extractGalleryImages(document, { limit: 1 })
 	const firstImage = galleryImages[0]
+
+	console.log(`[getDocumentPreview] Gallery result for ${document.id}:`, {
+		imagesFound: galleryImages.length,
+		firstImageSrc: firstImage?.src?.slice(0, 100),
+	})
+
 	if (firstImage) {
+		console.log(`[getDocumentPreview] ✅ Using gallery fallback for ${document.id}:`, firstImage.src.slice(0, 100))
 		return {
 			kind: "image",
 			src: firstImage.src,
 			label: firstImage.alt || "Image",
 		}
 	}
+
+	console.log(`[getDocumentPreview] ❌ No preview found (returning null) for ${document.id}`)
 
 	// For links without preview images, don't render preview at all
 	// The card will just show the title and content
@@ -648,16 +676,44 @@ const MasonryCard = memo(
 		)
 
 		const sanitizedPreview = useMemo(() => {
-			if (!preview) return null
+			// Se não há preview válido, tenta usar galeria como fallback
+			if (!preview) {
+				const galleryImages = extractGalleryImages(document, { limit: 1 })
+				const firstImage = galleryImages[0]
+
+				if (firstImage) {
+					return {
+						kind: "image" as const,
+						src: firstImage.src,
+						label: firstImage.alt || "Image",
+					}
+				}
+
+				return null
+			}
+
+			// Se preview é SVG inválido, tenta fallback
 			if (preview.src && isInlineSvgDataUrl(preview.src)) {
 				if (preview.kind === "video") {
-					const fallback = getYouTubeThumbnail(document.url ?? undefined) ?? undefined
+					const fallback =
+						getYouTubeThumbnail(document.url ?? undefined) ?? undefined
 					if (fallback) return { ...preview, src: fallback } as PreviewData
+				}
+				// Se SVG inválido, tenta galeria
+				const galleryImages = extractGalleryImages(document, { limit: 1 })
+				const firstImage = galleryImages[0]
+				if (firstImage) {
+					return {
+						kind: "image" as const,
+						src: firstImage.src,
+						label: firstImage.alt || "Image",
+					}
 				}
 				return null
 			}
+
 			return preview
-		}, [preview, document.url])
+		}, [preview, document, document.url])
 
 		// Check if document is still being processed
 		const statusIsProcessing = document.status
@@ -744,6 +800,7 @@ const MasonryCard = memo(
 			if (!useFallbackImage) {
 				const galleryImages = extractGalleryImages(document, { limit: 1 })
 				const firstImage = galleryImages[0]
+
 				if (firstImage) {
 					setUseFallbackImage(true)
 					setFallbackImageSrc(firstImage.src)

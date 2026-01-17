@@ -52,11 +52,22 @@ export default async function proxy(request: NextRequest) {
 	if (debugProxy) console.debug("[PROXY] Passing through to next handler")
 	if (debugProxy) console.debug("[PROXY] === PROXY END ===")
 	const response = NextResponse.next()
+
+	// Set last-site-visited cookie
 	response.cookies.set({
 		name: "last-site-visited",
 		value: APP_URL,
 		domain: APP_HOSTNAME,
 	})
+
+	// Set default locale if not present (migrated from middleware.ts)
+	if (!request.cookies.has("NEXT_LOCALE")) {
+		response.cookies.set("NEXT_LOCALE", "pt", {
+			path: "/",
+			sameSite: "lax",
+		})
+	}
+
 	return response
 }
 
