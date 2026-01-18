@@ -479,10 +479,6 @@ export const DocumentCard = memo(
 				const galleryImages = extractGalleryImages(document, { limit: 1 })
 				const firstImage = galleryImages[0]
 				if (firstImage) {
-					console.log(
-						`[DocumentCard sanitizedPreview] Using gallery fallback for document ${document.id}:`,
-						firstImage.src.slice(0, 100),
-					)
 					return {
 						kind: "image" as const,
 						src: firstImage.src,
@@ -503,9 +499,6 @@ export const DocumentCard = memo(
 				const galleryImages = extractGalleryImages(document, { limit: 1 })
 				const firstImage = galleryImages[0]
 				if (firstImage) {
-					console.log(
-						`[DocumentCard sanitizedPreview] SVG fallback to gallery for document ${document.id}`,
-					)
 					return {
 						kind: "image" as const,
 						src: firstImage.src,

@@ -284,14 +284,6 @@ export const extractGalleryImages = (
 	document: any,
 	options?: { limit?: number; skipFilters?: boolean },
 ): Array<{ src: string; alt: string }> => {
-	console.log(`[extractGalleryImages] START for document ${document?.id}`, {
-		limit: options?.limit ?? 10,
-		skipFilters: options?.skipFilters ?? false,
-		hasMetadata: !!document?.metadata,
-		hasRaw: !!document?.raw,
-		memoryEntriesCount: document?.memoryEntries?.length || 0,
-	})
-
 	const images: Array<{ src: string; alt: string }> = []
 	const limit = options?.limit ?? 10
 	const skipFilters = options?.skipFilters ?? false
@@ -312,8 +304,6 @@ export const extractGalleryImages = (
 			? document.memoryEntries.map((m: any) => m.metadata?.images).filter(Boolean)
 			: []),
 	]
-
-	console.log(`[extractGalleryImages] Found ${sources.filter(s => s).length} non-null sources for ${document?.id}`)
 
 
 	for (const source of sources) {
@@ -343,11 +333,6 @@ export const extractGalleryImages = (
 
 		if (images.length >= limit) break
 	}
-
-	console.log(`[extractGalleryImages] END for document ${document?.id}:`, {
-		totalImagesFound: images.length,
-		firstImageSrc: images[0]?.src?.slice(0, 100),
-	})
 
 	return images
 }
