@@ -13,8 +13,8 @@ import {
 } from "@dnd-kit/core"
 import { $fetch } from "@repo/lib/api"
 import { Button } from "@repo/ui/components/button"
-import { NavigationControls, useGraphInteractions } from "@repo/ui/memory-graph"
-import { getColors } from "@repo/ui/memory-graph/constants"
+import { NavigationControls, useCanvasNavigation } from "./canvas-navigation"
+import { getColors } from "./canvas-constants"
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
 import {
 	Brain,
@@ -118,7 +118,7 @@ export function InfinityCanvas() {
 		centerViewportOn,
 		zoomIn,
 		zoomOut,
-	} = useGraphInteractions("consumer")
+	} = useCanvasNavigation()
 
 	useEffect(() => {
 		const el = containerRef.current

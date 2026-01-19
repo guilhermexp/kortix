@@ -4,8 +4,6 @@
 import { useIsMobile } from "@hooks/use-mobile"
 import { useAuth } from "@lib/auth-context"
 import { $fetch } from "@repo/lib/api"
-import { MemoryGraph } from "@repo/ui/memory-graph"
-import type { DocumentConnectionEdge } from "@repo/ui/memory-graph/types"
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
 import { useInfiniteQuery } from "@tanstack/react-query"
 import { Button } from "@ui/components/button"
@@ -41,7 +39,6 @@ import { TOUR_STEP_IDS } from "@/lib/tour-constants"
 import { useViewMode } from "@/lib/view-mode-context"
 import { useChatOpen, useProject } from "@/stores"
 import { useCanvasStore } from "@/stores/canvas"
-import { useGraphHighlights } from "@/stores/highlights"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
@@ -98,7 +95,6 @@ const CanvasActionsBar = () => {
 }
 
 const MemoryGraphPage = () => {
-	const { documentIds: allHighlightDocumentIds } = useGraphHighlights()
 	const isMobile = useIsMobile()
 	const { viewMode, setViewMode } = useViewMode()
 	const { selectedProject } = useProject()
@@ -106,10 +102,6 @@ const MemoryGraphPage = () => {
 	const setShowProjectModal = useCanvasStore((s) => s.setShowProjectModal)
 	const isPaletteOpen = useCanvasStore((s) => s.isPaletteOpen)
 	const togglePalette = useCanvasStore((s) => s.togglePalette)
-	const [injectedDocs, setInjectedDocs] = useState<DocumentWithMemories[]>([])
-	const [graphEdges, setGraphEdges] = useState<DocumentConnectionEdge[] | null>(
-		null,
-	)
 	const [showAddMemoryView, setShowAddMemoryView] = useState(false)
 
 	// Search state with debounce
@@ -145,8 +137,6 @@ const MemoryGraphPage = () => {
 		return () =>
 			document.removeEventListener("visibilitychange", handleVisibility)
 	}, [])
-
-	const isCurrentProjectExperimental = false
 
 	// Resizable chat panel width (desktop only)
 	const MIN_CHAT_WIDTH = 420
@@ -412,7 +402,7 @@ const MemoryGraphPage = () => {
 		setHasProcessingDocs(hasProcessing)
 	}, [data])
 
-	const baseDocuments = useMemo(() => {
+	const allDocuments = useMemo(() => {
 		const docs =
 			data?.pages.flatMap((pageData) => pageData.documents ?? []) ?? []
 		// Deduplicate by id to prevent React key warnings when pagination returns overlapping results
@@ -423,41 +413,6 @@ const MemoryGraphPage = () => {
 			return true
 		})
 	}, [data])
-
-	const allDocuments = useMemo(() => {
-		if (injectedDocs.length === 0) return baseDocuments
-		const byId = new Map<string, DocumentWithMemories>()
-		for (const d of injectedDocs) byId.set(d.id, d)
-		for (const d of baseDocuments) if (!byId.has(d.id)) byId.set(d.id, d)
-		return Array.from(byId.values())
-	}, [baseDocuments, injectedDocs])
-
-	const docIdsForEdges = useMemo(() => {
-		if (!allDocuments || allDocuments.length === 0) return []
-		// Filter out temporary/optimistic IDs that start with "temp-"
-		return allDocuments
-			.slice(0, 200)
-			.map((doc) => doc.id)
-			.filter((id) => !id.startsWith("temp-"))
-	}, [allDocuments])
-
-	useEffect(() => {
-		if (!allDocuments || allDocuments.length === 0) {
-			setGraphEdges([])
-		}
-	}, [allDocuments])
-
-	const graphEdgesKey = useMemo(() => {
-		if (docIdsForEdges.length === 0) return ""
-		const projectKey =
-			selectedProject && selectedProject !== "sm_project_default"
-				? selectedProject
-				: "__all__"
-		return JSON.stringify({
-			project: projectKey,
-			docIds: docIdsForEdges,
-		})
-	}, [docIdsForEdges, selectedProject])
 
 	const totalLoaded = allDocuments.length
 	const hasMore = hasNextPage
@@ -478,171 +433,13 @@ const MemoryGraphPage = () => {
 		return
 	}, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
-	const handleDocumentDeleted = useCallback((documentId: string) => {
-		setInjectedDocs((prev) =>
-			prev.filter(
-				(doc) => doc.id !== documentId && doc.customId !== documentId,
-			),
-		)
+	const handleDocumentDeleted = useCallback((_documentId: string) => {
+		// Document deletion handled by refetch
 	}, [])
-
-	const previousProjectRef = useRef<string | null>(null)
-
-	// Reset injected docs when project changes
-	useEffect(() => {
-		const projectKey = selectedProject ?? null
-		if (previousProjectRef.current === projectKey) {
-			return
-		}
-		previousProjectRef.current = projectKey
-		setInjectedDocs([])
-	}, [selectedProject])
-
-	// Surgical fetch of missing highlighted documents (customId-based IDs from search)
-	useEffect(() => {
-		if (!isOpen) return
-		if (!allHighlightDocumentIds || allHighlightDocumentIds.length === 0) return
-		const present = new Set<string>()
-		for (const doc of [...baseDocuments, ...injectedDocs]) {
-			present.add(doc.id)
-			if (doc.customId) {
-				present.add(doc.customId)
-			}
-		}
-		const missing = (allHighlightDocumentIds ?? []).filter(
-			(id) => !present.has(id),
-		)
-		if (missing.length === 0) return
-		let cancelled = false
-		const run = async () => {
-			try {
-				const response = await $fetch("@post/documents/documents/by-ids", {
-					body: {
-						ids: missing,
-						by: "customId",
-						containerTags:
-							selectedProject && selectedProject !== "sm_project_default"
-								? [selectedProject]
-								: undefined,
-					},
-					disableValidation: true,
-				})
-				if (cancelled || response.error) return
-				const extraDocs = response.data?.documents ?? []
-				if (extraDocs.length === 0) return
-				setInjectedDocs((prev) => {
-					const seen = new Set<string>([
-						...prev.flatMap(
-							(document) =>
-								[document.id, document.customId].filter(Boolean) as string[],
-						),
-						...baseDocuments.flatMap(
-							(document) =>
-								[document.id, document.customId].filter(Boolean) as string[],
-						),
-					])
-					const merged = [...prev]
-					for (const document of extraDocs) {
-						if (!seen.has(document.id)) {
-							merged.push(document)
-							seen.add(document.id)
-						}
-						if (document.customId) {
-							seen.add(document.customId)
-						}
-					}
-					return merged
-				})
-			} catch (fetchError) {
-				if (process.env.NODE_ENV !== "production") {
-					console.error(fetchError)
-				}
-			}
-		}
-		void run()
-		return () => {
-			cancelled = true
-		}
-	}, [
-		isOpen,
-		allHighlightDocumentIds?.length,
-		baseDocuments,
-		injectedDocs,
-		selectedProject,
-		allHighlightDocumentIds,
-	])
-
-	useEffect(() => {
-		if (!graphEdgesKey) {
-			setGraphEdges([])
-			return
-		}
-
-		let parsed: { project: string; docIds: string[] }
-		try {
-			parsed = JSON.parse(graphEdgesKey) as {
-				project: string
-				docIds: string[]
-			}
-		} catch {
-			setGraphEdges(null)
-			return
-		}
-
-		const docIds = Array.isArray(parsed.docIds) ? parsed.docIds : []
-		if (docIds.length === 0) {
-			setGraphEdges([])
-			return
-		}
-
-		let cancelled = false
-		const loadConnections = async () => {
-			try {
-				const body: Record<string, unknown> = {
-					documentIds: docIds,
-				}
-				if (parsed.project && parsed.project !== "__all__") {
-					body.containerTags = [parsed.project]
-				}
-				const response = (await $fetch("@post/graph/connections", {
-					body,
-					disableValidation: true,
-				})) as { error?: unknown; data?: { edges?: unknown[] } }
-				if (cancelled) return
-				// Type guard to check error property exists
-				if (response.error) {
-					if (process.env.NODE_ENV !== "production") {
-						const message =
-							typeof response.error === "object"
-								? JSON.stringify(response.error)
-								: String(response.error)
-						console.error("Failed to load graph connections", message)
-					}
-					setGraphEdges([])
-					return
-				}
-				const edges = Array.isArray(response.data?.edges)
-					? (response.data.edges as DocumentConnectionEdge[])
-					: []
-				setGraphEdges(edges)
-			} catch (error) {
-				if (!cancelled) {
-					if (process.env.NODE_ENV !== "production") {
-						console.error("Failed to load graph connections", error)
-					}
-					setGraphEdges([])
-				}
-			}
-		}
-		void loadConnections()
-		return () => {
-			cancelled = true
-		}
-	}, [graphEdgesKey])
 
 	// Handle view mode change
 	const _handleViewModeChange = useCallback(
-		(mode: "graph" | "graphEmpty" | "list" | "infinity") => {
+		(mode: "list" | "infinity") => {
 			setViewMode(mode)
 		},
 		[setViewMode],
@@ -772,103 +569,7 @@ const MemoryGraphPage = () => {
 
 					{/* Animated content switching */}
 					<AnimatePresence mode="wait">
-						{viewMode === "graph" ? (
-							<motion.div
-								animate={{ opacity: 1, scale: 1 }}
-								className="absolute inset-0"
-								exit={{ opacity: 0, scale: 0.95 }}
-								id={TOUR_STEP_IDS.MEMORY_GRAPH}
-								initial={{ opacity: 0, scale: 0.95 }}
-								key="graph"
-								transition={{
-									type: "spring",
-									stiffness: 500,
-									damping: 30,
-								}}
-							>
-								<MemoryGraph
-									autoLoadOnViewport={false}
-									documentEdges={graphEdges ?? undefined}
-									documents={allDocuments}
-									error={error}
-									hasMore={hasMore}
-									highlightDocumentIds={allHighlightDocumentIds}
-									highlightsVisible={isOpen}
-									isExperimental={isCurrentProjectExperimental}
-									isLoading={isPending}
-									isLoadingMore={isLoadingMore}
-									legendId={TOUR_STEP_IDS.LEGEND}
-									loadMoreDocuments={loadMoreDocuments}
-									occludedRightPx={isOpen && !isMobile ? chatWidth : 0}
-									showSpacesSelector={false}
-									totalLoaded={totalLoaded}
-									variant="consumer"
-								>
-									<div className="absolute inset-0 flex items-center justify-center">
-										<ConnectAIModal
-											onOpenChange={setShowConnectAIModal}
-											open={showConnectAIModal}
-										>
-											<div className="rounded-xl overflow-hidden cursor-pointer hover:bg-white/5 transition-colors p-6">
-												<div className="relative z-10 text-slate-200 text-center">
-													<p className="text-lg font-medium mb-4">
-														Get Started with Kortix
-													</p>
-													<div className="flex flex-col gap-3">
-														<p className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
-															Click here to set up your AI connection
-														</p>
-														<p className="text-xs text-white/60">or</p>
-														<button
-															className="text-sm text-blue-400 hover:text-blue-300 transition-colors underline"
-															onClick={(e) => {
-																e.stopPropagation()
-																setShowAddMemoryView(true)
-																setShowConnectAIModal(false)
-															}}
-															type="button"
-														>
-															Add your first memory
-														</button>
-													</div>
-												</div>
-											</div>
-										</ConnectAIModal>
-									</div>
-								</MemoryGraph>
-							</motion.div>
-						) : viewMode === "graphEmpty" ? (
-							<motion.div
-								animate={{ opacity: 1, scale: 1 }}
-								className="absolute inset-0"
-								exit={{ opacity: 0, scale: 0.95 }}
-								initial={{ opacity: 0, scale: 0.95 }}
-								key="graph-empty"
-								transition={{
-									type: "spring",
-									stiffness: 500,
-									damping: 30,
-								}}
-							>
-								<MemoryGraph
-									autoLoadOnViewport={false}
-									documents={[]}
-									error={null}
-									hasMore={false}
-									highlightDocumentIds={[]}
-									highlightsVisible={false}
-									isExperimental={isCurrentProjectExperimental}
-									isLoading={false}
-									isLoadingMore={false}
-									legendId={`${TOUR_STEP_IDS.LEGEND}-empty`}
-									loadMoreDocuments={async () => {}}
-									occludedRightPx={isOpen && !isMobile ? chatWidth : 0}
-									showSpacesSelector={false}
-									totalLoaded={0}
-									variant="consumer"
-								/>
-							</motion.div>
-						) : viewMode === "infinity" ? (
+						{viewMode === "infinity" ? (
 							<motion.div
 								animate={{ opacity: 1, scale: 1 }}
 								className="absolute inset-0"

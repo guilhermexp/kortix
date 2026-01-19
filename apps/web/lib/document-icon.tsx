@@ -1,4 +1,4 @@
-import { colors } from "@repo/ui/memory-graph/constants"
+import { colors } from "@/components/canvas/canvas-constants"
 import {
 	GoogleDocs,
 	GoogleDrive,

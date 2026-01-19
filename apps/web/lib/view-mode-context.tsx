@@ -9,7 +9,7 @@ import {
 } from "react"
 import { analytics } from "@/lib/analytics"
 
-type ViewMode = "graph" | "graphEmpty" | "list" | "infinity"
+type ViewMode = "list" | "infinity"
 
 interface ViewModeContextType {
 	viewMode: ViewMode
@@ -36,10 +36,7 @@ const _readStoredViewMode = (): ViewMode | null => {
 	if (typeof window === "undefined") return null
 	try {
 		const storedValue = window.localStorage.getItem(STORAGE_KEY)
-		return storedValue === "list" ||
-			storedValue === "graph" ||
-			storedValue === "graphEmpty" ||
-			storedValue === "infinity"
+		return storedValue === "list" || storedValue === "infinity"
 			? storedValue
 			: null
 	} catch {

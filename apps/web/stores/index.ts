@@ -18,22 +18,6 @@ export const useProjectStore = create<ProjectState>()(
 	),
 )
 
-interface MemoryGraphState {
-	positionX: number
-	positionY: number
-	setPositionX: (x: number) => void
-	setPositionY: (y: number) => void
-	setPosition: (x: number, y: number) => void
-}
-
-export const useMemoryGraphStore = create<MemoryGraphState>()((set) => ({
-	positionX: 0,
-	positionY: 0,
-	setPositionX: (x) => set({ positionX: x }),
-	setPositionY: (y) => set({ positionY: y }),
-	setPosition: (x, y) => set({ positionX: x, positionY: y }),
-}))
-
 interface ChatState {
 	isOpen: boolean
 	setIsOpen: (isOpen: boolean) => void
@@ -52,22 +36,6 @@ export function useProject() {
 		(state) => state.setSelectedProject,
 	)
 	return { selectedProject, setSelectedProject }
-}
-
-export function useMemoryGraphPosition() {
-	const positionX = useMemoryGraphStore((state) => state.positionX)
-	const positionY = useMemoryGraphStore((state) => state.positionY)
-	const setPositionX = useMemoryGraphStore((state) => state.setPositionX)
-	const setPositionY = useMemoryGraphStore((state) => state.setPositionY)
-	const setPosition = useMemoryGraphStore((state) => state.setPosition)
-
-	return {
-		x: positionX,
-		y: positionY,
-		setX: setPositionX,
-		setY: setPositionY,
-		setPosition,
-	}
 }
 
 export function useChatOpen() {

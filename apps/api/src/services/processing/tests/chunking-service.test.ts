@@ -365,9 +365,9 @@ This table shows information about people from different cities.`
 			expect(result.success).toBe(true)
 			expect(result.data?.boundaries).toBeDefined()
 
-			const boundaries = result.data?.boundaries!
+			const boundaries = result.data?.boundaries ?? []
 			expect(boundaries.length).toBeGreaterThan(0)
-			expect(boundaries[0].type).toMatch(/paragraph|sentence|semantic/)
+			expect(boundaries[0]?.type).toMatch(/paragraph|sentence|semantic/)
 		})
 
 		it("should respect paragraph boundaries", async () => {
