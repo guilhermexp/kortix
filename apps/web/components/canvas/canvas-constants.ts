@@ -1,20 +1,12 @@
-// Helper function to get theme-aware colors from CSS variables
-const _getCSSVar = (varName: string): string => {
-	if (typeof document === "undefined") return "";
-	return getComputedStyle(document.documentElement)
-		.getPropertyValue(varName)
-		.trim();
-};
-
 // Helper to check if we're in dark mode
 const isDarkMode = (): boolean => {
-	if (typeof document === "undefined") return true;
-	return document.documentElement.classList.contains("dark");
-};
+	if (typeof document === "undefined") return true
+	return document.documentElement.classList.contains("dark")
+}
 
 // Enhanced glass-morphism color palette with theme support
 export const getColors = () => {
-	const dark = isDarkMode();
+	const dark = isDarkMode()
 
 	return {
 		background: {
@@ -67,58 +59,8 @@ export const getColors = () => {
 			extends: "rgba(16, 185, 129, 0.5)",
 			derives: "rgba(147, 197, 253, 0.5)",
 		},
-	};
-};
+	}
+}
 
 // Legacy export for backwards compatibility
-export const colors = getColors();
-
-export const LAYOUT_CONSTANTS = {
-	centerX: 400,
-	centerY: 300,
-	clusterRadius: 150, // Memory "bubble" size around a doc - smaller bubble
-	spaceSpacing: 400, // How far apart the *spaces* (groups of docs) sit - reduced for better visualization
-	documentSpacing: 250, // How far the first doc in a space sits from its space-centre - reduced for better visualization
-	minDocDist: 200, // Minimum distance two documents in the **same space** are allowed to be - reduced for better visualization
-	memoryClusterRadius: 150,
-};
-
-// Graph view settings
-export const GRAPH_SETTINGS = {
-	console: {
-		initialZoom: 0.8, // Higher zoom for console - better overview
-		initialPanX: 0,
-		initialPanY: 0,
-	},
-	consumer: {
-		initialZoom: 0.5, // Changed from 0.1 to 0.5 for better initial visibility
-		initialPanX: 400, // Pan towards center to compensate for larger layout
-		initialPanY: 300, // Pan towards center to compensate for larger layout
-	},
-};
-
-// Responsive positioning for different app variants
-export const POSITIONING = {
-	console: {
-		legend: {
-			desktop: "bottom-4 right-4",
-			mobile: "bottom-4 right-4",
-		},
-		loadingIndicator: "top-20 right-4",
-
-		spacesSelector: "top-4 left-4",
-		viewToggle: "", // Not used in console
-		nodeDetail: "top-4 right-4",
-	},
-	consumer: {
-		legend: {
-			desktop: "top-18 right-4",
-			mobile: "bottom-[180px] left-4",
-		},
-		loadingIndicator: "top-20 right-4",
-
-		spacesSelector: "", // Hidden in consumer
-		viewToggle: "top-4 right-4", // Consumer has view toggle
-		nodeDetail: "top-4 right-4",
-	},
-};
+export const colors = getColors()

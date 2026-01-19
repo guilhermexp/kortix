@@ -301,10 +301,11 @@ export const extractGalleryImages = (
 		document?.raw?.geminiFile,
 		// Adicionar memoryEntries como última opção
 		...(document?.memoryEntries
-			? document.memoryEntries.map((m: any) => m.metadata?.images).filter(Boolean)
+			? document.memoryEntries
+					.map((m: any) => m.metadata?.images)
+					.filter(Boolean)
 			: []),
 	]
-
 
 	for (const source of sources) {
 		if (!source) continue
@@ -324,8 +325,7 @@ export const extractGalleryImages = (
 				// REMOVIDO: filtro isLowResolutionImage - thumbnails de PDF podem ser pequenas mas válidas
 			}
 
-			const alt =
-				typeof item === "object" ? item?.alt || item?.title || "" : ""
+			const alt = typeof item === "object" ? item?.alt || item?.title || "" : ""
 			images.push({ src, alt })
 
 			if (images.length >= limit) break

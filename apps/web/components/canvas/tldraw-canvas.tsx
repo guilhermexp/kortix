@@ -3,7 +3,7 @@
 import "./tldraw-canvas.css"
 import { $fetch } from "@repo/lib/api"
 import { Button } from "@repo/ui/components/button"
-import { getColors } from "@repo/ui/memory-graph/constants"
+import { getColors } from "./canvas-constants"
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
 import { useQuery } from "@tanstack/react-query"
 import {

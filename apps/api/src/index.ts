@@ -44,7 +44,6 @@ import { chatRouter } from "./routes/chat.router"
 import { connectionsRouter } from "./routes/connections.router"
 import { conversationsRouter } from "./routes/conversations.router"
 import { deepAgentRouter, documentsRouter } from "./routes/documents.router"
-import { graphRouter } from "./routes/graph.router"
 import { healthHandler } from "./routes/health"
 import { registerMcpRoutes } from "./routes/mcp"
 import {
@@ -236,7 +235,6 @@ app.route("/v3/settings", settingsRouter)
 app.route("/v3/canvas-projects", canvasProjectsRouter)
 app.route("/v3/canvas", canvasRouter)
 app.route("/v3/conversations", conversationsRouter)
-app.route("/v3/graph", graphRouter)
 app.route("/chat", chatRouter)
 
 // Waitlist status (simple inline)

@@ -26,7 +26,7 @@ import {
 } from "@repo/ui/components/alert-dialog"
 import { Badge } from "@repo/ui/components/badge"
 import { Card, CardContent, CardHeader } from "@repo/ui/components/card"
-import { getColors } from "@repo/ui/memory-graph/constants"
+import { getColors } from "./canvas-constants"
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
 import {
 	Brain,
