@@ -229,12 +229,16 @@ export async function summarizeYoutubeVideo(
 			return null
 		}
 
-		// 2) Summarize with OpenRouter (Grok)
-		const viaOpenRouter = await summarizeWithOpenRouter(text, {
-			title,
-			url,
-			contentType: "video/youtube",
-		})
+		// 2) Summarize with OpenRouter (Grok) - use longer timeout for YouTube videos (transcripts can be long)
+		const viaOpenRouter = await summarizeWithOpenRouter(
+			text,
+			{
+				title,
+				url,
+				contentType: "video/youtube",
+			},
+			{ timeoutMs: 30_000 }, // 30 seconds for YouTube videos
+		)
 		return viaOpenRouter ? ensureUseCasesSection(viaOpenRouter) : null
 	} catch (error) {
 		console.error("summarizeYoutubeVideo (text+OpenRouter) failed:", error)

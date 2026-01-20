@@ -19,6 +19,9 @@ export async function summarizeWithOpenRouter(
 		url?: string | null
 		contentType?: string | null
 	},
+	options?: {
+		timeoutMs?: number
+	},
 ): Promise<string | null> {
 	const trimmed = (text || "").trim()
 
@@ -47,7 +50,7 @@ export async function summarizeWithOpenRouter(
 				},
 				{ role: "user", content: textPrompt },
 			],
-			{ maxTokens: 800, timeoutMs: 12_000 },
+			{ maxTokens: 800, timeoutMs: options?.timeoutMs ?? 12_000 },
 		)
 		if (answer?.trim()) {
 			console.log(
@@ -82,7 +85,7 @@ export async function summarizeWithOpenRouter(
 				},
 				{ role: "user", content: urlPrompt },
 			],
-			{ maxTokens: 800, timeoutMs: 12_000 },
+			{ maxTokens: 800, timeoutMs: options?.timeoutMs ?? 12_000 },
 		)
 		if (answer?.trim()) {
 			console.log(
