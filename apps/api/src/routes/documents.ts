@@ -27,6 +27,7 @@ import {
 	generateCacheKey,
 } from "../services/query-cache"
 import { findRelatedLinks, type RelatedLink } from "../services/related-links"
+import { addConnectionUpdateJob } from "../worker/connection-updater-job"
 
 const defaultContainerTag = "sm_project_default"
 
@@ -632,6 +633,14 @@ export async function addDocument({
 					})
 				}
 
+				// Queue connection update job (async - doesn't block response)
+				addConnectionUpdateJob(existing.id, organizationId).catch((err) => {
+					console.error("[addDocument] Failed to queue connection update", {
+						documentId: existing.id,
+						error: err instanceof Error ? err.message : String(err),
+					})
+				})
+
 				invalidateDocumentCaches()
 				return MemoryResponseSchema.parse({
 					id: existing.id,
@@ -797,6 +806,14 @@ export async function addDocument({
 			})
 		})
 	}
+
+	// Queue connection update job (async - doesn't block response)
+	addConnectionUpdateJob(docId, organizationId).catch((err) => {
+		console.error("[addDocument] Failed to queue connection update", {
+			documentId: docId,
+			error: err instanceof Error ? err.message : String(err),
+		})
+	})
 
 	invalidateDocumentCaches()
 	return MemoryResponseSchema.parse({ id: docId, status: "processing" })
@@ -1493,6 +1510,15 @@ export async function updateDocument(
 		throw new Error("Document not found after update")
 	}
 
+	// Queue connection update job (async - doesn't block response)
+	addConnectionUpdateJob(documentId, organizationId).catch((err) => {
+		console.error("[updateDocument] Failed to queue connection update", {
+			documentId,
+			error: err instanceof Error ? err.message : String(err),
+		})
+	})
+
+	invalidateDocumentCaches()
 	return updated
 }
 
