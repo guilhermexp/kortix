@@ -37,6 +37,7 @@ import type { DocumentWithMemories } from "@/lib/types/document"
 import { useChatMentionQueue, useChatOpen, useProject } from "@/stores"
 import { useCanvasSelection } from "@/stores/canvas"
 import { formatDate, getDocumentSnippet, stripMarkdown } from "../memories"
+import { RelatedDocumentsPanel } from "../memories/related-documents-panel"
 import { DocumentProjectTransfer } from "./document-project-transfer"
 
 const _LazyMemoryEntriesSidebar = dynamic(
@@ -703,6 +704,9 @@ export function MemoryEditClient({
 										)}
 									</AnimatePresence>
 								</Collapsible>
+
+								{/* Related documents panel */}
+								<RelatedDocumentsPanel document={document} />
 							</div>
 						</div>
 					</div>
