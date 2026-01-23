@@ -8,7 +8,12 @@
 import { getColors } from "@repo/ui/memory-graph/constants"
 import type { DocumentWithMemories } from "@ui/memory-graph/types"
 import { FileText, Link2, Plus, Sparkles, Trash2, User } from "lucide-react"
-import { memo, useCallback, useMemo, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useState } from "react"
+import {
+	createDocumentConnection,
+	deleteDocumentConnection,
+	listDocumentConnections,
+} from "@/lib/api"
 import { Button } from "../ui/button"
 import {
 	Dialog,
@@ -24,6 +29,7 @@ import {
 type ConnectionType = "automatic" | "manual"
 
 type RelatedDocument = {
+	connectionId: string // Connection ID for deletion
 	documentId: string
 	title: string | null | undefined
 	summary: string | null | undefined
@@ -37,28 +43,18 @@ interface RelatedDocumentsPanelProps {
 	document: DocumentWithMemories
 }
 
-const asRecord = (obj: unknown): Record<string, unknown> | undefined => {
-	return obj && typeof obj === "object" && !Array.isArray(obj)
-		? (obj as Record<string, unknown>)
-		: undefined
-}
-
-const extractRelatedDocuments = (
-	document: DocumentWithMemories,
-): RelatedDocument[] => {
-	const raw = asRecord(document.raw)
-	if (!raw) return []
-
-	const relatedDocs = raw.relatedDocuments
-	if (!Array.isArray(relatedDocs)) return []
-
-	return relatedDocs.filter(
-		(doc): doc is RelatedDocument =>
-			doc &&
-			typeof doc === "object" &&
-			typeof doc.documentId === "string" &&
-			typeof doc.similarityScore === "number",
-	)
+// Helper function to transform API response to RelatedDocument format
+const transformConnectionToRelatedDoc = (conn: any): RelatedDocument => {
+	return {
+		connectionId: conn.id,
+		documentId: conn.targetDocumentId,
+		title: conn.targetDocument?.title,
+		summary: conn.targetDocument?.summary,
+		similarityScore: conn.similarityScore || 0,
+		connectionType: conn.connectionType,
+		reason: conn.reason,
+		createdAt: conn.createdAt,
+	}
 }
 
 const getConnectionIcon = (type: ConnectionType) => {
@@ -112,11 +108,39 @@ const RelatedDocumentsPanelImpl = ({
 		new Set(),
 	)
 	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+	const [relatedDocs, setRelatedDocs] = useState<RelatedDocument[]>([])
+	const [loading, setLoading] = useState(true)
+	const [error, setError] = useState<string | null>(null)
+	const [selectedDocumentId, setSelectedDocumentId] = useState("")
+	const [connectionReason, setConnectionReason] = useState("")
+	const [addLoading, setAddLoading] = useState(false)
 
-	const relatedDocs = useMemo(
-		() => extractRelatedDocuments(document),
-		[document],
-	)
+	// Fetch related documents on mount
+	useEffect(() => {
+		async function fetchRelatedDocs() {
+			try {
+				setLoading(true)
+				const response = await listDocumentConnections(document.id, {
+					limit: 10,
+				})
+
+				// Transform to expected format
+				const docs: RelatedDocument[] = response.connections.map((conn) =>
+					transformConnectionToRelatedDoc(conn),
+				)
+
+				setRelatedDocs(docs)
+				setError(null)
+			} catch (err) {
+				console.error("Failed to fetch related documents:", err)
+				setError("Failed to load related documents")
+			} finally {
+				setLoading(false)
+			}
+		}
+
+		fetchRelatedDocs()
+	}, [document.id])
 
 	const toggleReason = useCallback((docId: string) => {
 		setExpandedReasons((prev) => {
@@ -134,26 +158,96 @@ const RelatedDocumentsPanelImpl = ({
 		window.location.href = `/memory/${docId}/edit`
 	}, [])
 
+	// Show loading state
+	if (loading) {
+		return (
+			<div className="mt-6">
+				<div
+					className="text-sm font-medium mb-3 py-2"
+					style={{ color: colors.text.secondary }}
+				>
+					<div className="flex items-center gap-2">
+						<Link2 className="w-4 h-4" />
+						Documentos Relacionados
+					</div>
+				</div>
+				<div className="text-sm" style={{ color: colors.text.secondary }}>
+					Carregando documentos relacionados...
+				</div>
+			</div>
+		)
+	}
+
+	// Show error state
+	if (error) {
+		return (
+			<div className="mt-6">
+				<div
+					className="text-sm font-medium mb-3 py-2"
+					style={{ color: colors.text.secondary }}
+				>
+					<div className="flex items-center gap-2">
+						<Link2 className="w-4 h-4" />
+						Documentos Relacionados
+					</div>
+				</div>
+				<div className="text-sm text-red-400">{error}</div>
+			</div>
+		)
+	}
+
 	const handleDeleteConnection = useCallback(
-		async (targetDocId: string) => {
-			// TODO: Implement API call to delete connection
-			// This will be implemented in a later subtask
+		async (connectionId: string, targetDocId: string) => {
 			if (
-				window.confirm(
+				!window.confirm(
 					"Are you sure you want to remove this connection? This action cannot be undone.",
 				)
 			) {
-				// For now, just log - API integration will come later
+				return
+			}
+
+			try {
+				await deleteDocumentConnection(connectionId)
+
+				// Update local state to remove the deleted connection
+				setRelatedDocs((prev) =>
+					prev.filter((doc) => doc.documentId !== targetDocId),
+				)
+			} catch (error) {
+				console.error("Failed to delete connection:", error)
+				alert("Failed to remove connection. Please try again.")
 			}
 		},
-		[document.id],
+		[],
 	)
 
 	const handleAddConnection = useCallback(async () => {
-		// TODO: Implement API call to add connection
-		// This will be implemented in a later subtask
-		setIsAddDialogOpen(false)
-	}, [document.id])
+		if (!selectedDocumentId) {
+			alert("Please enter a document ID")
+			return
+		}
+
+		try {
+			setAddLoading(true)
+			await createDocumentConnection(
+				document.id,
+				selectedDocumentId,
+				connectionReason || undefined,
+			)
+
+			setIsAddDialogOpen(false)
+			setSelectedDocumentId("")
+			setConnectionReason("")
+
+			// Reload to show new connection
+			window.location.reload()
+		} catch (error) {
+			console.error("Failed to create connection:", error)
+			alert("Failed to create connection. Please try again.")
+		} finally {
+			setAddLoading(false)
+		}
+	}, [document.id, selectedDocumentId, connectionReason])
 
 	return (
 		<div className="mt-6">
@@ -188,11 +282,48 @@ const RelatedDocumentsPanelImpl = ({
 							</DialogDescription>
 						</DialogHeader>
 
-						<div className="py-4">
-							<p className="text-sm" style={{ color: colors.text.secondary }}>
-								Document selection and reason input will be implemented in a
-								later phase.
-							</p>
+						<div className="py-4 space-y-4">
+							<div>
+								<label
+									className="text-sm font-medium"
+									style={{ color: colors.text.primary }}
+								>
+									Target Document ID
+								</label>
+								<input
+									type="text"
+									placeholder="Enter document ID"
+									className="w-full mt-2 px-3 py-2 bg-white/5 border border-white/10 rounded-md text-sm"
+									style={{ color: colors.text.primary }}
+									value={selectedDocumentId}
+									onChange={(e) => setSelectedDocumentId(e.target.value)}
+								/>
+								<p
+									className="text-xs mt-1"
+									style={{ color: colors.text.secondary }}
+								>
+									For now, paste the document ID. Document search will be added
+									later.
+								</p>
+							</div>
+
+							<div>
+								<label
+									className="text-sm font-medium"
+									style={{ color: colors.text.primary }}
+								>
+									Reason (optional)
+								</label>
+								<textarea
+									placeholder="Why are these documents connected?"
+									className="w-full mt-2 px-3 py-2 bg-white/5 border border-white/10 rounded-md text-sm"
+									style={{ color: colors.text.primary }}
+									rows={3}
+									maxLength={500}
+									value={connectionReason}
+									onChange={(e) => setConnectionReason(e.target.value)}
+								/>
+							</div>
 						</div>
 
 						<DialogFooter>
@@ -200,11 +331,16 @@ const RelatedDocumentsPanelImpl = ({
 								variant="outline"
 								onClick={() => setIsAddDialogOpen(false)}
 								type="button"
+								disabled={addLoading}
 							>
 								Cancel
 							</Button>
-							<Button onClick={handleAddConnection} type="button">
-								Add Connection
+							<Button
+								onClick={handleAddConnection}
+								type="button"
+								disabled={addLoading || !selectedDocumentId}
+							>
+								{addLoading ? "Adding..." : "Add Connection"}
 							</Button>
 						</DialogFooter>
 					</DialogContent>
@@ -286,7 +422,7 @@ const RelatedDocumentsPanelImpl = ({
 												className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
 												onClick={(e) => {
 													e.stopPropagation()
-													handleDeleteConnection(doc.documentId)
+													handleDeleteConnection(doc.connectionId, doc.documentId)
 												}}
 												type="button"
 												title="Remove connection"
