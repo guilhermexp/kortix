@@ -44,6 +44,7 @@ import { chatRouter } from "./routes/chat.router"
 import { connectionsRouter } from "./routes/connections.router"
 import { conversationsRouter } from "./routes/conversations.router"
 import { deepAgentRouter, documentsRouter } from "./routes/documents.router"
+import { documentConnectionsRouter } from "./routes/document-connections.router"
 import { healthHandler } from "./routes/health"
 import { registerMcpRoutes } from "./routes/mcp"
 import {
@@ -231,6 +232,7 @@ app.route("/v3/documents", documentsRouter)
 app.route("/v3/deep-agent", deepAgentRouter)
 app.route("/v3/search", searchRouter)
 app.route("/v3/connections", connectionsRouter)
+app.route("/v3/document-connections", documentConnectionsRouter)
 app.route("/v3/settings", settingsRouter)
 app.route("/v3/canvas-projects", canvasProjectsRouter)
 app.route("/v3/canvas", canvasRouter)
