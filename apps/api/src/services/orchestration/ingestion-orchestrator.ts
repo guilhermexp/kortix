@@ -519,6 +519,11 @@ export class IngestionOrchestratorService
 
 	/**
 	 * Store document in database
+	 *
+	 * Uses storeCompleteDocument helper which provides:
+	 * - Transaction-like behavior with rollback on error
+	 * - Comprehensive error handling and logging
+	 * - Automatic cleanup of partial insertions
 	 */
 	private async storeDocument(
 		documentId: string,
@@ -526,115 +531,91 @@ export class IngestionOrchestratorService
 		processed: ProcessedDocument,
 		preview?: PreviewResult,
 	): Promise<void> {
-		this.logger.debug("Storing document", { documentId })
+		this.logger.debug("Storing document", {
+			documentId,
+			hasChunks: !!processed.chunks?.length,
+			hasSummary: !!processed.summary,
+		})
 
-		const { supabaseAdmin } = await import("../../supabase")
+		const { storeCompleteDocument } = await import("./database-storage")
 		const { upsertAutoSummaryMemory } = await import("../ingestion/db")
 
-		// Store document chunks with embeddings
-		if (processed.chunks?.length > 0) {
-			const documentChunks = processed.chunks
-				.filter((chunk) => chunk.content)
-				.map((chunk, index) => ({
-					document_id: documentId,
-					org_id: input.organizationId,
-					content: chunk.content,
-					embedding: chunk.embedding,
-					chunk_index: chunk.position ?? index,
-					token_count: Math.ceil(chunk.content.length / 4),
-					embedding_model: "voyage-3-lite",
-					metadata: chunk.metadata ?? {},
-					created_at: new Date().toISOString(),
-				}))
-
-			const { error: chunksError } = await supabaseAdmin
-				.from("document_chunks")
-				.insert(documentChunks)
-
-			if (chunksError) {
-				this.logger.error("Failed to store chunks", chunksError as Error, {
-					documentId,
-				})
-				throw this.createError(
-					"STORAGE_ERROR",
-					`Failed to save chunks: ${chunksError.message}`,
-				)
-			}
-
-			this.logger.debug("Stored document chunks", {
-				documentId,
-				chunkCount: documentChunks.length,
-			})
-		}
-
-		// Create document record
-		const documentRecord = {
-			id: documentId,
-			org_id: input.organizationId,
-			user_id: input.userId,
-			content: processed.content,
-			summary: processed.summary,
-			tags: processed.tags,
-			preview_image: preview?.url ?? null,
-			chunk_count: processed.chunks?.length ?? 0,
-			url: input.url ?? null,
-			type: input.type ?? null,
-			status: "done",
-			metadata: {
-				...input.metadata,
-				...processed.metadata,
-				processingCompleted: true,
-				storedAt: new Date().toISOString(),
-			},
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString(),
-		}
-
-		const { error: docError } = await supabaseAdmin
-			.from("documents")
-			.insert(documentRecord)
-
-		if (docError) {
-			this.logger.error("Failed to store document", docError as Error, {
-				documentId,
-			})
-			throw this.createError(
-				"STORAGE_ERROR",
-				`Failed to save document: ${docError.message}`,
-			)
-		}
-
-		// Create auto-summary memory if summary exists
-		if (processed.summary) {
-			try {
-				await upsertAutoSummaryMemory({
+		try {
+			// Store complete document with transaction-like behavior and rollback
+			await storeCompleteDocument(
+				{
 					documentId,
 					organizationId: input.organizationId,
 					userId: input.userId,
-					spaceId: (input.metadata?.spaceId as string) ?? null,
-					summary: processed.summary,
+					url: input.url,
+					title: processed.metadata?.title as string | undefined,
+					content: processed.content,
+					processed,
+					preview,
 					metadata: {
-						tags: processed.tags,
-						wordCount: processed.content.length,
-						chunkCount: processed.chunks?.length ?? 0,
+						...input.metadata,
+						...processed.metadata,
+						processingCompleted: true,
+						storedAt: new Date().toISOString(),
 					},
-				})
+					raw: input.metadata?.raw as Record<string, unknown> | undefined,
+				},
+				this.logger,
+			)
 
-				this.logger.debug("Created auto-summary memory", { documentId })
-			} catch (error) {
-				// Non-critical error, log and continue
-				this.logger.warn("Failed to create auto-summary memory", {
-					documentId,
-					error: (error as Error).message,
-				})
+			this.logger.debug("Document stored with chunks and status", {
+				documentId,
+				chunkCount: processed.chunks?.length ?? 0,
+			})
+
+			// Create auto-summary memory if summary exists
+			if (processed.summary) {
+				try {
+					this.logger.debug("Creating auto-summary memory", { documentId })
+
+					await upsertAutoSummaryMemory({
+						documentId,
+						organizationId: input.organizationId,
+						userId: input.userId,
+						spaceId: (input.metadata?.spaceId as string) ?? null,
+						summary: processed.summary,
+						metadata: {
+							tags: processed.tags,
+							wordCount: processed.content.length,
+							chunkCount: processed.chunks?.length ?? 0,
+						},
+					})
+
+					this.logger.debug("Auto-summary memory created successfully", {
+						documentId,
+					})
+				} catch (error) {
+					// Non-critical error, log and continue
+					this.logger.warn("Failed to create auto-summary memory", {
+						documentId,
+						error: (error as Error).message,
+					})
+				}
 			}
-		}
 
-		this.logger.info("Document stored successfully", {
-			documentId,
-			chunkCount: processed.chunks?.length ?? 0,
-			hasPreview: !!preview,
-		})
+			this.logger.info("Document stored successfully", {
+				documentId,
+				chunkCount: processed.chunks?.length ?? 0,
+				hasPreview: !!preview,
+				hasSummary: !!processed.summary,
+			})
+		} catch (error) {
+			this.logger.error("Failed to store document", error as Error, {
+				documentId,
+				organizationId: input.organizationId,
+			})
+
+			// Wrap error with more context
+			throw this.createError(
+				"STORAGE_ERROR",
+				`Failed to store document ${documentId}: ${(error as Error).message}`,
+			)
+		}
 	}
 
 	// ========================================================================
