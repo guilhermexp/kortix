@@ -50,3 +50,58 @@ COMMENT ON COLUMN document_connections.similarity_score IS 'Cosine similarity sc
 COMMENT ON COLUMN document_connections.reason IS 'Explanation of why documents are connected (AI-generated for automatic, user-provided for manual)';
 COMMENT ON COLUMN document_connections.user_id IS 'User who created the manual connection, NULL for automatic connections';
 COMMENT ON COLUMN document_connections.metadata IS 'Additional connection metadata (topics, keywords, etc)';
+
+-- ================================================
+-- Function: find_similar_documents
+-- Finds documents similar to a given document using vector similarity search
+-- ================================================
+
+CREATE OR REPLACE FUNCTION find_similar_documents(
+    p_document_id UUID,
+    p_similarity_threshold NUMERIC DEFAULT 0.7,
+    p_limit INTEGER DEFAULT 10
+)
+RETURNS TABLE (
+    document_id UUID,
+    title TEXT,
+    summary TEXT,
+    similarity_score NUMERIC,
+    space_id UUID,
+    created_at TIMESTAMPTZ
+) AS $$
+DECLARE
+    v_org_id UUID;
+    v_embedding vector(1536);
+BEGIN
+    -- Get the source document's organization and embedding
+    SELECT org_id, summary_embedding
+    INTO v_org_id, v_embedding
+    FROM documents
+    WHERE id = p_document_id;
+
+    -- Return empty result if document not found or has no embedding
+    IF v_org_id IS NULL OR v_embedding IS NULL THEN
+        RETURN;
+    END IF;
+
+    -- Find similar documents using cosine similarity
+    RETURN QUERY
+    SELECT
+        d.id AS document_id,
+        d.title,
+        d.summary,
+        (1 - (d.summary_embedding <=> v_embedding))::NUMERIC(5,4) AS similarity_score,
+        d.space_id,
+        d.created_at
+    FROM documents d
+    WHERE
+        d.id != p_document_id
+        AND d.org_id = v_org_id
+        AND d.summary_embedding IS NOT NULL
+        AND (1 - (d.summary_embedding <=> v_embedding)) >= p_similarity_threshold
+    ORDER BY d.summary_embedding <=> v_embedding ASC
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+COMMENT ON FUNCTION find_similar_documents IS 'Finds documents similar to the given document using vector cosine similarity on summary embeddings';
