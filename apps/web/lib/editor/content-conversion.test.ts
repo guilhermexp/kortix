@@ -1138,6 +1138,189 @@ describe("content-conversion", () => {
 
 			expect(resultText).toBe("Just one paragraph")
 		})
+
+		describe("markdown round-trip", () => {
+			it("should preserve headings through markdown->editor->markdown", () => {
+				const originalMarkdown = "# Heading 1\n\n## Heading 2\n\n### Heading 3"
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				expect(resultMarkdown).toBe("# Heading 1\n## Heading 2\n### Heading 3")
+			})
+
+			it("should preserve bold text through markdown->editor->markdown", () => {
+				const originalMarkdown = "This is **bold text** in a paragraph"
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				expect(resultMarkdown).toBe("This is **bold text** in a paragraph")
+			})
+
+			it("should preserve italic text through markdown->editor->markdown", () => {
+				const originalMarkdown = "This is *italic text* in a paragraph"
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				expect(resultMarkdown).toBe("This is *italic text* in a paragraph")
+			})
+
+			it("should preserve underline text through markdown->editor->markdown", () => {
+				const originalMarkdown = "This is <u>underlined text</u> in a paragraph"
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				expect(resultMarkdown).toBe("This is <u>underlined text</u> in a paragraph")
+			})
+
+			it("should preserve mixed inline formatting through markdown->editor->markdown", () => {
+				const originalMarkdown = "Text with **bold** and *italic* and `code` formatting"
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				expect(resultMarkdown).toBe("Text with **bold** and *italic* and `code` formatting")
+			})
+
+			it("should preserve links through markdown->editor->markdown", () => {
+				const originalMarkdown = "Check out [this link](https://example.com) for more info"
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				expect(resultMarkdown).toBe("Check out [this link](https://example.com) for more info")
+			})
+
+			it("should preserve unordered lists through markdown->editor->markdown", () => {
+				const originalMarkdown = "- Item 1\n- Item 2\n- Item 3"
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				// Lists need double newline separation in the original markdown format
+				expect(resultMarkdown).toContain("Item 1")
+				expect(resultMarkdown).toContain("Item 2")
+				expect(resultMarkdown).toContain("Item 3")
+			})
+
+			it("should preserve ordered lists through markdown->editor->markdown", () => {
+				const originalMarkdown = "1. First item\n2. Second item\n3. Third item"
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				expect(resultMarkdown).toContain("First item")
+				expect(resultMarkdown).toContain("Second item")
+				expect(resultMarkdown).toContain("Third item")
+			})
+
+			it("should preserve code blocks through markdown->editor->markdown", () => {
+				const originalMarkdown = "```\nconst x = 42;\nconsole.log(x);\n```"
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				expect(resultMarkdown).toContain("```")
+				expect(resultMarkdown).toContain("const x = 42;")
+				expect(resultMarkdown).toContain("console.log(x);")
+			})
+
+			it("should preserve inline code through markdown->editor->markdown", () => {
+				const originalMarkdown = "Use the `useState` hook for state management"
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				expect(resultMarkdown).toBe("Use the `useState` hook for state management")
+			})
+
+			it("should preserve blockquotes through markdown->editor->markdown", () => {
+				const originalMarkdown = "> This is a quote"
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				expect(resultMarkdown).toBe("> This is a quote")
+			})
+
+			it("should preserve horizontal rules through markdown->editor->markdown", () => {
+				const originalMarkdown = "Before\n\n---\n\nAfter"
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				expect(resultMarkdown).toContain("---")
+				expect(resultMarkdown).toContain("Before")
+				expect(resultMarkdown).toContain("After")
+			})
+
+			it("should preserve images through markdown->editor->markdown", () => {
+				const originalMarkdown = "![Alt text](https://example.com/image.png)"
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				expect(resultMarkdown).toBe("![Alt text](https://example.com/image.png)")
+			})
+
+			it("should preserve tables through markdown->editor->markdown", () => {
+				const originalMarkdown = "| Header 1 | Header 2 |\n| --- | --- |\n| Cell 1 | Cell 2 |\n| Cell 3 | Cell 4 |"
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				expect(resultMarkdown).toContain("Header 1")
+				expect(resultMarkdown).toContain("Header 2")
+				expect(resultMarkdown).toContain("Cell 1")
+				expect(resultMarkdown).toContain("Cell 2")
+				expect(resultMarkdown).toContain("---")
+			})
+
+			it("should preserve complex mixed content through markdown->editor->markdown", () => {
+				const originalMarkdown = `# Main Title
+
+This is a paragraph with **bold** and *italic* text.
+
+## Subsection
+
+- Item 1 with [link](https://example.com)
+- Item 2 with \`code\`
+
+\`\`\`
+function example() {
+  return true;
+}
+\`\`\`
+
+> A wise quote
+
+![Image](https://example.com/img.png)`
+
+				const editorContent = textToEditorContent(originalMarkdown)
+				const resultMarkdown = editorContentToMarkdown(editorContent)
+
+				// Verify key elements are preserved
+				expect(resultMarkdown).toContain("# Main Title")
+				expect(resultMarkdown).toContain("**bold**")
+				expect(resultMarkdown).toContain("*italic*")
+				expect(resultMarkdown).toContain("## Subsection")
+				expect(resultMarkdown).toContain("[link](https://example.com)")
+				expect(resultMarkdown).toContain("`code`")
+				expect(resultMarkdown).toContain("```")
+				expect(resultMarkdown).toContain("function example()")
+				expect(resultMarkdown).toContain("> A wise quote")
+				expect(resultMarkdown).toContain("![Image](https://example.com/img.png)")
+			})
+
+			it("should handle multiple round-trips without data loss", () => {
+				const originalMarkdown = "# Title\n\nParagraph with **bold** and *italic*"
+
+				// First round-trip
+				const editorContent1 = textToEditorContent(originalMarkdown)
+				const markdown1 = editorContentToMarkdown(editorContent1)
+
+				// Second round-trip
+				const editorContent2 = textToEditorContent(markdown1)
+				const markdown2 = editorContentToMarkdown(editorContent2)
+
+				// Third round-trip
+				const editorContent3 = textToEditorContent(markdown2)
+				const markdown3 = editorContentToMarkdown(editorContent3)
+
+				// All should be equivalent
+				expect(markdown1).toBe(markdown2)
+				expect(markdown2).toBe(markdown3)
+			})
+		})
 	})
 
 	describe("edge cases", () => {
