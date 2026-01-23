@@ -20,6 +20,15 @@ import {
 	SettingsRequestSchema,
 	UpdateProjectSchema,
 } from "../validation/api"
+import {
+	CreateManualConnectionSchema,
+	CreateConnectionResponseSchema,
+	DeleteConnectionResponseSchema,
+	FindSimilarDocumentsResponseSchema,
+	FindSimilarDocumentsSchema,
+	ListConnectionsQuerySchema,
+	ListConnectionsResponseSchema,
+} from "../validation/document-connections"
 import { BACKEND_URL } from "./env"
 
 // Settings response schema - this is custom to console (not in shared validation)
@@ -173,6 +182,35 @@ export const apiSchema = createSchema({
 		output: GraphConnectionsResponseSchema,
 	},
 
+	// Document connections operations
+	"@post/document-connections/find-similar": {
+		input: FindSimilarDocumentsSchema,
+		output: z.object({
+			data: FindSimilarDocumentsResponseSchema,
+		}),
+	},
+
+	"@post/document-connections/list": {
+		input: ListConnectionsQuerySchema,
+		output: z.object({
+			data: ListConnectionsResponseSchema,
+		}),
+	},
+
+	"@post/document-connections": {
+		input: CreateManualConnectionSchema,
+		output: z.object({
+			data: CreateConnectionResponseSchema,
+		}),
+	},
+
+	"@delete/document-connections/:connectionId": {
+		output: z.object({
+			data: DeleteConnectionResponseSchema,
+		}),
+		params: z.object({ connectionId: z.string() }),
+	},
+
 	// Get document by ID
 	"@get/documents/:id": {
 		output: z.object({
@@ -259,6 +297,62 @@ export const $fetch = createFetch({
 	},
 	schema: apiSchema,
 })
+
+// Document connections helper methods
+export async function findSimilarDocuments(
+	documentId: string,
+	options?: { threshold?: number; limit?: number },
+) {
+	const response = await $fetch("@post/document-connections/find-similar", {
+		body: {
+			documentId,
+			threshold: options?.threshold,
+			limit: options?.limit,
+		},
+	})
+	return response.data
+}
+
+export async function listDocumentConnections(
+	documentId: string,
+	options?: { connectionType?: "automatic" | "manual"; limit?: number },
+) {
+	const response = await $fetch("@post/document-connections/list", {
+		body: {
+			documentId,
+			connectionType: options?.connectionType,
+			limit: options?.limit,
+		},
+	})
+	return response.data
+}
+
+export async function createDocumentConnection(
+	sourceDocumentId: string,
+	targetDocumentId: string,
+	reason?: string,
+	metadata?: Record<string, unknown>,
+) {
+	const response = await $fetch("@post/document-connections", {
+		body: {
+			sourceDocumentId,
+			targetDocumentId,
+			reason,
+			metadata,
+		},
+	})
+	return response.data
+}
+
+export async function deleteDocumentConnection(connectionId: string) {
+	const response = await $fetch(
+		"@delete/document-connections/:connectionId",
+		{
+			params: { connectionId },
+		},
+	)
+	return response.data
+}
 
 // Re-export types that might be used elsewhere
 export type { SearchResult }
