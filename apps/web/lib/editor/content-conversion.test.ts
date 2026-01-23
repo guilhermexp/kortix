@@ -241,7 +241,6 @@ describe("content-conversion", () => {
 			}
 
 			const result = editorContentToMarkdown(container)
-			// Currently just returns text, but should be extended for full markdown
 			expect(result).toBe("Hello World")
 		})
 
@@ -268,6 +267,821 @@ describe("content-conversion", () => {
 
 			const result = editorContentToMarkdown(container)
 			expect(result).toBe("First\nSecond")
+		})
+
+		describe("headings", () => {
+			it("should convert h1 headings", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "h1",
+							attributes: {},
+							children: [{ content: "Heading 1" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("# Heading 1")
+			})
+
+			it("should convert h2 headings", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "h2",
+							attributes: {},
+							children: [{ content: "Heading 2" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("## Heading 2")
+			})
+
+			it("should convert h3 headings", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "h3",
+							attributes: {},
+							children: [{ content: "Heading 3" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("### Heading 3")
+			})
+
+			it("should convert h4 headings", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "h4",
+							attributes: {},
+							children: [{ content: "Heading 4" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("#### Heading 4")
+			})
+
+			it("should convert h5 headings", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "h5",
+							attributes: {},
+							children: [{ content: "Heading 5" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("##### Heading 5")
+			})
+
+			it("should convert h6 headings", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "h6",
+							attributes: {},
+							children: [{ content: "Heading 6" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("###### Heading 6")
+			})
+
+			it("should handle headings with inline formatting", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "h1",
+							attributes: {},
+							children: [
+								{ content: "Bold ", bold: true },
+								{ content: "Normal" },
+							],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("# **Bold **Normal")
+			})
+		})
+
+		describe("inline formatting", () => {
+			it("should convert bold text", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [{ content: "Bold text", bold: true }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("**Bold text**")
+			})
+
+			it("should convert italic text", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [{ content: "Italic text", italic: true }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("*Italic text*")
+			})
+
+			it("should convert underlined text", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [{ content: "Underlined text", underline: true }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("<u>Underlined text</u>")
+			})
+
+			it("should convert inline code", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [{ content: "const x = 42", elementType: "code" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("`const x = 42`")
+			})
+
+			it("should convert links", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [
+								{ content: "Click ", href: "https://example.com" },
+							],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("[Click ](https://example.com)")
+			})
+
+			it("should convert mixed inline formatting", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [
+								{ content: "Normal " },
+								{ content: "bold", bold: true },
+								{ content: " and " },
+								{ content: "italic", italic: true },
+								{ content: " text" },
+							],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("Normal **bold** and *italic* text")
+			})
+
+			it("should convert bold and italic combined", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [
+								{ content: "Bold and italic", bold: true, italic: true },
+							],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("***Bold and italic***")
+			})
+		})
+
+		describe("code blocks", () => {
+			it("should convert code blocks", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "pre",
+							attributes: {},
+							children: [{ content: "const x = 42;\nconsole.log(x);" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("```\nconst x = 42;\nconsole.log(x);\n```")
+			})
+
+			it("should handle empty code blocks", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "pre",
+							attributes: {},
+							children: [{ content: "" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("```\n\n```")
+			})
+		})
+
+		describe("blockquotes", () => {
+			it("should convert blockquotes", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "blockquote",
+							attributes: {},
+							children: [{ content: "This is a quote" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("> This is a quote")
+			})
+
+			it("should handle blockquotes with inline formatting", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "blockquote",
+							attributes: {},
+							children: [
+								{ content: "Quote with ", bold: true },
+								{ content: "formatting" },
+							],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("> **Quote with **formatting")
+			})
+		})
+
+		describe("horizontal rules", () => {
+			it("should convert horizontal rules", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "hr",
+							attributes: {},
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("---")
+			})
+
+			it("should handle horizontal rules between paragraphs", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [{ content: "Before" }],
+						},
+						{
+							id: "block-2",
+							type: "hr",
+							attributes: {},
+						},
+						{
+							id: "block-3",
+							type: "p",
+							attributes: {},
+							children: [{ content: "After" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("Before\n---\nAfter")
+			})
+		})
+
+		describe("images", () => {
+			it("should convert images with alt text", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "img",
+							attributes: {
+								src: "https://example.com/image.png",
+								alt: "Example image",
+							},
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("![Example image](https://example.com/image.png)")
+			})
+
+			it("should handle images without alt text", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "img",
+							attributes: {
+								src: "https://example.com/image.png",
+								alt: "",
+							},
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("![](https://example.com/image.png)")
+			})
+
+			it("should handle images with captions", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "img",
+							attributes: {
+								src: "https://example.com/image.png",
+								alt: "Example",
+							},
+							content: "Image caption",
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe(
+					"![Example](https://example.com/image.png)\n*Image caption*",
+				)
+			})
+		})
+
+		describe("empty content", () => {
+			it("should handle empty container", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("")
+			})
+
+			it("should filter out empty paragraphs", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [{ content: "Content" }],
+						},
+						{
+							id: "block-2",
+							type: "p",
+							attributes: {},
+							children: [{ content: " " }],
+						},
+						{
+							id: "block-3",
+							type: "p",
+							attributes: {},
+							children: [{ content: "More content" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("Content\nMore content")
+			})
+		})
+
+		describe("complex structures", () => {
+			it("should handle mixed content types", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "h1",
+							attributes: {},
+							children: [{ content: "Title" }],
+						},
+						{
+							id: "block-2",
+							type: "p",
+							attributes: {},
+							children: [
+								{ content: "This is a " },
+								{ content: "bold", bold: true },
+								{ content: " paragraph." },
+							],
+						},
+						{
+							id: "block-3",
+							type: "blockquote",
+							attributes: {},
+							children: [{ content: "A quote" }],
+						},
+						{
+							id: "block-4",
+							type: "pre",
+							attributes: {},
+							children: [{ content: "code example" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe(
+					"# Title\nThis is a **bold** paragraph.\n> A quote\n```\ncode example\n```",
+				)
+			})
+
+			it("should handle document with all heading levels", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "h1",
+							attributes: {},
+							children: [{ content: "H1" }],
+						},
+						{
+							id: "block-2",
+							type: "h2",
+							attributes: {},
+							children: [{ content: "H2" }],
+						},
+						{
+							id: "block-3",
+							type: "h3",
+							attributes: {},
+							children: [{ content: "H3" }],
+						},
+						{
+							id: "block-4",
+							type: "h4",
+							attributes: {},
+							children: [{ content: "H4" }],
+						},
+						{
+							id: "block-5",
+							type: "h5",
+							attributes: {},
+							children: [{ content: "H5" }],
+						},
+						{
+							id: "block-6",
+							type: "h6",
+							attributes: {},
+							children: [{ content: "H6" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6")
+			})
+		})
+
+		describe("special characters", () => {
+			it("should handle special characters in content", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [{ content: "Special: @#$%^&*()_+-={}[]|\\:;'<>?,./~`" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("Special: @#$%^&*()_+-={}[]|\\:;'<>?,./~`")
+			})
+
+			it("should handle unicode characters", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [{ content: "Unicode: 你好 мир 🌍 émojis" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("Unicode: 你好 мир 🌍 émojis")
+			})
+
+			it("should handle markdown-like characters in plain text", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [{ content: "Text with *asterisks* and **double**" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("Text with *asterisks* and **double**")
+			})
+		})
+
+		describe("edge cases", () => {
+			it("should handle multiple consecutive headings", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "h1",
+							attributes: {},
+							children: [{ content: "First" }],
+						},
+						{
+							id: "block-2",
+							type: "h2",
+							attributes: {},
+							children: [{ content: "Second" }],
+						},
+						{
+							id: "block-3",
+							type: "h3",
+							attributes: {},
+							children: [{ content: "Third" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("# First\n## Second\n### Third")
+			})
+
+			it("should handle very long content", () => {
+				const longText = "A".repeat(5000)
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [{ content: longText }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe(longText)
+			})
+
+			it("should handle empty inline content", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [
+								{ content: "" },
+								{ content: "Text" },
+								{ content: "" },
+							],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("Text")
+			})
+
+			it("should handle br elements by filtering them", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [{ content: "Before" }],
+						},
+						{
+							id: "block-2",
+							type: "br",
+							attributes: {},
+						},
+						{
+							id: "block-3",
+							type: "p",
+							attributes: {},
+							children: [{ content: "After" }],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("Before\nAfter")
+			})
+
+			it("should handle nested inline formatting properly", () => {
+				const container: ContainerNode = {
+					id: "root",
+					type: "container",
+					attributes: {},
+					children: [
+						{
+							id: "block-1",
+							type: "p",
+							attributes: {},
+							children: [
+								{ content: "Start " },
+								{ content: "bold", bold: true },
+								{ content: " " },
+								{ content: "italic", italic: true },
+								{ content: " " },
+								{ content: "code", elementType: "code" },
+								{ content: " end" },
+							],
+						},
+					],
+				}
+
+				const result = editorContentToMarkdown(container)
+				expect(result).toBe("Start **bold** *italic* `code` end")
+			})
 		})
 	})
 
