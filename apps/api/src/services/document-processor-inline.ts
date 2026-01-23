@@ -7,34 +7,38 @@
 
 import { getDefaultUserId, supabaseAdmin } from "../supabase"
 import { createDocumentExtractorService } from "./extraction"
-import { createIngestionOrchestrator } from "./orchestration"
 import { createPreviewGeneratorService } from "./preview/preview-generator"
 import { createDocumentProcessorService } from "./processing"
+import {
+	storeCompleteDocument,
+	updateDocumentStatus,
+	updateJobStatus,
+} from "./orchestration/database-storage"
+import { upsertAutoSummaryMemory } from "./ingestion/db"
 import { documentCache, documentListCache } from "./query-cache"
 
 // Create service instances (lazy initialization)
-let orchestrator: ReturnType<typeof createIngestionOrchestrator> | null = null
+let extractorService: ReturnType<typeof createDocumentExtractorService> | null =
+	null
+let processorService: ReturnType<typeof createDocumentProcessorService> | null =
+	null
 let previewService: ReturnType<typeof createPreviewGeneratorService> | null =
 	null
 
-async function getOrchestrator() {
-	if (!orchestrator) {
-		const extractorService = createDocumentExtractorService()
-		const processorService = createDocumentProcessorService()
-		const previewSvc = createPreviewGeneratorService({
-			enableImageExtraction: true,
-			enableFaviconExtraction: false,
-			fallbackChain: ["image"],
-			timeout: 15000,
-			strategyTimeout: 5000,
-		})
-		orchestrator = createIngestionOrchestrator()
-		orchestrator.setExtractorService(extractorService)
-		orchestrator.setProcessorService(processorService)
-		orchestrator.setPreviewService(previewSvc)
-		await orchestrator.initialize()
+async function getExtractorService() {
+	if (!extractorService) {
+		extractorService = createDocumentExtractorService()
+		await extractorService.initialize()
 	}
-	return orchestrator
+	return extractorService
+}
+
+async function getProcessorService() {
+	if (!processorService) {
+		processorService = createDocumentProcessorService()
+		await processorService.initialize()
+	}
+	return processorService
 }
 
 async function getPreviewService() {
@@ -83,15 +87,8 @@ export async function processDocumentInline(
 
 	try {
 		// Mark as processing
-		await supabaseAdmin
-			.from("documents")
-			.update({ status: "processing", updated_at: new Date().toISOString() })
-			.eq("id", documentId)
-
-		await supabaseAdmin
-			.from("ingestion_jobs")
-			.update({ status: "processing" })
-			.eq("id", jobId)
+		await updateDocumentStatus(documentId, "processing")
+		await updateJobStatus(jobId, "processing")
 
 		// Fetch document
 		const { data: document, error: docError } = await supabaseAdmin
@@ -107,8 +104,21 @@ export async function processDocumentInline(
 
 		const userId = document.user_id ?? (await getDefaultUserId())
 
-		// Generate preview first (fast, for UI)
-		let previewUrl: string | null = null
+		// Step 1: Extract content
+		const extractor = await getExtractorService()
+		const extraction = await extractor.extract({
+			originalContent: document.content ?? null,
+			url: document.url ?? null,
+			type: document.type ?? null,
+			metadata: document.metadata as Record<string, unknown>,
+		})
+
+		// Step 2: Process content (chunking, embeddings, summary, tags)
+		const processor = await getProcessorService()
+		const processed = await processor.process(extraction)
+
+		// Step 3: Generate preview
+		let preview: { url: string } | null = null
 		try {
 			if (
 				document.url?.includes("youtube.com") ||
@@ -116,28 +126,26 @@ export async function processDocumentInline(
 			) {
 				const videoId = extractYouTubeId(document.url)
 				if (videoId) {
-					previewUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+					preview = {
+						url: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+					}
 				}
 			}
 
-			if (!previewUrl && document.url) {
-				const svc = await getPreviewService()
-				const previewResult = await svc.generate({
-					title: document.title || "Untitled",
-					text: document.content || "",
+			if (!preview && document.url) {
+				const previewSvc = await getPreviewService()
+				const previewResult = await previewSvc.generate({
+					title: extraction.title || "Untitled",
+					text: extraction.text || "",
 					url: document.url,
-					source: document.source || "unknown",
-					contentType: document.type || "text",
-					metadata: (document.metadata as Record<string, unknown>) || {},
+					source: extraction.source || "unknown",
+					contentType: extraction.contentType || "text",
+					metadata: (extraction.extractionMetadata as Record<string, unknown>) ||
+						{},
 				})
-				previewUrl = previewResult?.url || null
-			}
-
-			if (previewUrl) {
-				await supabaseAdmin
-					.from("documents")
-					.update({ preview_image: previewUrl })
-					.eq("id", documentId)
+				if (previewResult?.url) {
+					preview = { url: previewResult.url }
+				}
 			}
 		} catch (e) {
 			console.warn("[inline-processor] Preview failed", {
@@ -146,130 +154,79 @@ export async function processDocumentInline(
 			})
 		}
 
-		// Process with orchestrator
-		const orch = await getOrchestrator()
-		const result = await orch.processDocument({
-			content: document.content ?? "",
-			url: document.url ?? null,
-			type: document.type ?? null,
-			userId: userId ?? "",
+		// Step 4: Store everything using orchestrator storage helper
+		// This handles chunks, document updates, and status in a transaction-like manner
+		const metaTags = extraction.extractionMetadata?.metaTags ?? {}
+		const allImages = [
+			...(extraction.images ?? []),
+			...(metaTags.ogImage ? [metaTags.ogImage] : []),
+			...(metaTags.twitterImage ? [metaTags.twitterImage] : []),
+		].filter((v, i, a) => a.indexOf(v) === i)
+
+		await storeCompleteDocument({
+			documentId,
 			organizationId: orgId,
+			userId: userId ?? "",
+			url: document.url ?? null,
+			title: extraction.title,
+			content: extraction.text,
+			processed,
+			preview,
 			metadata: {
 				...document.metadata,
-				documentId,
-				jobId,
-				source: document.source,
-				raw: document.raw,
+				processingCompleted: true,
+				extractedAt: new Date().toISOString(),
+				...(extraction.extractionMetadata ?? {}),
+				ogImage: metaTags.ogImage,
+				twitterImage: metaTags.twitterImage,
+				...(processed.tags ? { tags: processed.tags } : {}),
+			},
+			raw: {
+				...(extraction.raw ?? {}),
+				extraction: { images: allImages, source: extraction.source },
 			},
 		})
 
-		const extraction = result.metadata?.extraction
-		const processed = result.metadata?.processed
-		const preview = result.metadata?.preview
-		const metaTags = extraction?.extractionMetadata?.metaTags ?? {}
-
-		// Build final update
-		const finalUpdate: Record<string, unknown> = {
-			status: "done",
-			error: null,
-			updated_at: new Date().toISOString(),
-		}
-
-		if (extraction?.text) finalUpdate.content = extraction.text
-		if (extraction?.title) finalUpdate.title = extraction.title
-		if (processed?.summary) finalUpdate.summary = processed.summary
-		if (preview?.url) finalUpdate.preview_image = preview.url
-		if (extraction?.wordCount) finalUpdate.word_count = extraction.wordCount
-		if (processed?.tags?.length) finalUpdate.tags = processed.tags
-
-		finalUpdate.metadata = {
-			...document.metadata,
-			processingCompleted: true,
-			extractedAt: new Date().toISOString(),
-			...(extraction?.extractionMetadata ?? {}),
-			ogImage: metaTags.ogImage,
-			twitterImage: metaTags.twitterImage,
-			...(processed?.tags ? { tags: processed.tags } : {}),
-		}
-
-		if (extraction?.images?.length || metaTags.ogImage) {
-			const allImages = [
-				...(extraction?.images ?? []),
-				...(metaTags.ogImage ? [metaTags.ogImage] : []),
-				...(metaTags.twitterImage ? [metaTags.twitterImage] : []),
-			].filter((v, i, a) => a.indexOf(v) === i)
-
-			finalUpdate.raw = {
-				...(extraction?.raw ?? {}),
-				extraction: { images: allImages, source: extraction?.source },
-			}
-		}
-
-		// Save chunks
-		if (processed?.chunks?.length) {
-			const documentChunks = processed.chunks
-				.filter((chunk) => chunk.content || (chunk as any).text)
-				.map((chunk, index) => ({
-					document_id: documentId,
-					org_id: orgId,
-					content: chunk.content || (chunk as any).text || "",
-					embedding: chunk.embedding,
-					chunk_index: chunk.position ?? index,
-					token_count:
-						(chunk as any).tokenCount ??
-						Math.ceil((chunk.content || "").length / 4),
-					embedding_model: "voyage-3-lite",
-					metadata: chunk.metadata ?? {},
-					created_at: new Date().toISOString(),
-				}))
-
-			const { error: chunksError } = await supabaseAdmin
-				.from("document_chunks")
-				.insert(documentChunks)
-
-			if (chunksError) {
-				console.error("[inline-processor] Chunks failed", {
+		// Create auto-summary memory if summary exists
+		if (processed.summary) {
+			try {
+				await upsertAutoSummaryMemory({
 					documentId,
-					error: chunksError.message,
+					organizationId: orgId,
+					userId: userId ?? "",
+					spaceId:
+						((document.metadata as Record<string, unknown>)
+							?.spaceId as string) ?? null,
+					summary: processed.summary,
+					metadata: {
+						tags: processed.tags,
+						wordCount: extraction.wordCount,
+						chunkCount: processed.chunks?.length ?? 0,
+					},
 				})
-				finalUpdate.status = "failed"
-				finalUpdate.error = `Failed to save chunks: ${chunksError.message}`
-			} else {
-				finalUpdate.chunk_count = documentChunks.length
+			} catch (error) {
+				// Non-critical error, log and continue
+				console.warn("[inline-processor] Auto-summary memory failed", {
+					documentId,
+					error: (error as Error).message,
+				})
 			}
 		}
 
-		// Final update
-		await supabaseAdmin
-			.from("documents")
-			.update(finalUpdate)
-			.eq("id", documentId)
-		await supabaseAdmin
-			.from("ingestion_jobs")
-			.update({ status: "completed", completed_at: new Date().toISOString() })
-			.eq("id", jobId)
+		// Update job status
+		await updateJobStatus(jobId, "completed")
 
 		// Clear cache
 		documentListCache.clear()
 		documentCache.delete(documentId)
 
-		console.log("[inline-processor] Done", {
-			documentId,
-			status: finalUpdate.status,
-		})
+		console.log("[inline-processor] Done", { documentId })
 	} catch (error) {
 		console.error("[inline-processor] Failed", { documentId, error })
 
-		// Mark as failed
+		// Mark as failed (storeCompleteDocument handles document status on failure)
 		const errorMsg = error instanceof Error ? error.message : String(error)
-		await supabaseAdmin
-			.from("documents")
-			.update({ status: "failed", error: errorMsg })
-			.eq("id", documentId)
-		await supabaseAdmin
-			.from("ingestion_jobs")
-			.update({ status: "failed", error_message: errorMsg })
-			.eq("id", jobId)
+		await updateJobStatus(jobId, "failed", errorMsg)
 
 		documentListCache.clear()
 		documentCache.delete(documentId)
