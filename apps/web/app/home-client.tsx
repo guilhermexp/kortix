@@ -476,17 +476,8 @@ const MemoryGraphPage = () => {
 				>
 					<motion.div className="absolute top-0 left-0 right-0 z-20 px-4 pt-2">
 						<div className="flex items-center justify-between gap-2">
-							{/* Project Selector - hidden in canvas/infinity mode */}
-							{viewMode !== "infinity" && (
-								<div
-									className="flex items-center gap-2 pointer-events-auto flex-1"
-									id={TOUR_STEP_IDS.MENU_PROJECTS}
-								>
-									<ProjectSelector className="pointer-events-auto" />
-								</div>
-							)}
 							{/* Empty spacer when in canvas mode */}
-							{viewMode === "infinity" && <div className="flex-1" />}
+							<div className="flex-1" />
 
 							{/* Search Input - only visible in list view, centered */}
 							{viewMode === "list" && (
@@ -523,6 +514,14 @@ const MemoryGraphPage = () => {
 										Rate limit · aguarde {rateLimitSecondsLeft}s
 									</span>
 								) : null}
+								{viewMode !== "infinity" && (
+									<div
+										className="flex items-center gap-2 pointer-events-auto"
+										id={TOUR_STEP_IDS.MENU_PROJECTS}
+									>
+										<ProjectSelector className="pointer-events-auto" />
+									</div>
+								)}
 								{viewMode === "infinity" && (
 									<>
 										<Button

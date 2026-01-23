@@ -157,7 +157,9 @@ async function resolveSupabaseAuthSession(
 
 		// Fast path: reuse recently-validated auth/session mapping.
 		const cached = getCachedSession(accessToken)
-		if (cached) return cached
+		if (cached) {
+			return cached
+		}
 
 		// Verify the token with Supabase
 		const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {

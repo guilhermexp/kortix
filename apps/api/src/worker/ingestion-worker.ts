@@ -10,6 +10,19 @@ loadEnv({ path: join(apiRoot, ".env.local") })
 loadEnv({ path: join(apiRoot, ".env") })
 loadEnv()
 
+// Minimal logging - set LOG_LEVEL=debug for verbose output
+const LOG_LEVEL = process.env.LOG_LEVEL || "warn"
+const LEVELS: Record<string, number> = { silent: 0, error: 1, warn: 2, info: 3, debug: 4 }
+const level = LEVELS[LOG_LEVEL] ?? 2
+const originalLog = console.log
+const originalWarn = console.warn
+console.log = (...args: unknown[]) => {
+	if (level >= 4) originalLog(...args)
+}
+console.warn = (...args: unknown[]) => {
+	if (level >= 2) originalWarn(...args)
+}
+
 import { env } from "../env"
 import { ensureSpace } from "../routes/documents"
 import { createDocumentExtractorService } from "../services/extraction"

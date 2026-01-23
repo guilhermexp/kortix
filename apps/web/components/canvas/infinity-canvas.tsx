@@ -35,6 +35,7 @@ import {
 	useCanvasPositions,
 	useCanvasSelection,
 	useCanvasState,
+	useCanvasStore,
 } from "@/stores/canvas"
 import { DocumentCard } from "./document-card"
 import { DocumentSelectorModal } from "./document-selector-modal"
@@ -50,7 +51,10 @@ const CARD_HALF_HEIGHT = CARD_HEIGHT / 2
 
 export function InfinityCanvas() {
 	const colors = getColors()
+	// selectedProject is used for filtering documents in the palette, NOT for canvas persistence
 	const { selectedProject } = useProject()
+	// canvasProjectId is used for canvas persistence (separate from document project filtering)
+	const canvasProjectId = useCanvasStore((s) => s.canvasProjectId)
 	const {
 		placedDocumentIds,
 		removePlacedDocument,
@@ -648,14 +652,14 @@ export function InfinityCanvas() {
 		clearCanvas()
 	}, [clearCanvas])
 
-	// Load canvas state from API when project changes
+	// Load canvas state from API when canvas project changes
 	useEffect(() => {
 		const loadCanvasState = async () => {
-			if (!selectedProject || typeof window === "undefined") return
+			if (!canvasProjectId || typeof window === "undefined") return
 
 			setIsLoadingCanvas(true)
 			try {
-				const response = await $fetch(`@get/canvas/${selectedProject}`, {
+				const response = await $fetch(`@get/canvas/${canvasProjectId}`, {
 					disableValidation: true,
 				})
 
@@ -681,16 +685,16 @@ export function InfinityCanvas() {
 		}
 
 		loadCanvasState()
-	}, [selectedProject, setCardPositions, setPlacedDocumentIds])
+	}, [canvasProjectId, setCardPositions, setPlacedDocumentIds])
 
 	// Debounced save to API
 	useEffect(() => {
-		if (!selectedProject || typeof window === "undefined") return
+		if (!canvasProjectId || typeof window === "undefined") return
 		if (isLoadingCanvas) return
 
 		const timeoutId = setTimeout(async () => {
 			try {
-				await $fetch(`@post/canvas/${selectedProject}`, {
+				await $fetch(`@post/canvas/${canvasProjectId}`, {
 					body: {
 						state: {
 							positions: cardPositions,
@@ -705,7 +709,7 @@ export function InfinityCanvas() {
 		}, 1000)
 
 		return () => clearTimeout(timeoutId)
-	}, [cardPositions, placedDocumentIds, selectedProject, isLoadingCanvas])
+	}, [cardPositions, placedDocumentIds, canvasProjectId, isLoadingCanvas])
 
 	// Handle drag start
 	const handleDragStart = useCallback((event: DragStartEvent) => {

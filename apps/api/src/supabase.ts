@@ -32,6 +32,9 @@ export function createAuthenticatedSupabase(
  * Create the best available Supabase client for a session.
  * - If session has accessToken (Supabase Auth), creates authenticated client with RLS
  * - Otherwise, falls back to admin client (for legacy sessions or backend operations)
+ *
+ * RLS policies for 'authenticated' role are defined in:
+ * migration/004_add_authenticated_rls_policies.sql
  */
 export function createClientForSession(session: {
 	accessToken?: string
@@ -42,7 +45,6 @@ export function createClientForSession(session: {
 		return createAuthenticatedSupabase(session.accessToken)
 	}
 	// For legacy sessions or when no JWT is available, use admin client
-	// The backend has already verified the session, so this is safe
 	return supabaseAdmin
 }
 

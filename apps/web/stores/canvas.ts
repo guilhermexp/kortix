@@ -1,4 +1,4 @@
-import type { Editor } from "tldraw"
+import type { Editor, TLShapeId } from "tldraw"
 import { create } from "zustand"
 
 // Types for canvas positioning
@@ -8,6 +8,18 @@ export interface CardPosition {
 }
 
 export type CardPositions = Record<string, CardPosition>
+
+// Council session tracking
+export interface CouncilSession {
+	id: string
+	query: string
+	status: "pending" | "stage1" | "stage2" | "stage3" | "completed" | "error"
+	startedAt: number
+	completedAt?: number
+	queryShapeId?: TLShapeId
+	modelShapeIds: Map<string, TLShapeId>
+	verdictShapeId?: TLShapeId
+}
 
 // Main canvas state interface
 export interface CanvasState {
@@ -20,6 +32,11 @@ export interface CanvasState {
 
 	// Selection state for bulk operations
 	selectedDocumentIds: string[]
+
+	// Canvas project ID (separate from document project filtering)
+	// This is used for canvas persistence, NOT for filtering documents
+	canvasProjectId: string | null
+	setCanvasProjectId: (id: string | null) => void
 
 	// Project modal state
 	showProjectModal: boolean
@@ -54,6 +71,11 @@ export interface CanvasState {
 	clearSelection: () => void
 	toggleSelection: (id: string) => void
 	removeSelected: () => void
+
+	// Council session state
+	councilSession: CouncilSession | null
+	setCouncilSession: (session: CouncilSession | null) => void
+	clearCouncilSession: () => void
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -61,6 +83,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 	scopedDocumentIds: [],
 	cardPositions: {},
 	selectedDocumentIds: [],
+	canvasProjectId: null,
+	setCanvasProjectId: (id: string | null) => set({ canvasProjectId: id }),
 	showProjectModal: true,
 	setShowProjectModal: (show: boolean) => set({ showProjectModal: show }),
 
@@ -71,6 +95,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
 	editor: null,
 	setEditor: (editor: Editor | null) => set({ editor }),
+
+	// Council session
+	councilSession: null,
+	setCouncilSession: (session: CouncilSession | null) => set({ councilSession: session }),
+	clearCouncilSession: () => set({ councilSession: null }),
 
 	// Document management actions
 	setPlacedDocumentIds: (ids: string[]) => {

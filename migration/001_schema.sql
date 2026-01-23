@@ -159,7 +159,8 @@ CREATE TABLE IF NOT EXISTS canvas_states (
     project_id TEXT NOT NULL DEFAULT 'default'::text,
     state JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    CONSTRAINT canvas_states_user_project_unique UNIQUE (user_id, project_id)
 );
 
 COMMENT ON TABLE canvas_states IS 'Stores tldraw canvas state for each user per project';

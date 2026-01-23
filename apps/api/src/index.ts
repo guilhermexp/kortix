@@ -22,6 +22,19 @@ try {
 	// ignore env load errors
 }
 
+// Minimal logging - set LOG_LEVEL=debug for verbose output
+const LOG_LEVEL = process.env.LOG_LEVEL || "warn"
+const LEVELS: Record<string, number> = { silent: 0, error: 1, warn: 2, info: 3, debug: 4 }
+const level = LEVELS[LOG_LEVEL] ?? 2
+const originalLog = console.log
+const originalWarn = console.warn
+console.log = (...args: unknown[]) => {
+	if (level >= 4) originalLog(...args)
+}
+console.warn = (...args: unknown[]) => {
+	if (level >= 2) originalWarn(...args)
+}
+
 import { serve } from "@hono/node-server"
 import { zValidator } from "@hono/zod-validator"
 import { Hono } from "hono"
@@ -41,6 +54,7 @@ import {
 } from "./routes/auth"
 import { canvasProjectsRouter, canvasRouter } from "./routes/canvas.router"
 import { chatRouter } from "./routes/chat.router"
+import { councilRouter } from "./routes/council.router"
 import { connectionsRouter } from "./routes/connections.router"
 import { conversationsRouter } from "./routes/conversations.router"
 import { deepAgentRouter, documentsRouter } from "./routes/documents.router"
@@ -235,6 +249,7 @@ app.route("/v3/settings", settingsRouter)
 app.route("/v3/canvas-projects", canvasProjectsRouter)
 app.route("/v3/canvas", canvasRouter)
 app.route("/v3/conversations", conversationsRouter)
+app.route("/v3/council", councilRouter)
 app.route("/chat", chatRouter)
 
 // Waitlist status (simple inline)

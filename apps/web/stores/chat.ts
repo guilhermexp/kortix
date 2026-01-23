@@ -1,3 +1,4 @@
+import { useCallback } from "react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
@@ -303,12 +304,15 @@ export function usePersistentChat() {
 		setSdkSessionIdRaw(projectId, chatId, sdkSessionId)
 	}
 
-	function getSdkSessionId(chatId?: string): string | null | undefined {
-		const id = chatId ?? currentChatId
-		if (!id) return undefined
-		const rec = projectState?.conversations?.[id]
-		return rec?.sdkSessionId
-	}
+	const getSdkSessionId = useCallback(
+		(chatId?: string): string | null | undefined => {
+			const id = chatId ?? currentChatId
+			if (!id) return undefined
+			const rec = projectState?.conversations?.[id]
+			return rec?.sdkSessionId
+		},
+		[currentChatId, projectState],
+	)
 
 	return {
 		conversations,

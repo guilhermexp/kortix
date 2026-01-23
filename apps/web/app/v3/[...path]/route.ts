@@ -118,6 +118,17 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
 			}
 		}
 
+		const contentType = response.headers.get("content-type") || ""
+
+		// Handle SSE streaming responses - don't buffer, stream directly
+		if (contentType.includes("text/event-stream") && response.body) {
+			return new Response(response.body, {
+				status: response.status,
+				statusText: response.statusText,
+				headers: responseHeaders,
+			})
+		}
+
 		const data = await response.text()
 		const disallowBodyStatus = new Set([101, 204, 205, 304])
 		const responseBody = disallowBodyStatus.has(response.status) ? null : data

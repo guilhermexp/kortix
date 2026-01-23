@@ -25,6 +25,7 @@ import {
 	StickyNote,
 	Target,
 	Type,
+	Users,
 	X,
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -44,6 +45,7 @@ import {
 	type GenerationModel,
 	generateContent,
 } from "./canvas-ai-utils"
+import { useCouncil } from "./council"
 
 // ============================================================
 // TYPES
@@ -58,7 +60,7 @@ interface CanvasAIBarProps {
 	editor?: Editor | null
 }
 
-type ExtendedAction = GenerationAction | "shapes"
+type ExtendedAction = GenerationAction | "shapes" | "council"
 
 interface StreamEvent {
 	type: "create" | "update" | "move" | "delete" | "label" | "think" | "message"
@@ -436,6 +438,16 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 	// Subscribe to atoms for context
 	const contextItems = useValue($canvasContextItems)
 
+	// Council hook for LLM Council integration
+	const { startCouncil, isRunning: isCouncilRunning } = useCouncil(editor ?? null, {
+		onSessionComplete: () => {
+			addMessage("assistant", "Council session completed!")
+		},
+		onError: (error) => {
+			addMessage("assistant", `Council error: ${error.message}`)
+		},
+	})
+
 	// Context actions
 	const handleAddContextAction = useCallback(
 		(
@@ -663,11 +675,20 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 	}, [editor, contextItems])
 
 	const handleSubmit = async () => {
-		if ((!inputValue && !imageFile) || isGenerating) return
+		if ((!inputValue && !imageFile) || isGenerating || isCouncilRunning) return
 
 		setIsGenerating(true)
 
 		try {
+			// Handle Council action
+			if (selectedAction === "council") {
+				addMessage("user", inputValue)
+				await startCouncil(inputValue)
+				setInputValue("")
+				setIsGenerating(false)
+				return
+			}
+
 			if (selectedAction === "shapes") {
 				await handleShapesGeneration()
 				setInputValue("")
@@ -1038,6 +1059,18 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 
 						<button
 							className={`p-1.5 rounded-lg transition-colors ${
+								selectedAction === "council"
+									? "bg-purple-500/20 text-purple-400"
+									: "text-muted-foreground hover:text-foreground"
+							}`}
+							onClick={() => setSelectedAction("council")}
+							title="Council - Multiple LLMs"
+						>
+							<Users className="w-4 h-4" />
+						</button>
+
+						<button
+							className={`p-1.5 rounded-lg transition-colors ${
 								showOptions
 									? "bg-foreground/10 text-foreground"
 									: "text-muted-foreground hover:text-foreground"
@@ -1048,7 +1081,7 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 							<Settings className="w-4 h-4" />
 						</button>
 
-						{isGenerating ? (
+						{isGenerating || isCouncilRunning ? (
 							<div className="p-1.5">
 								<Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
 							</div>

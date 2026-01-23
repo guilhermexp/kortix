@@ -1391,6 +1391,7 @@ function useClaudeChat({
 										onComplete({ text: finalText, messages: finalMessages })
 									}
 									setIsThinking(false)
+									setStatus("ready")
 									finished = true
 								}
 							}
@@ -1546,6 +1547,7 @@ function useClaudeChat({
 								onComplete({ text: finalText, messages: finalMessages })
 							}
 							setIsThinking(false)
+							setStatus("ready")
 							finished = true
 							break
 						} else if (type === "error") {
@@ -1561,6 +1563,7 @@ function useClaudeChat({
 							const finalMessages = buildFinalMessages(errorAssistant)
 							setMessages(finalMessages)
 							toast.error(message)
+							setStatus("ready")
 							finished = true
 							break
 						}
@@ -2755,8 +2758,10 @@ export function ChatMessages() {
 				<InputGroup className="rounded-lg border border-border/20 bg-muted/20 focus-within:border-border/40 focus-within:ring-0 focus-within:ring-offset-0 transition-colors">
 					<InputGroupTextarea
 						className="text-foreground placeholder-muted-foreground/50 text-sm"
-						disabled={status === "submitted"}
-						onChange={(e) => setInput(e.target.value)}
+						onChange={(e) => {
+							console.log("[Chat Input] onChange:", e.target.value)
+							setInput(e.target.value)
+						}}
 						onKeyDown={(e) => {
 							// Open mentions on '@'
 							if (e.key === "@") {

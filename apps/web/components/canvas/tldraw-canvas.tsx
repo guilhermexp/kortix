@@ -57,6 +57,7 @@ import {
 import { CanvasImageEditor } from "./canvas-image-editor"
 import { DocumentSelectorModal } from "./document-selector-modal"
 import { ProjectSelectionModal } from "./project-selection-modal"
+import { CouncilShapeUtil } from "./council"
 import { ResponseShapeUtil } from "./response-shape"
 import { TargetAreaTool } from "./target-area-tool"
 import { TargetShapeTool } from "./target-shape-tool"
@@ -97,12 +98,16 @@ export function TldrawCanvas() {
 	const colors = getColors()
 	const { theme, resolvedTheme } = useTheme()
 	const isDarkMode = resolvedTheme === "dark"
-	const { selectedProject, setSelectedProject } = useProject()
+	// selectedProject is used for filtering documents in the palette, NOT for canvas persistence
+	const { selectedProject } = useProject()
+	// canvasProjectId is used for canvas persistence (separate from document project filtering)
+	const canvasProjectId = useCanvasStore((s) => s.canvasProjectId)
+	const setCanvasProjectId = useCanvasStore((s) => s.setCanvasProjectId)
 	const showProjectModal = useCanvasStore((s) => s.showProjectModal)
 	const setShowProjectModal = useCanvasStore((s) => s.setShowProjectModal)
 
-	// Use selectedProject from store, falling back to "default"
-	const effectiveCanvasProjectId = selectedProject || "default"
+	// Use canvasProjectId from canvas store, falling back to "default"
+	const effectiveCanvasProjectId = canvasProjectId || "default"
 
 	const {
 		placedDocumentIds,
@@ -944,10 +949,10 @@ export function TldrawCanvas() {
 		fetchDocuments()
 	}, [fetchDocuments])
 
-	// Clear canvas when project changes
+	// Clear canvas when canvas project changes
 	// Track previous project and the latest editor separately so this effect only runs
 	// on real project transitions (not on editor mount/update which previously wiped shapes)
-	const prevSelectedProjectRef = useRef<string | null>(null)
+	const prevCanvasProjectRef = useRef<string | null>(null)
 	const editorRef = useRef<Editor | null>(null)
 
 	useEffect(() => {
@@ -955,9 +960,9 @@ export function TldrawCanvas() {
 	}, [editor])
 
 	useEffect(() => {
-		const previousProject = prevSelectedProjectRef.current
+		const previousProject = prevCanvasProjectRef.current
 
-		if (previousProject !== null && previousProject !== selectedProject) {
+		if (previousProject !== null && previousProject !== canvasProjectId) {
 			clearCanvas()
 
 			const currentEditor = editorRef.current
@@ -967,8 +972,8 @@ export function TldrawCanvas() {
 					.deleteShapes(currentEditor.getSelectedShapeIds())
 			}
 		}
-		prevSelectedProjectRef.current = selectedProject
-	}, [selectedProject, clearCanvas])
+		prevCanvasProjectRef.current = canvasProjectId
+	}, [canvasProjectId, clearCanvas])
 
 	// Sync documents to tldraw native shapes
 	useEffect(() => {
@@ -1290,7 +1295,7 @@ export function TldrawCanvas() {
 	}
 
 	const handleCanvasProjectSelect = (projectId: string) => {
-		setSelectedProject(projectId)
+		setCanvasProjectId(projectId)
 		setShowProjectModal(false)
 	}
 
@@ -1394,7 +1399,7 @@ export function TldrawCanvas() {
 							)
 						}
 					}}
-					shapeUtils={[ResponseShapeUtil]}
+					shapeUtils={[ResponseShapeUtil, CouncilShapeUtil]}
 					tools={[TargetShapeTool, TargetAreaTool]}
 				/>
 			</div>
