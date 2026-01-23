@@ -92,3 +92,90 @@ FROM memories;
 ```
 
 Todos devem mostrar `total = with_embedding`.
+
+---
+
+## Document Ingestion Flow Verification
+
+Automated verification script for the document ingestion and database storage orchestration.
+
+### Usage
+
+1. **Start the API service:**
+   ```bash
+   cd apps/api
+   bun run dev
+   ```
+
+2. **Set environment variables:**
+   ```bash
+   export API_URL="http://localhost:3001"
+   export AUTH_TOKEN="your_auth_token"
+   export ORG_ID="your_organization_id"
+   export USER_ID="your_user_id"
+   ```
+
+   To get an auth token, sign in via the API:
+   ```bash
+   curl -X POST http://localhost:3001/api/auth/sign-in \
+     -H "Content-Type: application/json" \
+     -d '{
+       "email": "your@email.com",
+       "password": "your_password"
+     }'
+   ```
+
+3. **Run the verification script:**
+   ```bash
+   ./apps/api/scripts/verify-ingestion-flow.sh
+   ```
+
+### What It Tests
+
+- ✅ Text document creation and processing
+- ✅ URL document creation and processing
+- ✅ Error handling (invalid content)
+- ✅ Large documents (multiple chunks)
+- ✅ Concurrent document creation
+
+### Manual Database Verification
+
+After running the automated tests, manually verify the database state using the queries in `MANUAL_VERIFICATION_GUIDE.md`:
+
+1. Document records created with correct status
+2. Chunks inserted with embeddings
+3. Status transitions recorded correctly
+4. Memories created for completed documents
+5. No orphaned or partial data
+
+### Cleanup Test Data
+
+```sql
+-- Delete test documents and related data
+DELETE FROM document_chunks
+WHERE document_id IN (
+  SELECT id FROM documents
+  WHERE metadata->>'source' = 'automated-verification'
+  OR metadata->>'testCase' LIKE 'test-%'
+);
+
+DELETE FROM memories
+WHERE source_document_id IN (
+  SELECT id FROM documents
+  WHERE metadata->>'source' = 'automated-verification'
+  OR metadata->>'testCase' LIKE 'test-%'
+);
+
+DELETE FROM ingestion_jobs
+WHERE document_id IN (
+  SELECT id FROM documents
+  WHERE metadata->>'source' = 'automated-verification'
+  OR metadata->>'testCase' LIKE 'test-%'
+);
+
+DELETE FROM documents
+WHERE metadata->>'source' = 'automated-verification'
+OR metadata->>'testCase' LIKE 'test-%';
+```
+
+For detailed manual verification steps, see: `apps/api/MANUAL_VERIFICATION_GUIDE.md`
