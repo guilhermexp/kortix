@@ -7,8 +7,18 @@
 
 import { getColors } from "@repo/ui/memory-graph/constants"
 import type { DocumentWithMemories } from "@ui/memory-graph/types"
-import { FileText, Link2, Sparkles, User } from "lucide-react"
+import { FileText, Link2, Plus, Sparkles, Trash2, User } from "lucide-react"
 import { memo, useCallback, useMemo, useState } from "react"
+import { Button } from "../ui/button"
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "../ui/dialog"
 
 // Type definitions matching backend validation schemas
 type ConnectionType = "automatic" | "manual"
@@ -101,6 +111,7 @@ const RelatedDocumentsPanelImpl = ({
 	const [expandedReasons, setExpandedReasons] = useState<Set<string>>(
 		new Set(),
 	)
+	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
 
 	const relatedDocs = useMemo(
 		() => extractRelatedDocuments(document),
@@ -123,18 +134,81 @@ const RelatedDocumentsPanelImpl = ({
 		window.location.href = `/memory/${docId}/edit`
 	}, [])
 
-	if (relatedDocs.length === 0) {
-		return null
-	}
+	const handleDeleteConnection = useCallback(
+		async (targetDocId: string) => {
+			// TODO: Implement API call to delete connection
+			// This will be implemented in a later subtask
+			if (
+				window.confirm(
+					"Are you sure you want to remove this connection? This action cannot be undone.",
+				)
+			) {
+				// For now, just log - API integration will come later
+			}
+		},
+		[document.id],
+	)
+
+	const handleAddConnection = useCallback(async () => {
+		// TODO: Implement API call to add connection
+		// This will be implemented in a later subtask
+		setIsAddDialogOpen(false)
+	}, [document.id])
 
 	return (
 		<div className="mt-6">
 			<div
-				className="text-sm font-medium mb-3 flex items-center gap-2 py-2"
+				className="text-sm font-medium mb-3 flex items-center justify-between py-2"
 				style={{ color: colors.text.secondary }}
 			>
-				<Link2 className="w-4 h-4" />
-				Documentos Relacionados ({relatedDocs.length})
+				<div className="flex items-center gap-2">
+					<Link2 className="w-4 h-4" />
+					Documentos Relacionados ({relatedDocs.length})
+				</div>
+
+				<Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+					<DialogTrigger asChild>
+						<Button
+							size="sm"
+							variant="outline"
+							className="h-7 px-2 text-xs"
+							type="button"
+						>
+							<Plus className="w-3 h-3" />
+							<span>Add Connection</span>
+						</Button>
+					</DialogTrigger>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Add Manual Connection</DialogTitle>
+							<DialogDescription>
+								Create a manual connection to another document. Manual
+								connections help you organize related information that might not
+								be automatically detected.
+							</DialogDescription>
+						</DialogHeader>
+
+						<div className="py-4">
+							<p className="text-sm" style={{ color: colors.text.secondary }}>
+								Document selection and reason input will be implemented in a
+								later phase.
+							</p>
+						</div>
+
+						<DialogFooter>
+							<Button
+								variant="outline"
+								onClick={() => setIsAddDialogOpen(false)}
+								type="button"
+							>
+								Cancel
+							</Button>
+							<Button onClick={handleAddConnection} type="button">
+								Add Connection
+							</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
 			</div>
 
 			<div className="grid grid-cols-1 gap-3">
@@ -189,18 +263,37 @@ const RelatedDocumentsPanelImpl = ({
 										)}
 									</div>
 
-									{/* Connection type badge */}
-									<div
-										className="flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium flex-shrink-0"
-										style={{
-											backgroundColor: "rgba(12, 18, 30, 0.75)",
-											color: "rgba(255, 255, 255, 0.92)",
-											backdropFilter: "blur(12px)",
-											WebkitBackdropFilter: "blur(12px)",
-										}}
-									>
-										{getConnectionIcon(doc.connectionType)}
-										<span>{getConnectionLabel(doc.connectionType)}</span>
+									<div className="flex items-center gap-1.5">
+										{/* Connection type badge */}
+										<div
+											className="flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium flex-shrink-0"
+											style={{
+												backgroundColor: "rgba(12, 18, 30, 0.75)",
+												color: "rgba(255, 255, 255, 0.92)",
+												backdropFilter: "blur(12px)",
+												WebkitBackdropFilter: "blur(12px)",
+											}}
+										>
+											{getConnectionIcon(doc.connectionType)}
+											<span>{getConnectionLabel(doc.connectionType)}</span>
+										</div>
+
+										{/* Delete button - only for manual connections */}
+										{doc.connectionType === "manual" && (
+											<Button
+												size="icon-sm"
+												variant="ghost"
+												className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+												onClick={(e) => {
+													e.stopPropagation()
+													handleDeleteConnection(doc.documentId)
+												}}
+												type="button"
+												title="Remove connection"
+											>
+												<Trash2 className="w-3 h-3 text-red-400" />
+											</Button>
+										)}
 									</div>
 								</div>
 
