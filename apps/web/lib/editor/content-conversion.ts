@@ -1,4 +1,16 @@
-import type { ContainerNode, TextNode } from "@/components/ui/rich-editor"
+import type {
+	ContainerNode,
+	EditorNode,
+	InlineText,
+	StructuralNode,
+	TextNode,
+} from "@/components/ui/rich-editor"
+import {
+	hasInlineChildren,
+	isContainerNode,
+	isStructuralNode,
+	isTextNode,
+} from "@/components/ui/rich-editor"
 
 /**
  * Converts plain text or markdown to editor ContainerNode format
@@ -48,9 +60,10 @@ export function editorContentToText(container: ContainerNode): string {
  * Converts editor ContainerNode to markdown
  */
 export function editorContentToMarkdown(container: ContainerNode): string {
-	// TODO: Implement proper markdown conversion
-	// For now, just extract text
-	return extractTextFromNode(container)
+	return serializeNodeToMarkdown(container)
+		.split("\n")
+		.filter((line) => line.trim().length > 0)
+		.join("\n")
 }
 
 /**
@@ -106,6 +119,195 @@ function extractTextFromNode(node: ContainerNode | TextNode | any): string {
 	}
 
 	return ""
+}
+
+/**
+ * Serialize a node to markdown format
+ */
+function serializeNodeToMarkdown(node: EditorNode): string {
+	// Container nodes
+	if (isContainerNode(node)) {
+		return node.children
+			.map((child) => serializeNodeToMarkdown(child))
+			.filter((text) => text.trim().length > 0)
+			.join("\n")
+	}
+
+	// Structural nodes (tables, thead, tbody, tr)
+	if (isStructuralNode(node)) {
+		return serializeStructuralNodeToMarkdown(node)
+	}
+
+	// Text nodes
+	if (isTextNode(node)) {
+		return serializeTextNodeToMarkdown(node)
+	}
+
+	return ""
+}
+
+/**
+ * Serialize a text node to markdown
+ */
+function serializeTextNodeToMarkdown(node: TextNode): string {
+	const { type } = node
+
+	// Handle BR elements
+	if (type === "br") {
+		return ""
+	}
+
+	// Handle image nodes
+	if (type === "img") {
+		const src = (node.attributes?.src as string) || ""
+		const alt = (node.attributes?.alt as string) || ""
+		const caption = node.content || ""
+
+		let markdown = `![${alt}](${src})`
+		if (caption) {
+			markdown += `\n*${caption}*`
+		}
+		return markdown
+	}
+
+	// Handle horizontal rule
+	if (type === "hr") {
+		return "---"
+	}
+
+	// Get the text content
+	let content = ""
+	if (hasInlineChildren(node)) {
+		content = serializeInlineChildren(node.children || [])
+	} else if (node.lines && node.lines.length > 0) {
+		content = node.lines
+			.map((line) => {
+				if (line.children && line.children.length > 0) {
+					return serializeInlineChildren(line.children)
+				}
+				return line.content || ""
+			})
+			.join("\n")
+	} else {
+		content = node.content || ""
+	}
+
+	// Apply block-level markdown formatting based on type
+	switch (type) {
+		case "h1":
+			return `# ${content}`
+		case "h2":
+			return `## ${content}`
+		case "h3":
+			return `### ${content}`
+		case "h4":
+			return `#### ${content}`
+		case "h5":
+			return `##### ${content}`
+		case "h6":
+			return `###### ${content}`
+		case "blockquote":
+			return `> ${content}`
+		case "code":
+			return `\`${content}\``
+		case "pre":
+			return `\`\`\`\n${content}\n\`\`\``
+		case "li":
+			return `- ${content}`
+		case "th":
+		case "td":
+			return content
+		default:
+			return content
+	}
+}
+
+/**
+ * Serialize inline children to markdown with formatting
+ */
+function serializeInlineChildren(children: InlineText[]): string {
+	return children
+		.map((child) => {
+			let content = child.content || ""
+
+			// Apply inline formatting
+			if (child.bold) {
+				content = `**${content}**`
+			}
+			if (child.italic) {
+				content = `*${content}*`
+			}
+			if (child.underline) {
+				content = `<u>${content}</u>`
+			}
+
+			// Handle links
+			if (child.href) {
+				content = `[${content}](${child.href})`
+			}
+
+			// Handle inline code
+			if (child.elementType === "code") {
+				content = `\`${child.content || ""}\``
+			}
+
+			return content
+		})
+		.join("")
+}
+
+/**
+ * Serialize structural nodes (tables) to markdown
+ */
+function serializeStructuralNodeToMarkdown(node: StructuralNode): string {
+	if (node.type === "table") {
+		const children = node.children || []
+		let markdown = ""
+
+		// Find thead and tbody
+		const thead = children.find((child) => child.type === "thead")
+		const tbody = children.find((child) => child.type === "tbody")
+
+		// Serialize table header
+		if (thead && isStructuralNode(thead)) {
+			const headerRows = thead.children || []
+			if (headerRows.length > 0) {
+				const headerRow = headerRows[0]
+				if (headerRow && isStructuralNode(headerRow)) {
+					const cells = headerRow.children || []
+					const headerCells = cells
+						.map((cell) => serializeNodeToMarkdown(cell))
+						.join(" | ")
+					markdown += `| ${headerCells} |\n`
+
+					// Add separator row
+					const separator = cells.map(() => "---").join(" | ")
+					markdown += `| ${separator} |\n`
+				}
+			}
+		}
+
+		// Serialize table body
+		if (tbody && isStructuralNode(tbody)) {
+			const bodyRows = tbody.children || []
+			for (const row of bodyRows) {
+				if (isStructuralNode(row)) {
+					const cells = row.children || []
+					const rowCells = cells
+						.map((cell) => serializeNodeToMarkdown(cell))
+						.join(" | ")
+					markdown += `| ${rowCells} |\n`
+				}
+			}
+		}
+
+		return markdown.trim()
+	}
+
+	// For other structural nodes, recurse through children
+	return (node.children || [])
+		.map((child) => serializeNodeToMarkdown(child))
+		.join("")
 }
 
 /**
