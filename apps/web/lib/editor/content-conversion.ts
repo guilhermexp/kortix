@@ -11,6 +11,10 @@ import {
 	isStructuralNode,
 	isTextNode,
 } from "@/components/ui/rich-editor"
+import {
+	isMarkdownTable,
+	parseMarkdownTable,
+} from "@/components/ui/rich-editor/utils/markdown-table-parser"
 
 /**
  * Converts plain text or markdown to editor ContainerNode format
@@ -20,33 +24,355 @@ export function textToEditorContent(text: string): ContainerNode {
 		return createEmptyContainer()
 	}
 
-	// Split by paragraphs (double newline or single newline)
-	const paragraphs = text.split(/\n\n+/).filter((p) => p.trim().length > 0)
+	// Parse markdown blocks
+	const blocks = parseMarkdownBlocks(text)
 
-	if (paragraphs.length === 0) {
+	if (blocks.length === 0) {
 		return createEmptyContainer()
 	}
-
-	const children = paragraphs.map((para, index) => {
-		const trimmedContent = para.trim() || " " // Ensure non-empty content
-		return {
-			id: `block-${index + 1}`,
-			type: "p" as const,
-			attributes: {},
-			children: [
-				{
-					content: trimmedContent,
-				},
-			],
-		}
-	})
 
 	return {
 		id: "root",
 		type: "container",
 		attributes: {},
-		children,
+		children: blocks,
 	}
+}
+
+/**
+ * Parse markdown text into editor blocks
+ */
+function parseMarkdownBlocks(text: string): EditorNode[] {
+	// First split by double newlines to get paragraphs/blocks
+	// This preserves single newlines within blocks (important for tests)
+	const paragraphs = text.split(/\n\n+/).filter((p) => p.trim().length > 0)
+
+	const blocks: EditorNode[] = []
+	let blockIndex = 0
+
+	for (const paragraph of paragraphs) {
+		const lines = paragraph.split("\n")
+		const firstLine = lines[0]
+		if (!firstLine) continue
+
+		const trimmedFirst = firstLine.trim()
+
+		// Check for code blocks
+		if (trimmedFirst.startsWith("```")) {
+			const codeBlock = parseCodeBlock(lines, 0)
+			if (codeBlock) {
+				blocks.push({
+					id: `block-${++blockIndex}`,
+					type: "pre",
+					attributes: {},
+					children: [
+						{
+							content: codeBlock.code,
+						},
+					],
+				})
+				continue
+			}
+		}
+
+		// Check for tables
+		if (isMarkdownTable(paragraph)) {
+			const result = parseMarkdownTable(paragraph)
+			if (result.success && result.table) {
+				blocks.push(result.table)
+				blockIndex++
+				continue
+			}
+		}
+
+		// Check for headings (only if single line)
+		if (lines.length === 1) {
+			const headingMatch = trimmedFirst.match(/^(#{1,6})\s+(.+)$/)
+			if (headingMatch) {
+				const level = headingMatch[1]?.length || 1
+				const content = headingMatch[2] || ""
+				const headingType = `h${level}` as
+					| "h1"
+					| "h2"
+					| "h3"
+					| "h4"
+					| "h5"
+					| "h6"
+
+				blocks.push({
+					id: `block-${++blockIndex}`,
+					type: headingType,
+					attributes: {},
+					children: parseInlineFormatting(content),
+				})
+				continue
+			}
+
+			// Check for horizontal rule
+			if (trimmedFirst.match(/^(-{3,}|\*{3,}|_{3,})$/)) {
+				blocks.push({
+					id: `block-${++blockIndex}`,
+					type: "hr",
+					attributes: {},
+				})
+				continue
+			}
+
+			// Check for blockquote
+			if (trimmedFirst.startsWith(">")) {
+				const content = trimmedFirst.substring(1).trim()
+				blocks.push({
+					id: `block-${++blockIndex}`,
+					type: "blockquote",
+					attributes: {},
+					children: parseInlineFormatting(content),
+				})
+				continue
+			}
+
+			// Check for image
+			const imageMatch = trimmedFirst.match(/^!\[([^\]]*)\]\(([^)]+)\)$/)
+			if (imageMatch) {
+				const alt = imageMatch[1] || ""
+				const src = imageMatch[2] || ""
+
+				blocks.push({
+					id: `block-${++blockIndex}`,
+					type: "img",
+					attributes: {
+						src,
+						alt,
+					},
+				})
+				continue
+			}
+		}
+
+		// Check for lists (all lines must be list items)
+		const isUnorderedList = lines.every((line) =>
+			line.trim().match(/^[-*+]\s+(.+)$/),
+		)
+		const isOrderedList = lines.every((line) =>
+			line.trim().match(/^\d+\.\s+(.+)$/),
+		)
+
+		if (isUnorderedList) {
+			const listItems = lines.map((line) => {
+				const match = line.trim().match(/^[-*+]\s+(.+)$/)
+				return match ? match[1] || "" : ""
+			})
+
+			const timestamp = Date.now()
+			blocks.push({
+				id: `ul-${timestamp}-${blockIndex}`,
+				type: "ul",
+				attributes: {},
+				lines: listItems.map((content) => ({
+					content,
+				})),
+			})
+			blockIndex++
+			continue
+		}
+
+		if (isOrderedList) {
+			const listItems = lines.map((line) => {
+				const match = line.trim().match(/^\d+\.\s+(.+)$/)
+				return match ? match[1] || "" : ""
+			})
+
+			const timestamp = Date.now()
+			blocks.push({
+				id: `ol-${timestamp}-${blockIndex}`,
+				type: "ol",
+				attributes: {},
+				lines: listItems.map((content) => ({
+					content,
+				})),
+			})
+			blockIndex++
+			continue
+		}
+
+		// Default: paragraph
+		// Preserve the original content including single newlines
+		const paragraphContent = paragraph.trim() || " "
+		blocks.push({
+			id: `block-${++blockIndex}`,
+			type: "p",
+			attributes: {},
+			children: parseInlineFormatting(paragraphContent),
+		})
+	}
+
+	return blocks
+}
+
+/**
+ * Parse code block (```)
+ */
+function parseCodeBlock(
+	lines: string[],
+	startIndex: number,
+): { code: string; endIndex: number } | null {
+	const startLine = lines[startIndex]
+	if (!startLine || !startLine.trim().startsWith("```")) {
+		return null
+	}
+
+	let endIndex = startIndex + 1
+	const codeLines: string[] = []
+
+	while (endIndex < lines.length) {
+		const line = lines[endIndex]
+		if (line?.trim().startsWith("```")) {
+			return {
+				code: codeLines.join("\n"),
+				endIndex,
+			}
+		}
+		codeLines.push(line || "")
+		endIndex++
+	}
+
+	// No closing ```, treat as code anyway
+	return {
+		code: codeLines.join("\n"),
+		endIndex: lines.length - 1,
+	}
+}
+
+
+/**
+ * Parse inline formatting (bold, italic, links, etc.)
+ */
+function parseInlineFormatting(text: string): InlineText[] {
+	const result: InlineText[] = []
+	let currentIndex = 0
+
+	// Regex patterns for inline elements
+	const patterns = [
+		{
+			// Bold: **text** or __text__
+			regex: /(\*\*|__)((?:(?!\1).)+)\1/g,
+			type: "bold" as const,
+		},
+		{
+			// Italic: *text* or _text_ (but not __ or **)
+			regex: /(?<!\*)(\*|_)(?!\1)((?:(?!\1).)+)\1(?!\1)/g,
+			type: "italic" as const,
+		},
+		{
+			// Underline: <u>text</u>
+			regex: /<u>((?:(?!<\/u>).)+)<\/u>/g,
+			type: "underline" as const,
+		},
+		{
+			// Links: [text](url)
+			regex: /\[([^\]]+)\]\(([^)]+)\)/g,
+			type: "link" as const,
+		},
+		{
+			// Inline code: `code`
+			regex: /`([^`]+)`/g,
+			type: "code" as const,
+		},
+	]
+
+	// Find all matches
+	interface Match {
+		index: number
+		length: number
+		text: string
+		type: string
+		href?: string
+		elementType?: "code"
+	}
+
+	const matches: Match[] = []
+
+	for (const pattern of patterns) {
+		const regex = new RegExp(pattern.regex.source, "g")
+		let match: RegExpExecArray | null
+
+		while ((match = regex.exec(text)) !== null) {
+			if (pattern.type === "link") {
+				matches.push({
+					index: match.index,
+					length: match[0]?.length || 0,
+					text: match[1] || "",
+					type: "link",
+					href: match[2] || "",
+				})
+			} else if (pattern.type === "code") {
+				matches.push({
+					index: match.index,
+					length: match[0]?.length || 0,
+					text: match[1] || "",
+					type: "code",
+					elementType: "code",
+				})
+			} else {
+				const capturedText =
+					pattern.type === "bold" || pattern.type === "italic"
+						? match[2]
+						: match[1]
+				matches.push({
+					index: match.index,
+					length: match[0]?.length || 0,
+					text: capturedText || "",
+					type: pattern.type,
+				})
+			}
+		}
+	}
+
+	// Sort matches by index
+	matches.sort((a, b) => a.index - b.index)
+
+	// Process matches and build InlineText array
+	for (const match of matches) {
+		// Add plain text before this match
+		if (match.index > currentIndex) {
+			const plainText = text.substring(currentIndex, match.index)
+			if (plainText.length > 0) {
+				result.push({ content: plainText })
+			}
+		}
+
+		// Add formatted text
+		const inlineText: InlineText = { content: match.text }
+
+		if (match.type === "bold") {
+			inlineText.bold = true
+		} else if (match.type === "italic") {
+			inlineText.italic = true
+		} else if (match.type === "underline") {
+			inlineText.underline = true
+		} else if (match.type === "link") {
+			inlineText.href = match.href
+		} else if (match.type === "code") {
+			inlineText.elementType = "code"
+		}
+
+		result.push(inlineText)
+		currentIndex = match.index + match.length
+	}
+
+	// Add remaining plain text
+	if (currentIndex < text.length) {
+		const remaining = text.substring(currentIndex)
+		if (remaining.length > 0) {
+			result.push({ content: remaining })
+		}
+	}
+
+	// If no formatting found, return plain text
+	if (result.length === 0) {
+		return [{ content: text }]
+	}
+
+	return result
 }
 
 /**
