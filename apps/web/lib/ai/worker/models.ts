@@ -20,6 +20,10 @@ export type ModelId =
 	| "o1-mini"
 	| "claude-sonnet-4-20250514"
 	| "claude-3-7-sonnet-20250219"
+	// OpenRouter models
+	| "openrouter/gemini-3-flash-preview"
+	| "openrouter/gpt-5.1"
+	| "openrouter/claude-sonnet-4.5"
 
 export function getModel(modelId: ModelId, env: Environment) {
 	switch (modelId) {
@@ -49,6 +53,43 @@ export function getModel(modelId: ModelId, env: Environment) {
 				apiKey: env.ANTHROPIC_API_KEY,
 			})
 			return anthropic(modelId)
+		}
+		// OpenRouter models
+		case "openrouter/gemini-3-flash-preview": {
+			const openrouter = createOpenAI({
+				apiKey: env.OPENROUTER_API_KEY,
+				baseURL: "https://openrouter.ai/api/v1",
+				compatibility: "strict", // Prevents automatic tool calling
+				headers: {
+					"HTTP-Referer": "https://kortix.ai",
+					"X-Title": "Kortix",
+				},
+			})
+			return openrouter("google/gemini-3-flash-preview")
+		}
+		case "openrouter/gpt-5.1": {
+			const openrouter = createOpenAI({
+				apiKey: env.OPENROUTER_API_KEY,
+				baseURL: "https://openrouter.ai/api/v1",
+				compatibility: "strict", // Prevents automatic tool calling
+				headers: {
+					"HTTP-Referer": "https://kortix.ai",
+					"X-Title": "Kortix",
+				},
+			})
+			return openrouter("openai/gpt-5.1")
+		}
+		case "openrouter/claude-sonnet-4.5": {
+			const openrouter = createOpenAI({
+				apiKey: env.OPENROUTER_API_KEY,
+				baseURL: "https://openrouter.ai/api/v1",
+				compatibility: "strict", // Prevents automatic tool calling
+				headers: {
+					"HTTP-Referer": "https://kortix.ai",
+					"X-Title": "Kortix",
+				},
+			})
+			return openrouter("anthropic/claude-sonnet-4.5")
 		}
 		default:
 			throw new Error(`Unknown model: ${modelId}`)

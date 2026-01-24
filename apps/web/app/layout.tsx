@@ -77,7 +77,10 @@ export default async function RootLayout({
 
 	return (
 		<html lang="pt" suppressHydrationWarning>
-			<body className={`${sans.variable} ${mono.variable} antialiased`}>
+			<body
+				className={`${sans.variable} ${mono.variable} antialiased`}
+				suppressHydrationWarning
+			>
 				<CleanupOldServiceWorker />
 				<NextIntlClientProvider messages={messages}>
 					<ThemeProvider

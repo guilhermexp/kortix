@@ -19,6 +19,7 @@ function getEnv(): Environment {
 		GOOGLE_API_KEY: (process.env.API_KEY ||
 			process.env.GOOGLE_API_KEY ||
 			"") as string,
+		OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || "",
 	}
 }
 
@@ -37,6 +38,7 @@ function getService(): VercelAiService {
 			hasGoogleKey: !!env.GOOGLE_API_KEY,
 			hasOpenAiKey: !!env.OPENAI_API_KEY,
 			hasAnthropicKey: !!env.ANTHROPIC_API_KEY,
+			hasOpenRouterKey: !!env.OPENROUTER_API_KEY,
 		})
 		serviceInstance = new VercelAiService(env)
 		lastEnvHash = envHash
@@ -83,6 +85,9 @@ export function resetAgentService(): void {
 export function isAgentConfigured(): boolean {
 	const env = getEnv()
 	return Boolean(
-		env.GOOGLE_API_KEY || env.OPENAI_API_KEY || env.ANTHROPIC_API_KEY,
+		env.GOOGLE_API_KEY ||
+		env.OPENAI_API_KEY ||
+		env.ANTHROPIC_API_KEY ||
+		env.OPENROUTER_API_KEY,
 	)
 }

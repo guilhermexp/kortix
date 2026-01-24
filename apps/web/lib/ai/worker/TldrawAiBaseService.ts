@@ -28,17 +28,22 @@ export abstract class TldrawAiBaseService {
 		const hasGoogleKey = Boolean(this.env.GOOGLE_API_KEY)
 		const hasOpenAiKey = Boolean(this.env.OPENAI_API_KEY)
 		const hasAnthropicKey = Boolean(this.env.ANTHROPIC_API_KEY)
+		const hasOpenRouterKey = Boolean(this.env.OPENROUTER_API_KEY)
 
-		if (!hasGoogleKey && !hasOpenAiKey && !hasAnthropicKey) {
+		if (!hasGoogleKey && !hasOpenAiKey && !hasAnthropicKey && !hasOpenRouterKey) {
 			throw new Error(
-				"No AI provider API key found. Please set GOOGLE_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY.",
+				"No AI provider API key found. Please set GOOGLE_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, or OPENROUTER_API_KEY.",
 			)
 		}
 	}
 
 	// Get the best available model based on environment
 	protected getBestAvailableModel(): string {
-		// Prioriza OpenAI com gpt-5.1
+		// Prioriza OpenRouter com GPT 5.1 (preferência do usuário como alternativa ao Gemini)
+		if (this.env.OPENROUTER_API_KEY) {
+			return "openrouter/gpt-5.1"
+		}
+		// Fallback para APIs diretas
 		if (this.env.OPENAI_API_KEY) {
 			return "gpt-5.1"
 		}
