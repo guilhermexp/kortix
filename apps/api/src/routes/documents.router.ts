@@ -26,6 +26,8 @@ import {
 	deleteDocument,
 	findDocumentRelatedLinks,
 	getDocument,
+	getDocumentStatus,
+	getQueueMetrics,
 	listDocuments,
 	listDocumentsWithMemories,
 	listDocumentsWithMemoriesByIds,
@@ -36,6 +38,37 @@ import {
 export const documentsRouter = new Hono<{
 	Variables: { session: SessionContext }
 }>()
+
+// Queue metrics endpoint
+documentsRouter.get("/queue/metrics", async (c) => {
+	try {
+		const metrics = await getQueueMetrics()
+		if (!metrics) {
+			return c.json(
+				{
+					error: {
+						message: "Queue not available (Redis not enabled)",
+					},
+				},
+				503,
+			)
+		}
+		return c.json(metrics)
+	} catch (error) {
+		console.error("Failed to fetch queue metrics", error)
+		return c.json(
+			{
+				error: {
+					message:
+						error instanceof Error
+							? error.message
+							: "Failed to fetch queue metrics",
+				},
+			},
+			500,
+		)
+	}
+})
 
 // Check if URL already exists (for duplicate validation before submission)
 documentsRouter.post(
@@ -400,6 +433,34 @@ documentsRouter.get("/:id", async (c) => {
 				error: {
 					message:
 						error instanceof Error ? error.message : "Failed to fetch document",
+				},
+			},
+			500,
+		)
+	}
+})
+
+// Get document processing status with job queue info
+documentsRouter.get("/:id/status", async (c) => {
+	const { organizationId } = c.var.session
+	const documentId = c.req.param("id")
+	const supabase = createClientForSession(c.var.session)
+
+	try {
+		const status = await getDocumentStatus(supabase, organizationId, documentId)
+		if (!status) {
+			return c.json({ error: { message: "Document not found" } }, 404)
+		}
+		return c.json(status)
+	} catch (error) {
+		console.error("Failed to fetch document status", error)
+		return c.json(
+			{
+				error: {
+					message:
+						error instanceof Error
+							? error.message
+							: "Failed to fetch document status",
 				},
 			},
 			500,

@@ -1,9 +1,10 @@
 /**
  * Documents API Routes
  *
- * Architecture: Inline document processing
- * - Documents are created and processed immediately (async, non-blocking)
- * - No separate polling worker needed
+ * Architecture: Queue-based document processing with fallback
+ * - Documents are queued for processing using BullMQ (when Redis available)
+ * - Falls back to inline processing when Redis unavailable
+ * - Queue workers can be scaled independently (bun run dev:queue)
  * - Preview image extracted immediately for fast UI feedback
  */
 
@@ -20,6 +21,12 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { z } from "zod"
 import { processDocumentInline } from "../services/document-processor-inline"
+import {
+	addDocumentJob,
+	documentQueue,
+	getQueueStats,
+	isRedisEnabled,
+} from "../services/queue"
 import { sanitizeJson, sanitizeString } from "../services/ingestion/utils"
 import {
 	documentCache,
@@ -306,6 +313,89 @@ export async function getDocument(
 			createdAt: row.created_at,
 			updatedAt: row.updated_at,
 		})),
+	}
+}
+
+/**
+ * Get document processing status including job queue information
+ */
+export async function getDocumentStatus(
+	client: SupabaseClient,
+	organizationId: string,
+	documentId: string,
+) {
+	// Get document from database
+	const { data: document, error } = await client
+		.from("documents")
+		.select("id, status, title, url, type, created_at, updated_at")
+		.eq("org_id", organizationId)
+		.eq("id", documentId)
+		.maybeSingle()
+
+	if (error) throw error
+	if (!document) return null
+
+	const response: any = {
+		id: document.id,
+		status: document.status ?? "unknown",
+		title: document.title ?? null,
+		url: document.url ?? null,
+		type: document.type ?? null,
+		createdAt: document.created_at,
+		updatedAt: document.updated_at,
+		queueEnabled: isRedisEnabled(),
+	}
+
+	// If queue is enabled, try to fetch job info
+	if (isRedisEnabled() && documentQueue) {
+		try {
+			const job = await documentQueue.getJob(`doc-${documentId}`)
+			if (job) {
+				const state = await job.getState()
+				response.job = {
+					id: job.id,
+					state,
+					progress: job.progress,
+					attemptsMade: job.attemptsMade,
+					processedOn: job.processedOn,
+					finishedOn: job.finishedOn,
+					failedReason: job.failedReason,
+				}
+			} else {
+				// Job not found in queue (might be completed and removed)
+				response.job = null
+			}
+		} catch (queueError) {
+			console.warn("[getDocumentStatus] Failed to fetch job info", {
+				documentId,
+				error:
+					queueError instanceof Error ? queueError.message : String(queueError),
+			})
+			response.job = null
+		}
+	} else {
+		response.job = null
+	}
+
+	return response
+}
+
+/**
+ * Get queue metrics and statistics
+ */
+export async function getQueueMetrics() {
+	if (!isRedisEnabled()) {
+		return null
+	}
+
+	try {
+		const stats = await getQueueStats()
+		return stats
+	} catch (error) {
+		console.error("[getQueueMetrics] Failed to fetch queue stats", {
+			error: error instanceof Error ? error.message : String(error),
+		})
+		return null
 	}
 }
 
@@ -774,8 +864,40 @@ export async function addDocument({
 		jobId = existingJob.id
 	}
 
+	// Try to add to Redis queue first (if available)
+	// Falls back to inline processing if Redis unavailable
+	if (isRedisEnabled()) {
+		try {
+			await addDocumentJob(docId, organizationId, userId, {
+				containerTags: parsed.containerTags ?? [containerTag],
+				content: rawContent,
+				metadata,
+				url: inferredUrl,
+				type: inferredType,
+				source: inferredSource,
+			})
+			console.log("[addDocument] Job added to Redis queue", {
+				documentId: docId,
+			})
+			invalidateDocumentCaches()
+			return MemoryResponseSchema.parse({ id: docId, status: "queued" })
+		} catch (queueError) {
+			console.warn(
+				"[addDocument] Failed to add to Redis queue, falling back to inline processing",
+				{
+					documentId: docId,
+					error:
+						queueError instanceof Error
+							? queueError.message
+							: String(queueError),
+				},
+			)
+			// Fall through to inline processing
+		}
+	}
+
 	// Process document inline (async - doesn't block response)
-	// No more polling worker needed!
+	// Used when Redis unavailable or queue add fails
 	if (jobId) {
 		// Fire and forget - process in background
 		processDocumentInline({

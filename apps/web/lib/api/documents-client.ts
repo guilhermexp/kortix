@@ -57,3 +57,22 @@ export async function cancelDocument(id: string): Promise<void> {
 		throw error
 	}
 }
+
+export async function getDocumentStatus(id: string) {
+	try {
+		const response = await $fetch("@get/documents/:id/status", {
+			params: { id },
+		})
+
+		if (response.error) {
+			throw new Error(
+				response.error?.message || "Failed to get document status",
+			)
+		}
+
+		return response.data
+	} catch (error) {
+		console.error("Error getting document status:", error)
+		throw error
+	}
+}
