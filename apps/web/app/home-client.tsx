@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import type { z } from "zod"
 import { TldrawCanvas } from "@/components/canvas"
 import { CanvasAgentProvider } from "@/components/canvas/canvas-agent-provider"
@@ -32,6 +33,10 @@ import { MemoryListView } from "@/components/memory-list-view"
 import Menu from "@/components/menu"
 import { ProjectSelector } from "@/components/project-selector"
 import { ReferralUpgradeModal } from "@/components/referral-upgrade-modal"
+import {
+	MetadataFilters,
+	type MetadataFilterState,
+} from "@/components/search/metadata-filters"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { AddMemoryView } from "@/components/views/add-memory"
 import { ChatRewrite } from "@/components/views/chat"
@@ -104,9 +109,28 @@ const MemoryGraphPage = () => {
 	const togglePalette = useCanvasStore((s) => s.togglePalette)
 	const [showAddMemoryView, setShowAddMemoryView] = useState(false)
 
+	// URL params for filter persistence
+	const router = useRouter()
+	const searchParams = useSearchParams()
+
 	// Search state with debounce
 	const [searchQuery, setSearchQuery] = useState("")
 	const [debouncedSearch, setDebouncedSearch] = useState("")
+
+	// Metadata filter state - initialize from URL params
+	const [metadataFilters, setMetadataFilters] = useState<MetadataFilterState>(
+		() => {
+			const tags = searchParams.get("tags")
+			const mentions = searchParams.get("mentions")
+			const properties = searchParams.get("properties")
+
+			return {
+				tags: tags ? tags.split(",").filter(Boolean) : [],
+				mentions: mentions ? mentions.split(",").filter(Boolean) : [],
+				properties: properties ? JSON.parse(properties) : {},
+			}
+		},
+	)
 
 	useEffect(() => {
 		// If search is cleared, reset immediately (no debounce)
@@ -120,6 +144,40 @@ const MemoryGraphPage = () => {
 		}, 400)
 		return () => clearTimeout(timer)
 	}, [searchQuery])
+
+	// Update URL params when filters change
+	useEffect(() => {
+		const params = new URLSearchParams(searchParams.toString())
+
+		// Update or remove tags param
+		if (metadataFilters.tags.length > 0) {
+			params.set("tags", metadataFilters.tags.join(","))
+		} else {
+			params.delete("tags")
+		}
+
+		// Update or remove mentions param
+		if (metadataFilters.mentions.length > 0) {
+			params.set("mentions", metadataFilters.mentions.join(","))
+		} else {
+			params.delete("mentions")
+		}
+
+		// Update or remove properties param
+		if (Object.keys(metadataFilters.properties).length > 0) {
+			params.set("properties", JSON.stringify(metadataFilters.properties))
+		} else {
+			params.delete("properties")
+		}
+
+		// Only update URL if params changed
+		const newParamsString = params.toString()
+		const currentParamsString = searchParams.toString()
+		if (newParamsString !== currentParamsString) {
+			const newUrl = newParamsString ? `?${newParamsString}` : window.location.pathname
+			router.replace(newUrl, { scroll: false })
+		}
+	}, [metadataFilters, router, searchParams])
 	const [showReferralModal, setShowReferralModal] = useState(false)
 	const [showConnectAIModal, setShowConnectAIModal] = useState(false)
 	const [pausePolling, setPausePolling] = useState(false)
@@ -236,7 +294,12 @@ const MemoryGraphPage = () => {
 		fetchNextPage,
 		refetch,
 	} = useInfiniteQuery<DocumentsResponse, Error>({
-		queryKey: ["documents-with-memories", selectedProject, debouncedSearch],
+		queryKey: [
+			"documents-with-memories",
+			selectedProject,
+			debouncedSearch,
+			metadataFilters,
+		],
 		initialPageParam: 1,
 		queryFn: async ({ pageParam }) => {
 			const markRateLimited = () => {
@@ -280,6 +343,18 @@ const MemoryGraphPage = () => {
 								? [selectedProject]
 								: undefined,
 						search: debouncedSearch || undefined,
+						tagsFilter:
+							metadataFilters.tags.length > 0
+								? metadataFilters.tags
+								: undefined,
+						mentionsFilter:
+							metadataFilters.mentions.length > 0
+								? metadataFilters.mentions
+								: undefined,
+						propertiesFilter:
+							Object.keys(metadataFilters.properties).length > 0
+								? metadataFilters.properties
+								: undefined,
 					},
 					disableValidation: true,
 				})
@@ -414,6 +489,42 @@ const MemoryGraphPage = () => {
 		})
 	}, [data])
 
+	// Extract available filter values from documents
+	const availableFilterValues = useMemo(() => {
+		const tagsSet = new Set<string>()
+		const mentionsSet = new Set<string>()
+		const propertiesSet = new Set<string>()
+
+		allDocuments.forEach((doc) => {
+			// Extract tags from document metadata
+			const extracted = doc.metadata?.extracted as any
+			if (extracted) {
+				// Tags
+				if (Array.isArray(extracted.tags)) {
+					extracted.tags.forEach((tag: string) => tagsSet.add(tag))
+				}
+				// Mentions
+				if (Array.isArray(extracted.mentions)) {
+					extracted.mentions.forEach((mention: string) =>
+						mentionsSet.add(mention),
+					)
+				}
+				// Properties (keys only)
+				if (extracted.properties && typeof extracted.properties === "object") {
+					Object.keys(extracted.properties).forEach((key) =>
+						propertiesSet.add(key),
+					)
+				}
+			}
+		})
+
+		return {
+			tags: Array.from(tagsSet).sort(),
+			mentions: Array.from(mentionsSet).sort(),
+			properties: Array.from(propertiesSet).sort(),
+		}
+	}, [allDocuments])
+
 	const totalLoaded = allDocuments.length
 	const hasMore = hasNextPage
 	const isLoadingMore = isFetchingNextPage
@@ -475,94 +586,112 @@ const MemoryGraphPage = () => {
 					}}
 				>
 					<motion.div className="absolute top-0 left-0 right-0 z-20 px-4 pt-2">
-						<div className="flex items-center justify-between gap-2">
-							{/* Empty spacer when in canvas mode */}
-							<div className="flex-1" />
+						<div className="flex flex-col gap-2">
+							<div className="flex items-center justify-between gap-2">
+								{/* Empty spacer when in canvas mode */}
+								<div className="flex-1" />
 
-							{/* Search Input - only visible in list view, centered */}
-							{viewMode === "list" && (
-								<div className="relative pointer-events-auto flex-shrink-0">
-									<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/60 pointer-events-none" />
-									<input
-										className="h-8 w-[140px] sm:w-[180px] pl-8 pr-7 text-sm
+								{/* Search Input - only visible in list view, centered */}
+								{viewMode === "list" && (
+									<div className="relative pointer-events-auto flex-shrink-0">
+										<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/60 pointer-events-none" />
+										<input
+											className="h-8 w-[140px] sm:w-[180px] pl-8 pr-7 text-sm
                                bg-background border border-foreground/15 rounded-md
                                text-foreground/80 placeholder:text-foreground/40
                                hover:bg-foreground/5 focus:outline-none focus:border-foreground/30
                                transition-colors"
-										onChange={(e) => setSearchQuery(e.target.value)}
-										placeholder="Search..."
-										type="text"
-										value={searchQuery}
-									/>
-									{searchQuery && (
-										<button
-											className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground/80"
-											onClick={() => setSearchQuery("")}
-											type="button"
-										>
-											<X className="h-3.5 w-3.5" />
-										</button>
-									)}
-								</div>
-							)}
-							<div
-								className="flex items-center gap-2 pointer-events-auto flex-1 justify-end"
-								id={TOUR_STEP_IDS.VIEW_TOGGLE}
-							>
-								{isRateLimited ? (
-									<span className="text-xs text-amber-500 font-medium">
-										Rate limit · aguarde {rateLimitSecondsLeft}s
-									</span>
-								) : null}
-								{viewMode !== "infinity" && (
-									<div
-										className="flex items-center gap-2 pointer-events-auto"
-										id={TOUR_STEP_IDS.MENU_PROJECTS}
-									>
-										<ProjectSelector className="pointer-events-auto" />
+											onChange={(e) => setSearchQuery(e.target.value)}
+											placeholder="Search..."
+											type="text"
+											value={searchQuery}
+										/>
+										{searchQuery && (
+											<button
+												className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground/80"
+												onClick={() => setSearchQuery("")}
+												type="button"
+											>
+												<X className="h-3.5 w-3.5" />
+											</button>
+										)}
 									</div>
 								)}
-								{viewMode === "infinity" && (
-									<>
-										<Button
-											className="bg-background border border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10 px-2 sm:px-3 rounded-md"
-											onClick={() => setShowProjectModal(true)}
-											size="sm"
-											variant="ghost"
+								<div
+									className="flex items-center gap-2 pointer-events-auto flex-1 justify-end"
+									id={TOUR_STEP_IDS.VIEW_TOGGLE}
+								>
+									{isRateLimited ? (
+										<span className="text-xs text-amber-500 font-medium">
+											Rate limit · aguarde {rateLimitSecondsLeft}s
+										</span>
+									) : null}
+									{viewMode !== "infinity" && (
+										<div
+											className="flex items-center gap-2 pointer-events-auto"
+											id={TOUR_STEP_IDS.MENU_PROJECTS}
 										>
-											<FolderOpen className="h-4 w-4 text-current" />
-											<span className="hidden md:inline ml-2">Projetos</span>
-										</Button>
-										<Button
-											className={`bg-background border px-2 sm:px-3 rounded-md ${
-												isPaletteOpen
-													? "border-foreground/30 text-foreground bg-foreground/10"
-													: "border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10"
-											}`}
-											onClick={togglePalette}
-											size="sm"
-											variant="ghost"
-										>
-											<Palette className="h-4 w-4 text-current" />
-											<span className="hidden md:inline ml-2">Add Docs</span>
-										</Button>
-										<Button
-											className="bg-background border border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10 px-2 sm:px-3 rounded-md"
-											disabled={manualRefreshDisabled}
-											onClick={handleManualRefresh}
-											size="sm"
-											variant="ghost"
-										>
-											{isRefreshing ? (
-												<LoaderIcon className="h-4 w-4 animate-spin text-current" />
-											) : (
-												<RefreshCcw className="h-4 w-4 text-current" />
-											)}
-											<span className="hidden md:inline ml-2">Atualizar</span>
-										</Button>
-									</>
-								)}
+											<ProjectSelector className="pointer-events-auto" />
+										</div>
+									)}
+									{viewMode === "infinity" && (
+										<>
+											<Button
+												className="bg-background border border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10 px-2 sm:px-3 rounded-md"
+												onClick={() => setShowProjectModal(true)}
+												size="sm"
+												variant="ghost"
+											>
+												<FolderOpen className="h-4 w-4 text-current" />
+												<span className="hidden md:inline ml-2">Projetos</span>
+											</Button>
+											<Button
+												className={`bg-background border px-2 sm:px-3 rounded-md ${
+													isPaletteOpen
+														? "border-foreground/30 text-foreground bg-foreground/10"
+														: "border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10"
+												}`}
+												onClick={togglePalette}
+												size="sm"
+												variant="ghost"
+											>
+												<Palette className="h-4 w-4 text-current" />
+												<span className="hidden md:inline ml-2">Add Docs</span>
+											</Button>
+											<Button
+												className="bg-background border border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10 px-2 sm:px-3 rounded-md"
+												disabled={manualRefreshDisabled}
+												onClick={handleManualRefresh}
+												size="sm"
+												variant="ghost"
+											>
+												{isRefreshing ? (
+													<LoaderIcon className="h-4 w-4 animate-spin text-current" />
+												) : (
+													<RefreshCcw className="h-4 w-4 text-current" />
+												)}
+												<span className="hidden md:inline ml-2">Atualizar</span>
+											</Button>
+										</>
+									)}
+								</div>
 							</div>
+
+							{/* Metadata Filters - only visible in list view */}
+							{viewMode === "list" &&
+								(availableFilterValues.tags.length > 0 ||
+									availableFilterValues.mentions.length > 0 ||
+									availableFilterValues.properties.length > 0) && (
+									<div className="pointer-events-auto px-4 md:px-8">
+										<MetadataFilters
+											availableMentions={availableFilterValues.mentions}
+											availableProperties={availableFilterValues.properties}
+											availableTags={availableFilterValues.tags}
+											filters={metadataFilters}
+											onFiltersChange={setMetadataFilters}
+										/>
+									</div>
+								)}
 						</div>
 					</motion.div>
 
