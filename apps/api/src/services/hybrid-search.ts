@@ -183,6 +183,137 @@ async function vectorSearch(
 }
 
 /**
+ * Metadata-only search function that searches exclusively in metadata fields
+ * (tags, mentions, properties, comments) without searching document content.
+ * Uses the search_by_metadata RPC function for optimized JSONB queries.
+ */
+export async function metadataOnlySearch(
+	client: SupabaseClient,
+	options: {
+		query?: string
+		orgId: string
+		limit?: number
+		tagsFilter?: string[]
+		mentionsFilter?: string[]
+		propertiesFilter?: Record<string, unknown>
+	},
+): Promise<SearchResult[]> {
+	const { query, orgId, limit = 10, tagsFilter, mentionsFilter, propertiesFilter } = options
+
+	// Build metadata filter JSONB for the RPC function
+	const metadataFilter: Record<string, any> = {}
+	let hasMetadataFilter = false
+
+	// Build extracted metadata filter structure
+	if (tagsFilter?.length || mentionsFilter?.length || propertiesFilter) {
+		const extracted: Record<string, any> = {}
+
+		if (tagsFilter?.length) {
+			extracted.tags = tagsFilter
+			hasMetadataFilter = true
+		}
+
+		if (mentionsFilter?.length) {
+			extracted.mentions = mentionsFilter
+			hasMetadataFilter = true
+		}
+
+		if (propertiesFilter && Object.keys(propertiesFilter).length > 0) {
+			extracted.properties = propertiesFilter
+			hasMetadataFilter = true
+		}
+
+		if (hasMetadataFilter) {
+			metadataFilter.extracted = extracted
+		}
+	}
+
+	// Validate that at least one search parameter is provided
+	if (!hasMetadataFilter && !query) {
+		return []
+	}
+
+	// Call the search_by_metadata RPC function
+	const { data, error } = await client.rpc("search_by_metadata", {
+		metadata_filter: hasMetadataFilter ? metadataFilter : null,
+		org_id_param: orgId,
+		text_query: query || null,
+		limit_param: limit * 2, // Get more results for filtering
+	})
+
+	if (error) {
+		console.error("Metadata search failed", error)
+		return []
+	}
+
+	// Format results
+	const results: SearchResult[] = (data || []).map((doc: any) => ({
+		documentId: doc.id,
+		title: doc.title,
+		type: doc.type,
+		content: doc.content,
+		summary: doc.summary,
+		metadata: doc.metadata || {},
+		score: doc.rank_score || 0.5,
+		chunks: [], // No chunk search in metadata-only mode
+		createdAt: doc.created_at,
+		updatedAt: doc.updated_at,
+	}))
+
+	// Apply additional filtering for array-based filters (OR logic for tags/mentions)
+	// This is needed because JSONB containment is strict array equality
+	let filteredResults = results
+
+	if (tagsFilter?.length) {
+		const wantedTags = tagsFilter.map((s) => s.toLowerCase().trim()).filter(Boolean)
+		filteredResults = filteredResults.filter((result) => {
+			const extracted = result.metadata?.extracted as Record<string, any> | undefined
+			const tags = extracted?.tags || []
+			if (!Array.isArray(tags) || tags.length === 0) return false
+			const lowerTags = tags.map((t: string) => String(t).toLowerCase().trim())
+			return wantedTags.some((wanted) => lowerTags.includes(wanted))
+		})
+	}
+
+	if (mentionsFilter?.length) {
+		const wantedMentions = mentionsFilter.map((s) => s.toLowerCase().trim()).filter(Boolean)
+		filteredResults = filteredResults.filter((result) => {
+			const extracted = result.metadata?.extracted as Record<string, any> | undefined
+			const mentions = extracted?.mentions || []
+			if (!Array.isArray(mentions) || mentions.length === 0) return false
+			const lowerMentions = mentions.map((m: string) => String(m).toLowerCase().trim())
+			return wantedMentions.some((wanted) => lowerMentions.includes(wanted))
+		})
+	}
+
+	if (propertiesFilter && Object.keys(propertiesFilter).length > 0) {
+		filteredResults = filteredResults.filter((result) => {
+			const extracted = result.metadata?.extracted as Record<string, any> | undefined
+			const properties = extracted?.properties || {}
+			if (typeof properties !== "object" || properties === null) return false
+
+			// Check if all requested properties match
+			for (const [key, value] of Object.entries(propertiesFilter)) {
+				if (!(key in properties)) return false
+
+				const propValue = properties[key]
+
+				// Handle array values - check if property value is in the array
+				if (Array.isArray(value)) {
+					if (!value.some((v) => propValue === v)) return false
+				} else {
+					// Direct equality comparison
+					if (propValue !== value) return false
+				}
+			}
+			return true
+		})
+	}
+
+	return filteredResults.slice(0, limit)
+}
+
+/**
  * Hybrid search combining vector and keyword search with intelligent fusion
  */
 export async function hybridSearch(

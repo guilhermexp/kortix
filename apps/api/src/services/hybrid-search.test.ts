@@ -3,7 +3,7 @@
  */
 import { describe, expect, it, beforeAll, afterAll } from "bun:test"
 import { createClient } from "@supabase/supabase-js"
-import { hybridSearch } from "./hybrid-search"
+import { hybridSearch, metadataOnlySearch } from "./hybrid-search"
 
 // Test configuration
 const supabaseUrl = process.env.SUPABASE_URL || "http://localhost:54321"
@@ -360,6 +360,159 @@ describe("Hybrid Search - Metadata Filtering", () => {
 
 			// Should only return documents with extracted metadata
 			expect(Array.isArray(results)).toBe(true)
+		})
+	})
+
+	describe("Metadata-Only Search", () => {
+		it("should search only by tags without content search", async () => {
+			const results = await metadataOnlySearch(client, {
+				orgId: testOrgId,
+				tagsFilter: ["ai"],
+			})
+
+			expect(results.length).toBeGreaterThan(0)
+			for (const result of results) {
+				const extracted = result.metadata?.extracted as any
+				expect(extracted?.tags).toContain("ai")
+			}
+		})
+
+		it("should search only by mentions without content search", async () => {
+			const results = await metadataOnlySearch(client, {
+				orgId: testOrgId,
+				mentionsFilter: ["john-doe"],
+			})
+
+			expect(results.length).toBeGreaterThan(0)
+			for (const result of results) {
+				const extracted = result.metadata?.extracted as any
+				expect(extracted?.mentions).toContain("john-doe")
+			}
+		})
+
+		it("should search only by properties without content search", async () => {
+			const results = await metadataOnlySearch(client, {
+				orgId: testOrgId,
+				propertiesFilter: { status: "published" },
+			})
+
+			expect(results.length).toBeGreaterThan(0)
+			for (const result of results) {
+				const extracted = result.metadata?.extracted as any
+				expect(extracted?.properties?.status).toBe("published")
+			}
+		})
+
+		it("should support text query in metadata fields", async () => {
+			const results = await metadataOnlySearch(client, {
+				query: "ai research",
+				orgId: testOrgId,
+			})
+
+			// Should return results based on metadata text search
+			expect(Array.isArray(results)).toBe(true)
+		})
+
+		it("should combine text query with metadata filters", async () => {
+			const results = await metadataOnlySearch(client, {
+				query: "high priority",
+				orgId: testOrgId,
+				tagsFilter: ["ai"],
+				propertiesFilter: { status: "published" },
+			})
+
+			// Should return results matching both filters
+			expect(Array.isArray(results)).toBe(true)
+			for (const result of results) {
+				const extracted = result.metadata?.extracted as any
+				if (extracted?.tags) {
+					expect(extracted.tags).toContain("ai")
+				}
+				if (extracted?.properties) {
+					expect(extracted.properties.status).toBe("published")
+				}
+			}
+		})
+
+		it("should return empty results when no filters provided", async () => {
+			const results = await metadataOnlySearch(client, {
+				orgId: testOrgId,
+			})
+
+			expect(results).toEqual([])
+		})
+
+		it("should handle multiple tags with OR logic", async () => {
+			const results = await metadataOnlySearch(client, {
+				orgId: testOrgId,
+				tagsFilter: ["ai", "design"],
+			})
+
+			expect(results.length).toBeGreaterThan(0)
+			for (const result of results) {
+				const extracted = result.metadata?.extracted as any
+				const tags = extracted?.tags || []
+				const hasAnyTag = tags.some(
+					(t: string) => t === "ai" || t === "design",
+				)
+				expect(hasAnyTag).toBe(true)
+			}
+		})
+
+		it("should handle multiple mentions with OR logic", async () => {
+			const results = await metadataOnlySearch(client, {
+				orgId: testOrgId,
+				mentionsFilter: ["john-doe", "alice-designer"],
+			})
+
+			expect(results.length).toBeGreaterThan(0)
+			for (const result of results) {
+				const extracted = result.metadata?.extracted as any
+				const mentions = extracted?.mentions || []
+				const hasAnyMention = mentions.some(
+					(m: string) => m === "john-doe" || m === "alice-designer",
+				)
+				expect(hasAnyMention).toBe(true)
+			}
+		})
+
+		it("should handle multiple properties with AND logic", async () => {
+			const results = await metadataOnlySearch(client, {
+				orgId: testOrgId,
+				propertiesFilter: {
+					status: "published",
+					priority: "high",
+				},
+			})
+
+			expect(results.length).toBeGreaterThan(0)
+			for (const result of results) {
+				const extracted = result.metadata?.extracted as any
+				expect(extracted?.properties?.status).toBe("published")
+				expect(extracted?.properties?.priority).toBe("high")
+			}
+		})
+
+		it("should respect limit parameter", async () => {
+			const results = await metadataOnlySearch(client, {
+				orgId: testOrgId,
+				tagsFilter: ["ai", "design", "api"],
+				limit: 2,
+			})
+
+			expect(results.length).toBeLessThanOrEqual(2)
+		})
+
+		it("should not include chunks in metadata-only search", async () => {
+			const results = await metadataOnlySearch(client, {
+				orgId: testOrgId,
+				tagsFilter: ["ai"],
+			})
+
+			expect(results.length).toBeGreaterThan(0)
+			for (const result of results) {
+				expect(result.chunks).toEqual([])
+			}
 		})
 	})
 })
