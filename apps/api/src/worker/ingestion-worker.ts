@@ -30,6 +30,7 @@ import { sanitizeJson } from "../services/ingestion/utils"
 import { createIngestionOrchestrator } from "../services/orchestration"
 import { createPreviewGeneratorService } from "../services/preview/preview-generator"
 import { createDocumentProcessorService } from "../services/processing"
+import { createMetadataExtractor } from "../services/processing/metadata-extractor"
 import { documentCache, documentListCache } from "../services/query-cache"
 import { getDefaultUserId, supabaseAdmin } from "../supabase"
 
@@ -121,6 +122,7 @@ let lastScheduledDelay = POLL_INTERVAL
 // Create service instances
 const extractorService = createDocumentExtractorService()
 const processorService = createDocumentProcessorService()
+const metadataExtractor = createMetadataExtractor()
 // NOTE: Favicon fallback disabled because external favicon URLs cause CORS errors
 // when loaded directly by the browser. Only use image extraction which provides
 // OpenGraph/Twitter images that are typically CORS-friendly.
@@ -683,6 +685,95 @@ async function hydrateDocument(
 	})
 }
 
+async function handleReindexMetadata(
+	jobId: string,
+	documentId: string,
+	orgId: string,
+	payload: unknown,
+) {
+	console.log("[ingestion-worker] Starting metadata reindexing", {
+		jobId,
+		documentId,
+		orgId,
+	})
+
+	// Fetch the document
+	const { data: document, error: docError } = await supabaseAdmin
+		.from("documents")
+		.select("content, metadata, title, url, source, type")
+		.eq("id", documentId)
+		.maybeSingle()
+
+	if (docError) throw docError
+	if (!document) {
+		throw new Error("Document not found for reindexing job")
+	}
+
+	// Re-extract metadata using the metadata extractor
+	const extractedMetadata = await metadataExtractor.extractFromContent(
+		document.content || "",
+		(document.metadata as Record<string, unknown>) || {},
+		{
+			extractTags: true,
+			extractMentions: true,
+			extractProperties: true,
+			extractComments: true,
+			includeSource: true,
+		},
+	)
+
+	console.log("[ingestion-worker] Metadata re-extracted", {
+		jobId,
+		documentId,
+		tagCount: extractedMetadata.tags.length,
+		mentionCount: extractedMetadata.mentions.length,
+		propertyCount: Object.keys(extractedMetadata.properties).length,
+		commentCount: extractedMetadata.comments.length,
+	})
+
+	// Update document metadata with re-extracted metadata
+	const updatedMetadata = {
+		...(document.metadata as Record<string, unknown>),
+		extracted: {
+			tags: extractedMetadata.tags,
+			mentions: extractedMetadata.mentions,
+			properties: extractedMetadata.properties,
+			comments: extractedMetadata.comments,
+			statistics: extractedMetadata.statistics,
+			...(extractedMetadata.source ? { source: extractedMetadata.source } : {}),
+		},
+		reindexedAt: new Date().toISOString(),
+		reindexReason:
+			typeof payload === "object" && payload !== null
+				? (payload as { reason?: string }).reason || "Metadata changed"
+				: "Metadata changed",
+	}
+
+	// Update the document with re-extracted metadata
+	await supabaseAdmin
+		.from("documents")
+		.update({
+			metadata: updatedMetadata,
+			updated_at: new Date().toISOString(),
+		})
+		.eq("id", documentId)
+
+	// Mark job as completed
+	await supabaseAdmin
+		.from("ingestion_jobs")
+		.update({ status: "completed", completed_at: new Date().toISOString() })
+		.eq("id", jobId)
+
+	// Invalidate caches
+	documentListCache.clear()
+	documentCache.delete(documentId)
+
+	console.log("[ingestion-worker] Metadata reindexing completed", {
+		jobId,
+		documentId,
+	})
+}
+
 async function handleJobFailure(
 	job: IngestionJobRow,
 	attempts: number,
@@ -742,10 +833,19 @@ async function handleJobFailure(
 async function processJob(job: IngestionJobRow): Promise<boolean> {
 	const attempts = (job.attempts ?? 0) + 1
 
+	// Determine job type from payload
+	const jobType =
+		typeof job.payload === "object" &&
+		job.payload !== null &&
+		"type" in job.payload
+			? (job.payload as { type?: string }).type
+			: undefined
+
 	console.log("[ingestion-worker] Starting job processing", {
 		jobId: job.id,
 		documentId: job.document_id,
 		attempts,
+		jobType: jobType || "standard",
 	})
 
 	// CRITICAL: Mark job as "processing" BEFORE starting to prevent duplicate processing
@@ -756,13 +856,25 @@ async function processJob(job: IngestionJobRow): Promise<boolean> {
 		.eq("id", job.id)
 
 	try {
-		await hydrateDocument(job.id, job.document_id, job.org_id, job.payload)
+		// Route to appropriate handler based on job type
+		if (jobType === "reindex-metadata") {
+			await handleReindexMetadata(
+				job.id,
+				job.document_id,
+				job.org_id,
+				job.payload,
+			)
+		} else {
+			// Standard document ingestion
+			await hydrateDocument(job.id, job.document_id, job.org_id, job.payload)
+		}
 
 		console.log(
-			"[ingestion-worker] Job completed successfully with orchestrator",
+			"[ingestion-worker] Job completed successfully",
 			{
 				jobId: job.id,
 				documentId: job.document_id,
+				jobType: jobType || "standard",
 			},
 		)
 
@@ -773,6 +885,7 @@ async function processJob(job: IngestionJobRow): Promise<boolean> {
 		console.error("[ingestion-worker] Job failed with error", {
 			jobId: job.id,
 			documentId: job.document_id,
+			jobType: jobType || "standard",
 			error: error instanceof Error ? error.message : String(error),
 			stack: error instanceof Error ? error.stack : undefined,
 		})
@@ -908,6 +1021,12 @@ async function main() {
 		await orchestrator.initialize()
 		console.log(
 			"[ingestion-worker] Ingestion orchestrator initialized successfully",
+		)
+
+		// Initialize the metadata extractor
+		await metadataExtractor.initialize()
+		console.log(
+			"[ingestion-worker] Metadata extractor initialized successfully",
 		)
 
 		console.log("[ingestion-worker] Starting adaptive polling loop")
