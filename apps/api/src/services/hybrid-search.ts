@@ -22,6 +22,9 @@ export interface HybridSearchOptions {
 	documentId?: string
 	containerTags?: string[]
 	categoriesFilter?: string[]
+	tagsFilter?: string[] // Filter by extracted tags
+	mentionsFilter?: string[] // Filter by extracted @mentions
+	propertiesFilter?: Record<string, unknown> // Filter by extracted properties
 	rerankResults?: boolean
 }
 
@@ -252,6 +255,66 @@ export async function hybridSearch(
 	// Apply document ID filter if specified
 	if (options.documentId) {
 		results = results.filter((r) => r.documentId === options.documentId)
+	}
+
+	// Apply extracted tags filter if specified
+	if (options.tagsFilter?.length) {
+		const wantedTags = options.tagsFilter
+			.map((s) => s.toLowerCase().trim())
+			.filter(Boolean)
+		if (wantedTags.length) {
+			results = results.filter((result) => {
+				const extracted = result.metadata?.extracted as Record<string, any> | undefined
+				const tags = extracted?.tags || []
+				if (!Array.isArray(tags) || tags.length === 0) return false
+				const lowerTags = tags.map((t: string) => String(t).toLowerCase().trim())
+				return wantedTags.some((wanted) => lowerTags.includes(wanted))
+			})
+		}
+	}
+
+	// Apply extracted mentions filter if specified
+	if (options.mentionsFilter?.length) {
+		const wantedMentions = options.mentionsFilter
+			.map((s) => s.toLowerCase().trim())
+			.filter(Boolean)
+		if (wantedMentions.length) {
+			results = results.filter((result) => {
+				const extracted = result.metadata?.extracted as Record<string, any> | undefined
+				const mentions = extracted?.mentions || []
+				if (!Array.isArray(mentions) || mentions.length === 0) return false
+				const lowerMentions = mentions.map((m: string) =>
+					String(m).toLowerCase().trim(),
+				)
+				return wantedMentions.some((wanted) => lowerMentions.includes(wanted))
+			})
+		}
+	}
+
+	// Apply extracted properties filter if specified
+	if (options.propertiesFilter && Object.keys(options.propertiesFilter).length > 0) {
+		results = results.filter((result) => {
+			const extracted = result.metadata?.extracted as Record<string, any> | undefined
+			const properties = extracted?.properties || {}
+			if (typeof properties !== "object" || properties === null) return false
+
+			// Check if all requested properties match
+			for (const [key, value] of Object.entries(options.propertiesFilter!)) {
+				if (!(key in properties)) return false
+
+				// For simple equality checks
+				const propValue = properties[key]
+
+				// Handle array values - check if property value is in the array
+				if (Array.isArray(value)) {
+					if (!value.some((v) => propValue === v)) return false
+				} else {
+					// Direct equality comparison
+					if (propValue !== value) return false
+				}
+			}
+			return true
+		})
 	}
 
 	// Re-rank results using Cohere if available
