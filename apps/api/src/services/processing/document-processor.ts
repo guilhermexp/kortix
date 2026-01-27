@@ -30,6 +30,10 @@ import {
 	type SummarizationService,
 } from "./summarization-service"
 import { createTaggingService, type TaggingService } from "./tagging-service"
+import {
+	createMetadataExtractor,
+	type MetadataExtractorService,
+} from "./metadata-extractor"
 
 // ============================================================================
 // Document Processor Service Implementation
@@ -47,6 +51,7 @@ export class DocumentProcessorService
 	private embeddingService?: EmbeddingService
 	private summarizationService?: SummarizationService
 	private taggingService?: TaggingService
+	private metadataExtractor?: MetadataExtractorService
 
 	constructor(config: ProcessorServiceConfig) {
 		super("DocumentProcessorService")
@@ -116,6 +121,13 @@ export class DocumentProcessorService
 			await this.taggingService.initialize()
 			this.logger.debug("Tagging service initialized")
 		}
+
+		// Metadata extraction service
+		if (this.config.metadata?.enabled !== false) {
+			this.metadataExtractor = createMetadataExtractor()
+			await this.metadataExtractor.initialize()
+			this.logger.debug("Metadata extraction service initialized")
+		}
 	}
 
 	// ========================================================================
@@ -130,10 +142,11 @@ export class DocumentProcessorService
 	 * 2. Embedding - Generates vector embeddings for semantic search
 	 * 3. Summarization - Creates AI-powered summary (optional)
 	 * 4. Tagging - Extracts relevant tags and categories (optional)
+	 * 5. Metadata Extraction - Extracts searchable metadata (optional)
 	 *
 	 * @param extraction - Extracted document content and metadata
 	 * @param options - Processing options to control pipeline behavior
-	 * @returns Fully processed document with chunks, embeddings, summary, and tags
+	 * @returns Fully processed document with chunks, embeddings, summary, tags, and metadata
 	 *
 	 * @example
 	 * ```typescript
@@ -187,6 +200,15 @@ export class DocumentProcessorService
 				tags = await this.executeTagging(extraction, options)
 			}
 
+			// Step 5: Extract metadata (optional)
+			let extractedMetadata: Record<string, unknown> | undefined
+			if (!options?.skipMetadata) {
+				extractedMetadata = await this.executeMetadataExtraction(
+					extraction,
+					options,
+				)
+			}
+
 			// Build processed document
 			const processed: ProcessedDocument = {
 				content: extraction.text,
@@ -200,6 +222,7 @@ export class DocumentProcessorService
 					chunkCount: chunksWithEmbeddings.length,
 					embeddingDimensions:
 						this.embeddingService?.getEmbeddingDimensions() || 0,
+					extracted: extractedMetadata,
 				},
 			}
 
@@ -209,6 +232,7 @@ export class DocumentProcessorService
 				chunkCount: processed.chunks.length,
 				hasSummary: !!processed.summary,
 				tagCount: processed.tags?.length || 0,
+				hasExtractedMetadata: !!processed.metadata.extracted,
 				processingTime: processed.metadata.processingTime,
 			})
 
@@ -261,12 +285,14 @@ export class DocumentProcessorService
 		embedding?: EmbeddingService
 		summarization?: SummarizationService
 		tagging?: TaggingService
+		metadataExtractor?: MetadataExtractorService
 	} {
 		return {
 			chunking: this.chunkingService,
 			embedding: this.embeddingService,
 			summarization: this.summarizationService,
 			tagging: this.taggingService,
+			metadataExtractor: this.metadataExtractor,
 		}
 	}
 
@@ -432,6 +458,49 @@ export class DocumentProcessorService
 		}
 	}
 
+	/**
+	 * Execute metadata extraction step
+	 */
+	private async executeMetadataExtraction(
+		extraction: ExtractionResult,
+		_options?: ProcessingOptions,
+	): Promise<Record<string, unknown>> {
+		if (!this.metadataExtractor) {
+			throw this.createError(
+				"SERVICE_NOT_AVAILABLE",
+				"Metadata extraction service not initialized",
+			)
+		}
+
+		const tracker = this.performanceMonitor.startOperation("metadataExtraction")
+
+		try {
+			this.logger.debug("Executing metadata extraction")
+
+			const result = await this.metadataExtractor.extract(extraction)
+
+			tracker.end(true)
+
+			this.logger.debug("Metadata extraction completed", {
+				tagCount: result.statistics.tagCount,
+				mentionCount: result.statistics.mentionCount,
+				propertyCount: result.statistics.propertyCount,
+				commentCount: result.statistics.commentCount,
+			})
+
+			return result as unknown as Record<string, unknown>
+		} catch (error) {
+			tracker.end(false)
+
+			// Metadata extraction is non-critical, log error and return empty object
+			this.logger.warn("Metadata extraction failed", {
+				error: (error as Error).message,
+			})
+
+			return {}
+		}
+	}
+
 	// ========================================================================
 	// Private Methods - Fallbacks
 	// ========================================================================
@@ -511,6 +580,13 @@ export class DocumentProcessorService
 			}
 		}
 
+		if (this.metadataExtractor) {
+			totalCount++
+			if (await this.metadataExtractor.healthCheck()) {
+				healthyCount++
+			}
+		}
+
 		// At least chunking and embedding must be healthy
 		const isHealthy = healthyCount >= 2
 
@@ -538,6 +614,9 @@ export class DocumentProcessorService
 		}
 		if (this.taggingService) {
 			await this.taggingService.cleanup()
+		}
+		if (this.metadataExtractor) {
+			await this.metadataExtractor.cleanup()
 		}
 	}
 }
@@ -577,6 +656,9 @@ export function createDocumentProcessorService(
 			provider: "openrouter",
 			maxTags: 6,
 			locale: "en-US",
+		},
+		metadata: {
+			enabled: true,
 		},
 		pipeline: {
 			parallel: false,
