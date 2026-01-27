@@ -28,6 +28,10 @@ export {
 	createTaggingService,
 	TaggingService,
 } from "./tagging-service"
+export {
+	createMetadataExtractor,
+	MetadataExtractor,
+} from "./metadata-extractor"
 
 // ============================================================================
 // Re-export Types
@@ -60,3 +64,10 @@ export type {
 	TaggingResult,
 	TaggingService as ITaggingService,
 } from "../interfaces"
+
+// Metadata extractor types (exported from local file)
+export type {
+	ExtractedMetadata,
+	MetadataExtractionOptions,
+	MetadataExtractorService,
+} from "./metadata-extractor"
