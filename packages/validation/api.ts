@@ -437,6 +437,34 @@ export const SearchRequestSchema = z.object({
 			],
 		},
 	}),
+	tagsFilter: z
+		.array(z.string())
+		.optional()
+		.meta({
+			description:
+				"Optional filter by extracted tags (OR logic - matches if any tag is present). These are tags extracted from document metadata and content during processing.",
+			example: ["ai", "research", "machine-learning"],
+		}),
+	mentionsFilter: z
+		.array(z.string())
+		.optional()
+		.meta({
+			description:
+				"Optional filter by extracted @mentions (OR logic - matches if any mention is present). These are @mentions extracted from document content during processing.",
+			example: ["@john", "@alice", "@project-alpha"],
+		}),
+	propertiesFilter: z
+		.record(z.string(), z.unknown())
+		.optional()
+		.meta({
+			description:
+				"Optional filter by extracted properties (AND logic - all properties must match). Properties are key-value pairs extracted from document metadata during processing. Supports array values for OR logic on a single property.",
+			example: {
+				status: "active",
+				priority: "high",
+				category: ["tech", "science"],
+			},
+		}),
 	includeFullDocs: z.boolean().optional().default(false).meta({
 		description:
 			"If true, include full document in the response. This is helpful if you want a chatbot to know the full context of the document. ",

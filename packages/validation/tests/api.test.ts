@@ -46,6 +46,61 @@ describe("@repo/validation", () => {
 			})
 			expect(result.success).toBe(true)
 		})
+
+		it("should validate search with tagsFilter", () => {
+			const result = SearchRequestSchema.safeParse({
+				q: "machine learning",
+				tagsFilter: ["ai", "research"],
+			})
+			expect(result.success).toBe(true)
+		})
+
+		it("should validate search with mentionsFilter", () => {
+			const result = SearchRequestSchema.safeParse({
+				q: "project update",
+				mentionsFilter: ["@john", "@alice"],
+			})
+			expect(result.success).toBe(true)
+		})
+
+		it("should validate search with propertiesFilter", () => {
+			const result = SearchRequestSchema.safeParse({
+				q: "documentation",
+				propertiesFilter: {
+					status: "active",
+					priority: "high",
+				},
+			})
+			expect(result.success).toBe(true)
+		})
+
+		it("should validate search with all metadata filters", () => {
+			const result = SearchRequestSchema.safeParse({
+				q: "team project",
+				tagsFilter: ["ai", "research"],
+				mentionsFilter: ["@john", "@alice"],
+				propertiesFilter: {
+					status: "active",
+					priority: "high",
+					category: ["tech", "science"],
+				},
+			})
+			expect(result.success).toBe(true)
+		})
+
+		it("should validate search with combined filters", () => {
+			const result = SearchRequestSchema.safeParse({
+				q: "AI concepts",
+				limit: 20,
+				containerTags: ["project_abc"],
+				tagsFilter: ["machine-learning"],
+				mentionsFilter: ["@researcher"],
+				propertiesFilter: {
+					status: "completed",
+				},
+			})
+			expect(result.success).toBe(true)
+		})
 	})
 
 	describe("MemoryResponseSchema", () => {
