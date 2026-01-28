@@ -53,3 +53,4 @@ __pycache__
 .worktrees/
 .security-key
 logs/security/
+apps/api/.env.bak
