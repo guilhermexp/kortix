@@ -607,6 +607,87 @@ function DocumentPreviewModal({
 							</div>
 						)}
 
+						{/* Metadata Section */}
+						{(() => {
+							const extracted = asRecord((document.metadata as any)?.extracted)
+							const tags = Array.isArray(extracted?.tags) ? extracted.tags : []
+							const mentions = Array.isArray(extracted?.mentions) ? extracted.mentions : []
+							const properties = asRecord(extracted?.properties) ?? {}
+							const hasMetadata = tags.length > 0 || mentions.length > 0 || Object.keys(properties).length > 0
+
+							if (!hasMetadata) return null
+
+							return (
+								<div className="mt-6 border-t border-border pt-4">
+									<h4 className="text-sm font-medium text-foreground mb-3">Metadata</h4>
+									<div className="flex flex-col gap-3">
+										{/* Tags */}
+										{tags.length > 0 && (
+											<div>
+												<span className="text-xs text-muted-foreground mr-2">Tags:</span>
+												<div className="inline-flex flex-wrap gap-1.5">
+													{tags.map((tag, idx) => (
+														<span
+															className="px-2 py-1 text-xs rounded bg-primary/10 text-primary/80 border border-primary/20"
+															key={`modal-tag-${idx}`}
+														>
+															#{String(tag)}
+														</span>
+													))}
+												</div>
+											</div>
+										)}
+
+										{/* Mentions */}
+										{mentions.length > 0 && (
+											<div>
+												<span className="text-xs text-muted-foreground mr-2">Mentions:</span>
+												<div className="inline-flex flex-wrap gap-1.5">
+													{mentions.map((mention, idx) => (
+														<span
+															className="px-2 py-1 text-xs rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+															key={`modal-mention-${idx}`}
+														>
+															@{String(mention)}
+														</span>
+													))}
+												</div>
+											</div>
+										)}
+
+										{/* Properties */}
+										{Object.keys(properties).length > 0 && (
+											<div>
+												<span className="text-xs text-muted-foreground mr-2">Properties:</span>
+												<div className="inline-flex flex-wrap gap-1.5">
+													{Object.entries(properties).map(([key, value], idx) => {
+														// Format value for display
+														let displayValue = String(value)
+														if (typeof value === 'object' && value !== null) {
+															displayValue = JSON.stringify(value)
+														}
+														if (displayValue.length > 50) {
+															displayValue = displayValue.slice(0, 50) + '...'
+														}
+
+														return (
+															<span
+																className="px-2 py-1 text-xs rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
+																key={`modal-prop-${idx}`}
+																title={`${key}: ${String(value)}`}
+															>
+																{key}: {displayValue}
+															</span>
+														)
+													})}
+												</div>
+											</div>
+										)}
+									</div>
+								</div>
+							)
+						})()}
+
 						{/* Memory Count */}
 						{activeMemories.length > 0 && (
 							<div className="flex items-center gap-2 mt-8 text-sm text-muted-foreground">
@@ -1188,27 +1269,92 @@ const MasonryCard = memo(
 								</p>
 							)}
 
-							{/* Tags */}
-							{Array.isArray((document as any).tags) &&
-								(document as any).tags.length > 0 && (
-									<div className="flex flex-wrap gap-1 mt-2">
-										{((document as any).tags as string[])
-											.slice(0, 4)
-											.map((tag, idx) => (
-												<span
-													className="px-1.5 py-0.5 text-[10px] rounded bg-primary/10 text-primary/80 border border-primary/20"
-													key={`${tag}-${idx}`}
-												>
-													{tag}
-												</span>
-											))}
-										{(document as any).tags.length > 4 && (
-											<span className="px-1.5 py-0.5 text-[10px] rounded bg-muted text-muted-foreground">
-												+{(document as any).tags.length - 4}
-											</span>
+							{/* Metadata: Tags, Mentions, Properties */}
+							{(() => {
+								const extracted = asRecord((document.metadata as any)?.extracted)
+								const tags = Array.isArray(extracted?.tags) ? extracted.tags : []
+								const mentions = Array.isArray(extracted?.mentions) ? extracted.mentions : []
+								const properties = asRecord(extracted?.properties) ?? {}
+
+								const hasMetadata = tags.length > 0 || mentions.length > 0 || Object.keys(properties).length > 0
+
+								if (!hasMetadata) return null
+
+								return (
+									<div className="flex flex-col gap-1.5 mt-2">
+										{/* Tags */}
+										{tags.length > 0 && (
+											<div className="flex flex-wrap gap-1">
+												{tags.slice(0, 3).map((tag, idx) => (
+													<span
+														className="px-1.5 py-0.5 text-[10px] rounded bg-primary/10 text-primary/80 border border-primary/20"
+														key={`tag-${idx}`}
+													>
+														#{String(tag)}
+													</span>
+												))}
+												{tags.length > 3 && (
+													<span className="px-1.5 py-0.5 text-[10px] rounded bg-muted text-muted-foreground">
+														+{tags.length - 3} tags
+													</span>
+												)}
+											</div>
+										)}
+
+										{/* Mentions */}
+										{mentions.length > 0 && (
+											<div className="flex flex-wrap gap-1">
+												{mentions.slice(0, 3).map((mention, idx) => (
+													<span
+														className="px-1.5 py-0.5 text-[10px] rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+														key={`mention-${idx}`}
+													>
+														@{String(mention)}
+													</span>
+												))}
+												{mentions.length > 3 && (
+													<span className="px-1.5 py-0.5 text-[10px] rounded bg-muted text-muted-foreground">
+														+{mentions.length - 3} mentions
+													</span>
+												)}
+											</div>
+										)}
+
+										{/* Properties */}
+										{Object.keys(properties).length > 0 && (
+											<div className="flex flex-wrap gap-1">
+												{Object.entries(properties)
+													.slice(0, 2)
+													.map(([key, value], idx) => {
+														// Format value for display
+														let displayValue = String(value)
+														if (typeof value === 'object' && value !== null) {
+															displayValue = JSON.stringify(value)
+														}
+														if (displayValue.length > 20) {
+															displayValue = displayValue.slice(0, 20) + '...'
+														}
+
+														return (
+															<span
+																className="px-1.5 py-0.5 text-[10px] rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
+																key={`prop-${idx}`}
+																title={`${key}: ${String(value)}`}
+															>
+																{key}: {displayValue}
+															</span>
+														)
+													})}
+												{Object.keys(properties).length > 2 && (
+													<span className="px-1.5 py-0.5 text-[10px] rounded bg-muted text-muted-foreground">
+														+{Object.keys(properties).length - 2} props
+													</span>
+												)}
+											</div>
 										)}
 									</div>
-								)}
+								)
+							})()}
 
 							{/* Footer with memory count and delete */}
 							<div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">

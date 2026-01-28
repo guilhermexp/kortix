@@ -40,6 +40,61 @@ function _formatEmbeddingForSql(values: number[]): string {
 	return `[${sanitized.join(",")}]`
 }
 
+/**
+ * Match document metadata against filter criteria
+ * Supports simple key-value matching and AND/OR logical operators
+ */
+function matchesMetadataFilters(
+	metadata: Record<string, unknown> | null,
+	filters: unknown,
+): boolean {
+	if (!metadata || !filters || typeof filters !== "object") {
+		return true
+	}
+
+	const filterObj = filters as Record<string, unknown>
+
+	// Handle AND/OR logical operators
+	if ("AND" in filterObj && Array.isArray(filterObj.AND)) {
+		return filterObj.AND.every((filter) => matchesMetadataFilters(metadata, filter))
+	}
+
+	if ("OR" in filterObj && Array.isArray(filterObj.OR)) {
+		return filterObj.OR.some((filter) => matchesMetadataFilters(metadata, filter))
+	}
+
+	// Handle simple key-value matching
+	for (const [key, value] of Object.entries(filterObj)) {
+		if (!metadata || typeof metadata !== "object") {
+			return false
+		}
+
+		const metadataValue = metadata[key]
+
+		// Handle array values - check if any metadata value matches any filter value
+		if (Array.isArray(value)) {
+			if (Array.isArray(metadataValue)) {
+				// Both are arrays - check if there's any overlap
+				if (!value.some((v) => metadataValue.includes(v))) {
+					return false
+				}
+			} else {
+				// Filter is array, metadata is scalar - check if metadata value is in filter array
+				if (!value.includes(metadataValue)) {
+					return false
+				}
+			}
+		} else {
+			// Direct equality comparison
+			if (metadataValue !== value) {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
 export async function searchDocuments(
 	client: SupabaseClient,
 	orgId: string,
@@ -162,6 +217,7 @@ export async function searchDocuments(
 	const scopedDocumentIds = payload.scopedDocumentIds ?? []
 	const chunkThreshold = payload.chunkThreshold ?? 0
 	const documentThreshold = payload.documentThreshold ?? 0
+	const metadataFilters = payload.filters
 
 	const onlyMatchingChunks = payload.onlyMatchingChunks ?? true
 
@@ -187,6 +243,11 @@ export async function searchDocuments(
 
 			// Filter by scoped document IDs if specified (canvas mode)
 			if (scopedDocumentIds.length > 0 && !scopedDocumentIds.includes(doc.id)) {
+				return null
+			}
+
+			// Apply metadata filters if specified
+			if (metadataFilters && !matchesMetadataFilters(docMetadata, metadataFilters)) {
 				return null
 			}
 

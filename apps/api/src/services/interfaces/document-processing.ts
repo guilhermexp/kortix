@@ -176,12 +176,22 @@ export interface ProcessingOptions {
 	skipPreview?: boolean
 	/** Skip embedding generation */
 	skipEmbeddings?: boolean
+	/** Skip metadata extraction */
+	skipMetadata?: boolean
 	/** Custom chunk size */
 	chunkSize?: number
 	/** Custom chunk overlap */
 	chunkOverlap?: number
 	/** Priority level */
 	priority?: "low" | "normal" | "high"
+	/** Respect sentence boundaries during chunking */
+	respectSentences?: boolean
+	/** Respect paragraph boundaries during chunking */
+	respectParagraphs?: boolean
+	/** Maximum length for summary */
+	summaryMaxLength?: number
+	/** Maximum number of tags to generate */
+	maxTags?: number
 }
 
 /**
@@ -350,6 +360,10 @@ export interface ProcessorServiceConfig {
 		enabled: boolean
 		provider: "openrouter" | "gemini"
 		maxTags?: number
+	}
+	/** Metadata extraction configuration */
+	metadata?: {
+		enabled: boolean
 	}
 }
 
