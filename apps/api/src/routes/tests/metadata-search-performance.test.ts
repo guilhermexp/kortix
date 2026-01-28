@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll, afterAll } from "bun:test"
+import { afterAll, beforeAll, describe, expect, it } from "bun:test"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createClient } from "@supabase/supabase-js"
 
@@ -105,7 +105,7 @@ describe("Metadata Search Performance Tests", () => {
 	let supabase: SupabaseClient
 	let testOrgId: string
 	let testSpaceId: string
-	let documentIds: string[] = []
+	const documentIds: string[] = []
 
 	/**
 	 * Setup: Create test organization, space, and 1000+ documents
@@ -157,7 +157,11 @@ describe("Metadata Search Performance Tests", () => {
 		// Generate and insert test documents in batches
 		const startTime = performance.now()
 
-		for (let batch = 0; batch < TEST_CONFIG.TOTAL_DOCUMENTS / TEST_CONFIG.BATCH_SIZE; batch++) {
+		for (
+			let batch = 0;
+			batch < TEST_CONFIG.TOTAL_DOCUMENTS / TEST_CONFIG.BATCH_SIZE;
+			batch++
+		) {
 			const documents = []
 
 			for (let i = 0; i < TEST_CONFIG.BATCH_SIZE; i++) {
@@ -172,7 +176,9 @@ describe("Metadata Search Performance Tests", () => {
 				.select("id")
 
 			if (result.error) {
-				throw new Error(`Failed to insert batch ${batch}: ${result.error.message}`)
+				throw new Error(
+					`Failed to insert batch ${batch}: ${result.error.message}`,
+				)
 			}
 
 			documentIds.push(...result.data.map((d) => d.id))
@@ -423,7 +429,9 @@ describe("Metadata Search Performance Tests", () => {
 			expect(result.error).toBeNull()
 			expect(queryTime).toBeLessThan(PERFORMANCE_THRESHOLDS.SIMPLE_QUERY_MS)
 
-			console.log(`  ✓ Pagination (offset ${offset}): ${queryTime.toFixed(2)}ms`)
+			console.log(
+				`  ✓ Pagination (offset ${offset}): ${queryTime.toFixed(2)}ms`,
+			)
 		}
 	})
 
@@ -444,7 +452,9 @@ describe("Metadata Search Performance Tests", () => {
 		const startTime = performance.now()
 
 		const results = await Promise.all(
-			concurrentQueries.map((query) => supabase.rpc("search_by_metadata", query)),
+			concurrentQueries.map((query) =>
+				supabase.rpc("search_by_metadata", query),
+			),
 		)
 
 		const totalTime = performance.now() - startTime

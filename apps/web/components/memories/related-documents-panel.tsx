@@ -13,7 +13,7 @@ import {
 	createDocumentConnection,
 	deleteDocumentConnection,
 	listDocumentConnections,
-} from "@/lib/api"
+} from "@lib/api"
 import { Button } from "../ui/button"
 import {
 	Dialog,
@@ -125,7 +125,8 @@ const RelatedDocumentsPanelImpl = ({
 				})
 
 				// Transform to expected format
-				const docs: RelatedDocument[] = response.connections.map((conn) =>
+				const connections = response?.data?.connections ?? []
+				const docs: RelatedDocument[] = connections.map((conn: any) =>
 					transformConnectionToRelatedDoc(conn),
 				)
 

@@ -21,6 +21,10 @@ export {
 	EmbeddingService,
 } from "./embedding-service"
 export {
+	createMetadataExtractor,
+	MetadataExtractor,
+} from "./metadata-extractor"
+export {
 	createSummarizationService,
 	SummarizationService,
 } from "./summarization-service"
@@ -28,10 +32,6 @@ export {
 	createTaggingService,
 	TaggingService,
 } from "./tagging-service"
-export {
-	createMetadataExtractor,
-	MetadataExtractor,
-} from "./metadata-extractor"
 
 // ============================================================================
 // Re-export Types

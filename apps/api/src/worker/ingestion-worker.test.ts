@@ -292,9 +292,7 @@ describe("Ingestion Worker - Reindexing Support", () => {
 			const payload = null
 
 			const jobType =
-				typeof payload === "object" &&
-				payload !== null &&
-				"type" in payload
+				typeof payload === "object" && payload !== null && "type" in payload
 					? (payload as { type?: string }).type
 					: undefined
 

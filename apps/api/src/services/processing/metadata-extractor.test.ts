@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "bun:test"
 import type { ExtractionResult } from "../interfaces"
 import {
 	createMetadataExtractor,
-	MetadataExtractor,
+	type MetadataExtractor,
 } from "./metadata-extractor"
 
 describe("MetadataExtractor", () => {

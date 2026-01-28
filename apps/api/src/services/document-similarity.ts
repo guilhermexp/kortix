@@ -1,4 +1,3 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
 import type {
 	CreateManualConnection,
 	DocumentConnection,
@@ -6,6 +5,7 @@ import type {
 	FindSimilarDocuments,
 	SimilarDocument,
 } from "@repo/validation/document-connections"
+import type { SupabaseClient } from "@supabase/supabase-js"
 
 export interface FindSimilarDocumentsOptions extends FindSimilarDocuments {
 	orgId: string
@@ -59,7 +59,10 @@ export async function findSimilarDocuments(
 	})
 
 	if (error) {
-		console.error("[document-similarity] Error finding similar documents:", error)
+		console.error(
+			"[document-similarity] Error finding similar documents:",
+			error,
+		)
 		throw new Error(`Failed to find similar documents: ${error.message}`)
 	}
 
@@ -84,8 +87,14 @@ export async function createManualConnection(
 	client: SupabaseClient,
 	options: CreateManualConnectionOptions,
 ): Promise<DocumentConnection> {
-	const { sourceDocumentId, targetDocumentId, reason, metadata, orgId, userId } =
-		options
+	const {
+		sourceDocumentId,
+		targetDocumentId,
+		reason,
+		metadata,
+		orgId,
+		userId,
+	} = options
 
 	// Validate both documents exist and belong to the organization
 	const { data: documents, error: validateError } = await client
@@ -95,7 +104,10 @@ export async function createManualConnection(
 		.eq("org_id", orgId)
 
 	if (validateError) {
-		console.error("[document-similarity] Error validating documents:", validateError)
+		console.error(
+			"[document-similarity] Error validating documents:",
+			validateError,
+		)
 		throw new Error(`Failed to validate documents: ${validateError.message}`)
 	}
 
@@ -196,7 +208,10 @@ export async function deleteConnection(
 		.eq("id", connectionId)
 
 	if (deleteError) {
-		console.error("[document-similarity] Error deleting connection:", deleteError)
+		console.error(
+			"[document-similarity] Error deleting connection:",
+			deleteError,
+		)
 		throw new Error(`Failed to delete connection: ${deleteError.message}`)
 	}
 }

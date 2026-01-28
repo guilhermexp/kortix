@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
 import type { SupabaseClient } from "@supabase/supabase-js"
-import type { ExtractedMetadata } from "../../services/processing/metadata-extractor"
 import type { ChangeDetectionResult } from "../../services/metadata-change-detector"
+import type { ExtractedMetadata } from "../../services/processing/metadata-extractor"
 
 /**
  * Integration tests for metadata search flow
@@ -158,7 +158,11 @@ describe("Metadata Search Integration Tests", () => {
 			// Step 3: Verify metadata indexed in database
 			const indexedMetadata = mockDatabase.metadata.get(uploadedDoc.id)
 			expect(indexedMetadata).toBeDefined()
-			expect(indexedMetadata.tags).toEqual(["ai", "machinelearning", "research"])
+			expect(indexedMetadata.tags).toEqual([
+				"ai",
+				"machinelearning",
+				"research",
+			])
 			expect(indexedMetadata.mentions).toEqual(["john-doe", "jane-smith"])
 			expect(indexedMetadata.properties).toEqual({
 				status: "draft",
@@ -226,7 +230,7 @@ describe("Metadata Search Integration Tests", () => {
 					document_id: uploadedDoc.id,
 					content: documentData.content,
 					metadata: { properties: { status: "draft", priority: "high" } },
-					similarity: 0.90,
+					similarity: 0.9,
 				},
 			]
 
@@ -242,9 +246,9 @@ describe("Metadata Search Integration Tests", () => {
 			)
 
 			expect(propertySearchResults.results).toHaveLength(1)
-			expect(propertySearchResults.results[0].metadata?.properties?.priority).toBe(
-				"high",
-			)
+			expect(
+				propertySearchResults.results[0].metadata?.properties?.priority,
+			).toBe("high")
 		})
 
 		it("should trigger reindexing when document metadata changes", async () => {
@@ -612,7 +616,9 @@ describe("Metadata Search Integration Tests", () => {
 			// Verify all updates completed successfully
 			expect(updateResults).toHaveLength(5)
 			expect(updateResults.every((r) => r.success)).toBe(true)
-			expect(updateResults.every((r) => r.changeDetection.hasChanges)).toBe(true)
+			expect(updateResults.every((r) => r.changeDetection.hasChanges)).toBe(
+				true,
+			)
 
 			// Verify search reflects all updates
 			for (let i = 0; i < uploadedDocs.length; i++) {
@@ -874,7 +880,9 @@ describe("Metadata Search Integration Tests", () => {
 			} else if (key === "mentions") {
 				const mentions = metadata.mentions || []
 				const filterMentions = Array.isArray(value) ? value : [value]
-				if (!filterMentions.some((mention: string) => mentions.includes(mention))) {
+				if (
+					!filterMentions.some((mention: string) => mentions.includes(mention))
+				) {
 					return false
 				}
 			} else if (key === "properties") {

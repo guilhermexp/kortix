@@ -552,6 +552,13 @@ function DocumentPreviewModal({
 								className="w-full h-full object-contain bg-muted/50"
 								referrerPolicy="no-referrer"
 								src={proxyImageUrl(preview.src) || preview.src}
+								onError={(e) => {
+									// Fallback to original URL if proxy fails
+									const target = e.currentTarget
+									if (preview?.src && target.src !== preview.src) {
+										target.src = preview.src
+									}
+								}}
 							/>
 							{/* Gradient overlay at bottom of image */}
 							<div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent" />
@@ -848,10 +855,11 @@ const MasonryCard = memo(
 		const [imageError, setImageError] = useState(false)
 		const [useFallbackImage, setUseFallbackImage] = useState(false)
 		const [fallbackImageSrc, setFallbackImageSrc] = useState<string | null>(null)
+		const [tryWithoutProxy, setTryWithoutProxy] = useState(false)
 
 		// Handler para erro de carregamento de imagem com fallback de galeria
 		const handleImageError = useCallback(() => {
-			// Tentar fallback de galeria se ainda não tentamos
+			// Step 1: Try fallback gallery image if not tried yet
 			if (!useFallbackImage) {
 				const galleryImages = extractGalleryImages(document, { limit: 1 })
 				const firstImage = galleryImages[0]
@@ -859,20 +867,31 @@ const MasonryCard = memo(
 				if (firstImage) {
 					setUseFallbackImage(true)
 					setFallbackImageSrc(firstImage.src)
-					setImageError(false) // Reset erro para tentar fallback
-					setImageLoaded(false) // Reset loaded para mostrar shimmer
+					setImageError(false)
+					setImageLoaded(false)
 					return
 				}
 			}
 
-			// Se fallback também falhou ou não há imagens, mantém erro
+			// Step 2: Try without proxy if not tried yet
+			if (!tryWithoutProxy) {
+				setTryWithoutProxy(true)
+				setImageError(false)
+				setImageLoaded(false)
+				return
+			}
+
+			// Step 3: All fallbacks failed, show error
 			setImageError(true)
-		}, [document, useFallbackImage])
+		}, [document, useFallbackImage, tryWithoutProxy])
 
 		useEffect(() => {
 			setStickyPreview(null)
 			setImageLoaded(false)
 			setImageError(false)
+			setUseFallbackImage(false)
+			setFallbackImageSrc(null)
+			setTryWithoutProxy(false)
 		}, [])
 
 		useEffect(() => {
@@ -1226,10 +1245,11 @@ const MasonryCard = memo(
 										onLoad={() => setImageLoaded(true)}
 										referrerPolicy="no-referrer"
 										src={
-											useFallbackImage && fallbackImageSrc
-												? proxyImageUrl(fallbackImageSrc) || fallbackImageSrc
-												: proxyImageUrl(previewToRender.src) ||
-													previewToRender.src
+											tryWithoutProxy
+												? (useFallbackImage && fallbackImageSrc ? fallbackImageSrc : previewToRender.src)
+												: (useFallbackImage && fallbackImageSrc
+													? proxyImageUrl(fallbackImageSrc) || fallbackImageSrc
+													: proxyImageUrl(previewToRender.src) || previewToRender.src)
 										}
 									/>
 								)}
@@ -1366,16 +1386,17 @@ const MasonryCard = memo(
 											{activeMemories.length === 1 ? "memory" : "memories"}
 										</span>
 									)}
-									{/* Project badge */}
-									{projectName && (
-										<span
-											className="inline-flex items-center gap-1 text-gray-500 max-w-[70px]"
-											title={projectName}
-										>
-											<Folder className="w-3 h-3 flex-shrink-0" />
-											<span className="truncate text-[9px]">{projectName}</span>
-										</span>
-									)}
+									{/* Project selector - click to change project */}
+									<div
+										className="max-w-[100px]"
+										onClick={(e) => e.stopPropagation()}
+									>
+										<DocumentProjectTransfer
+											documentId={document.id}
+											currentProject={containerTag}
+											compact
+										/>
+									</div>
 								</div>
 
 								{/* Delete button */}

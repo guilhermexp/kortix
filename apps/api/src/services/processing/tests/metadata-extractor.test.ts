@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
 import type { ExtractionResult } from "../../interfaces/document-processing"
 import {
 	createMetadataExtractor,
-	MetadataExtractor,
 	type ExtractedMetadata,
 	type MetadataExtractionOptions,
+	type MetadataExtractor,
 } from "../metadata-extractor"
 
 describe("MetadataExtractor", () => {
@@ -77,7 +77,11 @@ describe("MetadataExtractor", () => {
 				propertyKeys: ["status"],
 			}
 
-			const result = await service.extractFromContent(content, metadata, options)
+			const result = await service.extractFromContent(
+				content,
+				metadata,
+				options,
+			)
 
 			expect(result.tags).toContain("hashtag")
 			expect(result.tags).toContain("test")

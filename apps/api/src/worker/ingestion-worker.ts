@@ -12,7 +12,13 @@ loadEnv()
 
 // Minimal logging - set LOG_LEVEL=debug for verbose output
 const LOG_LEVEL = process.env.LOG_LEVEL || "warn"
-const LEVELS: Record<string, number> = { silent: 0, error: 1, warn: 2, info: 3, debug: 4 }
+const LEVELS: Record<string, number> = {
+	silent: 0,
+	error: 1,
+	warn: 2,
+	info: 3,
+	debug: 4,
+}
 const level = LEVELS[LOG_LEVEL] ?? 2
 const originalLog = console.log
 const originalWarn = console.warn
@@ -869,14 +875,11 @@ async function processJob(job: IngestionJobRow): Promise<boolean> {
 			await hydrateDocument(job.id, job.document_id, job.org_id, job.payload)
 		}
 
-		console.log(
-			"[ingestion-worker] Job completed successfully",
-			{
-				jobId: job.id,
-				documentId: job.document_id,
-				jobType: jobType || "standard",
-			},
-		)
+		console.log("[ingestion-worker] Job completed successfully", {
+			jobId: job.id,
+			documentId: job.document_id,
+			jobType: jobType || "standard",
+		})
 
 		// Record success - resets systemic error counter
 		recordJobSuccess()

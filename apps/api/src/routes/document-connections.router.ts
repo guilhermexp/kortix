@@ -4,12 +4,12 @@
  */
 
 import { zValidator } from "@hono/zod-validator"
-import { Hono } from "hono"
 import {
 	CreateManualConnectionSchema,
 	FindSimilarDocumentsSchema,
 	ListConnectionsQuerySchema,
 } from "@repo/validation/document-connections"
+import { Hono } from "hono"
 import type { SessionContext } from "../session"
 import { createClientForSession } from "../supabase"
 import {
@@ -118,9 +118,6 @@ documentConnectionsRouter.delete("/:connectionId", async (c) => {
 		return c.json({ data: result })
 	} catch (error) {
 		console.error("Failed to delete connection", error)
-		return c.json(
-			{ error: { message: "Failed to delete connection" } },
-			500,
-		)
+		return c.json({ error: { message: "Failed to delete connection" } }, 500)
 	}
 })

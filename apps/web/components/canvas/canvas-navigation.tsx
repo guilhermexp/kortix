@@ -33,20 +33,32 @@ export function useCanvasNavigation() {
 		setZoom((prev) => Math.max(0.1, Math.min(5, prev * zoomFactor)))
 	}, [])
 
-	const zoomIn = useCallback(() => {
+	const zoomIn = useCallback((_centerX?: number, _centerY?: number) => {
 		setZoom((prev) => Math.min(5, prev * 1.2))
 	}, [])
 
-	const zoomOut = useCallback(() => {
+	const zoomOut = useCallback((_centerX?: number, _centerY?: number) => {
 		setZoom((prev) => Math.max(0.1, prev / 1.2))
 	}, [])
 
-	const centerViewportOn = useCallback((x: number, y: number) => {
+	const centerViewportOn = useCallback((
+		x: number,
+		y: number,
+		_containerWidth?: number,
+		_containerHeight?: number,
+		_animate?: boolean
+	) => {
 		setPanX(-x * zoom)
 		setPanY(-y * zoom)
 	}, [zoom])
 
-	const autoFitToViewport = useCallback(() => {
+	const autoFitToViewport = useCallback((
+		_nodes?: Array<{ position: { x: number; y: number }; size: number; data: { id: string } }>,
+		_containerWidth?: number,
+		_containerHeight?: number,
+		_options?: { animate?: boolean }
+	) => {
+		// Simple reset for now - can be enhanced to actually fit nodes
 		setPanX(0)
 		setPanY(0)
 		setZoom(1)

@@ -34,24 +34,30 @@ councilRouter.post("/stream", async (c) => {
 		return c.json({ error: "Missing or invalid query" }, 400)
 	}
 
-	console.log("[council] Starting council session for query:", query.slice(0, 50))
+	console.log(
+		"[council] Starting council session for query:",
+		query.slice(0, 50),
+	)
 
 	try {
 		// Step 1: Create a new conversation
-		const createConvResponse = await fetch(`${LLM_COUNCIL_URL}/api/conversations`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
+		const createConvResponse = await fetch(
+			`${LLM_COUNCIL_URL}/api/conversations`,
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({}),
 			},
-			body: JSON.stringify({}),
-		})
+		)
 
 		if (!createConvResponse.ok) {
 			const errorText = await createConvResponse.text()
 			console.error("[council] Failed to create conversation:", errorText)
 			return c.json(
 				{ error: "Failed to create council conversation" },
-				createConvResponse.status
+				createConvResponse.status,
 			)
 		}
 
@@ -70,8 +76,8 @@ councilRouter.post("/stream", async (c) => {
 							Accept: "text/event-stream",
 						},
 						// llm-council expects { content: string } per SendMessageRequest
-					body: JSON.stringify({ content: query }),
-					}
+						body: JSON.stringify({ content: query }),
+					},
 				)
 
 				if (!messageResponse.ok) {
@@ -138,7 +144,10 @@ councilRouter.post("/stream", async (c) => {
 					}
 				}
 
-				console.log("[council] Stream completed for conversation:", conversationId)
+				console.log(
+					"[council] Stream completed for conversation:",
+					conversationId,
+				)
 			} catch (streamError) {
 				console.error("[council] Stream error:", streamError)
 				await stream.writeSSE({
@@ -158,7 +167,7 @@ councilRouter.post("/stream", async (c) => {
 			{
 				error: error instanceof Error ? error.message : "Unknown error",
 			},
-			500
+			500,
 		)
 	}
 })
@@ -179,14 +188,8 @@ councilRouter.get("/health", async (c) => {
 			return c.json({ status: "ok", councilUrl: LLM_COUNCIL_URL })
 		}
 
-		return c.json(
-			{ status: "unhealthy", councilUrl: LLM_COUNCIL_URL },
-			503
-		)
+		return c.json({ status: "unhealthy", councilUrl: LLM_COUNCIL_URL }, 503)
 	} catch {
-		return c.json(
-			{ status: "unavailable", councilUrl: LLM_COUNCIL_URL },
-			503
-		)
+		return c.json({ status: "unavailable", councilUrl: LLM_COUNCIL_URL }, 503)
 	}
 })

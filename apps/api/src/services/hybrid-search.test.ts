@@ -1,7 +1,7 @@
 /**
  * Tests for hybrid search with metadata filtering
  */
-import { describe, expect, it, beforeAll, afterAll } from "bun:test"
+import { afterAll, beforeAll, describe, expect, it } from "bun:test"
 import { createClient } from "@supabase/supabase-js"
 import { hybridSearch, metadataOnlySearch } from "./hybrid-search"
 
@@ -13,7 +13,7 @@ const supabaseKey =
 describe("Hybrid Search - Metadata Filtering", () => {
 	let client: ReturnType<typeof createClient>
 	let testOrgId: string
-	let testDocIds: string[] = []
+	const testDocIds: string[] = []
 
 	beforeAll(async () => {
 		client = createClient(supabaseUrl, supabaseKey)
@@ -139,9 +139,7 @@ describe("Hybrid Search - Metadata Filtering", () => {
 			for (const result of results) {
 				const extracted = result.metadata?.extracted as any
 				const tags = extracted?.tags || []
-				const hasAnyTag = tags.some(
-					(t: string) => t === "ai" || t === "design",
-				)
+				const hasAnyTag = tags.some((t: string) => t === "ai" || t === "design")
 				expect(hasAnyTag).toBe(true)
 			}
 		})
@@ -452,9 +450,7 @@ describe("Hybrid Search - Metadata Filtering", () => {
 			for (const result of results) {
 				const extracted = result.metadata?.extracted as any
 				const tags = extracted?.tags || []
-				const hasAnyTag = tags.some(
-					(t: string) => t === "ai" || t === "design",
-				)
+				const hasAnyTag = tags.some((t: string) => t === "ai" || t === "design")
 				expect(hasAnyTag).toBe(true)
 			}
 		})

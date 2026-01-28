@@ -24,7 +24,13 @@ try {
 
 // Minimal logging - set LOG_LEVEL=debug for verbose output
 const LOG_LEVEL = process.env.LOG_LEVEL || "warn"
-const LEVELS: Record<string, number> = { silent: 0, error: 1, warn: 2, info: 3, debug: 4 }
+const LEVELS: Record<string, number> = {
+	silent: 0,
+	error: 1,
+	warn: 2,
+	info: 3,
+	debug: 4,
+}
 const level = LEVELS[LOG_LEVEL] ?? 2
 const originalLog = console.log
 const originalWarn = console.warn
@@ -54,11 +60,11 @@ import {
 } from "./routes/auth"
 import { canvasProjectsRouter, canvasRouter } from "./routes/canvas.router"
 import { chatRouter } from "./routes/chat.router"
-import { councilRouter } from "./routes/council.router"
 import { connectionsRouter } from "./routes/connections.router"
 import { conversationsRouter } from "./routes/conversations.router"
-import { deepAgentRouter, documentsRouter } from "./routes/documents.router"
+import { councilRouter } from "./routes/council.router"
 import { documentConnectionsRouter } from "./routes/document-connections.router"
+import { deepAgentRouter, documentsRouter } from "./routes/documents.router"
 import { healthHandler } from "./routes/health"
 import { registerMcpRoutes } from "./routes/mcp"
 import {

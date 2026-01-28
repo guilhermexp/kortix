@@ -451,7 +451,10 @@ describe("Database Storage Integration Tests", () => {
 
 			expect(mockSupabaseAdmin.from).toHaveBeenCalledWith("document_chunks")
 			expect(mockSupabaseAdmin.delete).toHaveBeenCalledWith({ count: "exact" })
-			expect(mockSupabaseAdmin.eq).toHaveBeenCalledWith("document_id", "doc-123")
+			expect(mockSupabaseAdmin.eq).toHaveBeenCalledWith(
+				"document_id",
+				"doc-123",
+			)
 			expect(mockLogger.debug).toHaveBeenCalledWith(
 				"Document chunks deleted successfully",
 				expect.objectContaining({

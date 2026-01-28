@@ -21,18 +21,18 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { z } from "zod"
 import { processDocumentInline } from "../services/document-processor-inline"
-import {
-	addDocumentJob,
-	documentQueue,
-	getQueueStats,
-	isRedisEnabled,
-} from "../services/queue"
 import { sanitizeJson, sanitizeString } from "../services/ingestion/utils"
 import {
 	documentCache,
 	documentListCache,
 	generateCacheKey,
 } from "../services/query-cache"
+import {
+	addDocumentJob,
+	documentQueue,
+	getQueueStats,
+	isRedisEnabled,
+} from "../services/queue"
 import { findRelatedLinks, type RelatedLink } from "../services/related-links"
 import { addConnectionUpdateJob } from "../worker/connection-updater-job"
 

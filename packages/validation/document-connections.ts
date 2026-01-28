@@ -34,30 +34,27 @@ export const DocumentConnectionSchema = z
 				"Type of connection: automatic (AI-detected similarity) or manual (user-created)",
 			example: "automatic",
 		}),
-		similarityScore: z
-			.number()
-			.min(0)
-			.max(1)
-			.nullable()
-			.optional()
-			.meta({
-				description:
-					"Cosine similarity score (0-1) for automatic connections, NULL for manual",
-				example: 0.87,
-				minimum: 0,
-				maximum: 1,
-			}),
+		similarityScore: z.number().min(0).max(1).nullable().optional().meta({
+			description:
+				"Cosine similarity score (0-1) for automatic connections, NULL for manual",
+			example: 0.87,
+			minimum: 0,
+			maximum: 1,
+		}),
 		reason: z.string().nullable().optional().meta({
 			description:
 				"Explanation of why documents are connected (AI-generated for automatic, user-provided for manual)",
 			example:
 				"Both documents discuss machine learning concepts and neural networks",
 		}),
-		metadata: z.record(z.string(), z.unknown()).nullable().optional().meta({
-			description:
-				"Additional connection metadata (topics, keywords, etc)",
-			example: { topics: ["ai", "machine-learning"], confidence: 0.9 },
-		}),
+		metadata: z
+			.record(z.string(), z.unknown())
+			.nullable()
+			.optional()
+			.meta({
+				description: "Additional connection metadata (topics, keywords, etc)",
+				example: { topics: ["ai", "machine-learning"], confidence: 0.9 },
+			}),
 		createdAt: z.string().datetime().meta({
 			description: "Creation timestamp",
 			example: new Date().toISOString(),
@@ -97,19 +94,13 @@ export const FindSimilarDocumentsSchema = z
 			description: "The document ID to find similar documents for",
 			example: "acxV5LHMEsG2hMSNb4umbn",
 		}),
-		threshold: z
-			.number()
-			.min(0)
-			.max(1)
-			.optional()
-			.default(0.7)
-			.meta({
-				description:
-					"Minimum similarity score threshold (0-1). Higher values return fewer, more similar documents",
-				example: 0.7,
-				minimum: 0,
-				maximum: 1,
-			}),
+		threshold: z.number().min(0).max(1).optional().default(0.7).meta({
+			description:
+				"Minimum similarity score threshold (0-1). Higher values return fewer, more similar documents",
+			example: 0.7,
+			minimum: 0,
+			maximum: 1,
+		}),
 		limit: z
 			.number()
 			.int()
@@ -235,23 +226,22 @@ export const CreateManualConnectionSchema = z
 		reason: z.string().min(1).max(500).optional().meta({
 			description:
 				"User-provided explanation of why these documents are connected",
-			example:
-				"These documents are related to the same research project",
+			example: "These documents are related to the same research project",
 			minLength: 1,
 			maxLength: 500,
 		}),
-		metadata: z.record(z.string(), z.unknown()).optional().meta({
-			description: "Optional additional metadata for the connection",
-			example: { project: "research_2024", category: "references" },
-		}),
+		metadata: z
+			.record(z.string(), z.unknown())
+			.optional()
+			.meta({
+				description: "Optional additional metadata for the connection",
+				example: { project: "research_2024", category: "references" },
+			}),
 	})
-	.refine(
-		(data) => data.sourceDocumentId !== data.targetDocumentId,
-		{
-			message: "Source and target documents must be different",
-			path: ["targetDocumentId"],
-		},
-	)
+	.refine((data) => data.sourceDocumentId !== data.targetDocumentId, {
+		message: "Source and target documents must be different",
+		path: ["targetDocumentId"],
+	})
 	.meta({
 		description:
 			"Parameters for creating a manual connection between documents",
@@ -275,8 +265,7 @@ export const ListConnectionsQuerySchema = z
 			example: "acxV5LHMEsG2hMSNb4umbn",
 		}),
 		connectionType: ConnectionTypeEnum.optional().meta({
-			description:
-				"Optional filter by connection type (automatic or manual)",
+			description: "Optional filter by connection type (automatic or manual)",
 			example: "automatic",
 		}),
 		limit: z
@@ -311,8 +300,8 @@ export const ListConnectionsQuerySchema = z
 export type ListConnectionsQuery = z.infer<typeof ListConnectionsQuerySchema>
 
 // Document connection with target document details
-export const DocumentConnectionWithDetailsSchema = DocumentConnectionSchema.extend(
-	{
+export const DocumentConnectionWithDetailsSchema =
+	DocumentConnectionSchema.extend({
 		targetDocument: z
 			.object({
 				id: z.string().uuid(),
@@ -326,10 +315,10 @@ export const DocumentConnectionWithDetailsSchema = DocumentConnectionSchema.exte
 			.meta({
 				description: "Target document details",
 			}),
-	},
-).meta({
-	description: "Document connection with detailed target document information",
-})
+	}).meta({
+		description:
+			"Document connection with detailed target document information",
+	})
 
 export type DocumentConnectionWithDetails = z.infer<
 	typeof DocumentConnectionWithDetailsSchema
@@ -358,8 +347,7 @@ export const ListConnectionsResponseSchema = z
 					userId: null,
 					connectionType: "automatic",
 					similarityScore: 0.87,
-					reason:
-						"Both documents discuss machine learning concepts",
+					reason: "Both documents discuss machine learning concepts",
 					metadata: { topics: ["ai", "machine-learning"] },
 					createdAt: new Date().toISOString(),
 					updatedAt: new Date().toISOString(),

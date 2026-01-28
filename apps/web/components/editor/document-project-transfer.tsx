@@ -27,6 +27,7 @@ interface DocumentProjectTransferProps {
 	documentId: string
 	currentProject?: string | null
 	onProjectChanged?: (containerTag: string) => void
+	compact?: boolean
 }
 
 const PROJECTS_QUERY_KEY = ["projects"]
@@ -35,6 +36,7 @@ export function DocumentProjectTransfer({
 	documentId,
 	currentProject,
 	onProjectChanged,
+	compact = false,
 }: DocumentProjectTransferProps) {
 	const queryClient = useQueryClient()
 	const [selection, setSelection] = useState(
@@ -197,9 +199,9 @@ export function DocumentProjectTransfer({
 	const triggerLabel = (() => {
 		if (moveMutation.isPending) {
 			return (
-				<span className="flex items-center gap-2">
-					<Loader2 className="h-4 w-4 animate-spin" />
-					Movendo...
+				<span className={`flex items-center ${compact ? "gap-1" : "gap-2"}`}>
+					<Loader2 className={compact ? "h-3 w-3 animate-spin" : "h-4 w-4 animate-spin"} />
+					{!compact && "Movendo..."}
 				</span>
 			)
 		}
@@ -208,9 +210,11 @@ export function DocumentProjectTransfer({
 		)
 
 		return (
-			<span className="flex items-center gap-1.5">
-				<FolderIcon className="h-3.5 w-3.5" />
-				{currentOption ? currentOption.name : selection}
+			<span className={`flex items-center ${compact ? "gap-1" : "gap-1.5"}`}>
+				<FolderIcon className={compact ? "h-3 w-3 flex-shrink-0" : "h-3.5 w-3.5"} />
+				<span className={compact ? "truncate max-w-[60px]" : ""}>
+					{currentOption ? currentOption.name : selection}
+				</span>
 			</span>
 		)
 	})()
@@ -223,7 +227,13 @@ export function DocumentProjectTransfer({
 			onValueChange={handleChange}
 			value={selection}
 		>
-			<SelectTrigger className="h-8 w-auto gap-2 px-2.5 text-xs border-0 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md">
+			<SelectTrigger
+				className={
+					compact
+						? "h-6 w-auto gap-1 px-1.5 text-[9px] border-0 bg-transparent text-muted-foreground hover:bg-muted/50 rounded"
+						: "h-8 w-auto gap-2 px-2.5 text-xs border-0 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md"
+				}
+			>
 				{triggerLabel}
 			</SelectTrigger>
 			<SelectContent>

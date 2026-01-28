@@ -681,7 +681,9 @@ export class MetadataExtractor
 			}
 
 			const result = await this.extract(sampleExtraction)
-			return result.statistics.tagCount > 0 || result.statistics.mentionCount > 0
+			return (
+				result.statistics.tagCount > 0 || result.statistics.mentionCount > 0
+			)
 		} catch {
 			return false
 		}

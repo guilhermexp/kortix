@@ -1,9 +1,3 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import {
-	CreateManualConnectionSchema,
-	FindSimilarDocumentsSchema,
-	ListConnectionsQuerySchema,
-} from "@repo/validation/document-connections"
 import type {
 	CreateManualConnection,
 	DocumentConnection,
@@ -11,6 +5,12 @@ import type {
 	FindSimilarDocuments,
 	SimilarDocument,
 } from "@repo/validation/document-connections"
+import {
+	CreateManualConnectionSchema,
+	FindSimilarDocumentsSchema,
+	ListConnectionsQuerySchema,
+} from "@repo/validation/document-connections"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import * as documentSimilarityService from "../services/document-similarity"
 
 export type FindSimilarDocumentsInput = FindSimilarDocuments

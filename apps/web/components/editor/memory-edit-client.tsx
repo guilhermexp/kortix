@@ -570,6 +570,14 @@ export function MemoryEditClient({
 											className="w-full object-cover max-h-[70vh] transition-transform duration-500 group-hover:scale-[1.02]"
 											referrerPolicy="no-referrer"
 											src={proxyImageUrl(mainImage) || mainImage}
+											onError={(e) => {
+												// Fallback to original URL if proxy fails
+												const target = e.currentTarget
+												const originalUrl = mainImage
+												if (target.src !== originalUrl) {
+													target.src = originalUrl
+												}
+											}}
 										/>
 										{/* Video play overlay */}
 										{isVideo && (
@@ -765,6 +773,12 @@ export function MemoryEditClient({
 													onClick={() => window.open(img, "_blank")}
 													referrerPolicy="no-referrer"
 													src={proxyImageUrl(img) || img}
+													onError={(e) => {
+														const target = e.currentTarget
+														if (target.src !== img) {
+															target.src = img
+														}
+													}}
 												/>
 												{/* Delete button */}
 												<button
@@ -802,6 +816,12 @@ export function MemoryEditClient({
 															loading="lazy"
 															referrerPolicy="no-referrer"
 															src={proxyImageUrl(link.image) || link.image}
+															onError={(e) => {
+																const target = e.currentTarget
+																if (target.src !== link.image) {
+																	target.src = link.image!
+																}
+															}}
 														/>
 													) : (
 														<div className="w-full aspect-video flex items-center justify-center bg-gradient-to-br from-muted to-muted/80">

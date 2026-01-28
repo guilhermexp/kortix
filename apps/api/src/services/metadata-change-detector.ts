@@ -225,9 +225,7 @@ export class MetadataChangeDetector
 						oldSnapshot.tags || [],
 						newSnapshot.tags || [],
 					)
-					changeDescriptions.push(
-						`Tags: +${added.length} -${removed.length}`,
-					)
+					changeDescriptions.push(`Tags: +${added.length} -${removed.length}`)
 				}
 			}
 
@@ -312,12 +310,10 @@ export class MetadataChangeDetector
 				opts.checkComments,
 			].filter(Boolean).length
 
-			const severity =
-				totalChecks > 0 ? changesCount / totalChecks : 0
+			const severity = totalChecks > 0 ? changesCount / totalChecks : 0
 
 			const hasChanges = changesCount > 0
-			const requiresReindex =
-				hasChanges && severity >= opts.reindexThreshold
+			const requiresReindex = hasChanges && severity >= opts.reindexThreshold
 
 			const description =
 				changeDescriptions.length > 0
@@ -333,10 +329,7 @@ export class MetadataChangeDetector
 			}
 
 			// Auto-trigger reindexing if enabled
-			if (
-				options?.autoReindex &&
-				requiresReindex
-			) {
+			if (options?.autoReindex && requiresReindex) {
 				await this.triggerReindex(
 					newSnapshot.documentId,
 					newSnapshot.orgId,
@@ -449,12 +442,8 @@ export class MetadataChangeDetector
 	 * @param threshold - Optional custom threshold (0-1)
 	 * @returns True if reindexing should be triggered
 	 */
-	shouldReindex(
-		result: ChangeDetectionResult,
-		threshold?: number,
-	): boolean {
-		const effectiveThreshold =
-			threshold ?? this.defaultOptions.reindexThreshold
+	shouldReindex(result: ChangeDetectionResult, threshold?: number): boolean {
+		const effectiveThreshold = threshold ?? this.defaultOptions.reindexThreshold
 		return result.hasChanges && result.severity >= effectiveThreshold
 	}
 
@@ -465,23 +454,18 @@ export class MetadataChangeDetector
 	/**
 	 * Extract metadata snapshot from metadata object
 	 */
-	private extractSnapshot(
-		metadata: Record<string, unknown>,
-	): MetadataSnapshot {
+	private extractSnapshot(metadata: Record<string, unknown>): MetadataSnapshot {
 		const extracted = (metadata.extracted as Record<string, unknown>) || {}
 
 		return {
 			documentId: (metadata.documentId as string) || "unknown",
 			orgId: (metadata.orgId as string) || "unknown",
-			tags: Array.isArray(extracted.tags)
-				? (extracted.tags as string[])
-				: [],
+			tags: Array.isArray(extracted.tags) ? (extracted.tags as string[]) : [],
 			mentions: Array.isArray(extracted.mentions)
 				? (extracted.mentions as string[])
 				: [],
 			properties:
-				extracted.properties &&
-				typeof extracted.properties === "object"
+				extracted.properties && typeof extracted.properties === "object"
 					? (extracted.properties as Record<string, unknown>)
 					: {},
 			comments: Array.isArray(extracted.comments)
@@ -494,10 +478,7 @@ export class MetadataChangeDetector
 	/**
 	 * Check if two arrays have changes
 	 */
-	private arraysHaveChanges(
-		oldArray: string[],
-		newArray: string[],
-	): boolean {
+	private arraysHaveChanges(oldArray: string[], newArray: string[]): boolean {
 		if (oldArray.length !== newArray.length) return true
 
 		const oldSet = new Set(oldArray)

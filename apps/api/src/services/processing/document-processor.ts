@@ -26,14 +26,14 @@ import {
 	type EmbeddingService,
 } from "./embedding-service"
 import {
+	createMetadataExtractor,
+	type MetadataExtractorService,
+} from "./metadata-extractor"
+import {
 	createSummarizationService,
 	type SummarizationService,
 } from "./summarization-service"
 import { createTaggingService, type TaggingService } from "./tagging-service"
-import {
-	createMetadataExtractor,
-	type MetadataExtractorService,
-} from "./metadata-extractor"
 
 // ============================================================================
 // Document Processor Service Implementation

@@ -198,7 +198,14 @@ export async function metadataOnlySearch(
 		propertiesFilter?: Record<string, unknown>
 	},
 ): Promise<SearchResult[]> {
-	const { query, orgId, limit = 10, tagsFilter, mentionsFilter, propertiesFilter } = options
+	const {
+		query,
+		orgId,
+		limit = 10,
+		tagsFilter,
+		mentionsFilter,
+		propertiesFilter,
+	} = options
 
 	// Build metadata filter JSONB for the RPC function
 	const metadataFilter: Record<string, any> = {}
@@ -265,9 +272,13 @@ export async function metadataOnlySearch(
 	let filteredResults = results
 
 	if (tagsFilter?.length) {
-		const wantedTags = tagsFilter.map((s) => s.toLowerCase().trim()).filter(Boolean)
+		const wantedTags = tagsFilter
+			.map((s) => s.toLowerCase().trim())
+			.filter(Boolean)
 		filteredResults = filteredResults.filter((result) => {
-			const extracted = result.metadata?.extracted as Record<string, any> | undefined
+			const extracted = result.metadata?.extracted as
+				| Record<string, any>
+				| undefined
 			const tags = extracted?.tags || []
 			if (!Array.isArray(tags) || tags.length === 0) return false
 			const lowerTags = tags.map((t: string) => String(t).toLowerCase().trim())
@@ -276,19 +287,27 @@ export async function metadataOnlySearch(
 	}
 
 	if (mentionsFilter?.length) {
-		const wantedMentions = mentionsFilter.map((s) => s.toLowerCase().trim()).filter(Boolean)
+		const wantedMentions = mentionsFilter
+			.map((s) => s.toLowerCase().trim())
+			.filter(Boolean)
 		filteredResults = filteredResults.filter((result) => {
-			const extracted = result.metadata?.extracted as Record<string, any> | undefined
+			const extracted = result.metadata?.extracted as
+				| Record<string, any>
+				| undefined
 			const mentions = extracted?.mentions || []
 			if (!Array.isArray(mentions) || mentions.length === 0) return false
-			const lowerMentions = mentions.map((m: string) => String(m).toLowerCase().trim())
+			const lowerMentions = mentions.map((m: string) =>
+				String(m).toLowerCase().trim(),
+			)
 			return wantedMentions.some((wanted) => lowerMentions.includes(wanted))
 		})
 	}
 
 	if (propertiesFilter && Object.keys(propertiesFilter).length > 0) {
 		filteredResults = filteredResults.filter((result) => {
-			const extracted = result.metadata?.extracted as Record<string, any> | undefined
+			const extracted = result.metadata?.extracted as
+				| Record<string, any>
+				| undefined
 			const properties = extracted?.properties || {}
 			if (typeof properties !== "object" || properties === null) return false
 
@@ -395,10 +414,14 @@ export async function hybridSearch(
 			.filter(Boolean)
 		if (wantedTags.length) {
 			results = results.filter((result) => {
-				const extracted = result.metadata?.extracted as Record<string, any> | undefined
+				const extracted = result.metadata?.extracted as
+					| Record<string, any>
+					| undefined
 				const tags = extracted?.tags || []
 				if (!Array.isArray(tags) || tags.length === 0) return false
-				const lowerTags = tags.map((t: string) => String(t).toLowerCase().trim())
+				const lowerTags = tags.map((t: string) =>
+					String(t).toLowerCase().trim(),
+				)
 				return wantedTags.some((wanted) => lowerTags.includes(wanted))
 			})
 		}
@@ -411,7 +434,9 @@ export async function hybridSearch(
 			.filter(Boolean)
 		if (wantedMentions.length) {
 			results = results.filter((result) => {
-				const extracted = result.metadata?.extracted as Record<string, any> | undefined
+				const extracted = result.metadata?.extracted as
+					| Record<string, any>
+					| undefined
 				const mentions = extracted?.mentions || []
 				if (!Array.isArray(mentions) || mentions.length === 0) return false
 				const lowerMentions = mentions.map((m: string) =>
@@ -423,9 +448,14 @@ export async function hybridSearch(
 	}
 
 	// Apply extracted properties filter if specified
-	if (options.propertiesFilter && Object.keys(options.propertiesFilter).length > 0) {
+	if (
+		options.propertiesFilter &&
+		Object.keys(options.propertiesFilter).length > 0
+	) {
 		results = results.filter((result) => {
-			const extracted = result.metadata?.extracted as Record<string, any> | undefined
+			const extracted = result.metadata?.extracted as
+				| Record<string, any>
+				| undefined
 			const properties = extracted?.properties || {}
 			if (typeof properties !== "object" || properties === null) return false
 

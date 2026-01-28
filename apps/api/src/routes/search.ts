@@ -56,11 +56,15 @@ function matchesMetadataFilters(
 
 	// Handle AND/OR logical operators
 	if ("AND" in filterObj && Array.isArray(filterObj.AND)) {
-		return filterObj.AND.every((filter) => matchesMetadataFilters(metadata, filter))
+		return filterObj.AND.every((filter) =>
+			matchesMetadataFilters(metadata, filter),
+		)
 	}
 
 	if ("OR" in filterObj && Array.isArray(filterObj.OR)) {
-		return filterObj.OR.some((filter) => matchesMetadataFilters(metadata, filter))
+		return filterObj.OR.some((filter) =>
+			matchesMetadataFilters(metadata, filter),
+		)
 	}
 
 	// Handle simple key-value matching
@@ -247,7 +251,10 @@ export async function searchDocuments(
 			}
 
 			// Apply metadata filters if specified
-			if (metadataFilters && !matchesMetadataFilters(docMetadata, metadataFilters)) {
+			if (
+				metadataFilters &&
+				!matchesMetadataFilters(docMetadata, metadataFilters)
+			) {
 				return null
 			}
 

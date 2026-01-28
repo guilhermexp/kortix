@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import { findSimilarDocuments, createManualConnection, deleteConnection, listConnections } from "../../services/document-similarity"
 import type { Database } from "@repo/database"
+import type { SupabaseClient } from "@supabase/supabase-js"
+import {
+	createManualConnection,
+	deleteConnection,
+	findSimilarDocuments,
+	listConnections,
+} from "../../services/document-similarity"
 
 /**
  * Integration tests for document connections flow
@@ -71,18 +76,15 @@ describe("Document Connections Integration Tests", () => {
 				mockSupabase as SupabaseClient<Database>,
 				testDocumentId,
 				mockOrgId,
-				{ limit: 10, threshold: 0.7 }
+				{ limit: 10, threshold: 0.7 },
 			)
 
 			expect(result).toEqual(mockSimilarDocs)
-			expect(mockSupabase.rpc).toHaveBeenCalledWith(
-				"find_similar_documents",
-				{
-					input_document_id: testDocumentId,
-					similarity_threshold: 0.7,
-					result_limit: 10,
-				}
-			)
+			expect(mockSupabase.rpc).toHaveBeenCalledWith("find_similar_documents", {
+				input_document_id: testDocumentId,
+				similarity_threshold: 0.7,
+				result_limit: 10,
+			})
 		})
 
 		it("should respect similarity threshold", async () => {
@@ -107,7 +109,7 @@ describe("Document Connections Integration Tests", () => {
 				mockSupabase as SupabaseClient<Database>,
 				testDocumentId,
 				mockOrgId,
-				{ threshold: highThreshold }
+				{ threshold: highThreshold },
 			)
 
 			expect(result).toHaveLength(1)
@@ -125,7 +127,7 @@ describe("Document Connections Integration Tests", () => {
 			const result = await findSimilarDocuments(
 				mockSupabase as SupabaseClient<Database>,
 				testDocumentId,
-				mockOrgId
+				mockOrgId,
 			)
 
 			expect(result).toEqual([])
@@ -164,7 +166,8 @@ describe("Document Connections Integration Tests", () => {
 			;(mockSupabase.from as any).mockReturnValue({
 				select: vi.fn().mockReturnThis(),
 				eq: vi.fn().mockReturnThis(),
-				single: vi.fn()
+				single: vi
+					.fn()
 					.mockResolvedValueOnce({ data: mockSourceDoc, error: null })
 					.mockResolvedValueOnce({ data: mockTargetDoc, error: null }),
 			})
@@ -189,7 +192,7 @@ describe("Document Connections Integration Tests", () => {
 				targetDocId,
 				mockOrgId,
 				mockUserId,
-				reason
+				reason,
 			)
 
 			expect(result.connection_type).toBe("manual")
@@ -220,8 +223,8 @@ describe("Document Connections Integration Tests", () => {
 					targetDocId,
 					mockOrgId,
 					mockUserId,
-					"Duplicate connection attempt"
-				)
+					"Duplicate connection attempt",
+				),
 			).rejects.toThrow()
 		})
 
@@ -243,7 +246,8 @@ describe("Document Connections Integration Tests", () => {
 			;(mockSupabase.from as any).mockReturnValue({
 				select: vi.fn().mockReturnThis(),
 				eq: vi.fn().mockReturnThis(),
-				single: vi.fn()
+				single: vi
+					.fn()
 					.mockResolvedValueOnce({ data: mockSourceDoc, error: null })
 					.mockResolvedValueOnce({ data: mockTargetDoc, error: null }),
 			})
@@ -255,8 +259,8 @@ describe("Document Connections Integration Tests", () => {
 					targetDocId,
 					"org-1",
 					mockUserId,
-					"Cross-org connection attempt"
-				)
+					"Cross-org connection attempt",
+				),
 			).rejects.toThrow()
 		})
 	})
@@ -277,7 +281,9 @@ describe("Document Connections Integration Tests", () => {
 			;(mockSupabase.from as any).mockReturnValue({
 				select: vi.fn().mockReturnThis(),
 				eq: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({ data: mockConnection, error: null }),
+				single: vi
+					.fn()
+					.mockResolvedValue({ data: mockConnection, error: null }),
 				delete: vi.fn().mockReturnThis(),
 			})
 
@@ -286,7 +292,7 @@ describe("Document Connections Integration Tests", () => {
 				sourceDocId,
 				connectionId,
 				mockOrgId,
-				mockUserId
+				mockUserId,
 			)
 
 			expect(mockSupabase.from).toHaveBeenCalledWith("document_connections")
@@ -307,7 +313,9 @@ describe("Document Connections Integration Tests", () => {
 			;(mockSupabase.from as any).mockReturnValue({
 				select: vi.fn().mockReturnThis(),
 				eq: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({ data: mockConnection, error: null }),
+				single: vi
+					.fn()
+					.mockResolvedValue({ data: mockConnection, error: null }),
 			})
 
 			await expect(
@@ -316,8 +324,8 @@ describe("Document Connections Integration Tests", () => {
 					sourceDocId,
 					connectionId,
 					mockOrgId,
-					mockUserId
-				)
+					mockUserId,
+				),
 			).rejects.toThrow()
 		})
 
@@ -337,7 +345,9 @@ describe("Document Connections Integration Tests", () => {
 			;(mockSupabase.from as any).mockReturnValue({
 				select: vi.fn().mockReturnThis(),
 				eq: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({ data: mockConnection, error: null }),
+				single: vi
+					.fn()
+					.mockResolvedValue({ data: mockConnection, error: null }),
 			})
 
 			await expect(
@@ -346,8 +356,8 @@ describe("Document Connections Integration Tests", () => {
 					sourceDocId,
 					connectionId,
 					mockOrgId,
-					mockUserId
-				)
+					mockUserId,
+				),
 			).rejects.toThrow()
 		})
 	})
@@ -402,7 +412,7 @@ describe("Document Connections Integration Tests", () => {
 			const result = await listConnections(
 				mockSupabase as SupabaseClient<Database>,
 				documentId,
-				mockOrgId
+				mockOrgId,
 			)
 
 			expect(result).toHaveLength(2)
@@ -444,11 +454,15 @@ describe("Document Connections Integration Tests", () => {
 			const result = await listConnections(
 				mockSupabase as SupabaseClient<Database>,
 				documentId,
-				mockOrgId
+				mockOrgId,
 			)
 
-			const automaticConnections = result.filter((c) => c.connection_type === "automatic")
-			const manualConnections = result.filter((c) => c.connection_type === "manual")
+			const automaticConnections = result.filter(
+				(c) => c.connection_type === "automatic",
+			)
+			const manualConnections = result.filter(
+				(c) => c.connection_type === "manual",
+			)
 
 			expect(automaticConnections).toHaveLength(1)
 			expect(manualConnections).toHaveLength(1)
@@ -499,7 +513,7 @@ describe("Document Connections Integration Tests", () => {
 			const mockSimilarDocs = [
 				{ id: "doc-high", similarity_score: 0.95 },
 				{ id: "doc-medium", similarity_score: 0.75 },
-				{ id: "doc-low", similarity_score: 0.70 },
+				{ id: "doc-low", similarity_score: 0.7 },
 			]
 
 			;(mockSupabase.rpc as any).mockResolvedValue({
@@ -511,11 +525,15 @@ describe("Document Connections Integration Tests", () => {
 				mockSupabase as SupabaseClient<Database>,
 				testDocumentId,
 				mockOrgId,
-				{ threshold: 0.7 }
+				{ threshold: 0.7 },
 			)
 
-			expect(result[0].similarity_score).toBeGreaterThan(result[1].similarity_score)
-			expect(result[1].similarity_score).toBeGreaterThan(result[2].similarity_score)
+			expect(result[0].similarity_score).toBeGreaterThan(
+				result[1].similarity_score,
+			)
+			expect(result[1].similarity_score).toBeGreaterThan(
+				result[2].similarity_score,
+			)
 			expect(result.every((doc) => doc.similarity_score >= 0.7)).toBe(true)
 		})
 	})
@@ -546,7 +564,7 @@ describe("Document Connections Integration Tests", () => {
 			const result = await listConnections(
 				mockSupabase as SupabaseClient<Database>,
 				documentId,
-				mockOrgId
+				mockOrgId,
 			)
 
 			expect(result.every((conn) => conn.org_id === mockOrgId)).toBe(true)

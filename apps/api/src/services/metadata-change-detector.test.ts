@@ -599,7 +599,11 @@ describe("MetadataChangeDetector", () => {
 	describe("Trigger Reindex", () => {
 		it("should trigger reindex job", async () => {
 			const { addDocumentJob } = await import("./queue/document-queue")
-			const jobId = await service.triggerReindex("doc-1", "org-1", "Test reason")
+			const jobId = await service.triggerReindex(
+				"doc-1",
+				"org-1",
+				"Test reason",
+			)
 
 			expect(jobId).toBe("job-123")
 			expect(addDocumentJob).toHaveBeenCalledWith(
@@ -653,13 +657,9 @@ describe("MetadataChangeDetector", () => {
 		})
 
 		it("should validate required fields", async () => {
-			await expect(
-				service.triggerReindex("", "org-1"),
-			).rejects.toThrow()
+			await expect(service.triggerReindex("", "org-1")).rejects.toThrow()
 
-			await expect(
-				service.triggerReindex("doc-1", ""),
-			).rejects.toThrow()
+			await expect(service.triggerReindex("doc-1", "")).rejects.toThrow()
 		})
 	})
 

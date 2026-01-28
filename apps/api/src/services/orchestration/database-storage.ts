@@ -6,8 +6,8 @@
  */
 
 import { supabaseAdmin } from "../../supabase"
-import type { ProcessedDocument, PreviewResult } from "../interfaces"
 import type { Logger } from "../base/base-service"
+import type { PreviewResult, ProcessedDocument } from "../interfaces"
 
 // ============================================================================
 // Types
@@ -281,9 +281,7 @@ export async function updateJobStatus(
 				errorCode: error.code,
 				errorDetails: error.details,
 			})
-			throw new Error(
-				`Failed to update job ${jobId} status: ${error.message}`,
-			)
+			throw new Error(`Failed to update job ${jobId} status: ${error.message}`)
 		}
 
 		logger?.debug("Job status updated successfully", {

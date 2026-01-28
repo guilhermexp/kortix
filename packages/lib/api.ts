@@ -21,8 +21,8 @@ import {
 	UpdateProjectSchema,
 } from "../validation/api"
 import {
-	CreateManualConnectionSchema,
 	CreateConnectionResponseSchema,
+	CreateManualConnectionSchema,
 	DeleteConnectionResponseSchema,
 	FindSimilarDocumentsResponseSchema,
 	FindSimilarDocumentsSchema,
@@ -345,12 +345,9 @@ export async function createDocumentConnection(
 }
 
 export async function deleteDocumentConnection(connectionId: string) {
-	const response = await $fetch(
-		"@delete/document-connections/:connectionId",
-		{
-			params: { connectionId },
-		},
-	)
+	const response = await $fetch("@delete/document-connections/:connectionId", {
+		params: { connectionId },
+	})
 	return response.data
 }
 

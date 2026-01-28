@@ -1,11 +1,7 @@
 import { z } from "zod"
 
 const envSchema = z.object({
-	PORT: z
-		.string()
-		.regex(/^\d+$/)
-		.transform((value) => Number.parseInt(value, 10))
-		.default("4000"),
+	PORT: z.coerce.number().default(4000),
 	SUPABASE_URL: z.string().url(),
 	SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 	SUPABASE_ANON_KEY: z.string().min(1), // Required for RLS enforcement
@@ -17,49 +13,25 @@ const envSchema = z.object({
 	REPLICATE_API_TOKEN: z.string().min(1).optional(),
 	ENABLE_AGENTIC_MODE: z
 		.string()
-		.transform((value) => value === "true")
-		.default("true"),
+		.optional()
+		.transform((value) => value !== "false"),
 	ENABLE_RERANKING: z
 		.string()
-		.transform((value) => value === "true")
-		.default("true"),
+		.optional()
+		.transform((value) => value !== "false"),
 	EMBEDDING_MODEL: z.string().default("text-embedding-004"),
-	EMBEDDING_DIMENSION: z
-		.string()
-		.regex(/^\d+$/)
-		.transform((value) => Number.parseInt(value, 10))
-		.default("1536"),
+	EMBEDDING_DIMENSION: z.coerce.number().default(1536),
 	CHAT_MODEL: z.string().default("claude-3-5-sonnet-20241022"),
 	SUMMARY_MODEL: z.string().optional(),
 	ENABLE_RECENCY_BOOST: z
 		.string()
-		.transform((value) => value === "true")
-		.default("false"),
-	RECENCY_WEIGHT: z
-		.string()
-		.regex(/^0\.\d+$|^1\.0$/)
-		.transform((value) => Number.parseFloat(value))
-		.default("0.2"),
-	RECENCY_HALF_LIFE_DAYS: z
-		.string()
-		.regex(/^\d+$/)
-		.transform((value) => Number.parseInt(value, 10))
-		.default("14"),
-	INGESTION_BATCH_SIZE: z
-		.string()
-		.regex(/^\d+$/)
-		.transform((value) => Number.parseInt(value, 10))
-		.default("5"),
-	INGESTION_POLL_MS: z
-		.string()
-		.regex(/^\d+$/)
-		.transform((value) => Number.parseInt(value, 10))
-		.default("5000"),
-	INGESTION_MAX_ATTEMPTS: z
-		.string()
-		.regex(/^\d+$/)
-		.transform((value) => Number.parseInt(value, 10))
-		.default("5"),
+		.optional()
+		.transform((value) => value === "true"),
+	RECENCY_WEIGHT: z.coerce.number().min(0).max(1).default(0.2),
+	RECENCY_HALF_LIFE_DAYS: z.coerce.number().default(14),
+	INGESTION_BATCH_SIZE: z.coerce.number().default(5),
+	INGESTION_POLL_MS: z.coerce.number().default(5000),
+	INGESTION_MAX_ATTEMPTS: z.coerce.number().default(5),
 	DEFAULT_ADMIN_EMAIL: z.string().email().optional(),
 	APP_URL: z.string().url().default("http://localhost:3000"),
 	RESEND_API_KEY: z.string().min(1).optional(),
