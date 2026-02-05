@@ -159,44 +159,6 @@ const RelatedDocumentsPanelImpl = ({
 		window.location.href = `/memory/${docId}/edit`
 	}, [])
 
-	// Show loading state
-	if (loading) {
-		return (
-			<div className="mt-6">
-				<div
-					className="text-sm font-medium mb-3 py-2"
-					style={{ color: colors.text.secondary }}
-				>
-					<div className="flex items-center gap-2">
-						<Link2 className="w-4 h-4" />
-						Documentos Relacionados
-					</div>
-				</div>
-				<div className="text-sm" style={{ color: colors.text.secondary }}>
-					Carregando documentos relacionados...
-				</div>
-			</div>
-		)
-	}
-
-	// Show error state
-	if (error) {
-		return (
-			<div className="mt-6">
-				<div
-					className="text-sm font-medium mb-3 py-2"
-					style={{ color: colors.text.secondary }}
-				>
-					<div className="flex items-center gap-2">
-						<Link2 className="w-4 h-4" />
-						Documentos Relacionados
-					</div>
-				</div>
-				<div className="text-sm text-red-400">{error}</div>
-			</div>
-		)
-	}
-
 	const handleDeleteConnection = useCallback(
 		async (connectionId: string, targetDocId: string) => {
 			if (
@@ -249,6 +211,44 @@ const RelatedDocumentsPanelImpl = ({
 			setAddLoading(false)
 		}
 	}, [document.id, selectedDocumentId, connectionReason])
+
+	// Show loading state
+	if (loading) {
+		return (
+			<div className="mt-6">
+				<div
+					className="text-sm font-medium mb-3 py-2"
+					style={{ color: colors.text.secondary }}
+				>
+					<div className="flex items-center gap-2">
+						<Link2 className="w-4 h-4" />
+						Documentos Relacionados
+					</div>
+				</div>
+				<div className="text-sm" style={{ color: colors.text.secondary }}>
+					Carregando documentos relacionados...
+				</div>
+			</div>
+		)
+	}
+
+	// Show error state
+	if (error) {
+		return (
+			<div className="mt-6">
+				<div
+					className="text-sm font-medium mb-3 py-2"
+					style={{ color: colors.text.secondary }}
+				>
+					<div className="flex items-center gap-2">
+						<Link2 className="w-4 h-4" />
+						Documentos Relacionados
+					</div>
+				</div>
+				<div className="text-sm text-red-400">{error}</div>
+			</div>
+		)
+	}
 
 	return (
 		<div className="mt-6">
