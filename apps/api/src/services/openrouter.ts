@@ -14,6 +14,7 @@ export async function openRouterChat(
 		timeoutMs?: number
 		refererUrl?: string
 		siteTitle?: string
+		reasoningEffort?: "none" | "low" | "medium" | "high"
 	},
 ): Promise<string | null> {
 	const apiKey = env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY
@@ -37,11 +38,14 @@ export async function openRouterChat(
 		if (ref) headers["HTTP-Referer"] = ref
 		if (title) headers["X-Title"] = title
 
-		const body = {
+		const reasoningEffort = options?.reasoningEffort ?? "none"
+
+		const body: Record<string, unknown> = {
 			model,
 			messages,
 			temperature,
 			max_tokens: maxTokens,
+			reasoning: { effort: reasoningEffort },
 		}
 
 		const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
