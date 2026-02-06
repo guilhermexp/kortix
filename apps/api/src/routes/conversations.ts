@@ -2,7 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { z } from "zod"
 import { ErrorHandler } from "../services/error-handler"
 import { EventStorageService } from "../services/event-storage"
-import { supabaseAdmin } from "../supabase"
 
 // Validation schemas
 const createConversationSchema = z.object({
@@ -38,8 +37,7 @@ export async function handleCreateConversation({
 }) {
 	try {
 		const payload = createConversationSchema.parse(body ?? {})
-		// Use admin client to bypass RLS when creating conversations
-		const eventStorage = new EventStorageService(supabaseAdmin)
+		const eventStorage = new EventStorageService(client)
 
 		const conversation = await eventStorage.createConversation(
 			orgId,
@@ -57,7 +55,7 @@ export async function handleCreateConversation({
 	} catch (error) {
 		if (error instanceof z.ZodError) {
 			return ErrorHandler.validation("Invalid conversation data", {
-				errors: error.errors,
+				errors: error.issues,
 			}).toResponse()
 		}
 		return ErrorHandler.handleError(error)
@@ -70,9 +68,11 @@ export async function handleCreateConversation({
  */
 export async function handleGetConversation({
 	client,
+	orgId,
 	conversationId,
 }: {
 	client: SupabaseClient
+	orgId: string
 	conversationId: string
 }) {
 	try {
@@ -85,6 +85,9 @@ export async function handleGetConversation({
 
 		if (!conversation) {
 			throw ErrorHandler.notFound("Conversation", conversationId)
+		}
+		if (conversation.org_id !== orgId) {
+			throw ErrorHandler.authorization("conversation", "access")
 		}
 
 		return new Response(JSON.stringify({ conversation }), {
@@ -104,9 +107,11 @@ export async function handleGetConversation({
  */
 export async function handleGetConversationEvents({
 	client,
+	orgId,
 	conversationId,
 }: {
 	client: SupabaseClient
+	orgId: string
 	conversationId: string
 }) {
 	try {
@@ -120,6 +125,9 @@ export async function handleGetConversationEvents({
 		const conversation = await eventStorage.getConversation(conversationId)
 		if (!conversation) {
 			throw ErrorHandler.notFound("Conversation", conversationId)
+		}
+		if (conversation.org_id !== orgId) {
+			throw ErrorHandler.authorization("conversation", "access")
 		}
 
 		const events = await eventStorage.getConversationEvents(conversationId)
@@ -141,9 +149,11 @@ export async function handleGetConversationEvents({
  */
 export async function handleGetConversationHistory({
 	client,
+	orgId,
 	conversationId,
 }: {
 	client: SupabaseClient
+	orgId: string
 	conversationId: string
 }) {
 	try {
@@ -157,6 +167,9 @@ export async function handleGetConversationHistory({
 		const conversation = await eventStorage.getConversation(conversationId)
 		if (!conversation) {
 			throw ErrorHandler.notFound("Conversation", conversationId)
+		}
+		if (conversation.org_id !== orgId) {
+			throw ErrorHandler.authorization("conversation", "access")
 		}
 
 		const messages = await eventStorage.buildClaudeMessages(conversationId)
@@ -178,10 +191,12 @@ export async function handleGetConversationHistory({
  */
 export async function handleUpdateConversation({
 	client,
+	orgId,
 	conversationId,
 	body,
 }: {
 	client: SupabaseClient
+	orgId: string
 	conversationId: string
 	body: unknown
 }) {
@@ -191,8 +206,14 @@ export async function handleUpdateConversation({
 		}
 
 		const payload = updateConversationSchema.parse(body ?? {})
-		// Use admin client to bypass RLS when updating conversations
-		const eventStorage = new EventStorageService(supabaseAdmin)
+		const eventStorage = new EventStorageService(client)
+		const existing = await eventStorage.getConversation(conversationId)
+		if (!existing) {
+			throw ErrorHandler.notFound("Conversation", conversationId)
+		}
+		if (existing.org_id !== orgId) {
+			throw ErrorHandler.authorization("conversation", "update")
+		}
 
 		const conversation = await eventStorage.updateConversation(
 			conversationId,
@@ -208,7 +229,7 @@ export async function handleUpdateConversation({
 	} catch (error) {
 		if (error instanceof z.ZodError) {
 			return ErrorHandler.validation("Invalid conversation data", {
-				errors: error.errors,
+				errors: error.issues,
 			}).toResponse()
 		}
 		return ErrorHandler.handleError(error)
@@ -221,9 +242,11 @@ export async function handleUpdateConversation({
  */
 export async function handleDeleteConversation({
 	client,
+	orgId,
 	conversationId,
 }: {
 	client: SupabaseClient
+	orgId: string
 	conversationId: string
 }) {
 	try {
@@ -231,8 +254,14 @@ export async function handleDeleteConversation({
 			throw ErrorHandler.validation("Invalid conversation ID")
 		}
 
-		// Use admin client to bypass RLS when deleting conversations
-		const eventStorage = new EventStorageService(supabaseAdmin)
+		const eventStorage = new EventStorageService(client)
+		const existing = await eventStorage.getConversation(conversationId)
+		if (!existing) {
+			throw ErrorHandler.notFound("Conversation", conversationId)
+		}
+		if (existing.org_id !== orgId) {
+			throw ErrorHandler.authorization("conversation", "delete")
+		}
 		await eventStorage.deleteConversation(conversationId)
 
 		return new Response(
@@ -299,7 +328,7 @@ export async function handleListConversations({
 	} catch (error) {
 		if (error instanceof z.ZodError) {
 			return ErrorHandler.validation("Invalid query parameters", {
-				errors: error.errors,
+				errors: error.issues,
 			}).toResponse()
 		}
 		return ErrorHandler.handleError(error)

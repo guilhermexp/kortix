@@ -6,6 +6,7 @@
  * For multi-instance deployments, consider using Redis-backed storage.
  */
 
+import { createHash } from "node:crypto"
 import type { Context, Next } from "hono"
 import { HTTPException } from "hono/http-exception"
 import { RATE_LIMITS } from "../config/constants"
@@ -38,7 +39,9 @@ function getClientIdentifier(c: Context): string {
 	// Try API key first (most specific)
 	const apiKey = c.req.header("x-api-key") || c.req.header("authorization")
 	if (apiKey) {
-		return `api:${apiKey.slice(0, 16)}` // Use first 16 chars to avoid huge keys
+		// Hash full credential to avoid collisions across users with similar prefixes.
+		const credentialHash = createHash("sha256").update(apiKey).digest("hex")
+		return `api:${credentialHash.slice(0, 24)}`
 	}
 
 	// Try IP address
@@ -123,7 +126,7 @@ function cleanupExpiredEntries(): void {
 /**
  * Start periodic cleanup
  */
-let cleanupTimer: Timer | null = null
+let cleanupTimer: NodeJS.Timeout | null = null
 
 function startCleanupTimer(): void {
 	if (cleanupTimer) return // Already running

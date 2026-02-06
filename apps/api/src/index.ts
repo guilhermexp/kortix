@@ -6,7 +6,9 @@
  * - Mounts modular routers
  * - Handles server lifecycle
  */
+import { lookup } from "node:dns/promises"
 import { existsSync } from "node:fs"
+import { isIP } from "node:net"
 import { resolve } from "node:path"
 import { config as loadEnv } from "dotenv"
 
@@ -89,6 +91,68 @@ import type { SessionContext } from "./session"
 const app = new Hono<{ Variables: { session: SessionContext } }>()
 
 const allowedOrigins = new Set(env.ALLOWED_ORIGINS)
+const IMAGE_PROXY_TIMEOUT_MS = 10_000
+const IMAGE_PROXY_MAX_BYTES = 10 * 1024 * 1024 // 10MB
+
+function isPrivateOrBlockedIp(address: string): boolean {
+	// IPv4 checks
+	if (isIP(address) === 4) {
+		const parts = address.split(".").map((part) => Number.parseInt(part, 10))
+		if (parts.length !== 4 || parts.some((part) => Number.isNaN(part))) {
+			return true
+		}
+
+		const [a, b] = parts
+		if (a === 10) return true
+		if (a === 127) return true
+		if (a === 0) return true
+		if (a === 169 && b === 254) return true
+		if (a === 172 && b >= 16 && b <= 31) return true
+		if (a === 192 && b === 168) return true
+		return false
+	}
+
+	// IPv6 checks (loopback/link-local/unique-local/mapped loopback)
+	if (isIP(address) === 6) {
+		const normalized = address.toLowerCase()
+		return (
+			normalized === "::1" ||
+			normalized.startsWith("fc") ||
+			normalized.startsWith("fd") ||
+			normalized.startsWith("fe80:") ||
+			normalized === "::" ||
+			normalized.endsWith("::1") ||
+			normalized.includes("127.0.0.1")
+		)
+	}
+
+	return true
+}
+
+async function isSafeImageProxyTarget(url: URL): Promise<boolean> {
+	if (url.username || url.password) return false
+
+	const hostname = url.hostname.toLowerCase()
+	if (
+		hostname === "localhost" ||
+		hostname.endsWith(".localhost") ||
+		hostname === "0.0.0.0"
+	) {
+		return false
+	}
+
+	if (isIP(hostname) > 0) {
+		return !isPrivateOrBlockedIp(hostname)
+	}
+
+	try {
+		const records = await lookup(hostname, { all: true, verbatim: true })
+		if (!records || records.length === 0) return false
+		return records.every((record) => !isPrivateOrBlockedIp(record.address))
+	} catch {
+		return false
+	}
+}
 
 // Debug: confirm OpenRouter key presence without printing secrets
 try {
@@ -175,8 +239,12 @@ app.get("/api/image-proxy", async (c) => {
 		if (!allowedProtocols.includes(parsedUrl.protocol)) {
 			return c.json({ error: "Invalid URL protocol" }, 400)
 		}
+		if (!(await isSafeImageProxyTarget(parsedUrl))) {
+			return c.json({ error: "Target host not allowed" }, 400)
+		}
 
 		const response = await fetch(url, {
+			signal: AbortSignal.timeout(IMAGE_PROXY_TIMEOUT_MS),
 			headers: {
 				"User-Agent": "Mozilla/5.0 (compatible; KortixBot/1.0)",
 				Accept: "image/*,*/*",
@@ -184,14 +252,35 @@ app.get("/api/image-proxy", async (c) => {
 		})
 
 		if (!response.ok) {
-			return c.json(
-				{ error: `Failed to fetch image: ${response.status}` },
-				response.status,
+			return new Response(
+				JSON.stringify({ error: `Failed to fetch image: ${response.status}` }),
+				{
+					status: response.status,
+					headers: { "Content-Type": "application/json" },
+				},
 			)
 		}
 
-		const contentType = response.headers.get("content-type") || "image/png"
+		const contentType = response.headers.get("content-type") || ""
+		if (!contentType.toLowerCase().startsWith("image/")) {
+			return c.json({ error: "URL did not return an image" }, 415)
+		}
+
+		const contentLengthRaw = response.headers.get("content-length")
+		if (contentLengthRaw) {
+			const contentLength = Number.parseInt(contentLengthRaw, 10)
+			if (
+				Number.isFinite(contentLength) &&
+				contentLength > IMAGE_PROXY_MAX_BYTES
+			) {
+				return c.json({ error: "Image too large" }, 413)
+			}
+		}
+
 		const buffer = await response.arrayBuffer()
+		if (buffer.byteLength > IMAGE_PROXY_MAX_BYTES) {
+			return c.json({ error: "Image too large" }, 413)
+		}
 
 		c.header("Content-Type", contentType)
 		c.header("Cache-Control", "public, max-age=3600")

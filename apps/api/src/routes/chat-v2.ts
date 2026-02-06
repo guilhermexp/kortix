@@ -12,7 +12,6 @@ import {
 	ConversationStorageUnavailableError,
 	EventStorageService,
 } from "../services/event-storage"
-import { supabaseAdmin } from "../supabase"
 
 // New schema (SDK session-based)
 const chatRequestSchema = z.object({
@@ -500,20 +499,38 @@ export async function handleChatV2({
 
 			if (newSchemaError instanceof z.ZodError) {
 				return ErrorHandler.validation("Invalid chat payload", {
-					errors: newSchemaError.errors,
+					errors: newSchemaError.issues,
 				}).toResponse()
 			}
 			return new Response("Invalid chat payload", { status: 400 })
 		}
 	}
 
-	// Use admin client for conversation operations (RLS already validated at API level)
-	// Authentication/authorization already done through session, safe to use admin
-	const eventStorage = new EventStorageService(supabaseAdmin)
+	const eventStorage = new EventStorageService(client)
 	let conversationId = payload.conversationId
 
-	// Create new conversation if conversationId not provided
-	if (!conversationId) {
+	// Validate conversation ownership when provided
+	if (conversationId) {
+		try {
+			const existingConversation =
+				await eventStorage.getConversation(conversationId)
+			if (!existingConversation) {
+				return ErrorHandler.notFound("Conversation", conversationId).toResponse()
+			}
+			if (existingConversation.org_id !== orgId) {
+				return ErrorHandler.authorization("conversation", "access").toResponse()
+			}
+		} catch (error) {
+			if (error instanceof ConversationStorageUnavailableError) {
+				logConversationStorageWarningOnce()
+			} else {
+				console.error("[Chat V2] Failed to validate conversation:", error)
+			}
+			// Continue without conversation tracking
+			conversationId = undefined
+		}
+	} else {
+		// Create new conversation when conversationId is not provided
 		try {
 			const conversation = await eventStorage.createConversation(
 				orgId,

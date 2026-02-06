@@ -12,9 +12,8 @@ const nextConfig: NextConfig = {
 	},
 	// Enable compression for better performance
 	compress: true,
-	// Temporarily ignore TypeScript errors during build for Railway deployment
 	typescript: {
-		ignoreBuildErrors: true,
+		ignoreBuildErrors: false,
 	},
 	// Transpile monorepo packages to ensure shared module instances
 	// Include @tanstack/react-query to prevent context isolation across chunks
