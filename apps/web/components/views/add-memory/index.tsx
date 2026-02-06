@@ -900,14 +900,11 @@ export function AddMemoryView({
 			project: string
 			contentType: "note" | "link"
 		}) => {
-			console.log("🔄 mutationFn called, isMutatingRef:", isMutatingRef.current)
 			// Prevent double execution using synchronous ref check
 			if (isMutatingRef.current) {
-				console.log("⚠️ Mutation already in progress, skipping...")
 				return
 			}
 			isMutatingRef.current = true
-			console.log("✅ Mutation guard set, proceeding...")
 
 			// close the modal
 			setShowAddDialog(false)
@@ -1039,14 +1036,11 @@ export function AddMemoryView({
 			return processingPromise
 		},
 		onMutate: async ({ content, project, contentType }) => {
-			console.log("🚀 onMutate starting...")
-
 			// Cancel any outgoing refetches (partial match to include queries with search param)
 			await queryClient.cancelQueries({
 				queryKey: ["documents-with-memories", project],
 				exact: false,
 			})
-			console.log("✅ Cancelled queries")
 
 			// Snapshot the previous value - get all matching queries since queryKey includes search param
 			// The actual key is ["documents-with-memories", project, searchTerm]
@@ -1054,12 +1048,10 @@ export function AddMemoryView({
 				queryKey: ["documents-with-memories", project],
 				exact: false,
 			})
-			console.log("📸 Matching queries:", matchingQueries)
 
 			// Store the first matching query's data for rollback
 			const previousMemories =
 				matchingQueries.length > 0 ? matchingQueries[0]?.[1] : undefined
-			console.log("📸 Previous memories:", previousMemories)
 
 			// Create optimistic memory
 			const getLinkTitle = (url: string) => {
@@ -1091,7 +1083,6 @@ export function AddMemoryView({
 				memoryEntries: [],
 				isOptimistic: true,
 			}
-			console.log("🎯 Created optimistic memory:", optimisticMemory)
 
 			// Optimistically update ALL matching queries (partial match)
 			queryClient.setQueriesData<DocumentsQueryData | undefined>(

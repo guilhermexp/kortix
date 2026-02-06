@@ -1,4 +1,4 @@
-const DEFAULT_APP_URL = "http://localhost:3000"
+const LOCAL_APP_URL = "http://localhost:3000"
 const DEFAULT_BACKEND_URL = "http://localhost:4000"
 
 // In production, use empty string to make requests relative (via Next.js rewrites)
@@ -21,7 +21,38 @@ export const BACKEND_URL_SSR =
 	process.env.NEXT_PUBLIC_BACKEND_URL?.trim() ||
 	DEFAULT_BACKEND_URL
 
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? DEFAULT_APP_URL
+function resolveProductionAppUrl(): string {
+	const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN?.trim()
+	if (railwayDomain) return `https://${railwayDomain}`
+
+	const vercelUrl = process.env.VERCEL_URL?.trim()
+	if (vercelUrl) return `https://${vercelUrl}`
+
+	return LOCAL_APP_URL
+}
+
+function isLocalhostUrl(value: string): boolean {
+	try {
+		const hostname = new URL(value).hostname.toLowerCase()
+		return hostname === "localhost" || hostname === "127.0.0.1"
+	} catch {
+		return false
+	}
+}
+
+function resolveAppUrl(): string {
+	const configured = process.env.NEXT_PUBLIC_APP_URL?.trim()
+	if (configured) {
+		if (isProduction && isLocalhostUrl(configured)) {
+			return resolveProductionAppUrl()
+		}
+		return configured
+	}
+
+	return isProduction ? resolveProductionAppUrl() : LOCAL_APP_URL
+}
+
+export const APP_URL = resolveAppUrl()
 export const MCP_SERVER_URL =
 	process.env.NEXT_PUBLIC_MCP_SERVER_URL ??
 	`${BACKEND_URL.replace(/\/$/, "")}/mcp`
@@ -32,6 +63,6 @@ export const APP_HOSTNAME = (() => {
 	try {
 		return new URL(APP_URL).hostname
 	} catch {
-		return new URL(DEFAULT_APP_URL).hostname
+		return new URL(LOCAL_APP_URL).hostname
 	}
 })()

@@ -45,11 +45,6 @@ export function DocumentProjectTransfer({
 
 	useEffect(() => {
 		const selectedProject = currentProject ?? DEFAULT_PROJECT_ID
-		console.log("[DocumentProjectTransfer] Setting selection:", {
-			currentProject,
-			selectedProject,
-			documentId,
-		})
 		setSelection(selectedProject)
 	}, [currentProject, documentId])
 

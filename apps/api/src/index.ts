@@ -252,6 +252,12 @@ app.get("/api/image-proxy", async (c) => {
 		})
 
 		if (!response.ok) {
+			// Fallback: let the browser try direct loading (avoids noisy proxy 5xx for
+			// providers that block server-side fetches but allow normal image requests).
+			if (response.status >= 500) {
+				return c.redirect(url, 307)
+			}
+
 			return new Response(
 				JSON.stringify({ error: `Failed to fetch image: ${response.status}` }),
 				{
@@ -289,7 +295,8 @@ app.get("/api/image-proxy", async (c) => {
 		return c.body(buffer)
 	} catch (error) {
 		console.error("[image-proxy] Error fetching image:", error)
-		return c.json({ error: "Failed to fetch image" }, 500)
+		// Fallback to direct URL when proxy fetch fails (timeouts, DNS hiccups, etc.)
+		return c.redirect(url, 307)
 	}
 })
 
