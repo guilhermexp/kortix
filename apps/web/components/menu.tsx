@@ -108,16 +108,6 @@ function Menu({
 
 	const { data: proCheck } = fetchConsumerProProduct(autumn)
 
-	useEffect(() => {
-		if (memoriesCheck) {
-			console.log({ memoriesCheck })
-		}
-
-		if (proCheck) {
-			console.log({ proCheck })
-		}
-	}, [memoriesCheck, proCheck])
-
 	// Function to clear the 'open' parameter from URL
 	const clearOpenParam = useCallback(() => {
 		const newSearchParams = new URLSearchParams(searchParams.toString())
@@ -197,7 +187,6 @@ function Menu({
 	) => {
 		// Prevent multiple rapid clicks
 		if (isClickProcessingRef.current) {
-			console.log("[Menu] Click blocked - already processing")
 			return
 		}
 		isClickProcessingRef.current = true
@@ -205,7 +194,6 @@ function Menu({
 			isClickProcessingRef.current = false
 		}, 300)
 
-		console.log("[Menu] handleMenuItemClick called with key:", key)
 		if (key === "chat") {
 			// Toggle chat panel
 			setIsOpen(!isChatPanelOpen)

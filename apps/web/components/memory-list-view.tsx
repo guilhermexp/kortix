@@ -43,7 +43,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
 	AlertTriangle,
 	Brain,
-	Clock,
 	Expand,
 	ExternalLink,
 	Folder,
@@ -1140,7 +1139,7 @@ const MasonryCard = memo(
 					/* Queued for a while - waiting in backend queue */
 					<div className="p-6 flex flex-col items-center justify-center min-h-[140px] gap-3">
 						<div className="relative">
-							<Clock className="h-6 w-6 text-muted-foreground" />
+							<Loader className="h-6 w-6 text-muted-foreground animate-spin" />
 						</div>
 						<div className="text-center space-y-1">
 							<p className="text-sm font-medium text-muted-foreground">

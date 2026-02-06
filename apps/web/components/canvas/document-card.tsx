@@ -511,7 +511,7 @@ export const DocumentCard = memo(
 			return preview
 		}, [preview, document, document.url])
 
-		const isProcessing = document.status
+		const statusIsProcessing = document.status
 			? PROCESSING_STATUSES.has(String(document.status).toLowerCase())
 			: false
 
@@ -525,6 +525,18 @@ export const DocumentCard = memo(
 		const isDone = String(document.status ?? "").toLowerCase() === "done"
 		const hasPreviewImage = !!document.previewImage
 		const isAwaitingPreview = isDone && !hasPreviewImage && !sanitizedPreview
+		const titleLooksIncomplete = (() => {
+			const title = (document.title || "").trim().toLowerCase()
+			if (!title) return true
+			// Domain-like title usually means extraction has not completed.
+			if (/^[a-z0-9-]+\.(com|org|net|io|xyz|dev|co|ai)$/i.test(title)) {
+				return true
+			}
+			return false
+		})()
+		const contentNotReady = activeMemories.length === 0 && titleLooksIncomplete
+		const isAwaitingContent = isDone && contentNotReady
+		const isProcessing = !isDone && (statusIsProcessing || contentNotReady)
 
 		// Check if document was recently created (< 10 seconds) - show "Iniciando..." instead of "Na fila"
 		const isRecentlyCreated = (() => {
@@ -839,18 +851,52 @@ export const DocumentCard = memo(
 					/* Queued for a while - in backend queue */
 					<div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center pointer-events-none">
 						<div className="flex flex-col items-center gap-2">
-							{/* Clock icon */}
 							<svg
-								className="h-5 w-5 text-white/70"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth="2"
+								className="animate-spin h-5 w-5 text-white/70"
 								viewBox="0 0 24 24"
 							>
-								<circle cx="12" cy="12" r="10" />
-								<polyline points="12,6 12,12 16,14" />
+								<circle
+									className="opacity-25"
+									cx="12"
+									cy="12"
+									fill="none"
+									r="10"
+									stroke="currentColor"
+									strokeWidth="3"
+								/>
+								<path
+									className="opacity-75"
+									d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+									fill="currentColor"
+								/>
 							</svg>
 							<div className="text-[11px] text-white/80">Na fila</div>
+						</div>
+					</div>
+				) : isAwaitingContent ? (
+					/* Backend marked done, but content still not ready in UI */
+					<div className="absolute inset-0 z-20 bg-black/40 flex items-center justify-center pointer-events-none">
+						<div className="flex flex-col items-center gap-2">
+							<svg
+								className="animate-spin h-5 w-5 text-white/60"
+								viewBox="0 0 24 24"
+							>
+								<circle
+									className="opacity-25"
+									cx="12"
+									cy="12"
+									fill="none"
+									r="10"
+									stroke="currentColor"
+									strokeWidth="3"
+								/>
+								<path
+									className="opacity-75"
+									d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+									fill="currentColor"
+								/>
+							</svg>
+							<div className="text-[11px] text-white/70">Finalizando...</div>
 						</div>
 					</div>
 				) : (

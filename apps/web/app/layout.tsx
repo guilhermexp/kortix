@@ -31,10 +31,14 @@ const mono = JetBrains_Mono({
 })
 
 const metadataBase = (() => {
+	if (process.env.NODE_ENV !== "production") {
+		return undefined
+	}
+
 	try {
 		return new URL(APP_URL)
 	} catch {
-		return new URL("http://localhost:3000")
+		return undefined
 	}
 })()
 
@@ -46,7 +50,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-	metadataBase,
+	...(metadataBase ? { metadataBase } : {}),
 	description: "Kortix - Your memory, accessible and private",
 	title: {
 		default: "Kortix",

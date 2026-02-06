@@ -238,7 +238,7 @@ export async function listConnections(
 		throw new Error("Document not found or access denied")
 	}
 
-	// Build query for connections
+	// Build query for connections (without relation join to avoid brittle FK-name coupling)
 	let query = client
 		.from("document_connections")
 		.select(
@@ -253,15 +253,7 @@ export async function listConnections(
 			reason,
 			metadata,
 			created_at,
-			updated_at,
-			target:documents!document_connections_target_document_id_fkey(
-				id,
-				title,
-				summary,
-				type,
-				url,
-				created_at
-			)
+			updated_at
 		`,
 		)
 		.eq("source_document_id", documentId)
@@ -281,36 +273,69 @@ export async function listConnections(
 
 	if (listError) {
 		console.error("[document-similarity] Error listing connections:", listError)
-		throw new Error(`Failed to list connections: ${listError.message}`)
+		return []
+	}
+
+	const targetIds = Array.from(
+		new Set(
+			(connections || [])
+				.map((conn: any) => conn.target_document_id)
+				.filter(Boolean),
+		),
+	)
+
+	let targetById = new Map<string, any>()
+	if (targetIds.length > 0) {
+		const { data: targetDocs, error: targetError } = await client
+			.from("documents")
+			.select("id, title, summary, type, url, created_at")
+			.in("id", targetIds)
+			.eq("org_id", orgId)
+
+		if (targetError) {
+			console.error(
+				"[document-similarity] Error fetching target documents:",
+				targetError,
+			)
+			// Keep base connection data even if enrichment query fails.
+			targetById = new Map()
+		}
+
+		if (!targetError) {
+			targetById = new Map((targetDocs || []).map((doc: any) => [doc.id, doc]))
+		}
 	}
 
 	// Map database results to DocumentConnectionWithDetails schema
 	const results: DocumentConnectionWithDetails[] = (connections || []).map(
-		(conn: any) => ({
-			id: conn.id,
-			sourceDocumentId: conn.source_document_id,
-			targetDocumentId: conn.target_document_id,
-			orgId: conn.org_id,
-			userId: conn.user_id,
-			connectionType: conn.connection_type,
-			similarityScore: conn.similarity_score
-				? Number.parseFloat(conn.similarity_score)
-				: null,
-			reason: conn.reason,
-			metadata: conn.metadata || {},
-			createdAt: conn.created_at,
-			updatedAt: conn.updated_at,
-			targetDocument: conn.target
-				? {
-						id: conn.target.id,
-						title: conn.target.title,
-						summary: conn.target.summary,
-						type: conn.target.type,
-						url: conn.target.url,
-						createdAt: conn.target.created_at,
-					}
-				: undefined,
-		}),
+		(conn: any) => {
+			const targetDoc = targetById.get(conn.target_document_id)
+			return {
+				id: conn.id,
+				sourceDocumentId: conn.source_document_id,
+				targetDocumentId: conn.target_document_id,
+				orgId: conn.org_id,
+				userId: conn.user_id,
+				connectionType: conn.connection_type,
+				similarityScore: conn.similarity_score
+					? Number.parseFloat(conn.similarity_score)
+					: null,
+				reason: conn.reason,
+				metadata: conn.metadata || {},
+				createdAt: conn.created_at,
+				updatedAt: conn.updated_at,
+				targetDocument: targetDoc
+					? {
+							id: targetDoc.id,
+							title: targetDoc.title,
+							summary: targetDoc.summary,
+							type: targetDoc.type,
+							url: targetDoc.url,
+							createdAt: targetDoc.created_at,
+						}
+					: undefined,
+			}
+		},
 	)
 
 	return results

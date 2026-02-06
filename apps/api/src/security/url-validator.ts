@@ -123,7 +123,9 @@ export async function safeFetch(
 	url: string,
 	options?: RequestInit,
 ): Promise<Response> {
-	const validatedUrl = validateUrlSafety(url)
+	const MAX_REDIRECTS = 5
+	let currentUrl = validateUrlSafety(url).toString()
+	let redirectCount = 0
 
 	// Add security headers
 	const secureOptions: RequestInit = {
@@ -132,21 +134,42 @@ export async function safeFetch(
 			...options?.headers,
 			"User-Agent": "KortixSelfHosted/1.0 (+self-hosted extractor)",
 		},
-		// Prevent following redirects to potentially malicious URLs
+		// Handle redirects manually so every hop is SSRF-validated.
 		redirect: "manual",
 	}
 
-	const response = await fetch(validatedUrl.toString(), secureOptions)
+	while (redirectCount <= MAX_REDIRECTS) {
+		const response = await fetch(currentUrl, secureOptions)
 
-	// If there's a redirect, validate the redirect URL too
-	if (response.status >= 300 && response.status < 400) {
-		const location = response.headers.get("location")
-		if (location) {
-			validateUrlSafety(location) // Throws if redirect is unsafe
+		if (response.status < 300 || response.status >= 400) {
+			return response
 		}
+
+		const location = response.headers.get("location")
+		if (!location) {
+			return response
+		}
+
+		let resolvedRedirect: string
+		try {
+			resolvedRedirect = new URL(location, currentUrl).toString()
+		} catch {
+			throw new URLValidationError(
+				`Invalid redirect location: ${location}`,
+				location,
+				"invalid_redirect",
+			)
+		}
+
+		currentUrl = validateUrlSafety(resolvedRedirect).toString()
+		redirectCount++
 	}
 
-	return response
+	throw new URLValidationError(
+		`Too many redirects (>${MAX_REDIRECTS})`,
+		currentUrl,
+		"too_many_redirects",
+	)
 }
 
 /**

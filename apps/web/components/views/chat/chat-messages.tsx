@@ -116,6 +116,8 @@ type MentionedDocsPart = {
 	docIds: string[]
 }
 
+const debugLog = (..._args: unknown[]) => {}
+
 function isObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null
 }
@@ -626,32 +628,32 @@ function useClaudeChat({
 	const canvasAgent = useCanvasAgentOptional()
 
 	useEffect(() => {
-		console.log("========================================")
-		console.log("[Chat Hook] Conversation ID changed:", conversationId)
+		debugLog("========================================")
+		debugLog("[Chat Hook] Conversation ID changed:", conversationId)
 		if (conversationId && conversationId.length > 0) {
 			conversationRef.current = conversationId
 			// Carregar sdkSessionId salvo da conversa
 			if (getSdkSessionId) {
 				const savedSessionId = getSdkSessionId(conversationId)
-				console.log("[Chat Hook] Checking for saved SDK session...")
-				console.log("[Chat Hook] Saved SDK session ID:", savedSessionId)
+				debugLog("[Chat Hook] Checking for saved SDK session...")
+				debugLog("[Chat Hook] Saved SDK session ID:", savedSessionId)
 				if (savedSessionId) {
 					sdkSessionIdRef.current = savedSessionId
 					lastMessageTimeRef.current = 0 // Reset tempo para forçar resume ao invés de continue
-					console.log(
+					debugLog(
 						"✅ [Frontend Session] Loaded SDK session ID:",
 						savedSessionId,
 					)
-					console.log(
+					debugLog(
 						"✅ [Frontend Session] Will use RESUME mode on next message",
 					)
 				} else {
 					sdkSessionIdRef.current = null
 					lastMessageTimeRef.current = 0
-					console.log(
+					debugLog(
 						"⚠️ [Frontend Session] No SDK session ID found for this conversation",
 					)
-					console.log(
+					debugLog(
 						"⚠️ [Frontend Session] Will create NEW session on next message",
 					)
 				}
@@ -660,11 +662,11 @@ function useClaudeChat({
 			// Nova conversa - reset session
 			sdkSessionIdRef.current = null
 			lastMessageTimeRef.current = 0
-			console.log(
+			debugLog(
 				"🆕 [Frontend Session] New conversation - will create NEW session",
 			)
 		}
-		console.log("========================================")
+		debugLog("========================================")
 	}, [conversationId, getSdkSessionId])
 
 	// Reset session when scoped documents change (user switches document context)
@@ -674,7 +676,7 @@ function useClaudeChat({
 		if (sdkSessionIdRef.current !== null) {
 			sdkSessionIdRef.current = null
 			lastMessageTimeRef.current = 0
-			console.log(
+			debugLog(
 				"[Frontend Session] Session reset due to document context change",
 			)
 		}
@@ -774,7 +776,7 @@ function useClaudeChat({
 			// Timeout de 5 minutos - aborta se não houver resposta
 			const CHAT_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutos
 			const timeoutId = setTimeout(() => {
-				console.log("[Chat] Request timeout after 5 minutes")
+				debugLog("[Chat] Request timeout after 5 minutes")
 				controller.abort()
 			}, CHAT_TIMEOUT_MS)
 
@@ -808,15 +810,15 @@ function useClaudeChat({
 			const continueSession = hasRecentSession
 			const sdkSessionId = continueSession ? null : sdkSessionIdRef.current
 
-			console.log("========================================")
-			console.log("📤 [Send Message] Preparing to send message...")
-			console.log("[Frontend Session] Current state:", {
+			debugLog("========================================")
+			debugLog("📤 [Send Message] Preparing to send message...")
+			debugLog("[Frontend Session] Current state:", {
 				currentSdkSessionId: sdkSessionIdRef.current,
 				timeSinceLastMessage: `${Math.round(timeSinceLastMessage / 1000)}s`,
 				sessionTimeout: `${SESSION_TIMEOUT_MS / 1000}s`,
 				hasRecentSession,
 			})
-			console.log("[Frontend Session] Decision:", {
+			debugLog("[Frontend Session] Decision:", {
 				mode: continueSession
 					? "CONTINUE (recent session)"
 					: sdkSessionId
@@ -828,11 +830,11 @@ function useClaudeChat({
 
 			try {
 				const body = buildRequestBody(trimmed, sdkSessionId, continueSession)
-				console.log("📦 [Send Message] Request body:", {
+				debugLog("📦 [Send Message] Request body:", {
 					...body,
 					message: `${String(body.message ?? "").substring(0, 50)}...`,
 				})
-				console.log("========================================")
+				debugLog("========================================")
 				const response = await fetch(endpoint, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -1166,7 +1168,7 @@ function useClaudeChat({
 							buffer = ""
 							if (payload && typeof payload === "object") {
 								const record = payload as Record<string, unknown>
-								console.log("[ChatMessages] Stream record received:", {
+								debugLog("[ChatMessages] Stream record received:", {
 									type: record.type,
 									hasMessage: !!record.message,
 									hasParts: !!(record.message as any)?.parts,
@@ -1189,7 +1191,7 @@ function useClaudeChat({
 
 									// Debug: log all tool events
 									if (toolName.includes("canvas")) {
-										console.log("[ChatMessages] Canvas tool event received:", {
+										debugLog("[ChatMessages] Canvas tool event received:", {
 											toolName,
 											toolState,
 											hasOutputText: !!outputText,
@@ -1205,11 +1207,11 @@ function useClaudeChat({
 										canvasAgent
 									) {
 										try {
-											console.log(
+											debugLog(
 												"[ChatMessages] Processing canvas changes from tool:",
 												toolName,
 											)
-											console.log(
+											debugLog(
 												"[ChatMessages] Output text preview:",
 												outputText.substring(0, 200),
 											)
@@ -1218,7 +1220,7 @@ function useClaudeChat({
 												outputText,
 											)
 											if (applied) {
-												console.log(
+												debugLog(
 													"[ChatMessages] Canvas changes applied successfully",
 												)
 											} else {
@@ -1262,7 +1264,7 @@ function useClaudeChat({
 											] as ClaudeChatMessage["parts"])
 
 									// Debug: log the final event for canvas debugging
-									console.log("[ChatMessages] Final event received:", {
+									debugLog("[ChatMessages] Final event received:", {
 										hasCanvasAgent: !!canvasAgent,
 										hasParts: Array.isArray(messagePayload?.parts),
 										partsLength: Array.isArray(messagePayload?.parts)
@@ -1277,7 +1279,7 @@ function useClaudeChat({
 
 									// Process canvas tool parts from the final response
 									if (Array.isArray(messagePayload?.parts)) {
-										console.log("[ChatMessages] Processing parts array:", {
+										debugLog("[ChatMessages] Processing parts array:", {
 											length: messagePayload.parts.length,
 											allParts: messagePayload.parts.map(
 												(p: Record<string, unknown>) => ({
@@ -1292,7 +1294,7 @@ function useClaudeChat({
 										>) {
 											// Debug: log each part
 											if (part?.type === "tool-generic") {
-												console.log("[ChatMessages] Found tool-generic part:", {
+												debugLog("[ChatMessages] Found tool-generic part:", {
 													toolName: part?.toolName,
 													state: part?.state,
 													hasOutputText: typeof part?.outputText === "string",
@@ -1310,7 +1312,7 @@ function useClaudeChat({
 												part?.state === "output-available" &&
 												typeof part?.outputText === "string"
 											) {
-												console.log(
+												debugLog(
 													"[ChatMessages] Processing canvas tool from final parts:",
 													{
 														toolName: part.toolName,
@@ -1333,7 +1335,7 @@ function useClaudeChat({
 														part.outputText as string,
 													)
 													if (applied) {
-														console.log(
+														debugLog(
 															"[ChatMessages] Canvas changes applied successfully from final parts",
 														)
 													} else {
@@ -1360,9 +1362,9 @@ function useClaudeChat({
 									pushConversationId(record.conversationId)
 
 									// Capture SDK session ID and update timestamp
-									console.log("========================================")
-									console.log("📥 [Stream] Received final event from backend")
-									console.log(
+									debugLog("========================================")
+									debugLog("📥 [Stream] Received final event from backend")
+									debugLog(
 										"[Stream] SDK session ID in event:",
 										record.sdkSessionId,
 									)
@@ -1372,20 +1374,20 @@ function useClaudeChat({
 									) {
 										sdkSessionIdRef.current = record.sdkSessionId
 										lastMessageTimeRef.current = Date.now()
-										console.log(
+										debugLog(
 											"✅ [Frontend Session] Captured sdkSessionId:",
 											record.sdkSessionId,
 										)
 										if (onSdkSessionId) {
-											console.log(
+											debugLog(
 												"📞 [Stream] Calling onSdkSessionId callback...",
 											)
 											onSdkSessionId(record.sdkSessionId)
 										}
 									} else {
-										console.log("⚠️ [Stream] No SDK session ID in final event")
+										debugLog("⚠️ [Stream] No SDK session ID in final event")
 									}
-									console.log("========================================")
+									debugLog("========================================")
 
 									if (onComplete) {
 										onComplete({ text: finalText, messages: finalMessages })
@@ -1456,7 +1458,7 @@ function useClaudeChat({
 									] as ClaudeChatMessage["parts"])
 
 							// Process canvas tool parts from the final response (STREAMING PATH)
-							console.log("[ChatMessages] Final event received (streaming):", {
+							debugLog("[ChatMessages] Final event received (streaming):", {
 								hasCanvasAgent: !!canvasAgent,
 								hasParts: Array.isArray(messagePayload?.parts),
 								partsLength: Array.isArray(messagePayload?.parts)
@@ -1464,7 +1466,7 @@ function useClaudeChat({
 									: 0,
 							})
 							if (Array.isArray(messagePayload?.parts) && canvasAgent) {
-								console.log(
+								debugLog(
 									"[ChatMessages] Processing parts for canvas (streaming):",
 									{
 										length: messagePayload.parts.length,
@@ -1487,7 +1489,7 @@ function useClaudeChat({
 										part?.state === "output-available" &&
 										typeof part?.outputText === "string"
 									) {
-										console.log(
+										debugLog(
 											"[ChatMessages] Applying canvas changes (streaming):",
 											{
 												toolName: part.toolName,
@@ -1500,7 +1502,7 @@ function useClaudeChat({
 												part.outputText as string,
 											)
 											if (applied) {
-												console.log(
+												debugLog(
 													"[ChatMessages] Canvas changes applied successfully (streaming)",
 												)
 											} else {
@@ -1534,7 +1536,7 @@ function useClaudeChat({
 							) {
 								sdkSessionIdRef.current = record.sdkSessionId
 								lastMessageTimeRef.current = Date.now()
-								console.log(
+								debugLog(
 									"[Frontend Session] Captured sdkSessionId:",
 									record.sdkSessionId,
 								)
@@ -1667,7 +1669,7 @@ function useClaudeChat({
 	} as const
 }
 
-export function ChatMessages() {
+export function ChatMessages({ embedded = false }: { embedded?: boolean }) {
 	const { selectedProject } = useProject()
 	const {
 		currentChatId,
@@ -1839,7 +1841,7 @@ export function ChatMessages() {
 				const canvasContext = canvasAgent.buildContextForAgent()
 				if (canvasContext) {
 					metadata.canvasContext = canvasContext
-					console.log(
+					debugLog(
 						"[ChatMessages] Including canvas context in request:",
 						canvasContext,
 					)
@@ -1920,18 +1922,18 @@ export function ChatMessages() {
 		},
 		onSdkSessionId: (sdkId) => {
 			// Salvar sdkSessionId na conversa atual
-			console.log("========================================")
-			console.log("📥 [Callback] Received SDK session ID from backend:", sdkId)
+			debugLog("========================================")
+			debugLog("📥 [Callback] Received SDK session ID from backend:", sdkId)
 			const activeId = activeChatIdRef.current || currentChatId
-			console.log("[Callback] Active chat ID:", activeId)
+			debugLog("[Callback] Active chat ID:", activeId)
 			if (activeId && sdkId) {
-				console.log("💾 [Callback] Calling setSdkSessionId to save...")
+				debugLog("💾 [Callback] Calling setSdkSessionId to save...")
 				setSdkSessionId(activeId, sdkId)
-				console.log("✅ [Callback] SDK session ID saved successfully")
+				debugLog("✅ [Callback] SDK session ID saved successfully")
 			} else {
-				console.log("⚠️ [Callback] Cannot save - missing activeId or sdkId")
+				debugLog("⚠️ [Callback] Cannot save - missing activeId or sdkId")
 			}
-			console.log("========================================")
+			debugLog("========================================")
 		},
 	})
 
@@ -2095,10 +2097,11 @@ export function ChatMessages() {
 	const { isOpen } = useChatOpen()
 	const prevIsOpenRef = useRef(false)
 	const lastClosedTimeRef = useRef<number>(0)
+	const effectiveOpen = embedded || isOpen
 
 	useEffect(() => {
 		// Detect when chat is opened (transitions from closed to open)
-		if (isOpen && !prevIsOpenRef.current) {
+		if (effectiveOpen && !prevIsOpenRef.current) {
 			const now = Date.now()
 			const timeSinceClosed = now - lastClosedTimeRef.current
 			const QUICK_REOPEN_THRESHOLD = 60 * 1000 // 1 minute
@@ -2118,12 +2121,12 @@ export function ChatMessages() {
 		}
 
 		// Track when chat is closed
-		if (!isOpen && prevIsOpenRef.current) {
+		if (!effectiveOpen && prevIsOpenRef.current) {
 			lastClosedTimeRef.current = Date.now()
 		}
 
-		prevIsOpenRef.current = isOpen
-	}, [isOpen, messages.length, setCurrentChatId, setMessages])
+		prevIsOpenRef.current = effectiveOpen
+	}, [effectiveOpen, messages.length, setCurrentChatId, setMessages])
 
 	async function saveMemory(content: string) {
 		const trimmed = content.trim()
@@ -2759,7 +2762,7 @@ export function ChatMessages() {
 					<InputGroupTextarea
 						className="text-foreground placeholder-muted-foreground/50 text-sm"
 						onChange={(e) => {
-							console.log("[Chat Input] onChange:", e.target.value)
+							debugLog("[Chat Input] onChange:", e.target.value)
 							setInput(e.target.value)
 						}}
 						onKeyDown={(e) => {

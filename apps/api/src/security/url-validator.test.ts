@@ -243,10 +243,57 @@ describe("URL Validator - SSRF Protection", () => {
 		})
 
 		describe("Redirect Handling", () => {
-			it("should handle redirects manually", async () => {
-				// This test would require a mock server that returns redirects
-				// For now, we just test that the function is callable
-				expect(typeof safeFetch).toBe("function")
+			it("should follow safe redirects", async () => {
+				const originalFetch = globalThis.fetch
+				let callCount = 0
+
+				globalThis.fetch = (async (input: string | URL | Request) => {
+					callCount++
+					const requestedUrl =
+						typeof input === "string"
+							? input
+							: input instanceof URL
+								? input.toString()
+								: input.url
+
+					if (callCount === 1) {
+						expect(requestedUrl).toBe("https://example.com/start")
+						return new Response(null, {
+							status: 301,
+							headers: { location: "/final" },
+						})
+					}
+
+					expect(requestedUrl).toBe("https://example.com/final")
+					return new Response("ok", { status: 200 })
+				}) as typeof fetch
+
+				try {
+					const response = await safeFetch("https://example.com/start")
+					expect(response.status).toBe(200)
+					expect(callCount).toBe(2)
+				} finally {
+					globalThis.fetch = originalFetch
+				}
+			})
+
+			it("should block unsafe redirect targets", async () => {
+				const originalFetch = globalThis.fetch
+
+				globalThis.fetch = (async () => {
+					return new Response(null, {
+						status: 302,
+						headers: { location: "http://localhost/internal" },
+					})
+				}) as typeof fetch
+
+				try {
+					await expect(safeFetch("https://example.com/start")).rejects.toThrow(
+						URLValidationError,
+					)
+				} finally {
+					globalThis.fetch = originalFetch
+				}
 			})
 		})
 

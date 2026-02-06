@@ -18,7 +18,7 @@ import { analytics } from "@/lib/analytics"
 import { useChatOpen, usePersistentChat, useProject } from "@/stores"
 import { ChatMessages } from "./chat-messages"
 
-export function ChatRewrite() {
+export function ChatRewrite({ embedded = false }: { embedded?: boolean }) {
 	const { setIsOpen } = useChatOpen()
 	const { selectedProject } = useProject()
 	const {
@@ -51,7 +51,14 @@ export function ChatRewrite() {
 	// No header controls (kept only in composer)
 
 	return (
-		<div className="flex flex-col h-full overflow-y-hidden border-l border-border/30 bg-chat-surface">
+		<div
+			className={cn(
+				"flex flex-col overflow-y-hidden bg-chat-surface",
+				embedded
+					? "h-[540px] rounded-2xl border border-border/50"
+					: "h-full border-l border-border/30",
+			)}
+		>
 			<div className="sticky top-0 z-20 bg-chat-surface/80 backdrop-blur-md px-4 py-2.5 flex justify-between items-center">
 				<h3 className="text-sm font-medium line-clamp-1 text-ellipsis overflow-hidden text-foreground/80">
 					{getCurrentChat()?.title ?? "New Chat"}
@@ -98,19 +105,6 @@ export function ChatRewrite() {
 												<button
 													className="min-w-0 flex-1 text-left outline-none"
 													onClick={() => {
-														console.log(
-															"========================================",
-														)
-														console.log("[UI] Conversation clicked:", {
-															id: c.id,
-															title: c.title,
-															lastUpdated: c.lastUpdated,
-															sdkSessionId: c.sdkSessionId,
-															hasSdkSession: !!c.sdkSessionId,
-														})
-														console.log(
-															"========================================",
-														)
 														setCurrentChatId(c.id)
 														setIsDialogOpen(false)
 													}}
@@ -174,17 +168,19 @@ export function ChatRewrite() {
 					>
 						<Plus className="size-3.5" />
 					</Button>
-					<Button
-						className="h-7 w-7 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-						onClick={() => setIsOpen(false)}
-						size="icon"
-						variant="ghost"
-					>
-						<X className="size-3.5" />
-					</Button>
+						{!embedded && (
+							<Button
+								className="h-7 w-7 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+								onClick={() => setIsOpen(false)}
+								size="icon"
+								variant="ghost"
+							>
+								<X className="size-3.5" />
+							</Button>
+						)}
+					</div>
 				</div>
+				<ChatMessages embedded={embedded} />
 			</div>
-			<ChatMessages />
-		</div>
 	)
 }

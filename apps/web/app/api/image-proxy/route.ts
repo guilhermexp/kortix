@@ -13,6 +13,24 @@ function errorResponse(status = 502) {
 	})
 }
 
+function transparentPixelResponse() {
+	// 1x1 transparent GIF
+	const gif = Uint8Array.from([
+		71, 73, 70, 56, 57, 97, 1, 0, 1, 0, 128, 0, 0, 0, 0, 0, 255, 255, 255,
+		33, 249, 4, 1, 0, 0, 1, 0, 44, 0, 0, 0, 0, 1, 0, 1, 0, 0, 2, 2, 68, 1, 0,
+		59,
+	])
+
+	return new NextResponse(gif, {
+		status: 200,
+		headers: {
+			"Content-Type": "image/gif",
+			"Cache-Control": "public, max-age=300",
+			"Access-Control-Allow-Origin": "*",
+		},
+	})
+}
+
 export async function GET(request: NextRequest) {
 	const url = request.nextUrl.searchParams.get("url")
 
@@ -44,8 +62,8 @@ export async function GET(request: NextRequest) {
 		clearTimeout(timeoutId)
 
 		if (!response.ok) {
-			// Return fallback for any non-2xx response
-			return errorResponse()
+			// Return a transparent pixel to avoid broken image errors in the UI.
+			return transparentPixelResponse()
 		}
 
 		const contentType = response.headers.get("content-type") || "image/png"
@@ -65,7 +83,7 @@ export async function GET(request: NextRequest) {
 			},
 		})
 	} catch {
-		// Silently return fallback for any errors (timeout, network, etc.)
-		return errorResponse()
+		// Timeout/network failures should not break the UI.
+		return transparentPixelResponse()
 	}
 }

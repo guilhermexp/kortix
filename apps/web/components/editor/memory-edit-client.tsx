@@ -1,6 +1,5 @@
 "use client"
 
-import { useIsMobile } from "@hooks/use-mobile"
 import { BACKEND_URL } from "@lib/env"
 import { useDeleteDocument } from "@lib/queries"
 import { cn } from "@lib/utils"
@@ -20,7 +19,6 @@ import {
 	FileText,
 	Link as LinkIcon,
 	Loader2,
-	MessageSquare,
 	Play,
 	Sparkles,
 	X,
@@ -34,7 +32,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { ChatRewrite } from "@/components/views/chat"
 import type { DocumentWithMemories } from "@/lib/types/document"
-import { useChatMentionQueue, useChatOpen, useProject } from "@/stores"
+import { useChatMentionQueue, useProject } from "@/stores"
 import { useCanvasSelection } from "@/stores/canvas"
 import { formatDate, getDocumentSnippet, stripMarkdown } from "../memories"
 import { RelatedDocumentsPanel } from "../memories/related-documents-panel"
@@ -133,6 +131,10 @@ const proxyImageUrl = (url: string | undefined | null): string | undefined => {
 	if (!url.startsWith("http://") && !url.startsWith("https://")) return url
 	try {
 		const parsed = new URL(url)
+		// Always proxy plain HTTP images to avoid CSP/mixed-content issues.
+		if (parsed.protocol === "http:") {
+			return `/api/image-proxy?url=${encodeURIComponent(url)}`
+		}
 		const hostname = parsed.hostname.toLowerCase()
 		// Only skip proxying for safe domains
 		const isSafe = SAFE_DOMAINS.some(
@@ -299,8 +301,6 @@ interface MemoryEditClientProps {
 export function MemoryEditClient({
 	document: initialDocument,
 }: MemoryEditClientProps) {
-	const isMobile = useIsMobile()
-	const { isOpen, setIsOpen } = useChatOpen()
 	const { selectedProject } = useProject()
 	const router = useRouter()
 	const deleteDocumentMutation = useDeleteDocument(selectedProject)
@@ -326,11 +326,6 @@ export function MemoryEditClient({
 
 	useEffect(() => {
 		const projectTag = initialDocument.containerTags?.[0] ?? DEFAULT_PROJECT_ID
-		console.log("[MemoryEditClient] Document project info:", {
-			documentId: initialDocument.id,
-			containerTags: initialDocument.containerTags,
-			selectedTag: projectTag,
-		})
 		setActiveProjectTag(projectTag)
 	}, [initialDocument.id, initialDocument.containerTags])
 
@@ -417,82 +412,6 @@ export function MemoryEditClient({
 		}
 	}, [clearScope, document.id, enqueue, setScopedDocumentIds])
 
-	// Resizable chat panel width (desktop only)
-	const MIN_CHAT_WIDTH = 420
-	const MAX_CHAT_WIDTH = 1100
-	const DEFAULT_CHAT_WIDTH = 420
-
-	// Always initialize with default value to avoid hydration mismatch
-	const [chatWidth, setChatWidth] = useState<number>(DEFAULT_CHAT_WIDTH)
-
-	// Load from localStorage AFTER hydration
-	useEffect(() => {
-		if (typeof window !== "undefined") {
-			try {
-				const stored = Number(localStorage.getItem("chatPanelWidth"))
-				if (Number.isFinite(stored)) {
-					const validWidth = Math.min(
-						MAX_CHAT_WIDTH,
-						Math.max(MIN_CHAT_WIDTH, stored),
-					)
-					setChatWidth(validWidth)
-				}
-			} catch {
-				// ignore storage errors
-			}
-		}
-	}, [])
-
-	// Save to localStorage when width changes
-	useEffect(() => {
-		if (typeof window !== "undefined") {
-			try {
-				localStorage.setItem("chatPanelWidth", String(chatWidth))
-			} catch {
-				// ignore storage errors
-			}
-		}
-	}, [chatWidth])
-
-	const resizingRef = useRef(false)
-	const startXRef = useRef(0)
-	const startWidthRef = useRef(0)
-
-	const onResizeStart = (event: React.MouseEvent<HTMLDivElement>) => {
-		if (isMobile) return
-		const browserDocument =
-			typeof window !== "undefined" ? window.document : null
-		if (!browserDocument?.body) return
-
-		resizingRef.current = true
-		startXRef.current = event.clientX
-		startWidthRef.current = chatWidth
-		browserDocument.body.style.cursor = "ew-resize"
-
-		const handleMouseMove = (e: MouseEvent) => {
-			if (!resizingRef.current) return
-			const delta = startXRef.current - e.clientX
-			const next = Math.min(
-				MAX_CHAT_WIDTH,
-				Math.max(MIN_CHAT_WIDTH, startWidthRef.current + delta),
-			)
-			setChatWidth(next)
-		}
-
-		const handleMouseUp = () => {
-			resizingRef.current = false
-			if (browserDocument?.body) {
-				browserDocument.body.style.cursor = ""
-			}
-			window.removeEventListener("mousemove", handleMouseMove)
-			window.removeEventListener("mouseup", handleMouseUp)
-		}
-
-		window.addEventListener("mousemove", handleMouseMove)
-		window.addEventListener("mouseup", handleMouseUp)
-		event.preventDefault()
-	}
-
 	const [isContentOpen, setIsContentOpen] = useState(false)
 
 	const documentTitle = (() => {
@@ -525,16 +444,7 @@ export function MemoryEditClient({
 
 	return (
 		<div className="relative h-screen bg-background overflow-hidden">
-			<motion.div
-				animate={{
-					marginRight: isOpen && !isMobile ? chatWidth : 0,
-				}}
-				className="flex h-full flex-col"
-				transition={{
-					duration: 0.2,
-					ease: [0.4, 0, 0.2, 1],
-				}}
-			>
+			<motion.div className="flex h-full flex-col">
 				{/* Minimal header */}
 				<header className="flex items-center gap-2 px-3 h-10 border-b border-border/20">
 					<Button
@@ -713,18 +623,21 @@ export function MemoryEditClient({
 									</AnimatePresence>
 								</Collapsible>
 
-								{/* Related documents panel */}
-								<RelatedDocumentsPanel document={document} />
+									{/* Related documents panel */}
+									<RelatedDocumentsPanel document={document} />
+
+									{/* Embedded chat with full backend flow */}
+									<ChatRewrite embedded />
+								</div>
 							</div>
 						</div>
-					</div>
 
 					{/* Right panel - Related content gallery with internal scroll */}
-					<motion.div
-						animate={{ width: isOpen ? "30vw" : "45vw" }}
-						className="hidden lg:flex flex-col shrink-0 border-l border-border/30 bg-background/50"
-						transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-					>
+						<motion.div
+							animate={{ width: "45vw" }}
+							className="hidden lg:flex flex-col shrink-0 border-l border-border/30 bg-background/50"
+							transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+						>
 						{/* Header with discover button */}
 						<div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
 							<h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -883,61 +796,9 @@ export function MemoryEditClient({
 								</div>
 							)}
 						</div>
-					</motion.div>
-				</main>
-			</motion.div>
-			{/* Floating Open Chat Button */}
-			{!isOpen && !isMobile && (
-				<motion.div
-					animate={{ opacity: 1, scale: 1 }}
-					className="fixed bottom-6 right-6 z-50"
-					initial={{ opacity: 0, scale: 0.8 }}
-					transition={{
-						type: "spring",
-						stiffness: 300,
-						damping: 25,
-					}}
-				>
-					<Button
-						className="flex h-14 w-14 items-center justify-center rounded-full bg-white p-0 text-[#001A39] shadow-lg transition-all duration-200 hover:bg-white/80 hover:shadow-xl"
-						onClick={() => setIsOpen(true)}
-					>
-						<MessageSquare className="h-6 w-6" />
-					</Button>
+						</motion.div>
+					</main>
 				</motion.div>
-			)}
-
-			{/* Chat panel (page-level) */}
-			<motion.div
-				className="fixed top-0 right-0 z-50 h-full md:z-auto"
-				style={{
-					width: isOpen ? (isMobile ? "100vw" : `${chatWidth}px`) : 0,
-					pointerEvents: isOpen ? "auto" : "none",
-				}}
-			>
-				<motion.div
-					animate={{ x: isOpen ? 0 : isMobile ? "100%" : chatWidth }}
-					className="absolute inset-0"
-					exit={{ x: isMobile ? "100%" : chatWidth }}
-					initial={{ x: isMobile ? "100%" : chatWidth }}
-					transition={{
-						type: "spring",
-						stiffness: 500,
-						damping: 40,
-					}}
-				>
-					{/* Resize handle */}
-					{!isMobile && (
-						<div
-							className="absolute left-0 top-0 h-full w-1 cursor-ew-resize bg-transparent"
-							onMouseDown={onResizeStart}
-						>
-							<div className="absolute left-1/2 top-1/2 h-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-border bg-muted/50" />
-						</div>
-					)}
-					<ChatRewrite />
-				</motion.div>
-			</motion.div>
-		</div>
-	)
-}
+			</div>
+		)
+	}

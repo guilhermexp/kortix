@@ -745,17 +745,17 @@ export function AddMemoryView({
 			}
 
 			// Optimistically update ALL matching queries (partial match)
-			queryClient.setQueriesData<DocumentsQueryData | undefined>(
-				{ queryKey: ["documents-with-memories", project], exact: false },
-				(oldData) => mergeOptimisticMemory(oldData, optimisticMemory),
-			)
+				queryClient.setQueriesData<DocumentsQueryData | undefined>(
+					{ queryKey: ["documents-with-memories", project], exact: false },
+					(oldData) => mergeOptimisticMemory(oldData, optimisticMemory),
+				)
 
-			return {
-				previousMemories,
-				optimisticId: optimisticMemory.id,
-				matchingQueries,
-			}
-		},
+				return {
+					previousMemories,
+					optimisticId: optimisticMemory.id,
+					matchingQueries,
+				}
+			},
 		onError: (_error, _variables, context) => {
 			// Restore all matching queries to their previous state
 			if (context?.matchingQueries) {
@@ -1090,12 +1090,11 @@ export function AddMemoryView({
 				(oldData) => mergeOptimisticMemory(oldData, optimisticMemory),
 			)
 
-			console.log("✅ onMutate completed")
-			return {
-				previousMemories,
-				optimisticId: optimisticMemory.id,
-				matchingQueries,
-			}
+				return {
+					previousMemories,
+					optimisticId: optimisticMemory.id,
+					matchingQueries,
+				}
 		},
 		onSuccess: (_data, variables, context) => {
 			// Extract the actual payload from the response
