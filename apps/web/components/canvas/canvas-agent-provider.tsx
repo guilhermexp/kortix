@@ -18,6 +18,14 @@ import {
 	type CanvasAgentChange,
 } from "./canvas-agent-changes"
 
+const ENABLE_CANVAS_DEBUG_LOGS = process.env.NEXT_PUBLIC_CANVAS_DEBUG === "1"
+
+const canvasDebugLog = (...args: unknown[]) => {
+	if (ENABLE_CANVAS_DEBUG_LOGS) {
+		console.log(...args)
+	}
+}
+
 export type CanvasChangesPayload = {
 	kind: "canvasChanges"
 	changes: CanvasAgentChange[]
@@ -53,7 +61,7 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 			return false
 		}
 
-		console.log(
+		canvasDebugLog(
 			`[CanvasAgentProvider] Applying ${payload.changes.length} changes to canvas`,
 		)
 
@@ -62,7 +70,7 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 			for (const change of payload.changes) {
 				try {
 					applyCanvasAgentChange(currentEditor, change)
-					console.log(
+					canvasDebugLog(
 						`[CanvasAgentProvider] Applied change: ${change.type}`,
 						change,
 					)
@@ -89,7 +97,7 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 		(editor: Editor | null) => {
 			editorRef.current = editor
 			const pendingCount = pendingChangesRef.current.length
-			console.log(
+			canvasDebugLog(
 				"[CanvasAgentProvider] Editor registered:",
 				!!editor,
 				"pending:",
@@ -103,7 +111,7 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 				for (const payload of queued) {
 					try {
 						applyChanges(payload)
-						console.log("[CanvasAgentProvider] Flushed pending changes")
+						canvasDebugLog("[CanvasAgentProvider] Flushed pending changes")
 					} catch (err) {
 						console.error(
 							"[CanvasAgentProvider] Failed to flush pending change:",
@@ -118,7 +126,7 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 
 	const processToolOutput = useCallback(
 		(toolName: string, outputText: string): boolean => {
-			console.log("[CanvasAgentProvider] processToolOutput called:", {
+			canvasDebugLog("[CanvasAgentProvider] processToolOutput called:", {
 				toolName,
 				outputTextLength: outputText?.length || 0,
 				hasEditor: !!editorRef.current,
@@ -126,7 +134,7 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 
 			// Check if this is a canvas changes tool
 			if (!toolName.includes("canvasApplyChanges")) {
-				console.log(
+				canvasDebugLog(
 					"[CanvasAgentProvider] Tool name doesn't match canvasApplyChanges",
 				)
 				return false
@@ -134,7 +142,7 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 
 			try {
 				const parsed = JSON.parse(outputText)
-				console.log("[CanvasAgentProvider] Parsed output:", {
+				canvasDebugLog("[CanvasAgentProvider] Parsed output:", {
 					kind: parsed?.kind,
 					changesCount: parsed?.changes?.length || 0,
 				})

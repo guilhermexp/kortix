@@ -94,6 +94,23 @@ const allowedOrigins = new Set(env.ALLOWED_ORIGINS)
 const IMAGE_PROXY_TIMEOUT_MS = 10_000
 const IMAGE_PROXY_MAX_BYTES = 10 * 1024 * 1024 // 10MB
 
+function transparentPixelResponse(): Response {
+	// 1x1 transparent GIF
+	const gif = Uint8Array.from([
+		71, 73, 70, 56, 57, 97, 1, 0, 1, 0, 128, 0, 0, 0, 0, 0, 255, 255, 255, 33,
+		249, 4, 1, 0, 0, 1, 0, 44, 0, 0, 0, 0, 1, 0, 1, 0, 0, 2, 2, 68, 1, 0, 59,
+	])
+
+	return new Response(gif, {
+		status: 200,
+		headers: {
+			"Content-Type": "image/gif",
+			"Cache-Control": "public, max-age=300",
+			"Access-Control-Allow-Origin": "*",
+		},
+	})
+}
+
 function isPrivateOrBlockedIp(address: string): boolean {
 	// IPv4 checks
 	if (isIP(address) === 4) {
@@ -230,17 +247,17 @@ app.get("/", (c) =>
 app.get("/api/image-proxy", async (c) => {
 	const url = c.req.query("url")
 	if (!url) {
-		return c.json({ error: "Missing url parameter" }, 400)
+		return transparentPixelResponse()
 	}
 
 	try {
 		const parsedUrl = new URL(url)
 		const allowedProtocols = ["http:", "https:"]
 		if (!allowedProtocols.includes(parsedUrl.protocol)) {
-			return c.json({ error: "Invalid URL protocol" }, 400)
+			return transparentPixelResponse()
 		}
 		if (!(await isSafeImageProxyTarget(parsedUrl))) {
-			return c.json({ error: "Target host not allowed" }, 400)
+			return transparentPixelResponse()
 		}
 
 		const response = await fetch(url, {
@@ -252,24 +269,12 @@ app.get("/api/image-proxy", async (c) => {
 		})
 
 		if (!response.ok) {
-			// Fallback: let the browser try direct loading (avoids noisy proxy 5xx for
-			// providers that block server-side fetches but allow normal image requests).
-			if (response.status >= 500) {
-				return c.redirect(url, 307)
-			}
-
-			return new Response(
-				JSON.stringify({ error: `Failed to fetch image: ${response.status}` }),
-				{
-					status: response.status,
-					headers: { "Content-Type": "application/json" },
-				},
-			)
+			return transparentPixelResponse()
 		}
 
 		const contentType = response.headers.get("content-type") || ""
 		if (!contentType.toLowerCase().startsWith("image/")) {
-			return c.json({ error: "URL did not return an image" }, 415)
+			return transparentPixelResponse()
 		}
 
 		const contentLengthRaw = response.headers.get("content-length")
@@ -295,8 +300,7 @@ app.get("/api/image-proxy", async (c) => {
 		return c.body(buffer)
 	} catch (error) {
 		console.error("[image-proxy] Error fetching image:", error)
-		// Fallback to direct URL when proxy fetch fails (timeouts, DNS hiccups, etc.)
-		return c.redirect(url, 307)
+		return transparentPixelResponse()
 	}
 })
 

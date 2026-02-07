@@ -2,17 +2,6 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export const runtime = "edge"
 
-// Return error response so browser onError handler is triggered
-function errorResponse(status = 502) {
-	return new NextResponse(null, {
-		status,
-		headers: {
-			"Cache-Control": "no-cache", // Don't cache errors
-			"Access-Control-Allow-Origin": "*",
-		},
-	})
-}
-
 function transparentPixelResponse() {
 	// 1x1 transparent GIF
 	const gif = Uint8Array.from([
@@ -35,14 +24,14 @@ export async function GET(request: NextRequest) {
 	const url = request.nextUrl.searchParams.get("url")
 
 	if (!url) {
-		return errorResponse()
+		return transparentPixelResponse()
 	}
 
 	try {
 		const parsedUrl = new URL(url)
 		const allowedProtocols = ["http:", "https:"]
 		if (!allowedProtocols.includes(parsedUrl.protocol)) {
-			return errorResponse()
+			return transparentPixelResponse()
 		}
 
 		const controller = new AbortController()
@@ -70,7 +59,7 @@ export async function GET(request: NextRequest) {
 
 		// Only proxy actual images
 		if (!contentType.startsWith("image/")) {
-			return errorResponse()
+			return transparentPixelResponse()
 		}
 
 		const buffer = await response.arrayBuffer()

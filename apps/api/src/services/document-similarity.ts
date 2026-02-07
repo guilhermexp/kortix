@@ -48,7 +48,9 @@ export async function findSimilarDocuments(
 		.single()
 
 	if (sourceError || !sourceDoc) {
-		throw new Error("Document not found or access denied")
+		// Graceful fallback: related docs should not break the page when the source
+		// document is missing/inaccessible in this context.
+		return []
 	}
 
 	// Call the PostgreSQL function to find similar documents

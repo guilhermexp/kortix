@@ -65,6 +65,14 @@ import "./ai-menu/ai-menu.css"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
+const ENABLE_CANVAS_DEBUG_LOGS = process.env.NEXT_PUBLIC_CANVAS_DEBUG === "1"
+const TL_I18N_WARN_PREFIX = "Language pt-br: missing messages for keys:"
+
+const canvasDebugLog = (...args: unknown[]) => {
+	if (ENABLE_CANVAS_DEBUG_LOGS) {
+		console.log(...args)
+	}
+}
 
 // No custom StylePanel - we'll handle hide/show via CSS
 
@@ -168,6 +176,27 @@ export function TldrawCanvas() {
 	useEffect(() => {
 		setImageMenuOpen(false)
 	}, [])
+
+	// tldraw currently emits a known dev-only missing-key warning for pt-BR.
+	// Filter this single message so real warnings stay visible.
+	useEffect(() => {
+		const originalWarn = console.warn
+		console.warn = (...args: unknown[]) => {
+			const [firstArg] = args
+			if (
+				typeof firstArg === "string" &&
+				firstArg.includes(TL_I18N_WARN_PREFIX)
+			) {
+				return
+			}
+			originalWarn(...args)
+		}
+
+		return () => {
+			console.warn = originalWarn
+		}
+	}, [])
+
 	// Generation loading state with details
 	const [generationTask, setGenerationTask] = useState<{
 		type: "text" | "image" | "video"
@@ -1208,7 +1237,7 @@ export function TldrawCanvas() {
 	// Listen for context menu on canvas
 	useEffect(() => {
 		const container = containerRef.current
-		console.log(
+		canvasDebugLog(
 			"[AI Menu] Setting up context menu listener, container:",
 			!!container,
 			"editor:",
@@ -1216,7 +1245,7 @@ export function TldrawCanvas() {
 		)
 
 		if (!container) {
-			console.log("[AI Menu] No container, skipping listener setup")
+			canvasDebugLog("[AI Menu] No container, skipping listener setup")
 			return
 		}
 
@@ -1226,14 +1255,14 @@ export function TldrawCanvas() {
 		}
 
 		const handleContextMenu = (e: MouseEvent) => {
-			console.log("[AI Menu] Context menu triggered at", e.clientX, e.clientY)
+			canvasDebugLog("[AI Menu] Context menu triggered at", e.clientX, e.clientY)
 			if (!editor) {
-				console.log("[AI Menu] No editor available")
+				canvasDebugLog("[AI Menu] No editor available")
 				return
 			}
 
 			const selectedShapes = editor.getSelectedShapes()
-			console.log(
+			canvasDebugLog(
 				"[AI Menu] Selected shapes:",
 				selectedShapes.length,
 				selectedShapes.map((s) => ({ id: s.id, type: s.type })),
@@ -1246,14 +1275,14 @@ export function TldrawCanvas() {
 					editor.isShapeOfType(shape, "note") ||
 					editor.isShapeOfType(shape, "geo"),
 			)
-			console.log("[AI Menu] Text capable shape:", textCapableShape?.type)
+			canvasDebugLog("[AI Menu] Text capable shape:", textCapableShape?.type)
 
 			if (textCapableShape) {
 				// Use tldraw v4's proper API to get text content via ShapeUtil
 				try {
 					const shapeUtil = editor.getShapeUtil(textCapableShape)
 					const textContent = (shapeUtil as unknown as { getText?: (shape: unknown) => string }).getText?.(textCapableShape) || ""
-					console.log(
+					canvasDebugLog(
 						"[AI Menu] Extracted text via shapeUtil.getText:",
 						textContent,
 					)
@@ -1261,19 +1290,19 @@ export function TldrawCanvas() {
 					if (textContent.trim()) {
 						e.preventDefault()
 						e.stopPropagation()
-						console.log("[AI Menu] Opening AI menu at", e.clientX, e.clientY)
+						canvasDebugLog("[AI Menu] Opening AI menu at", e.clientX, e.clientY)
 						setAiMenuSelectedText(textContent)
 						setAiMenuShapeId(textCapableShape.id)
 						setAiMenuPosition({ x: e.clientX, y: e.clientY })
 						setAiMenuOpen(true)
 					} else {
-						console.log("[AI Menu] Text content is empty, not showing menu")
+						canvasDebugLog("[AI Menu] Text content is empty, not showing menu")
 					}
 				} catch (err) {
 					console.error("[AI Menu] Error getting text:", err)
 				}
 			} else {
-				console.log(
+				canvasDebugLog(
 					"[AI Menu] No text-capable shape in selection, not showing menu",
 				)
 			}
@@ -1348,7 +1377,7 @@ export function TldrawCanvas() {
 					}}
 					key={effectiveCanvasProjectId}
 					onMount={(editor) => {
-						console.log(
+						canvasDebugLog(
 							"[TldrawCanvas] TLDraw mounted for project:",
 							effectiveCanvasProjectId,
 						)
@@ -1364,7 +1393,7 @@ export function TldrawCanvas() {
 						})
 
 						// Load snapshot if available and not already loaded
-						console.log("[TldrawCanvas] onMount - checking snapshot:", {
+						canvasDebugLog("[TldrawCanvas] onMount - checking snapshot:", {
 							hasSnapshot: !!initialSnapshot,
 							alreadyLoaded: snapshotLoadedRef.current,
 							snapshotKeys: initialSnapshot
@@ -1373,7 +1402,7 @@ export function TldrawCanvas() {
 						})
 
 						if (initialSnapshot && !snapshotLoadedRef.current) {
-							console.log(
+							canvasDebugLog(
 								"[TldrawCanvas] Loading snapshot into editor...",
 								initialSnapshot,
 							)
@@ -1381,7 +1410,7 @@ export function TldrawCanvas() {
 								editor.loadSnapshot(initialSnapshot)
 								snapshotLoadedRef.current = true
 								const shapes = editor.getCurrentPageShapes()
-								console.log(
+								canvasDebugLog(
 									"[TldrawCanvas] Snapshot loaded! Shapes:",
 									shapes.length,
 								)
@@ -1393,7 +1422,7 @@ export function TldrawCanvas() {
 								console.error("[TldrawCanvas] Failed to load snapshot:", err)
 							}
 						} else {
-							console.log(
+							canvasDebugLog(
 								"[TldrawCanvas] No snapshot to load or already loaded. isDbLoading:",
 								isDbLoading,
 							)
