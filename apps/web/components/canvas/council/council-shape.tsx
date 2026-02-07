@@ -16,6 +16,7 @@ import {
 	type TLResizeInfo,
 } from "tldraw"
 import { type CouncilShapeProps, getModelColor } from "./council-types"
+import { CouncilMarkdown } from "./council-markdown"
 
 // Shape type definition
 export type CouncilShape = TLBaseShape<"council", CouncilShapeProps>
@@ -110,12 +111,16 @@ export class CouncilShapeUtil extends BaseBoxShapeUtil<CouncilShape> {
 						</div>
 					</div>
 
-					{/* Content text with scroll */}
+					{/* Content text with scroll - now with Markdown support */}
 					<div
 						className="council-shape-content council-card-scroll"
 						onWheel={handleWheel}
 					>
-						{text || (isStreaming ? "Generating..." : "")}
+						{text ? (
+							<CouncilMarkdown content={text} />
+						) : (
+							isStreaming ? "Generating..." : ""
+						)}
 					</div>
 
 					{/* Verdict indicator */}

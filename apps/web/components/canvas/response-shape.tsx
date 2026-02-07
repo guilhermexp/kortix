@@ -14,6 +14,7 @@ import {
 	type TLBaseShape,
 	type TLResizeInfo,
 } from "tldraw"
+import { CouncilMarkdown } from "./council/council-markdown"
 
 // Shape type definition
 export type ResponseShape = TLBaseShape<
@@ -83,12 +84,12 @@ export class ResponseShapeUtil extends BaseBoxShapeUtil<ResponseShape> {
 				}}
 			>
 				<div className="response-shape-card">
-					{/* Description text with scroll */}
+					{/* Description text with scroll - now with Markdown support */}
 					<div
 						className="response-shape-content response-card-scroll"
 						onWheel={handleWheel}
 					>
-						{text}
+						{text ? <CouncilMarkdown content={text} /> : null}
 					</div>
 
 					{/* Footer with thumbnail and prompt */}

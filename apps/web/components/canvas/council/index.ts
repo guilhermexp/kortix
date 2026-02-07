@@ -9,6 +9,9 @@ export * from "./council-types"
 // Shape
 export { CouncilShapeUtil, type CouncilShape } from "./council-shape"
 
+// Markdown
+export { CouncilMarkdown } from "./council-markdown"
+
 // Layout
 export * from "./council-layout"
 
