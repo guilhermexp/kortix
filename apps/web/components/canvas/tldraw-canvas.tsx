@@ -58,6 +58,7 @@ import { CanvasImageEditor } from "./canvas-image-editor"
 import { DocumentSelectorModal } from "./document-selector-modal"
 import { ProjectSelectionModal } from "./project-selection-modal"
 import { CouncilShapeUtil } from "./council"
+import { DocumentCardShapeUtil } from "./document-card-shape"
 import { ResponseShapeUtil } from "./response-shape"
 import { TargetAreaTool } from "./target-area-tool"
 import { TargetShapeTool } from "./target-shape-tool"
@@ -1004,6 +1005,56 @@ export function TldrawCanvas() {
 		prevCanvasProjectRef.current = canvasProjectId
 	}, [canvasProjectId, clearCanvas])
 
+	// Helper to get preview image from document
+	const getDocumentPreviewImage = useCallback((doc: DocumentWithMemories): string | undefined => {
+		const metadata = doc.metadata as Record<string, unknown> | null
+		const raw = doc.raw as Record<string, unknown> | null
+
+		// Try direct preview image fields
+		const directPreview =
+			(doc as any).previewImage ||
+			(doc as any).preview_image ||
+			(metadata?.previewImage as string) ||
+			(metadata?.preview_image as string) ||
+			(metadata?.ogImage as string) ||
+			(metadata?.og_image as string) ||
+			(metadata?.thumbnail as string)
+
+		if (directPreview) return directPreview
+
+		// Try extraction data
+		const extraction = raw?.extraction as Record<string, unknown> | null
+		const firecrawl = (raw?.firecrawl || extraction?.firecrawl) as Record<string, unknown> | null
+
+		return (
+			(extraction?.ogImage as string) ||
+			(extraction?.thumbnail as string) ||
+			(firecrawl?.ogImage as string) ||
+			((firecrawl?.metadata as Record<string, unknown>)?.ogImage as string)
+		)
+	}, [])
+
+	// Helper to get description/summary from document
+	const getDocumentDescription = useCallback((doc: DocumentWithMemories): string | undefined => {
+		const summary = (doc as any).summary
+		if (summary) return summary
+
+		const metadata = doc.metadata as Record<string, unknown> | null
+		const description =
+			(metadata?.description as string) ||
+			(metadata?.ogDescription as string) ||
+			(metadata?.og_description as string)
+
+		if (description) return description
+
+		// Fallback to content snippet
+		if (doc.content) {
+			return doc.content.slice(0, 200).trim()
+		}
+
+		return undefined
+	}, [])
+
 	// Sync documents to tldraw native shapes
 	useEffect(() => {
 		if (!editor) return
@@ -1017,9 +1068,11 @@ export function TldrawCanvas() {
 				.map((s) => s.meta.kortixDocId as string),
 		)
 
-		// Add new documents as native tldraw shapes
+		// Add new documents as modern card shapes
 		const GRID_COLS = 3
-		const GAP = 40
+		const CARD_WIDTH = 320
+		const CARD_HEIGHT = 380
+		const GAP = 48
 		let addedCount = 0
 
 		documents.forEach((doc, index) => {
@@ -1027,14 +1080,16 @@ export function TldrawCanvas() {
 
 			const col = (index + addedCount) % GRID_COLS
 			const row = Math.floor((index + addedCount) / GRID_COLS)
-			const x = col * (400 + GAP)
-			const y = row * (300 + GAP)
+			const x = col * (CARD_WIDTH + GAP)
+			const y = row * (CARD_HEIGHT + GAP)
 
 			const url = getDocumentUrl(doc)
 			const shapeId = createShapeId()
+			const previewImage = getDocumentPreviewImage(doc)
+			const description = getDocumentDescription(doc)
 
 			if (url && isYouTubeUrl(url)) {
-				// Create embed shape for YouTube
+				// Create embed shape for YouTube (keep native for video playback)
 				editor.createShape({
 					id: shapeId,
 					type: "embed",
@@ -1042,7 +1097,7 @@ export function TldrawCanvas() {
 					y,
 					props: {
 						url,
-						w: 400,
+						w: CARD_WIDTH,
 						h: 225,
 					},
 					meta: {
@@ -1050,37 +1105,26 @@ export function TldrawCanvas() {
 						kortixTitle: doc.title,
 					},
 				})
-			} else if (url) {
-				// Create bookmark shape for URLs
+			} else {
+				// Create modern document card shape
 				editor.createShape({
 					id: shapeId,
-					type: "bookmark",
+					type: "documentCard",
 					x,
 					y,
 					props: {
-						url,
-						assetId: null,
+						w: CARD_WIDTH,
+						h: previewImage ? CARD_HEIGHT : 200,
+						title: doc.title || "Untitled",
+						description: description,
+						previewImage: previewImage,
+						url: url,
+						type: doc.type,
+						documentId: doc.id,
 					},
 					meta: {
 						kortixDocId: doc.id,
 						kortixTitle: doc.title,
-					},
-				})
-			} else {
-				// Create note shape for text documents
-				const content = doc.title || doc.content?.slice(0, 500) || "Untitled"
-				editor.createShape({
-					id: shapeId,
-					type: "note",
-					x,
-					y,
-					props: {
-						text: content,
-						size: "m",
-						color: "yellow",
-					},
-					meta: {
-						kortixDocId: doc.id,
 					},
 				})
 			}
@@ -1099,7 +1143,7 @@ export function TldrawCanvas() {
 		if (shapesToDelete.length > 0) {
 			editor.deleteShapes(shapesToDelete)
 		}
-	}, [editor, documents])
+	}, [editor, documents, getDocumentPreviewImage, getDocumentDescription])
 
 	// Sync tldraw state back to our store
 	useEffect(() => {
@@ -1428,7 +1472,7 @@ export function TldrawCanvas() {
 							)
 						}
 					}}
-					shapeUtils={[ResponseShapeUtil, CouncilShapeUtil]}
+					shapeUtils={[ResponseShapeUtil, CouncilShapeUtil, DocumentCardShapeUtil]}
 					tools={[TargetShapeTool, TargetAreaTool]}
 				/>
 			</div>
