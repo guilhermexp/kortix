@@ -80,7 +80,13 @@ export class DocumentCardShapeUtil extends BaseBoxShapeUtil<DocumentCardShape> {
 	}
 
 	override onResize(shape: DocumentCardShape, info: TLResizeInfo<DocumentCardShape>) {
-		return resizeBox(shape, info)
+		const result = resizeBox(shape, info)
+		// Ensure minimum dimensions
+		if (result.props) {
+			result.props.w = Math.max(150, result.props.w ?? 150)
+			result.props.h = Math.max(100, result.props.h ?? 100)
+		}
+		return result
 	}
 
 	// Handle double-click to open document
@@ -335,6 +341,8 @@ export class DocumentCardShapeUtil extends BaseBoxShapeUtil<DocumentCardShape> {
 	}
 
 	indicator(shape: DocumentCardShape) {
-		return <rect height={shape.props.h} rx={20} ry={20} width={shape.props.w} />
+		const w = Math.max(1, shape.props.w)
+		const h = Math.max(1, shape.props.h)
+		return <rect height={h} rx={20} ry={20} width={w} />
 	}
 }

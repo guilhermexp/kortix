@@ -53,7 +53,13 @@ export class ResponseShapeUtil extends BaseBoxShapeUtil<ResponseShape> {
 	}
 
 	override onResize(shape: ResponseShape, info: TLResizeInfo<ResponseShape>) {
-		return resizeBox(shape, info)
+		const result = resizeBox(shape, info)
+		// Ensure minimum dimensions
+		if (result.props) {
+			result.props.w = Math.max(100, result.props.w ?? 100)
+			result.props.h = Math.max(80, result.props.h ?? 80)
+		}
+		return result
 	}
 
 	component(shape: ResponseShape) {
@@ -189,6 +195,8 @@ export class ResponseShapeUtil extends BaseBoxShapeUtil<ResponseShape> {
 	}
 
 	indicator(shape: ResponseShape) {
-		return <rect height={shape.props.h} rx={16} ry={16} width={shape.props.w} />
+		const w = Math.max(1, shape.props.w)
+		const h = Math.max(1, shape.props.h)
+		return <rect height={h} rx={16} ry={16} width={w} />
 	}
 }
