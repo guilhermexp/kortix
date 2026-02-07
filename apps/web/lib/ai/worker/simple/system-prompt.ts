@@ -34,8 +34,8 @@ Example for canvas action:
 }
 \`\`\`
 
-## Language Detection
-You MUST respond in the same language as the user's message. If the user writes in Portuguese, respond in Portuguese. If in English, respond in English. And so on for any language.
+## Language - SEMPRE em Português
+**SEMPRE responda em Português (Brasil).** Todas as suas respostas, mensagens e textos devem ser em português, independentemente do idioma usado pelo usuário.
 
 ## Canvas Coordinate System
 - The canvas uses a standard 2D coordinate system

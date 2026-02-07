@@ -6,7 +6,7 @@
 // Modern design with larger fonts
 // ============================================================
 
-import type { PointerEvent, WheelEvent } from "react"
+import type { WheelEvent } from "react"
 import {
 	BaseBoxShapeUtil,
 	HTMLContainer,
@@ -86,14 +86,6 @@ export class CouncilShapeUtil extends BaseBoxShapeUtil<CouncilShape> {
 			}
 		}
 
-		// Prevent tldraw from capturing pointer events on the scrollable area
-		const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
-			const target = e.currentTarget
-			const isScrollable = target.scrollHeight > target.clientHeight
-			if (isScrollable) {
-				e.stopPropagation()
-			}
-		}
 
 		const stageLabel =
 			stage === 0
@@ -137,7 +129,6 @@ export class CouncilShapeUtil extends BaseBoxShapeUtil<CouncilShape> {
 					<div
 						className="council-shape-content council-card-scroll"
 						onWheel={handleWheel}
-						onPointerDown={handlePointerDown}
 					>
 						{text ? (
 							<CouncilMarkdown content={text} />
