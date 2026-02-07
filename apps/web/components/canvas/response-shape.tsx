@@ -5,7 +5,7 @@
 // Theme-aware: uses CSS variables for colors
 // ============================================================
 
-import type { WheelEvent } from "react"
+import type { PointerEvent, WheelEvent } from "react"
 import {
 	BaseBoxShapeUtil,
 	HTMLContainer,
@@ -70,6 +70,28 @@ export class ResponseShapeUtil extends BaseBoxShapeUtil<ResponseShape> {
 		const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
 			const target = e.currentTarget
 			const isScrollable = target.scrollHeight > target.clientHeight
+
+			if (isScrollable) {
+				// Check if we're at scroll boundaries
+				const isAtTop = target.scrollTop === 0
+				const isAtBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 1
+				const isScrollingUp = e.deltaY < 0
+				const isScrollingDown = e.deltaY > 0
+
+				// Only allow canvas scroll if at boundaries AND scrolling towards boundary
+				if ((isAtTop && isScrollingUp) || (isAtBottom && isScrollingDown)) {
+					return // Let canvas handle it
+				}
+
+				// Otherwise, handle scroll internally
+				e.stopPropagation()
+			}
+		}
+
+		// Prevent tldraw from capturing pointer events on the scrollable area
+		const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
+			const target = e.currentTarget
+			const isScrollable = target.scrollHeight > target.clientHeight
 			if (isScrollable) {
 				e.stopPropagation()
 			}
@@ -88,6 +110,7 @@ export class ResponseShapeUtil extends BaseBoxShapeUtil<ResponseShape> {
 					<div
 						className="response-shape-content response-card-scroll"
 						onWheel={handleWheel}
+						onPointerDown={handlePointerDown}
 					>
 						{text ? <CouncilMarkdown content={text} /> : null}
 					</div>
