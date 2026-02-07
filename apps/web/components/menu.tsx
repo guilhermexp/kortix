@@ -27,7 +27,6 @@ import {
 	LayoutGrid,
 	List,
 	MessageSquareMore,
-	Network,
 	Plus,
 	Puzzle,
 	User,
@@ -149,12 +148,6 @@ function Menu({
 			disabled: false,
 		},
 		{
-			icon: Network,
-			text: "Graph",
-			key: "graph" as const,
-			disabled: false,
-		},
-		{
 			icon: LayoutGrid,
 			text: "Canvas",
 			key: "canvas" as const,
@@ -182,8 +175,7 @@ function Menu({
 			| "projects"
 			| "profile"
 			| "canvas"
-			| "list"
-			| "graph",
+			| "list",
 	) => {
 		// Prevent multiple rapid clicks
 		if (isClickProcessingRef.current) {
@@ -204,12 +196,6 @@ function Menu({
 		} else if (key === "list") {
 			// Switch to list view mode
 			setViewMode("list")
-			router.push("/")
-			setIsMobileMenuOpen(false)
-			setExpandedView(null)
-		} else if (key === "graph") {
-			// Switch to graph view mode
-			setViewMode("graph")
 			router.push("/")
 			setIsMobileMenuOpen(false)
 			setExpandedView(null)

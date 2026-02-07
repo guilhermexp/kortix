@@ -1,4 +1,8 @@
-import type { DocumentWithMemories } from "@ui/memory-graph/types"
+type SourceDocumentLike = {
+	type?: string | null
+	customId?: string | null
+	url?: string | null
+}
 
 /**
  * Formats a date in a human-readable format.
@@ -47,7 +51,7 @@ export const formatDate = (date: string | Date) => {
  * Gets the appropriate source URL for a document.
  * Handles special cases like Google Docs/Sheets/Slides.
  */
-export const getSourceUrl = (document: DocumentWithMemories) => {
+export const getSourceUrl = (document: SourceDocumentLike): string | undefined => {
 	if (document.type === "google_doc" && document.customId) {
 		return `https://docs.google.com/document/d/${document.customId}`
 	}
@@ -58,7 +62,7 @@ export const getSourceUrl = (document: DocumentWithMemories) => {
 		return `https://docs.google.com/presentation/d/${document.customId}`
 	}
 	// Fallback to existing URL for all other document types
-	return document.url
+	return document.url ?? undefined
 }
 
 /**

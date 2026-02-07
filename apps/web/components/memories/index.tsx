@@ -1,4 +1,17 @@
-import type { DocumentWithMemories } from "@ui/memory-graph/types"
+type SourceDocumentLike = {
+	type?: string | null
+	customId?: string | null
+	url?: string | null
+}
+
+type MemoryDocumentLike = {
+	summary?: string | null
+	content?: string | null
+	metadata?: Record<string, unknown> | null
+	raw?: Record<string, unknown> | null
+	memoryEntries?: Array<{ isForgotten?: boolean; memory?: string | null }>
+	[key: string]: unknown
+}
 
 export const formatDate = (date: string | Date) => {
 	const dateObj = new Date(date)
@@ -39,7 +52,7 @@ export const formatDate = (date: string | Date) => {
 	return `${month} ${formattedDay}`
 }
 
-export const getSourceUrl = (document: DocumentWithMemories) => {
+export const getSourceUrl = (document: SourceDocumentLike): string | undefined => {
 	if (document.type === "google_doc" && document.customId) {
 		return `https://docs.google.com/document/d/${document.customId}`
 	}
@@ -50,7 +63,7 @@ export const getSourceUrl = (document: DocumentWithMemories) => {
 		return `https://docs.google.com/presentation/d/${document.customId}`
 	}
 	// Fallback to existing URL for all other document types
-	return document.url
+	return document.url ?? undefined
 }
 
 // Strip common Markdown syntax to show clean previews in cards
@@ -100,7 +113,7 @@ export const stripMarkdown = (input: string): string => {
 
 // Get the full formatted summary WITH markdown (for expanded dialog view)
 export const getDocumentSummaryFormatted = (
-	document: DocumentWithMemories,
+	document: MemoryDocumentLike,
 ): string | null => {
 	try {
 		const anyDoc = document as any
@@ -155,7 +168,7 @@ export const getDocumentSummaryFormatted = (
 // Build a more diverse snippet preferring summary > analysis > first memory > content
 // This strips markdown for card previews
 export const getDocumentSnippet = (
-	document: DocumentWithMemories,
+	document: MemoryDocumentLike,
 ): string | null => {
 	try {
 		const anyDoc = document as any

@@ -280,12 +280,12 @@ export function usePersistentChat() {
 		setConversationTitleRaw(projectId, chatId, title)
 	}
 
-	function getCurrentConversation(): PersistedMessage[] | undefined {
+	const getCurrentConversation = useCallback((): PersistedMessage[] | undefined => {
 		const convs = projectState?.conversations ?? {}
 		const id = currentChatId
 		if (!id) return undefined
 		return convs[id]?.messages
-	}
+	}, [currentChatId, projectState])
 
 	function getCurrentChat(): ConversationSummary | undefined {
 		const id = currentChatId

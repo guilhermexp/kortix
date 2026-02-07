@@ -413,6 +413,22 @@ export function MemoryEditClient({
 	}, [clearScope, document.id, enqueue, setScopedDocumentIds])
 
 	const [isContentOpen, setIsContentOpen] = useState(false)
+	const [isDesktopLayout, setIsDesktopLayout] = useState(false)
+
+	useEffect(() => {
+		if (typeof window === "undefined") return
+		const mediaQuery = window.matchMedia("(min-width: 1024px)")
+		const handleChange = () => setIsDesktopLayout(mediaQuery.matches)
+		handleChange()
+
+		if (typeof mediaQuery.addEventListener === "function") {
+			mediaQuery.addEventListener("change", handleChange)
+			return () => mediaQuery.removeEventListener("change", handleChange)
+		}
+
+		mediaQuery.addListener(handleChange)
+		return () => mediaQuery.removeListener(handleChange)
+	}, [])
 
 	const documentTitle = (() => {
 		const raw = document.title || ""
@@ -442,6 +458,164 @@ export function MemoryEditClient({
 		(document.metadata as any)?.source_url
 	const isVideo = isYouTubeUrl(sourceUrl) || document.type === "video"
 
+	// Document context for chat (image + metadata only)
+	const chatDocumentContext = (
+		<>
+			{/* Main image */}
+			{mainImage && (
+				<div className="relative rounded-2xl overflow-hidden bg-muted group">
+					<img
+						alt={documentTitle}
+						className="w-full object-cover max-h-[50vh] transition-transform duration-500 group-hover:scale-[1.02]"
+						referrerPolicy="no-referrer"
+						src={proxyImageUrl(mainImage) || mainImage}
+						onError={(e) => {
+							const target = e.currentTarget
+							const originalUrl = mainImage
+							if (target.src !== originalUrl) {
+								target.src = originalUrl
+							}
+						}}
+					/>
+					{/* Video play overlay */}
+					{isVideo && (
+						<div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+							<a
+								className="rounded-full bg-white/90 p-4 shadow-lg hover:bg-white transition-colors"
+								href={sourceUrl}
+								onClick={(e) => e.stopPropagation()}
+								rel="noopener noreferrer"
+								target="_blank"
+							>
+								<Play className="h-8 w-8 text-black fill-black" />
+							</a>
+						</div>
+					)}
+				</div>
+			)}
+
+			{/* Document details card */}
+			<div className="rounded-2xl border border-border/50 bg-card p-6 space-y-4">
+				{/* Metadata row */}
+				<div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+					{document.createdAt && (
+						<span className="flex items-center gap-1.5">
+							<Calendar className="h-4 w-4" />
+							{formatDate(document.createdAt)}
+						</span>
+					)}
+					{document.type && (
+						<span className="flex items-center gap-1.5">
+							<FileText className="h-4 w-4" />
+							{document.type}
+						</span>
+					)}
+					{activeMemories.length > 0 && (
+						<span className="flex items-center gap-1.5">
+							<Brain className="h-4 w-4" />
+							{activeMemories.length}{" "}
+							{activeMemories.length === 1 ? "memory" : "memories"}
+						</span>
+					)}
+				</div>
+
+				{/* Source URL */}
+				{sourceUrl && (
+					<a
+						className="flex items-center gap-2 text-sm text-primary hover:underline truncate"
+						href={sourceUrl}
+						rel="noopener noreferrer"
+						target="_blank"
+					>
+						<LinkIcon className="h-4 w-4 flex-shrink-0" />
+						<span className="truncate">{sourceUrl}</span>
+						<ExternalLink className="h-3 w-3 flex-shrink-0" />
+					</a>
+				)}
+
+				{/* Description/snippet (markdown, full text, internal scroll) */}
+				{documentSnippet && !documentSnippet.startsWith("data:") && (
+					<div className="mt-2 rounded-xl border border-border/60 bg-card/60 p-3 max-h-64 overflow-y-auto shadow-inner">
+						<div className="prose prose-sm prose-invert max-w-none prose-headings:mb-2 prose-headings:mt-1 prose-p:my-1.5 prose-strong:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-code:text-foreground prose-code:bg-muted">
+							<ReactMarkdown
+								components={{
+									h1: ({ node, ...props }) => (
+										<h3
+											className="text-base font-semibold text-primary leading-snug"
+											{...props}
+										/>
+									),
+									h2: ({ node, ...props }) => (
+										<h4
+											className="text-sm font-semibold text-primary/90 leading-snug"
+											{...props}
+										/>
+									),
+									h3: ({ node, ...props }) => (
+										<h5
+											className="text-sm font-semibold text-primary/80 leading-snug"
+											{...props}
+										/>
+									),
+								}}
+								remarkPlugins={[remarkGfm]}
+							>
+								{documentSnippet}
+							</ReactMarkdown>
+						</div>
+					</div>
+				)}
+			</div>
+		</>
+	)
+
+	// Content for right panel (original content + related docs)
+	const rightPanelContent = (
+		<>
+			{/* Original content collapsible */}
+			<Collapsible onOpenChange={setIsContentOpen} open={isContentOpen}>
+				<CollapsibleTrigger asChild>
+					<button
+						className="flex w-full items-center justify-between rounded-2xl border border-border/50 bg-card px-5 py-4 text-left text-foreground transition hover:border-border hover:bg-card/80"
+						type="button"
+					>
+						<span className="text-sm font-semibold">Conteúdo original</span>
+						<ChevronDown
+							className={cn(
+								"h-4 w-4 transition-transform duration-200",
+								isContentOpen ? "rotate-180" : "",
+							)}
+						/>
+					</button>
+				</CollapsibleTrigger>
+				<AnimatePresence initial={false}>
+					{isContentOpen && (
+						<CollapsibleContent asChild>
+							<motion.div
+								animate={{ opacity: 1, height: "auto" }}
+								className="mt-4 overflow-hidden rounded-2xl border border-border/50 bg-card"
+								exit={{ opacity: 0, height: 0 }}
+								initial={{ opacity: 0, height: 0 }}
+								transition={{ duration: 0.2 }}
+							>
+								<div className="h-[60vh] min-h-[400px]">
+									<LazyRichEditorWrapper
+										document={document}
+										onDelete={handleDeleteDocument}
+										showNavigation={true}
+									/>
+								</div>
+							</motion.div>
+						</CollapsibleContent>
+					)}
+				</AnimatePresence>
+			</Collapsible>
+
+			{/* Related documents panel */}
+			<RelatedDocumentsPanel document={document} />
+		</>
+	)
+
 	return (
 		<div className="relative h-screen bg-background overflow-hidden">
 			<motion.div className="flex h-full flex-col">
@@ -466,211 +640,60 @@ export function MemoryEditClient({
 					/>
 				</header>
 
-				{/* Main content - Two column layout with sticky gallery */}
+				{/* Main content - Chat with document integrated + gallery panel */}
 				<main className="flex-1 overflow-hidden flex">
-					<div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 lg:px-8">
-						<div className="max-w-4xl space-y-6">
-							{/* Left column - Main image and details */}
-							<div className="space-y-6">
-								{/* Main image */}
-								{mainImage && (
-									<div className="relative rounded-2xl overflow-hidden bg-muted group">
-										<img
-											alt={documentTitle}
-											className="w-full object-cover max-h-[70vh] transition-transform duration-500 group-hover:scale-[1.02]"
-											referrerPolicy="no-referrer"
-											src={proxyImageUrl(mainImage) || mainImage}
-											onError={(e) => {
-												// Fallback to original URL if proxy fails
-												const target = e.currentTarget
-												const originalUrl = mainImage
-												if (target.src !== originalUrl) {
-													target.src = originalUrl
-												}
-											}}
-										/>
-										{/* Video play overlay */}
-										{isVideo && (
-											<div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-												<a
-													className="rounded-full bg-white/90 p-4 shadow-lg hover:bg-white transition-colors"
-													href={sourceUrl}
-													onClick={(e) => e.stopPropagation()}
-													rel="noopener noreferrer"
-													target="_blank"
-												>
-													<Play className="h-8 w-8 text-black fill-black" />
-												</a>
-											</div>
-										)}
-									</div>
-								)}
+					{/* Left column - Chat with document context */}
+					<div className="flex-1 min-w-0 flex flex-col">
+						<ChatRewrite documentContext={chatDocumentContext} embedded />
+					</div>
 
-								{/* Document details card */}
-								<div className="rounded-2xl border border-border/50 bg-card p-6 space-y-4">
-									{/* Metadata row */}
-									<div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-										{document.createdAt && (
-											<span className="flex items-center gap-1.5">
-												<Calendar className="h-4 w-4" />
-												{formatDate(document.createdAt)}
-											</span>
-										)}
-										{document.type && (
-											<span className="flex items-center gap-1.5">
-												<FileText className="h-4 w-4" />
-												{document.type}
-											</span>
-										)}
-										{activeMemories.length > 0 && (
-											<span className="flex items-center gap-1.5">
-												<Brain className="h-4 w-4" />
-												{activeMemories.length}{" "}
-												{activeMemories.length === 1 ? "memory" : "memories"}
-											</span>
-										)}
-									</div>
+					{/* Right panel - Original content + Related images */}
+					<motion.div
+						animate={{ width: isDesktopLayout ? "35vw" : "0px" }}
+						className="hidden lg:flex flex-col shrink-0 border-l border-border/30 bg-background/50"
+						transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+					>
+						<div className="flex-1 overflow-y-auto p-4 space-y-6">
+							{/* Original content + Related documents */}
+							{rightPanelContent}
 
-									{/* Source URL */}
-									{sourceUrl && (
-										<a
-											className="flex items-center gap-2 text-sm text-primary hover:underline truncate"
-											href={sourceUrl}
-											rel="noopener noreferrer"
-											target="_blank"
-										>
-											<LinkIcon className="h-4 w-4 flex-shrink-0" />
-											<span className="truncate">{sourceUrl}</span>
-											<ExternalLink className="h-3 w-3 flex-shrink-0" />
-										</a>
-									)}
-
-									{/* Description/snippet (markdown, full text, internal scroll) */}
-									{documentSnippet && !documentSnippet.startsWith("data:") && (
-										<div className="mt-2 rounded-xl border border-border/60 bg-card/60 p-3 max-h-64 overflow-y-auto shadow-inner">
-											<div className="prose prose-sm prose-invert max-w-none prose-headings:mb-2 prose-headings:mt-1 prose-p:my-1.5 prose-strong:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-code:text-foreground prose-code:bg-muted">
-												<ReactMarkdown
-													components={{
-														h1: ({ node, ...props }) => (
-															<h3
-																className="text-base font-semibold text-primary leading-snug"
-																{...props}
-															/>
-														),
-														h2: ({ node, ...props }) => (
-															<h4
-																className="text-sm font-semibold text-primary/90 leading-snug"
-																{...props}
-															/>
-														),
-														h3: ({ node, ...props }) => (
-															<h5
-																className="text-sm font-semibold text-primary/80 leading-snug"
-																{...props}
-															/>
-														),
-													}}
-													remarkPlugins={[remarkGfm]}
-												>
-													{documentSnippet}
-												</ReactMarkdown>
-											</div>
-										</div>
-									)}
-								</div>
-
-								{/* Original content collapsible */}
-								<Collapsible
-									onOpenChange={setIsContentOpen}
-									open={isContentOpen}
-								>
-									<CollapsibleTrigger asChild>
-										<button
-											className="flex w-full items-center justify-between rounded-2xl border border-border/50 bg-card px-5 py-4 text-left text-foreground transition hover:border-border hover:bg-card/80"
-											type="button"
-										>
-											<span className="text-sm font-semibold">
-												Conteúdo original
-											</span>
-											<ChevronDown
-												className={cn(
-													"h-4 w-4 transition-transform duration-200",
-													isContentOpen ? "rotate-180" : "",
+							{/* Related images gallery */}
+							<div className="rounded-2xl border border-border/50 bg-card/40 overflow-hidden">
+									{/* Header with discover button */}
+									<div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
+										<h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+											Imagens relacionadas
+										</h2>
+										{relatedLinks.length === 0 && (
+											<button
+												className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all disabled:opacity-50"
+												disabled={isLoadingRelatedLinks}
+												onClick={handleFindRelatedLinks}
+												type="button"
+											>
+												{isLoadingRelatedLinks ? (
+													<Loader2 className="w-3 h-3 animate-spin" />
+												) : (
+													<Sparkles className="w-3 h-3" />
 												)}
-											/>
-										</button>
-									</CollapsibleTrigger>
-									<AnimatePresence initial={false}>
-										{isContentOpen && (
-											<CollapsibleContent asChild>
-												<motion.div
-													animate={{ opacity: 1, height: "auto" }}
-													className="mt-4 overflow-hidden rounded-2xl border border-border/50 bg-card"
-													exit={{ opacity: 0, height: 0 }}
-													initial={{ opacity: 0, height: 0 }}
-													transition={{ duration: 0.2 }}
-												>
-													<div className="h-[60vh] min-h-[400px]">
-														<LazyRichEditorWrapper
-															document={document}
-															onDelete={handleDeleteDocument}
-															showNavigation={true}
-														/>
-													</div>
-												</motion.div>
-											</CollapsibleContent>
+												<span>
+													{isLoadingRelatedLinks
+														? "Buscando..."
+														: "Descobrir links"}
+												</span>
+											</button>
 										)}
-									</AnimatePresence>
-								</Collapsible>
-
-									{/* Related documents panel */}
-									<RelatedDocumentsPanel document={document} />
-
-									{/* Embedded chat with full backend flow */}
-									<ChatRewrite embedded />
-								</div>
-							</div>
-						</div>
-
-					{/* Right panel - Related content gallery with internal scroll */}
-						<motion.div
-							animate={{ width: "45vw" }}
-							className="hidden lg:flex flex-col shrink-0 border-l border-border/30 bg-background/50"
-							transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-						>
-						{/* Header with discover button */}
-						<div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
-							<h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-								Imagens relacionadas
-							</h2>
-							{relatedLinks.length === 0 && (
-								<button
-									className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all disabled:opacity-50"
-									disabled={isLoadingRelatedLinks}
-									onClick={handleFindRelatedLinks}
-									type="button"
-								>
-									{isLoadingRelatedLinks ? (
-										<Loader2 className="w-3 h-3 animate-spin" />
-									) : (
-										<Sparkles className="w-3 h-3" />
+									</div>
+									{relatedLinksError && (
+										<p className="text-xs text-red-400 px-4 py-2">
+											{relatedLinksError}
+										</p>
 									)}
-									<span>
-										{isLoadingRelatedLinks ? "Buscando..." : "Descobrir links"}
-									</span>
-								</button>
-							)}
-						</div>
-						{relatedLinksError && (
-							<p className="text-xs text-red-400 px-4 py-2">
-								{relatedLinksError}
-							</p>
-						)}
 
-						{/* Scrollable gallery */}
-						<div className="flex-1 overflow-y-auto p-4">
-							{relatedImages.length > 0 || relatedLinks.length > 0 ? (
-								<div className="columns-2 gap-3">
+									{/* Scrollable gallery */}
+									<div className="p-4">
+										{relatedImages.length > 0 || relatedLinks.length > 0 ? (
+											<div className="columns-2 gap-3">
 									{/* Related images */}
 									{relatedImages
 										.filter((img) => !hiddenImages.has(img))
@@ -787,18 +810,20 @@ export function MemoryEditClient({
 												</button>
 											</div>
 										))}
+											</div>
+										) : (
+											<div className="rounded-2xl border border-dashed border-border/50 bg-muted/30 p-8 text-center">
+												<p className="text-sm text-muted-foreground">
+													Nenhuma imagem relacionada encontrada
+												</p>
+											</div>
+										)}
+									</div>
 								</div>
-							) : (
-								<div className="rounded-2xl border border-dashed border-border/50 bg-muted/30 p-8 text-center">
-									<p className="text-sm text-muted-foreground">
-										Nenhuma imagem relacionada encontrada
-									</p>
-								</div>
-							)}
 						</div>
-						</motion.div>
-					</main>
-				</motion.div>
-			</div>
-		)
-	}
+					</motion.div>
+				</main>
+			</motion.div>
+		</div>
+	)
+}

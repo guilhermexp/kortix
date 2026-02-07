@@ -13,12 +13,19 @@ import {
 import { ScrollArea } from "@ui/components/scroll-area"
 import { formatDistanceToNow } from "date-fns"
 import { HistoryIcon, Plus, Trash2, X } from "lucide-react"
+import type { ReactNode } from "react"
 import { useMemo, useState } from "react"
 import { analytics } from "@/lib/analytics"
 import { useChatOpen, usePersistentChat, useProject } from "@/stores"
 import { ChatMessages } from "./chat-messages"
 
-export function ChatRewrite({ embedded = false }: { embedded?: boolean }) {
+export function ChatRewrite({
+	embedded = false,
+	documentContext,
+}: {
+	embedded?: boolean
+	documentContext?: React.ReactNode
+}) {
 	const { setIsOpen } = useChatOpen()
 	const { selectedProject } = useProject()
 	const {
@@ -55,7 +62,7 @@ export function ChatRewrite({ embedded = false }: { embedded?: boolean }) {
 			className={cn(
 				"flex flex-col overflow-y-hidden bg-chat-surface",
 				embedded
-					? "h-[540px] rounded-2xl border border-border/50"
+					? "flex-1 min-h-0"
 					: "h-full border-l border-border/30",
 			)}
 		>
@@ -180,7 +187,7 @@ export function ChatRewrite({ embedded = false }: { embedded?: boolean }) {
 						)}
 					</div>
 				</div>
-				<ChatMessages embedded={embedded} />
+				<ChatMessages documentContext={documentContext} embedded={embedded} />
 			</div>
 	)
 }

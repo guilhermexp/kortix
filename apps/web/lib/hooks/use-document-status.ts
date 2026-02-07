@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
-import { getDocumentStatus } from "@lib/api/documents-client"
+import { getDocumentStatus } from "@/lib/api/documents-client"
 
 interface DocumentStatus {
 	id: string
@@ -81,7 +81,13 @@ export function useDocumentStatus({
 			setIsLoading(true)
 			setError(null)
 
-			const data = await getDocumentStatus(documentId)
+			const data = (await getDocumentStatus(documentId)) as
+				| DocumentStatus
+				| null
+				| undefined
+			if (!data) {
+				return
+			}
 
 			setStatus(data)
 

@@ -59,7 +59,6 @@ export function getModel(modelId: ModelId, env: Environment) {
 			const openrouter = createOpenAI({
 				apiKey: env.OPENROUTER_API_KEY,
 				baseURL: "https://openrouter.ai/api/v1",
-				compatibility: "strict", // Prevents automatic tool calling
 				headers: {
 					"HTTP-Referer": "https://kortix.ai",
 					"X-Title": "Kortix",
@@ -71,7 +70,6 @@ export function getModel(modelId: ModelId, env: Environment) {
 			const openrouter = createOpenAI({
 				apiKey: env.OPENROUTER_API_KEY,
 				baseURL: "https://openrouter.ai/api/v1",
-				compatibility: "strict", // Prevents automatic tool calling
 				headers: {
 					"HTTP-Referer": "https://kortix.ai",
 					"X-Title": "Kortix",
@@ -83,7 +81,6 @@ export function getModel(modelId: ModelId, env: Environment) {
 			const openrouter = createOpenAI({
 				apiKey: env.OPENROUTER_API_KEY,
 				baseURL: "https://openrouter.ai/api/v1",
-				compatibility: "strict", // Prevents automatic tool calling
 				headers: {
 					"HTTP-Referer": "https://kortix.ai",
 					"X-Title": "Kortix",

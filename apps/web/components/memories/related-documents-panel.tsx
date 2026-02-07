@@ -6,7 +6,6 @@
  */
 
 import { getColors } from "@repo/ui/memory-graph/constants"
-import type { DocumentWithMemories } from "@ui/memory-graph/types"
 import { FileText, Link2, Plus, Sparkles, Trash2, User } from "lucide-react"
 import { memo, useCallback, useEffect, useMemo, useState } from "react"
 import {
@@ -14,6 +13,7 @@ import {
 	deleteDocumentConnection,
 	listDocumentConnections,
 } from "@lib/api"
+import type { DocumentWithMemories } from "@/lib/types/document"
 import { Button } from "../ui/button"
 import {
 	Dialog,

@@ -1,7 +1,6 @@
 import { cn } from "@lib/utils"
 import { Button } from "@ui/components/button"
 import { Input } from "@ui/components/input"
-import { Textarea } from "@ui/components/textarea"
 import * as React from "react"
 
 const InputGroup = React.forwardRef<
@@ -43,9 +42,9 @@ const InputGroupTextarea = React.forwardRef<
 	React.TextareaHTMLAttributes<HTMLTextAreaElement>
 >(({ className, ...props }, ref) => {
 	return (
-		<Textarea
+		<textarea
 			className={cn(
-				"min-h-[100px] flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-4 py-3",
+				"min-h-[100px] flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-4 py-3 outline-none text-base md:text-sm relative z-[1]",
 				className,
 			)}
 			ref={ref}

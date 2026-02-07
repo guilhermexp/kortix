@@ -1669,7 +1669,13 @@ function useClaudeChat({
 	} as const
 }
 
-export function ChatMessages({ embedded = false }: { embedded?: boolean }) {
+export function ChatMessages({
+	embedded = false,
+	documentContext,
+}: {
+	embedded?: boolean
+	documentContext?: React.ReactNode
+}) {
 	const { selectedProject } = useProject()
 	const {
 		currentChatId,
@@ -2292,6 +2298,10 @@ export function ChatMessages({ embedded = false }: { embedded?: boolean }) {
 					onScroll={onScroll}
 					ref={scrollContainerRef}
 				>
+					{/* Document context rendered at the top of chat */}
+					{documentContext && (
+						<div className="space-y-4 mb-4">{documentContext}</div>
+					)}
 					{messages.map((message) => (
 						<div
 							className={cn(
@@ -2741,7 +2751,7 @@ export function ChatMessages({ embedded = false }: { embedded?: boolean }) {
 									) : (
 										<span className="w-3 h-3 rounded-sm bg-muted/50 inline-block" />
 									)}
-									<span className="truncate max-w-[100px]">
+									<span>
 										@{doc?.title || id}
 									</span>
 									<X className="size-2.5 opacity-60" />
