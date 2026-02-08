@@ -338,6 +338,36 @@ except Exception as e:
 	})
 }
 
+/**
+ * Discover available transcript languages for a YouTube video by querying
+ * the timedtext list API. Returns an array of language codes (e.g. ["en", "pt", "es"]).
+ */
+async function fetchAvailableTranscriptLanguages(
+	videoId: string,
+): Promise<string[]> {
+	try {
+		const url = `https://www.youtube.com/api/timedtext?type=list&v=${videoId}`
+		const res = await fetch(url, {
+			headers: { "user-agent": "Mozilla/5.0" },
+			signal: AbortSignal.timeout(5000),
+		})
+		if (!res.ok) return []
+		const xml = await res.text()
+		// Parse lang_code attributes from <track> elements
+		const langs: string[] = []
+		const trackRegex = /<track[^>]+lang_code="([^"]+)"/g
+		let match: RegExpExecArray | null
+		while ((match = trackRegex.exec(xml)) !== null) {
+			if (match[1] && !langs.includes(match[1])) {
+				langs.push(match[1])
+			}
+		}
+		return langs
+	} catch {
+		return []
+	}
+}
+
 function extractYouTubeVideoIdFromUrl(url: string): string | null {
 	try {
 		const u = new URL(url)
@@ -440,13 +470,14 @@ export async function fetchYouTubeTranscriptFallback(
 		)
 	}
 
-	const langs = ["en", "en-US", "pt", "pt-BR"]
-	for (const lang of langs) {
+	// Step 1: Try hardcoded languages (fast path)
+	const hardcodedLangs = ["en", "en-US", "pt", "pt-BR"]
+	for (const lang of hardcodedLangs) {
 		// Try official + ASR
 		const variants = [false, true]
 		for (const asr of variants) {
 			const text = await fetchYouTubeTimedTextVtt(videoId, lang, asr)
-			if (text && text.length >= 200) {
+			if (text && text.length >= 100) {
 				return {
 					markdown: text,
 					metadata: {
@@ -459,23 +490,69 @@ export async function fetchYouTubeTranscriptFallback(
 		}
 	}
 
-	// If we couldn't get transcript but have a title, return basic video info
-	// This prevents losing the title when transcript extraction fails
-	if (title) {
+	// Step 2: Discover available languages and try them
+	const discoveredLangs = await fetchAvailableTranscriptLanguages(videoId)
+	const newLangs = discoveredLangs.filter((l) => !hardcodedLangs.includes(l))
+	if (newLangs.length > 0) {
 		console.log(
-			"[fetchYouTubeTranscriptFallback] No transcript found, but returning title:",
-			title,
+			`[fetchYouTubeTranscriptFallback] Discovered languages: ${newLangs.join(", ")}`,
 		)
-		return {
-			markdown: `# ${title}\n\nYouTube Video: ${videoUrl}\n\n(Transcript not available)`,
-			metadata: {
-				url: videoUrl,
-				title,
-				markdown_length: 0,
-			},
+		for (const lang of newLangs) {
+			const variants = [false, true]
+			for (const asr of variants) {
+				const text = await fetchYouTubeTimedTextVtt(videoId, lang, asr)
+				if (text && text.length >= 100) {
+					return {
+						markdown: text,
+						metadata: {
+							url: videoUrl,
+							title,
+							markdown_length: text.length,
+						},
+					}
+				}
+			}
 		}
 	}
 
+	// Step 3: Final fallback - use Python youtube-transcript-api
+	try {
+		console.log(
+			"[fetchYouTubeTranscriptFallback] Trying Python youtube-transcript-api fallback",
+		)
+		const pythonResult = await runMarkItDownPythonAPI(videoUrl)
+		if (
+			pythonResult?.markdown &&
+			pythonResult.markdown.length >= 100
+		) {
+			console.log(
+				"[fetchYouTubeTranscriptFallback] Python fallback succeeded:",
+				pythonResult.markdown.length,
+				"chars",
+			)
+			return {
+				markdown: pythonResult.markdown,
+				metadata: {
+					url: videoUrl,
+					title: pythonResult.metadata.title || title,
+					markdown_length: pythonResult.markdown.length,
+				},
+			}
+		}
+	} catch (error) {
+		console.warn(
+			"[fetchYouTubeTranscriptFallback] Python fallback failed:",
+			error instanceof Error ? error.message : String(error),
+		)
+	}
+
+	// No transcript found from any source - return null
+	// Title is already extracted by extractMetadata() in youtube-extractor.ts
+	// and formatMetadataAsContent() handles the no-transcript case
+	console.log(
+		"[fetchYouTubeTranscriptFallback] No transcript found for video:",
+		videoId,
+	)
 	return null
 }
 

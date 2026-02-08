@@ -27,7 +27,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import type { z } from "zod"
 import { TldrawCanvas } from "@/components/canvas"
 import { CanvasAgentProvider } from "@/components/canvas/canvas-agent-provider"
-import { ConnectAIModal } from "@/components/connect-ai-modal"
 import { InstallPrompt } from "@/components/install-prompt"
 import { MemoryListView } from "@/components/memory-list-view"
 import Menu from "@/components/menu"
@@ -179,7 +178,6 @@ const MemoryGraphPage = () => {
 		}
 	}, [metadataFilters, router, searchParams])
 	const [showReferralModal, setShowReferralModal] = useState(false)
-	const [showConnectAIModal, setShowConnectAIModal] = useState(false)
 	const [pausePolling, setPausePolling] = useState(false)
 	const [isWindowVisible, setIsWindowVisible] = useState(true)
 	const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null)
@@ -737,35 +735,7 @@ const MemoryGraphPage = () => {
 									totalLoaded={totalLoaded}
 								>
 									<div className="absolute inset-0 flex items-center justify-center">
-										<ConnectAIModal
-											onOpenChange={setShowConnectAIModal}
-											open={showConnectAIModal}
-										>
-											<div className="rounded-xl overflow-hidden cursor-pointer hover:bg-white/5 transition-colors p-6">
-												<div className="relative z-10 text-slate-200 text-center">
-													<p className="text-lg font-medium mb-4">
-														Get Started with Kortix
-													</p>
-													<div className="flex flex-col gap-3">
-														<p className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
-															Click here to set up your AI connection
-														</p>
-														<p className="text-xs text-white/60">or</p>
-														<button
-															className="text-sm text-blue-400 hover:text-blue-300 transition-colors underline"
-															onClick={(e) => {
-																e.stopPropagation()
-																setShowAddMemoryView(true)
-																setShowConnectAIModal(false)
-															}}
-															type="button"
-														>
-															Add your first memory
-														</button>
-													</div>
-												</div>
-											</div>
-										</ConnectAIModal>
+										<AddMemoryView inline onClose={() => {}} />
 									</div>
 								</MemoryListView>
 							</motion.div>

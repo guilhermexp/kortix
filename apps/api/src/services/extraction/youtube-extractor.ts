@@ -396,7 +396,7 @@ export class YouTubeExtractor extends BaseService implements IYouTubeExtractor {
 
 			// Validate transcript length
 			const markdown = result.markdown || ""
-			const minLength = options?.minLength ?? 300
+			const minLength = options?.minLength ?? 100
 			if (markdown.length < minLength) {
 				this.logger.warn("Transcript too short", {
 					videoId,

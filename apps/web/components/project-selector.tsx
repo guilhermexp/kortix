@@ -142,7 +142,7 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 
 						<motion.div
 							animate={{ opacity: 1, y: 0, scale: 1 }}
-							className="absolute top-full left-0 mt-1 w-56 bg-popover backdrop-blur-xl border border-border rounded-md shadow-xl z-50 overflow-hidden"
+							className="absolute top-full right-0 mt-1 w-56 bg-popover backdrop-blur-xl border border-border rounded-md shadow-xl z-50 overflow-hidden"
 							exit={{ opacity: 0, y: -5, scale: 0.98 }}
 							initial={{ opacity: 0, y: -5, scale: 0.98 }}
 							transition={{ duration: 0.15 }}

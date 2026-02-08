@@ -306,9 +306,11 @@ const promoteOptimisticMemory = (
 export function AddMemoryView({
 	onClose,
 	initialTab = "link",
+	inline = false,
 }: {
 	onClose?: () => void
 	initialTab?: "note" | "link" | "file" | "connect"
+	inline?: boolean
 }) {
 	const queryClient = useQueryClient()
 	const { selectedProject, setSelectedProject } = useProject()
@@ -1404,9 +1406,603 @@ export function AddMemoryView({
 		},
 	})
 
+	const formContent = (
+		<motion.div
+			animate={{ opacity: 1, scale: 1 }}
+			exit={{ opacity: 0, scale: 0.95 }}
+			initial={{ opacity: 0, scale: 0.95 }}
+		>
+			{inline ? (
+				<div>
+					<div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+						<div className="flex-1">
+							<h2 className="text-base font-semibold leading-none tracking-tight">
+								Add to Memory
+							</h2>
+							<p className="text-sm text-foreground dark:text-white/50 mt-1.5">
+								Save any webpage, article, or file to your memory
+							</p>
+						</div>
+						<div className="sm:ml-4 order-first sm:order-last">
+							<div className="bg-black/20 border border-white/10 backdrop-blur-sm p-1 h-10 sm:h-8 rounded-md flex overflow-x-auto">
+								<TabButton
+									icon={Brain}
+									isActive={activeTab === "note"}
+									label="Note"
+									onClick={() => setActiveTab("note")}
+								/>
+								<TabButton
+									icon={LinkIcon}
+									isActive={activeTab === "link"}
+									label="Link"
+									onClick={() => setActiveTab("link")}
+								/>
+								<TabButton
+									icon={FileIcon}
+									isActive={activeTab === "file"}
+									label="File"
+									onClick={() => setActiveTab("file")}
+								/>
+								<TabButton
+									icon={PlugIcon}
+									isActive={activeTab === "connect"}
+									label="Connect"
+									onClick={() => setActiveTab("connect")}
+								/>
+							</div>
+						</div>
+					</div>
+				</div>
+			) : (
+				<DialogHeader>
+					<div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+						<div className="flex-1">
+							<DialogTitle className="text-base">
+								Add to Memory
+							</DialogTitle>
+							<DialogDescription className="text-foreground dark:text-white/50">
+								Save any webpage, article, or file to your memory
+							</DialogDescription>
+						</div>
+						<div className="sm:ml-4 order-first sm:order-last">
+							<div className="bg-black/20 border border-white/10 backdrop-blur-sm p-1 h-10 sm:h-8 rounded-md flex overflow-x-auto">
+								<TabButton
+									icon={Brain}
+									isActive={activeTab === "note"}
+									label="Note"
+									onClick={() => setActiveTab("note")}
+								/>
+								<TabButton
+									icon={LinkIcon}
+									isActive={activeTab === "link"}
+									label="Link"
+									onClick={() => setActiveTab("link")}
+								/>
+								<TabButton
+									icon={FileIcon}
+									isActive={activeTab === "file"}
+									label="File"
+									onClick={() => setActiveTab("file")}
+								/>
+								<TabButton
+									icon={PlugIcon}
+									isActive={activeTab === "connect"}
+									label="Connect"
+									onClick={() => setActiveTab("connect")}
+								/>
+							</div>
+						</div>
+					</div>
+				</DialogHeader>
+			)}
+
+			<div className="mt-4">
+				{activeTab === "note" && (
+					<div className="space-y-4">
+						<form
+							onSubmit={(e) => {
+								e.preventDefault()
+								e.stopPropagation()
+								addContentForm.handleSubmit()
+							}}
+						>
+							<div className="grid gap-4">
+								{/* Note Input */}
+								<motion.div
+									animate={{ opacity: 1, y: 0 }}
+									className="flex flex-col gap-2"
+									initial={{ opacity: 0, y: 10 }}
+									transition={{ delay: 0.1 }}
+								>
+									<addContentForm.Field
+										name="content"
+										validators={{
+											onChange: ({ value }) => {
+												if (!value || value.trim() === "") {
+													return "Note is required"
+												}
+												return undefined
+											},
+										}}
+									>
+										{({ state, handleChange, handleBlur }) => (
+											<>
+												<div
+													className={`bg-white/5 border border-white/10 rounded-md ${
+														addContentMutation.isPending
+															? "opacity-50"
+															: ""
+													}`}
+												>
+													<TextEditor
+														className="text-foreground dark:text-white"
+														disabled={addContentMutation.isPending}
+														onBlur={handleBlur}
+														onChange={handleChange}
+														placeholder="Write your note here..."
+														value={state.value}
+													/>
+												</div>
+												{state.meta.errors.length > 0 && (
+													<motion.p
+														animate={{ opacity: 1, height: "auto" }}
+														className="text-sm text-red-400 mt-1"
+														exit={{ opacity: 0, height: 0 }}
+														initial={{ opacity: 0, height: 0 }}
+													>
+														{state.meta.errors
+															.map((error) =>
+																typeof error === "string"
+																	? error
+																	: (error?.message ??
+																		`Error: ${JSON.stringify(error)}`),
+															)
+															.join(", ")}
+													</motion.p>
+												)}
+											</>
+										)}
+									</addContentForm.Field>
+								</motion.div>
+							</div>
+							<div className="mt-6 flex flex-col sm:flex-row sm:justify-between sm:items-end w-full gap-4">
+								<div className="flex flex-col sm:flex-row sm:items-end gap-4 order-2 sm:order-1">
+									{/* Project Selection */}
+									<motion.div
+										animate={{ opacity: 1, y: 0 }}
+										className={`flex flex-col gap-2 flex-1 sm:flex-initial ${
+											addContentMutation.isPending ? "opacity-50" : ""
+										}`}
+										initial={{ opacity: 0, y: 10 }}
+										transition={{ delay: 0.15 }}
+									>
+										<addContentForm.Field name="project">
+											{({ state, handleChange }) => (
+												<ProjectSelection
+													disabled={addContentMutation.isPending}
+													id="note-project"
+													isLoading={isLoadingProjects}
+													onCreateProject={() =>
+														setShowCreateProjectDialog(true)
+													}
+													onProjectChange={handleChange}
+													projects={projects}
+													selectedProject={state.value}
+												/>
+											)}
+										</addContentForm.Field>
+									</motion.div>
+								</div>
+
+								<ActionButtons
+									hideCancel={inline}
+									isSubmitDisabled={!addContentForm.state.canSubmit}
+									isSubmitting={addContentMutation.isPending}
+									onCancel={() => {
+										setShowAddDialog(false)
+										onClose?.()
+										addContentForm.reset()
+									}}
+									submitIcon={Plus}
+									submitText="Add Note"
+								/>
+							</div>
+						</form>
+					</div>
+				)}
+
+				{activeTab === "link" && (
+					<div className="space-y-4">
+						<form
+							onSubmit={(e) => {
+								e.preventDefault()
+								e.stopPropagation()
+								addContentForm.handleSubmit()
+							}}
+						>
+							<div className="grid gap-4">
+								{/* Link Input */}
+								<motion.div
+									animate={{ opacity: 1, y: 0 }}
+									className="flex flex-col gap-2"
+									initial={{ opacity: 0, y: 10 }}
+									transition={{ delay: 0.1 }}
+								>
+									<label
+										className="text-sm font-medium"
+										htmlFor="link-content"
+									>
+										Link
+									</label>
+									<addContentForm.Field
+										name="content"
+										validators={{
+											onChange: ({ value }) => {
+												if (!value || value.trim() === "") {
+													return "Link is required"
+												}
+												try {
+													new URL(value)
+													return undefined
+												} catch {
+													return "Please enter a valid link"
+												}
+											},
+										}}
+									>
+										{({ state, handleChange, handleBlur }) => (
+											<>
+												<div className="relative">
+													<Input
+														className={`bg-background border-white/20 text-foreground dark:text-white ${
+															addContentMutation.isPending
+																? "opacity-50"
+																: ""
+														} ${
+															urlDuplicateCheck.isDuplicate
+																? "border-amber-500/50 focus-visible:ring-amber-500/30"
+																: ""
+														}`}
+														disabled={addContentMutation.isPending}
+														id="link-content"
+														onBlur={handleBlur}
+														onChange={(e) => {
+															handleChange(e.target.value)
+															// Trigger duplicate check
+															if (activeTab === "link") {
+																checkUrlDuplicate(e.target.value)
+															}
+														}}
+														placeholder="https://example.com/article"
+														value={state.value}
+													/>
+													{urlDuplicateCheck.checking && (
+														<div className="absolute right-3 top-1/2 -translate-y-1/2">
+															<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+														</div>
+													)}
+												</div>
+												{state.meta.errors.length > 0 && (
+													<motion.p
+														animate={{ opacity: 1, height: "auto" }}
+														className="text-sm text-red-400 mt-1"
+														exit={{ opacity: 0, height: 0 }}
+														initial={{ opacity: 0, height: 0 }}
+													>
+														{state.meta.errors
+															.map((error) =>
+																typeof error === "string"
+																	? error
+																	: (error?.message ??
+																		`Error: ${JSON.stringify(error)}`),
+															)
+															.join(", ")}
+													</motion.p>
+												)}
+												{urlDuplicateCheck.isDuplicate && (
+													<motion.div
+														animate={{ opacity: 1, height: "auto" }}
+														className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 overflow-hidden"
+														exit={{ opacity: 0, height: 0 }}
+														initial={{ opacity: 0, height: 0 }}
+													>
+														<div className="flex items-start sm:items-center gap-2 flex-1 min-w-0">
+															<AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5 sm:mt-0" />
+															<div className="flex-1 min-w-0 overflow-hidden">
+																<p className="text-sm text-amber-500">
+																	Este link já existe na sua biblioteca
+																</p>
+																{urlDuplicateCheck.documentTitle && (
+																	<p className="text-xs text-amber-500/70 break-words line-clamp-2">
+																		{urlDuplicateCheck.documentTitle}
+																	</p>
+																)}
+															</div>
+														</div>
+														{urlDuplicateCheck.documentId && (
+															<button
+																className="text-xs text-amber-500 hover:text-amber-400 underline flex-shrink-0 self-start sm:self-center"
+																onClick={() => {
+																	window.open(
+																		`/memory/${urlDuplicateCheck.documentId}/edit`,
+																		"_blank",
+																	)
+																}}
+																type="button"
+															>
+																Ver documento
+															</button>
+														)}
+													</motion.div>
+												)}
+											</>
+										)}
+									</addContentForm.Field>
+								</motion.div>
+
+								{/* Processing Mode Toggle + Project Selection */}
+								<motion.div
+									animate={{ opacity: 1, y: 0 }}
+									className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+									initial={{ opacity: 0, y: 10 }}
+									transition={{ delay: 0.15 }}
+								>
+									<div className="flex items-center gap-2 flex-wrap">
+										<button
+											className={`text-xs px-3 py-1.5 rounded-md border transition-all ${
+												useAgentForLink
+													? "bg-white/15 border-white/30 text-foreground dark:text-white font-medium"
+													: "bg-white/5 border-white/10 text-foreground/70 dark:text-white/60 hover:bg-white/10"
+											}`}
+											onClick={() => {
+												setUseAgentForLink(true)
+											}}
+											type="button"
+										>
+											<span className="flex items-center gap-1.5">
+												<Sparkles className="h-3 w-3" />
+												Deep Agent
+											</span>
+										</button>
+										<button
+											className={`text-xs px-3 py-1.5 rounded-md border transition-all ${
+												!useAgentForLink
+													? "bg-white/15 border-white/30 text-foreground dark:text-white font-medium"
+													: "bg-white/5 border-white/10 text-foreground/70 dark:text-white/60 hover:bg-white/10"
+											}`}
+											onClick={() => {
+												setUseAgentForLink(false)
+											}}
+											type="button"
+										>
+											Standard
+										</button>
+										<span className="text-xs text-foreground/50 dark:text-white/40 hidden sm:inline">
+											{useAgentForLink
+												? "AI-enhanced"
+												: "Basic"}
+										</span>
+									</div>
+									<div className={addContentMutation.isPending ? "opacity-50" : ""}>
+										<addContentForm.Field name="project">
+											{({ state, handleChange }) => (
+												<ProjectSelection
+													disabled={addContentMutation.isPending}
+													id="link-project-2"
+													isLoading={isLoadingProjects}
+													onCreateProject={() =>
+														setShowCreateProjectDialog(true)
+													}
+													onProjectChange={handleChange}
+													projects={projects}
+													selectedProject={state.value}
+												/>
+											)}
+										</addContentForm.Field>
+									</div>
+								</motion.div>
+							</div>
+
+							{/* Footer with Actions */}
+							<div className="mt-6 flex justify-center">
+								<ActionButtons
+									hideCancel={inline}
+									isSubmitDisabled={
+										!addContentForm.state.canSubmit ||
+										urlDuplicateCheck.isDuplicate ||
+										urlDuplicateCheck.checking
+									}
+									isSubmitting={addContentMutation.isPending}
+									onCancel={() => {
+										setShowAddDialog(false)
+										onClose?.()
+										addContentForm.reset()
+										setUrlDuplicateCheck({
+											checking: false,
+											isDuplicate: false,
+											documentId: null,
+											documentTitle: null,
+										})
+									}}
+									submitIcon={Plus}
+									submitText="Add Link"
+								/>
+							</div>
+						</form>
+					</div>
+				)}
+
+				{activeTab === "file" && (
+					<div className="space-y-4">
+						<form
+							onSubmit={(e) => {
+								e.preventDefault()
+								e.stopPropagation()
+								fileUploadForm.handleSubmit()
+							}}
+						>
+							<div className="grid gap-4">
+								<motion.div
+									animate={{ opacity: 1, y: 0 }}
+									className="flex flex-col gap-2"
+									initial={{ opacity: 0, y: 10 }}
+									transition={{ delay: 0.1 }}
+								>
+									<label className="text-sm font-medium" htmlFor="file">
+										File
+									</label>
+									<Dropzone
+										accept={{
+											"application/pdf": [".pdf"],
+											"application/msword": [".doc"],
+											"application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+												[".docx"],
+											"application/vnd.ms-excel": [".xls"],
+											"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+												[".xlsx"],
+											"application/vnd.ms-powerpoint": [".ppt"],
+											"application/vnd.openxmlformats-officedocument.presentationml.presentation":
+												[".pptx"],
+											"text/plain": [".txt"],
+											"text/markdown": [".md"],
+											"text/csv": [".csv"],
+											"application/json": [".json"],
+											"image/*": [
+												".png",
+												".jpg",
+												".jpeg",
+												".gif",
+												".webp",
+											],
+										}}
+										className="bg-white/5 border-white/10 hover:bg-white/10 min-h-40"
+										maxFiles={10}
+										maxSize={10 * 1024 * 1024} // 10MB
+										onDrop={(acceptedFiles) =>
+											setSelectedFiles(acceptedFiles)
+										}
+										src={selectedFiles}
+									>
+										<DropzoneEmptyState />
+										<DropzoneContent className="overflow-auto" />
+									</Dropzone>
+								</motion.div>
+
+								<motion.div
+									animate={{ opacity: 1, y: 0 }}
+									className="flex flex-col gap-2"
+									initial={{ opacity: 0, y: 10 }}
+									transition={{ delay: 0.15 }}
+								>
+									<label
+										className="text-sm font-medium"
+										htmlFor="file-title"
+									>
+										Title (optional)
+									</label>
+									<fileUploadForm.Field name="title">
+										{({ state, handleChange, handleBlur }) => (
+											<Input
+												className="bg-white/5 border-white/10 text-foreground dark:text-white"
+												id="file-title"
+												onBlur={handleBlur}
+												onChange={(e) => handleChange(e.target.value)}
+												placeholder="Give this file a title"
+												value={state.value}
+											/>
+										)}
+									</fileUploadForm.Field>
+								</motion.div>
+
+								<motion.div
+									animate={{ opacity: 1, y: 0 }}
+									className="flex flex-col gap-2"
+									initial={{ opacity: 0, y: 10 }}
+									transition={{ delay: 0.2 }}
+								>
+									<label
+										className="text-sm font-medium"
+										htmlFor="file-description"
+									>
+										Description (optional)
+									</label>
+									<fileUploadForm.Field name="description">
+										{({ state, handleChange, handleBlur }) => (
+											<Textarea
+												className="bg-white/5 border-white/10 text-foreground dark:text-white min-h-20 max-h-40 overflow-y-auto resize-none"
+												id="file-description"
+												onBlur={handleBlur}
+												onChange={(e) => handleChange(e.target.value)}
+												placeholder="Add notes or context about this file"
+												value={state.value}
+											/>
+										)}
+									</fileUploadForm.Field>
+								</motion.div>
+							</div>
+							<div className="mt-6 flex flex-col sm:flex-row sm:justify-between sm:items-end w-full gap-4">
+								<div className="flex items-end gap-4">
+									{/* Left side - Project Selection */}
+									<motion.div
+										animate={{ opacity: 1, y: 0 }}
+										className={`flex flex-col gap-2 flex-1 sm:flex-initial ${
+											fileUploadMutation.isPending ? "opacity-50" : ""
+										}`}
+										initial={{ opacity: 0, y: 10 }}
+										transition={{ delay: 0.25 }}
+									>
+										<fileUploadForm.Field name="project">
+											{({ state, handleChange }) => (
+												<ProjectSelection
+													disabled={fileUploadMutation.isPending}
+													id="file-project"
+													isLoading={isLoadingProjects}
+													onCreateProject={() =>
+														setShowCreateProjectDialog(true)
+													}
+													onProjectChange={handleChange}
+													projects={projects}
+													selectedProject={state.value}
+												/>
+											)}
+										</fileUploadForm.Field>
+									</motion.div>
+								</div>
+
+								<ActionButtons
+									hideCancel={inline}
+									isSubmitDisabled={selectedFiles.length === 0}
+									isSubmitting={fileUploadMutation.isPending}
+									onCancel={() => {
+										setShowAddDialog(false)
+										onClose?.()
+										fileUploadForm.reset()
+										setSelectedFiles([])
+									}}
+									submitIcon={UploadIcon}
+									submitText="Upload File"
+								/>
+							</div>
+						</form>
+					</div>
+				)}
+
+				{activeTab === "connect" && (
+					<div className="space-y-4">
+						<ConnectionsTabContent />
+					</div>
+				)}
+			</div>
+		</motion.div>
+	)
+
 	return (
 		<>
-			{showAddDialog && (
+			{inline ? (
+				<div className="w-[95vw] max-w-3xl border border-border bg-background rounded-lg p-6 text-foreground">
+					{formContent}
+				</div>
+			) : showAddDialog ? (
 				<Dialog
 					key="add-memory-dialog"
 					onOpenChange={(open) => {
@@ -1419,550 +2015,10 @@ export function AddMemoryView({
 						className="w-[95vw] max-w-3xl sm:max-w-3xl text-foreground z-[10001] max-h-[90vh] overflow-y-auto border border-border bg-background"
 						showCloseButton={false}
 					>
-						<motion.div
-							animate={{ opacity: 1, scale: 1 }}
-							exit={{ opacity: 0, scale: 0.95 }}
-							initial={{ opacity: 0, scale: 0.95 }}
-						>
-							<DialogHeader>
-								<div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-									<div className="flex-1">
-										<DialogTitle className="text-base">
-											Add to Memory
-										</DialogTitle>
-										<DialogDescription className="text-foreground dark:text-white/50">
-											Save any webpage, article, or file to your memory
-										</DialogDescription>
-									</div>
-									<div className="sm:ml-4 order-first sm:order-last">
-										<div className="bg-black/20 border border-white/10 backdrop-blur-sm p-1 h-10 sm:h-8 rounded-md flex overflow-x-auto">
-											<TabButton
-												icon={Brain}
-												isActive={activeTab === "note"}
-												label="Note"
-												onClick={() => setActiveTab("note")}
-											/>
-											<TabButton
-												icon={LinkIcon}
-												isActive={activeTab === "link"}
-												label="Link"
-												onClick={() => setActiveTab("link")}
-											/>
-											<TabButton
-												icon={FileIcon}
-												isActive={activeTab === "file"}
-												label="File"
-												onClick={() => setActiveTab("file")}
-											/>
-											<TabButton
-												icon={PlugIcon}
-												isActive={activeTab === "connect"}
-												label="Connect"
-												onClick={() => setActiveTab("connect")}
-											/>
-										</div>
-									</div>
-								</div>
-							</DialogHeader>
-
-							<div className="mt-4">
-								{activeTab === "note" && (
-									<div className="space-y-4">
-										<form
-											onSubmit={(e) => {
-												e.preventDefault()
-												e.stopPropagation()
-												addContentForm.handleSubmit()
-											}}
-										>
-											<div className="grid gap-4">
-												{/* Note Input */}
-												<motion.div
-													animate={{ opacity: 1, y: 0 }}
-													className="flex flex-col gap-2"
-													initial={{ opacity: 0, y: 10 }}
-													transition={{ delay: 0.1 }}
-												>
-													<addContentForm.Field
-														name="content"
-														validators={{
-															onChange: ({ value }) => {
-																if (!value || value.trim() === "") {
-																	return "Note is required"
-																}
-																return undefined
-															},
-														}}
-													>
-														{({ state, handleChange, handleBlur }) => (
-															<>
-																<div
-																	className={`bg-white/5 border border-white/10 rounded-md ${
-																		addContentMutation.isPending
-																			? "opacity-50"
-																			: ""
-																	}`}
-																>
-																	<TextEditor
-																		className="text-foreground dark:text-white"
-																		disabled={addContentMutation.isPending}
-																		onBlur={handleBlur}
-																		onChange={handleChange}
-																		placeholder="Write your note here..."
-																		value={state.value}
-																	/>
-																</div>
-																{state.meta.errors.length > 0 && (
-																	<motion.p
-																		animate={{ opacity: 1, height: "auto" }}
-																		className="text-sm text-red-400 mt-1"
-																		exit={{ opacity: 0, height: 0 }}
-																		initial={{ opacity: 0, height: 0 }}
-																	>
-																		{state.meta.errors
-																			.map((error) =>
-																				typeof error === "string"
-																					? error
-																					: (error?.message ??
-																						`Error: ${JSON.stringify(error)}`),
-																			)
-																			.join(", ")}
-																	</motion.p>
-																)}
-															</>
-														)}
-													</addContentForm.Field>
-												</motion.div>
-											</div>
-											<div className="mt-6 flex flex-col sm:flex-row sm:justify-between sm:items-end w-full gap-4">
-												<div className="flex flex-col sm:flex-row sm:items-end gap-4 order-2 sm:order-1">
-													{/* Project Selection */}
-													<motion.div
-														animate={{ opacity: 1, y: 0 }}
-														className={`flex flex-col gap-2 flex-1 sm:flex-initial ${
-															addContentMutation.isPending ? "opacity-50" : ""
-														}`}
-														initial={{ opacity: 0, y: 10 }}
-														transition={{ delay: 0.15 }}
-													>
-														<addContentForm.Field name="project">
-															{({ state, handleChange }) => (
-																<ProjectSelection
-																	disabled={addContentMutation.isPending}
-																	id="note-project"
-																	isLoading={isLoadingProjects}
-																	onCreateProject={() =>
-																		setShowCreateProjectDialog(true)
-																	}
-																	onProjectChange={handleChange}
-																	projects={projects}
-																	selectedProject={state.value}
-																/>
-															)}
-														</addContentForm.Field>
-													</motion.div>
-												</div>
-
-												<ActionButtons
-													isSubmitDisabled={!addContentForm.state.canSubmit}
-													isSubmitting={addContentMutation.isPending}
-													onCancel={() => {
-														setShowAddDialog(false)
-														onClose?.()
-														addContentForm.reset()
-													}}
-													submitIcon={Plus}
-													submitText="Add Note"
-												/>
-											</div>
-										</form>
-									</div>
-								)}
-
-								{activeTab === "link" && (
-									<div className="space-y-4">
-										<form
-											onSubmit={(e) => {
-												e.preventDefault()
-												e.stopPropagation()
-												addContentForm.handleSubmit()
-											}}
-										>
-											<div className="grid gap-4">
-												{/* Link Input */}
-												<motion.div
-													animate={{ opacity: 1, y: 0 }}
-													className="flex flex-col gap-2"
-													initial={{ opacity: 0, y: 10 }}
-													transition={{ delay: 0.1 }}
-												>
-													<label
-														className="text-sm font-medium"
-														htmlFor="link-content"
-													>
-														Link
-													</label>
-													<addContentForm.Field
-														name="content"
-														validators={{
-															onChange: ({ value }) => {
-																if (!value || value.trim() === "") {
-																	return "Link is required"
-																}
-																try {
-																	new URL(value)
-																	return undefined
-																} catch {
-																	return "Please enter a valid link"
-																}
-															},
-														}}
-													>
-														{({ state, handleChange, handleBlur }) => (
-															<>
-																<div className="relative">
-																	<Input
-																		className={`bg-background border-white/20 text-foreground dark:text-white ${
-																			addContentMutation.isPending
-																				? "opacity-50"
-																				: ""
-																		} ${
-																			urlDuplicateCheck.isDuplicate
-																				? "border-amber-500/50 focus-visible:ring-amber-500/30"
-																				: ""
-																		}`}
-																		disabled={addContentMutation.isPending}
-																		id="link-content"
-																		onBlur={handleBlur}
-																		onChange={(e) => {
-																			handleChange(e.target.value)
-																			// Trigger duplicate check
-																			if (activeTab === "link") {
-																				checkUrlDuplicate(e.target.value)
-																			}
-																		}}
-																		placeholder="https://example.com/article"
-																		value={state.value}
-																	/>
-																	{urlDuplicateCheck.checking && (
-																		<div className="absolute right-3 top-1/2 -translate-y-1/2">
-																			<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-																		</div>
-																	)}
-																</div>
-																{state.meta.errors.length > 0 && (
-																	<motion.p
-																		animate={{ opacity: 1, height: "auto" }}
-																		className="text-sm text-red-400 mt-1"
-																		exit={{ opacity: 0, height: 0 }}
-																		initial={{ opacity: 0, height: 0 }}
-																	>
-																		{state.meta.errors
-																			.map((error) =>
-																				typeof error === "string"
-																					? error
-																					: (error?.message ??
-																						`Error: ${JSON.stringify(error)}`),
-																			)
-																			.join(", ")}
-																	</motion.p>
-																)}
-																{urlDuplicateCheck.isDuplicate && (
-																	<motion.div
-																		animate={{ opacity: 1, height: "auto" }}
-																		className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 overflow-hidden"
-																		exit={{ opacity: 0, height: 0 }}
-																		initial={{ opacity: 0, height: 0 }}
-																	>
-																		<div className="flex items-start sm:items-center gap-2 flex-1 min-w-0">
-																			<AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5 sm:mt-0" />
-																			<div className="flex-1 min-w-0 overflow-hidden">
-																				<p className="text-sm text-amber-500">
-																					Este link já existe na sua biblioteca
-																				</p>
-																				{urlDuplicateCheck.documentTitle && (
-																					<p className="text-xs text-amber-500/70 break-words line-clamp-2">
-																						{urlDuplicateCheck.documentTitle}
-																					</p>
-																				)}
-																			</div>
-																		</div>
-																		{urlDuplicateCheck.documentId && (
-																			<button
-																				className="text-xs text-amber-500 hover:text-amber-400 underline flex-shrink-0 self-start sm:self-center"
-																				onClick={() => {
-																					window.open(
-																						`/memory/${urlDuplicateCheck.documentId}/edit`,
-																						"_blank",
-																					)
-																				}}
-																				type="button"
-																			>
-																				Ver documento
-																			</button>
-																		)}
-																	</motion.div>
-																)}
-															</>
-														)}
-													</addContentForm.Field>
-												</motion.div>
-
-												{/* Processing Mode Toggle + Project Selection */}
-												<motion.div
-													animate={{ opacity: 1, y: 0 }}
-													className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-													initial={{ opacity: 0, y: 10 }}
-													transition={{ delay: 0.15 }}
-												>
-													<div className="flex items-center gap-2 flex-wrap">
-														<button
-															className={`text-xs px-3 py-1.5 rounded-md border transition-all ${
-																useAgentForLink
-																	? "bg-white/15 border-white/30 text-foreground dark:text-white font-medium"
-																	: "bg-white/5 border-white/10 text-foreground/70 dark:text-white/60 hover:bg-white/10"
-															}`}
-															onClick={() => {
-																setUseAgentForLink(true)
-															}}
-															type="button"
-														>
-															<span className="flex items-center gap-1.5">
-																<Sparkles className="h-3 w-3" />
-																Deep Agent
-															</span>
-														</button>
-														<button
-															className={`text-xs px-3 py-1.5 rounded-md border transition-all ${
-																!useAgentForLink
-																	? "bg-white/15 border-white/30 text-foreground dark:text-white font-medium"
-																	: "bg-white/5 border-white/10 text-foreground/70 dark:text-white/60 hover:bg-white/10"
-															}`}
-															onClick={() => {
-																setUseAgentForLink(false)
-															}}
-															type="button"
-														>
-															Standard
-														</button>
-														<span className="text-xs text-foreground/50 dark:text-white/40 hidden sm:inline">
-															{useAgentForLink
-																? "AI-enhanced"
-																: "Basic"}
-														</span>
-													</div>
-													<div className={addContentMutation.isPending ? "opacity-50" : ""}>
-														<addContentForm.Field name="project">
-															{({ state, handleChange }) => (
-																<ProjectSelection
-																	disabled={addContentMutation.isPending}
-																	id="link-project-2"
-																	isLoading={isLoadingProjects}
-																	onCreateProject={() =>
-																		setShowCreateProjectDialog(true)
-																	}
-																	onProjectChange={handleChange}
-																	projects={projects}
-																	selectedProject={state.value}
-																/>
-															)}
-														</addContentForm.Field>
-													</div>
-												</motion.div>
-											</div>
-
-											{/* Footer with Actions */}
-											<div className="mt-6 flex justify-center">
-												<ActionButtons
-													isSubmitDisabled={
-														!addContentForm.state.canSubmit ||
-														urlDuplicateCheck.isDuplicate ||
-														urlDuplicateCheck.checking
-													}
-													isSubmitting={addContentMutation.isPending}
-													onCancel={() => {
-														setShowAddDialog(false)
-														onClose?.()
-														addContentForm.reset()
-														setUrlDuplicateCheck({
-															checking: false,
-															isDuplicate: false,
-															documentId: null,
-															documentTitle: null,
-														})
-													}}
-													submitIcon={Plus}
-													submitText="Add Link"
-												/>
-											</div>
-										</form>
-									</div>
-								)}
-
-								{activeTab === "file" && (
-									<div className="space-y-4">
-										<form
-											onSubmit={(e) => {
-												e.preventDefault()
-												e.stopPropagation()
-												fileUploadForm.handleSubmit()
-											}}
-										>
-											<div className="grid gap-4">
-												<motion.div
-													animate={{ opacity: 1, y: 0 }}
-													className="flex flex-col gap-2"
-													initial={{ opacity: 0, y: 10 }}
-													transition={{ delay: 0.1 }}
-												>
-													<label className="text-sm font-medium" htmlFor="file">
-														File
-													</label>
-													<Dropzone
-														accept={{
-															"application/pdf": [".pdf"],
-															"application/msword": [".doc"],
-															"application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-																[".docx"],
-															"application/vnd.ms-excel": [".xls"],
-															"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-																[".xlsx"],
-															"application/vnd.ms-powerpoint": [".ppt"],
-															"application/vnd.openxmlformats-officedocument.presentationml.presentation":
-																[".pptx"],
-															"text/plain": [".txt"],
-															"text/markdown": [".md"],
-															"text/csv": [".csv"],
-															"application/json": [".json"],
-															"image/*": [
-																".png",
-																".jpg",
-																".jpeg",
-																".gif",
-																".webp",
-															],
-														}}
-														className="bg-white/5 border-white/10 hover:bg-white/10 min-h-40"
-														maxFiles={10}
-														maxSize={10 * 1024 * 1024} // 10MB
-														onDrop={(acceptedFiles) =>
-															setSelectedFiles(acceptedFiles)
-														}
-														src={selectedFiles}
-													>
-														<DropzoneEmptyState />
-														<DropzoneContent className="overflow-auto" />
-													</Dropzone>
-												</motion.div>
-
-												<motion.div
-													animate={{ opacity: 1, y: 0 }}
-													className="flex flex-col gap-2"
-													initial={{ opacity: 0, y: 10 }}
-													transition={{ delay: 0.15 }}
-												>
-													<label
-														className="text-sm font-medium"
-														htmlFor="file-title"
-													>
-														Title (optional)
-													</label>
-													<fileUploadForm.Field name="title">
-														{({ state, handleChange, handleBlur }) => (
-															<Input
-																className="bg-white/5 border-white/10 text-foreground dark:text-white"
-																id="file-title"
-																onBlur={handleBlur}
-																onChange={(e) => handleChange(e.target.value)}
-																placeholder="Give this file a title"
-																value={state.value}
-															/>
-														)}
-													</fileUploadForm.Field>
-												</motion.div>
-
-												<motion.div
-													animate={{ opacity: 1, y: 0 }}
-													className="flex flex-col gap-2"
-													initial={{ opacity: 0, y: 10 }}
-													transition={{ delay: 0.2 }}
-												>
-													<label
-														className="text-sm font-medium"
-														htmlFor="file-description"
-													>
-														Description (optional)
-													</label>
-													<fileUploadForm.Field name="description">
-														{({ state, handleChange, handleBlur }) => (
-															<Textarea
-																className="bg-white/5 border-white/10 text-foreground dark:text-white min-h-20 max-h-40 overflow-y-auto resize-none"
-																id="file-description"
-																onBlur={handleBlur}
-																onChange={(e) => handleChange(e.target.value)}
-																placeholder="Add notes or context about this file"
-																value={state.value}
-															/>
-														)}
-													</fileUploadForm.Field>
-												</motion.div>
-											</div>
-											<div className="mt-6 flex flex-col sm:flex-row sm:justify-between sm:items-end w-full gap-4">
-												<div className="flex items-end gap-4">
-													{/* Left side - Project Selection */}
-													<motion.div
-														animate={{ opacity: 1, y: 0 }}
-														className={`flex flex-col gap-2 flex-1 sm:flex-initial ${
-															fileUploadMutation.isPending ? "opacity-50" : ""
-														}`}
-														initial={{ opacity: 0, y: 10 }}
-														transition={{ delay: 0.25 }}
-													>
-														<fileUploadForm.Field name="project">
-															{({ state, handleChange }) => (
-																<ProjectSelection
-																	disabled={fileUploadMutation.isPending}
-																	id="file-project"
-																	isLoading={isLoadingProjects}
-																	onCreateProject={() =>
-																		setShowCreateProjectDialog(true)
-																	}
-																	onProjectChange={handleChange}
-																	projects={projects}
-																	selectedProject={state.value}
-																/>
-															)}
-														</fileUploadForm.Field>
-													</motion.div>
-												</div>
-
-												<ActionButtons
-													isSubmitDisabled={selectedFiles.length === 0}
-													isSubmitting={fileUploadMutation.isPending}
-													onCancel={() => {
-														setShowAddDialog(false)
-														onClose?.()
-														fileUploadForm.reset()
-														setSelectedFiles([])
-													}}
-													submitIcon={UploadIcon}
-													submitText="Upload File"
-												/>
-											</div>
-										</form>
-									</div>
-								)}
-
-								{activeTab === "connect" && (
-									<div className="space-y-4">
-										<ConnectionsTabContent />
-									</div>
-								)}
-							</div>
-						</motion.div>
+						{formContent}
 					</DialogContent>
 				</Dialog>
-			)}
+			) : null}
 
 			{/* Create Project Dialog */}
 			{showCreateProjectDialog && (

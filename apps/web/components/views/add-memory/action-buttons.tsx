@@ -11,6 +11,7 @@ interface ActionButtonsProps {
 	isSubmitDisabled?: boolean
 	submitType?: "button" | "submit"
 	className?: string
+	hideCancel?: boolean
 }
 
 export function ActionButtons({
@@ -22,17 +23,20 @@ export function ActionButtons({
 	isSubmitDisabled = false,
 	submitType = "submit",
 	className = "",
+	hideCancel = false,
 }: ActionButtonsProps) {
 	return (
 		<div className={`flex gap-3 order-1 sm:order-2 justify-end ${className}`}>
-			<Button
-				className="hover:bg-white/10 text-foreground dark:text-white border-none flex-1 sm:flex-initial"
-				onClick={onCancel}
-				type="button"
-				variant="ghost"
-			>
-				Cancel
-			</Button>
+			{!hideCancel && (
+				<Button
+					className="hover:bg-white/10 text-foreground dark:text-white border-none flex-1 sm:flex-initial"
+					onClick={onCancel}
+					type="button"
+					variant="ghost"
+				>
+					Cancel
+				</Button>
+			)}
 
 			<motion.div
 				className="flex-1 sm:flex-initial"
