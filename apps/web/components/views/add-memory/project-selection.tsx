@@ -6,6 +6,7 @@ import {
 	SelectValue,
 } from "@repo/ui/components/select"
 import { FolderOpen, Plus } from "lucide-react"
+import { useEffect, useState } from "react"
 
 interface Project {
 	id?: string
@@ -36,6 +37,21 @@ export function ProjectSelection({
 	id = "project-select",
 	showLabel = true,
 }: ProjectSelectionProps) {
+	const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
+
+	useEffect(() => {
+		// Create or get a portal container at the end of body for select dropdowns
+		let container = document.getElementById("select-portal-root")
+		if (!container) {
+			container = document.createElement("div")
+			container.id = "select-portal-root"
+			container.style.position = "relative"
+			container.style.zIndex = "99999"
+			document.body.appendChild(container)
+		}
+		setPortalContainer(container)
+	}, [])
+
 	const handleValueChange = (value: string) => {
 		if (value === "create-new-project") {
 			onCreateProject()
@@ -70,8 +86,10 @@ export function ProjectSelection({
 					</div>
 				</SelectTrigger>
 				<SelectContent
-					className="bg-black/90 backdrop-blur-xl border-white/10 z-[90]"
-					position="popper"
+					align="end"
+					className="bg-black/90 backdrop-blur-xl border-white/10"
+					container={portalContainer}
+					side="bottom"
 					sideOffset={5}
 				>
 					{projects

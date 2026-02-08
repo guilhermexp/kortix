@@ -97,6 +97,7 @@ import {
 	getDocumentSummaryFormatted,
 	stripMarkdown,
 } from "./memories"
+import { TweetCard } from "./content-cards/tweet"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
@@ -499,6 +500,14 @@ function DocumentPreviewModal({
 	const youtubeId = getYouTubeId(originalUrl)
 	const isYouTube = !!youtubeId
 
+	// Check if this is a tweet
+	const rawDoc = asRecord(document.raw)
+	const rawTweet = rawDoc?.tweet
+	const isTweet =
+		document.type === "tweet" ||
+		(document.metadata as any)?.type === "tweet"
+	const hasTweetData = isTweet && rawTweet
+
 	return (
 		<Dialog onOpenChange={(open) => !open && onClose()} open>
 			<DialogContent className="!max-w-[85vw] !w-[1000px] max-h-[90vh] overflow-hidden p-0 sm:!max-w-[85vw]">
@@ -528,8 +537,18 @@ function DocumentPreviewModal({
 
 				{/* Scrollable container */}
 				<div className="h-[85vh] overflow-y-auto">
+					{/* Tweet Card - rich rendering via react-tweet */}
+					{hasTweetData ? (
+						<div className="p-6">
+							<TweetCard
+								data={rawTweet as any}
+								activeMemories={activeMemories}
+							/>
+						</div>
+					) : null}
+
 					{/* YouTube Video Player */}
-					{isYouTube && (
+					{isYouTube && !hasTweetData && (
 						<div className="sticky top-0 w-full aspect-video min-h-[300px] max-h-[50vh] overflow-hidden z-0 bg-black">
 							<iframe
 								src={`https://www.youtube.com/embed/${youtubeId}?rel=0&modestbranding=1`}
@@ -543,8 +562,8 @@ function DocumentPreviewModal({
 						</div>
 					)}
 
-					{/* Preview Image - Sticky at top (only if not YouTube) */}
-					{!isYouTube && preview?.src && (
+					{/* Preview Image - Sticky at top (only if not YouTube and not tweet) */}
+					{!isYouTube && !hasTweetData && preview?.src && (
 						<div className="sticky top-0 w-full h-[50vh] min-h-[300px] overflow-hidden z-0">
 							<img
 								alt={cleanedTitle}
@@ -568,7 +587,7 @@ function DocumentPreviewModal({
 					<div
 						className={cn(
 							"relative z-10 bg-background rounded-t-3xl p-8 min-h-[50vh]",
-							(isYouTube || preview?.src) ? "-mt-16" : "",
+							(isYouTube || (!hasTweetData && preview?.src)) ? "-mt-16" : "",
 						)}
 					>
 						{/* Title */}

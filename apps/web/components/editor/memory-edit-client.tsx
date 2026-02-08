@@ -32,6 +32,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { ChatRewrite } from "@/components/views/chat"
 import type { DocumentWithMemories } from "@/lib/types/document"
+import { TweetCard } from "@/components/content-cards/tweet"
 import { useChatMentionQueue, useProject } from "@/stores"
 import { useCanvasSelection } from "@/stores/canvas"
 import { formatDate, getDocumentSnippet, stripMarkdown } from "../memories"
@@ -458,11 +459,29 @@ export function MemoryEditClient({
 		(document.metadata as any)?.source_url
 	const isVideo = isYouTubeUrl(sourceUrl) || document.type === "video"
 
+	// Check if this is a tweet with raw data
+	const rawDoc = asRecord(document.raw)
+	const rawTweet = rawDoc?.tweet
+	const isTweet =
+		document.type === "tweet" ||
+		(document.metadata as any)?.type === "tweet"
+	const hasTweetData = isTweet && rawTweet
+
 	// Document context for chat (image + metadata only)
 	const chatDocumentContext = (
 		<>
-			{/* Main image */}
-			{mainImage && (
+			{/* Tweet card - rich rendering */}
+			{hasTweetData && (
+				<div className="rounded-2xl overflow-hidden">
+					<TweetCard
+						data={rawTweet as any}
+						activeMemories={activeMemories}
+					/>
+				</div>
+			)}
+
+			{/* Main image (skip for tweets) */}
+			{!hasTweetData && mainImage && (
 				<div className="relative rounded-2xl overflow-hidden bg-muted group">
 					<img
 						alt={documentTitle}

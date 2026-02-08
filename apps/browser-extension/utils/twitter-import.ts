@@ -10,6 +10,7 @@ import {
 	buildRequestVariables,
 	extractNextCursor,
 	getAllTweets,
+	tweetToMarkdown,
 	type TwitterAPIResponse,
 } from "./twitter-utils"
 
@@ -122,6 +123,15 @@ export class TwitterImporter {
 					await this.rateLimiter.handleRateLimit(this.config.onProgress)
 					return this.batchImportAll(cursor, totalImported, uniqueGroupId)
 				}
+				if (
+					response.status === 400 ||
+					(response.status === 403 &&
+						errorText.toLowerCase().includes("bad"))
+				) {
+					throw new Error(
+						`Twitter API returned ${response.status}. The GraphQL query hash may be outdated — please update the extension or report this issue.`,
+					)
+				}
 				throw new Error(
 					`Failed to fetch data: ${response.status} - ${errorText}`,
 				)
@@ -135,18 +145,22 @@ export class TwitterImporter {
 			// Convert tweets to MemoryPayload
 			for (const tweet of tweets) {
 				try {
+					const tweetUrl = `https://x.com/${tweet.user.screen_name}/status/${tweet.id_str}`
 					const metadata = {
 						sm_source: "consumer",
+						type: "tweet",
+						url: tweetUrl,
 						tweet_id: tweet.id_str,
 						author: tweet.user.screen_name,
 						created_at: tweet.created_at,
 						likes: tweet.favorite_count,
 						retweets: tweet.retweet_count || 0,
 						sm_internal_group_id: uniqueGroupId,
+						raw_tweet: JSON.stringify(tweet),
 					}
 					documents.push({
 						containerTags: ["sm_project_twitter_bookmarks"],
-						content: `https://x.com/${tweet.user.screen_name}/status/${tweet.id_str}`,
+						content: tweetToMarkdown(tweet),
 						metadata,
 						customId: tweet.id_str,
 					})

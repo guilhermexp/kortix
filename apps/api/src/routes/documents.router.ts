@@ -131,6 +131,72 @@ documentsRouter.post("/", zValidator("json", MemoryAddSchema), async (c) => {
 	}
 })
 
+// Batch add documents (e.g. Twitter bookmarks import)
+const BatchDocumentsSchema = z.object({
+	documents: z.array(MemoryAddSchema).min(1).max(100),
+	metadata: z
+		.record(z.string(), z.unknown())
+		.optional(),
+})
+
+documentsRouter.post(
+	"/batch",
+	zValidator("json", BatchDocumentsSchema),
+	async (c) => {
+		const { organizationId, internalUserId } = c.var.session
+		const { documents, metadata: batchMetadata } = c.req.valid("json")
+		const supabase = createClientForSession(c.var.session)
+
+		const results = await Promise.allSettled(
+			documents.map(async (doc) => {
+				const mergedMetadata = {
+					...(batchMetadata ?? {}),
+					...(doc.metadata ?? {}),
+				}
+				const payload = { ...doc, metadata: mergedMetadata }
+				return addDocument({
+					organizationId,
+					userId: internalUserId,
+					payload,
+					client: supabase,
+				})
+			}),
+		)
+
+		const output = results.map((r, i) => {
+			if (r.status === "fulfilled") {
+				return { status: "created" as const, document: r.value }
+			}
+			const err = r.reason as Error & {
+				status?: number
+				code?: string
+				existingDocumentId?: string
+			}
+			const isDuplicate = err.status === 409
+			return {
+				status: isDuplicate ? ("skipped" as const) : ("failed" as const),
+				error: err.message,
+				code: err.code,
+				existingDocumentId: err.existingDocumentId,
+				index: i,
+			}
+		})
+
+		const successCount = output.filter(
+			(r) => r.status === "created" || r.status === "skipped",
+		).length
+
+		return c.json(
+			{
+				results: output,
+				total: documents.length,
+				successCount,
+			},
+			201,
+		)
+	},
+)
+
 // File upload endpoint
 documentsRouter.post("/file", async (c) => {
 	const { organizationId, internalUserId } = c.var.session

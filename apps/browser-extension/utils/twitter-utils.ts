@@ -151,7 +151,6 @@ export const TWITTER_API_FEATURES = {
 	longform_notetweets_inline_media_enabled: true,
 	responsive_web_media_download_video_enabled: false,
 	responsive_web_text_conversations_enabled: false,
-	// Missing features that the API is complaining about
 	creator_subscriptions_quote_tweet_preview_enabled: true,
 	view_counts_everywhere_api_enabled: true,
 	c9s_tweet_anatomy_moderator_badge_enabled: true,

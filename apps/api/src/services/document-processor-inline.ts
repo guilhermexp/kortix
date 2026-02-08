@@ -107,6 +107,38 @@ export async function processDocumentInline(
 
 		const userId = document.user_id ?? (await getDefaultUserId())
 
+		// For tweets, persist raw tweet JSON in the `raw` column and extract preview image
+		if (
+			document.type === "tweet" &&
+			(document.metadata as Record<string, unknown>)?.raw_tweet
+		) {
+			try {
+				const rawTweet = JSON.parse(
+					(document.metadata as Record<string, unknown>).raw_tweet as string,
+				)
+				// Pick preview: first photo from tweet, or author's profile image
+				const tweetPreview =
+					rawTweet?.photos?.[0]?.url ||
+					rawTweet?.user?.profile_image_url_https?.replace(
+						"_normal",
+						"_400x400",
+					) ||
+					null
+				await supabaseAdmin
+					.from("documents")
+					.update({
+						raw: { tweet: rawTweet },
+						...(tweetPreview ? { preview_image: tweetPreview } : {}),
+					})
+					.eq("id", documentId)
+			} catch (e) {
+				console.warn("[inline-processor] Failed to parse raw_tweet", {
+					documentId,
+					error: e,
+				})
+			}
+		}
+
 		// Generate preview first (fast, for UI)
 		let previewUrl: string | null = null
 		try {

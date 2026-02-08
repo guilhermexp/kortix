@@ -404,6 +404,46 @@ export function IntegrationsView() {
 				</div>
 			</div>
 
+			{/* Twitter/X Bookmarks */}
+			<div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+				<div className="p-4 sm:p-5">
+					<div className="flex items-start gap-3">
+						<div className="p-2 bg-neutral-500/20 rounded-lg flex-shrink-0">
+							<svg
+								className="h-5 w-5 text-white"
+								fill="currentColor"
+								viewBox="0 0 24 24"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<title>X (Twitter)</title>
+								<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+							</svg>
+						</div>
+						<div className="flex-1 min-w-0">
+							<h3 className="text-foreground dark:text-foreground dark:text-white font-semibold text-base mb-1">
+								Twitter/X Bookmarks
+							</h3>
+							<p className="text-foreground dark:text-foreground dark:text-white/70 text-sm leading-relaxed mb-2">
+								Import all your Twitter/X bookmarks into Kortix with one click
+								using the Chrome Extension.
+							</p>
+							<p className="text-xs text-neutral-400/90 bg-neutral-500/10 px-3 py-2 rounded-lg border border-neutral-500/20">
+								📌 To import your bookmarks: install the Chrome Extension, visit{" "}
+								<a
+									className="text-blue-400 hover:underline"
+									href="https://x.com/i/bookmarks"
+									rel="noopener noreferrer"
+									target="_blank"
+								>
+									x.com/i/bookmarks
+								</a>
+								, then click "Import Bookmarks" in the extension popup.
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+
 			{/* Connections Section */}
 			<div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
 				<div className="p-4 sm:p-5">

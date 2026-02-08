@@ -452,14 +452,26 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 
 		try {
 			const html = await this.fetchHtml(url, this.defaultOptions.timeout)
-			const match = html.match(
-				/<meta\s+(?:property|name)=["']og:image(?::url)?["']\s+content=["']([^"']+)["']/i,
-			)
 
-			if (match?.[1]) {
-				const imageUrl = this.resolveUrl(match[1], url)
-				this.logger.debug("OpenGraph image found", { imageUrl })
-				return imageUrl
+			// Try multiple patterns to handle different attribute orders and quoting styles
+			const patterns = [
+				// property before content, with quotes
+				/<meta\s+[^>]*(?:property|name)=["']og:image(?::url)?["'][^>]*content=["']([^"']+)["']/i,
+				// content before property, with quotes
+				/<meta\s+[^>]*content=["']([^"']+)["'][^>]*(?:property|name)=["']og:image(?::url)?["']/i,
+				// property before content, without quotes
+				/<meta\s+[^>]*(?:property|name)=og:image(?::url)?\s[^>]*content=([^\s"'>]+)/i,
+				// content before property, without quotes
+				/<meta\s+[^>]*content=([^\s"'>]+)[^>]*(?:property|name)=og:image(?::url)?/i,
+			]
+
+			for (const pattern of patterns) {
+				const match = html.match(pattern)
+				if (match?.[1]) {
+					const imageUrl = this.resolveUrl(match[1], url)
+					this.logger.debug("OpenGraph image found", { imageUrl })
+					return imageUrl
+				}
 			}
 
 			return null
@@ -579,14 +591,25 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 
 		try {
 			const html = await this.fetchHtml(url, this.defaultOptions.timeout)
-			const match = html.match(
-				/<meta\s+(?:property|name)=["']twitter:image(?::src)?["']\s+content=["']([^"']+)["']/i,
-			)
 
-			if (match?.[1]) {
-				const imageUrl = this.resolveUrl(match[1], url)
-				this.logger.debug("Twitter card image found", { imageUrl })
-				return imageUrl
+			const patterns = [
+				// name before content, with quotes
+				/<meta\s+[^>]*(?:property|name)=["']twitter:image(?::src)?["'][^>]*content=["']([^"']+)["']/i,
+				// content before name, with quotes
+				/<meta\s+[^>]*content=["']([^"']+)["'][^>]*(?:property|name)=["']twitter:image(?::src)?["']/i,
+				// name before content, without quotes
+				/<meta\s+[^>]*(?:property|name)=twitter:image(?::src)?\s[^>]*content=([^\s"'>]+)/i,
+				// content before name, without quotes
+				/<meta\s+[^>]*content=([^\s"'>]+)[^>]*(?:property|name)=twitter:image(?::src)?/i,
+			]
+
+			for (const pattern of patterns) {
+				const match = html.match(pattern)
+				if (match?.[1]) {
+					const imageUrl = this.resolveUrl(match[1], url)
+					this.logger.debug("Twitter card image found", { imageUrl })
+					return imageUrl
+				}
 			}
 
 			return null
@@ -772,29 +795,33 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 		const images: string[] = []
 
 		for (const tag of IMAGE_META_TAGS) {
-			// Match both property and name attributes
-			const propertyRegex = new RegExp(
-				`<meta\\s+property=["']${tag}["']\\s+content=["']([^"']+)["']`,
-				"gi",
-			)
-			const nameRegex = new RegExp(
-				`<meta\\s+name=["']${tag}["']\\s+content=["']([^"']+)["']`,
-				"gi",
-			)
+			// Match property/name before content (with and without quotes)
+			const patterns = [
+				new RegExp(
+					`<meta\\s+[^>]*(?:property|name)=["']${tag}["'][^>]*content=["']([^"']+)["']`,
+					"gi",
+				),
+				new RegExp(
+					`<meta\\s+[^>]*content=["']([^"']+)["'][^>]*(?:property|name)=["']${tag}["']`,
+					"gi",
+				),
+				new RegExp(
+					`<meta\\s+[^>]*(?:property|name)=${tag}\\s[^>]*content=([^\\s/>]+)`,
+					"gi",
+				),
+				new RegExp(
+					`<meta\\s+[^>]*content=([^\\s/>]+)[^>]*(?:property|name)=${tag}`,
+					"gi",
+				),
+			]
 
 			let match: RegExpExecArray | null
 
-			// Check property attribute
-			while ((match = propertyRegex.exec(html)) !== null) {
-				if (match[1]) {
-					images.push(match[1])
-				}
-			}
-
-			// Check name attribute
-			while ((match = nameRegex.exec(html)) !== null) {
-				if (match[1]) {
-					images.push(match[1])
+			for (const regex of patterns) {
+				while ((match = regex.exec(html)) !== null) {
+					if (match[1]) {
+						images.push(match[1])
+					}
 				}
 			}
 		}
