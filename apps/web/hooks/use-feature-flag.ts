@@ -46,7 +46,7 @@ export function useFeatureFlag(
 	const organizationId = session.data?.session?.organizationId
 	const userId = session.data?.user?.id
 
-	const { data, isLoading, error } = useQuery({
+	const queryResult = useQuery({
 		queryKey: ["feature-flag-evaluation", flagKey, organizationId, userId, context],
 		queryFn: async () => {
 			if (!organizationId) {
@@ -69,11 +69,10 @@ export function useFeatureFlag(
 	})
 
 	return {
-		enabled: data?.enabled ?? false,
-		isLoading,
-		error,
-		// Include additional evaluation metadata
-		reason: data?.reason,
-		ruleId: data?.ruleId,
+		enabled: queryResult.data?.enabled ?? false,
+		isLoading: queryResult.isLoading,
+		error: queryResult.error,
+		data: queryResult.data,
+		refetch: queryResult.refetch,
 	}
 }

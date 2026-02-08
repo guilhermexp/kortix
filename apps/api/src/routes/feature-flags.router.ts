@@ -133,11 +133,23 @@ featureFlagsRouter.get("/:flagId/audit", async (c) => {
 	const supabase = createClientForSession(c.var.session)
 
 	try {
+		let parsedLimit: number | undefined
+		if (limit !== undefined) {
+			parsedLimit = Number.parseInt(limit, 10)
+			if (Number.isNaN(parsedLimit) || parsedLimit < 1) {
+				return c.json(
+					{ error: { message: "Invalid limit parameter" } },
+					400,
+				)
+			}
+			parsedLimit = Math.min(parsedLimit, 1000)
+		}
+
 		const response = await getFlagAuditLog(
 			supabase,
 			organizationId,
 			flagId,
-			limit ? Number.parseInt(limit, 10) : undefined,
+			parsedLimit,
 		)
 		return c.json(response)
 	} catch (error) {

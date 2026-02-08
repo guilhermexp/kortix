@@ -44,6 +44,7 @@ export function FlagToggle({ flag, disabled = false }: FlagToggleProps) {
 			checked={flag.enabled}
 			disabled={disabled || toggleMutation.isPending}
 			onCheckedChange={handleToggle}
+			aria-label={`Toggle ${flag.name}`}
 		/>
 	)
 }

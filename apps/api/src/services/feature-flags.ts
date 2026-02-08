@@ -80,6 +80,7 @@ export interface EvaluationResult {
 	organizationId: string
 	cached: boolean
 	evaluatedAt: string
+	error?: string
 }
 
 /**
@@ -149,17 +150,18 @@ export class FeatureFlagService {
 
 		if (error) {
 			console.error(`Error evaluating flag ${flagKey}:`, error)
-			// Return false on error (safe default)
+			// Return false on error (safe default) with error field for callers to detect
 			return {
 				enabled: false,
 				flagKey,
 				organizationId,
 				cached: false,
 				evaluatedAt: new Date().toISOString(),
+				error: error.message,
 			}
 		}
 
-		const enabled = data as boolean
+		const enabled = typeof data === "boolean" ? data : false
 
 		// Cache the result
 		documentCache.set(cacheKey, enabled)
@@ -305,15 +307,18 @@ export class FeatureFlagService {
 			throw new Error("Flag not found")
 		}
 
+		const updateData: Record<string, any> = {
+			updated_at: new Date().toISOString(),
+		}
+		if (input.name !== undefined) updateData.name = input.name
+		if (input.description !== undefined)
+			updateData.description = input.description
+		if (input.enabled !== undefined) updateData.enabled = input.enabled
+		if (input.metadata !== undefined) updateData.metadata = input.metadata
+
 		const { data, error } = await this.client
 			.from("feature_flags")
-			.update({
-				name: input.name,
-				description: input.description,
-				enabled: input.enabled,
-				metadata: input.metadata,
-				updated_at: new Date().toISOString(),
-			})
+			.update(updateData)
 			.eq("id", flagId)
 			.select()
 			.single()
@@ -408,12 +413,18 @@ export class FeatureFlagService {
 		if (context.userRole) contextParts.push(`role:${context.userRole}`)
 		if (context.environment) contextParts.push(`env:${context.environment}`)
 
-		// Include custom attributes in cache key
+		// Include custom attributes in cache key (use JSON for complex values)
 		if (context.customAttributes) {
-			const attrKeys = Object.keys(context.customAttributes).sort()
-			for (const key of attrKeys) {
-				contextParts.push(`${key}:${context.customAttributes[key]}`)
-			}
+			const sortedAttrs = Object.keys(context.customAttributes)
+				.sort()
+				.reduce(
+					(acc, key) => {
+						acc[key] = context.customAttributes![key]
+						return acc
+					},
+					{} as Record<string, any>,
+				)
+			contextParts.push(`attrs:${JSON.stringify(sortedAttrs)}`)
 		}
 
 		return contextParts.join(":")

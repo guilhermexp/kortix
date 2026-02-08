@@ -15,7 +15,6 @@ import { Label } from '@ui/components/label';
  */
 export default function FeatureFlagTestPage() {
   const [flagKey, setFlagKey] = useState('test-flag');
-  const [customContext, setCustomContext] = useState<Record<string, any>>({});
 
   // Test useFeatureFlags hook - fetches all flags
   const { data: allFlags, isLoading: loadingAll, error: errorAll } = useFeatureFlags();
@@ -26,7 +25,7 @@ export default function FeatureFlagTestPage() {
     isLoading: loadingFlag,
     error: errorFlag,
     refetch
-  } = useFeatureFlag(flagKey, customContext);
+  } = useFeatureFlag(flagKey);
 
   // Performance tracking
   const [performanceMetrics, setPerformanceMetrics] = useState<{
@@ -36,12 +35,12 @@ export default function FeatureFlagTestPage() {
 
   const testFlagEvaluation = async () => {
     const startTime = performance.now();
-    await refetch();
+    const result = await refetch();
     const endTime = performance.now();
 
     setPerformanceMetrics({
       evaluationTime: endTime - startTime,
-      cacheHit: flagResult?.cached || false,
+      cacheHit: result.data?.cached || false,
     });
   };
 
@@ -130,8 +129,8 @@ export default function FeatureFlagTestPage() {
                 <div className="mt-2 space-y-1">
                   <p className="text-sm">
                     <span className="font-medium">Enabled:</span>{' '}
-                    <span className={flagResult ? 'text-green-600 font-bold' : 'text-gray-500'}>
-                      {flagResult ? 'TRUE' : 'FALSE'}
+                    <span className={flagResult?.enabled ? 'text-green-600 font-bold' : 'text-gray-500'}>
+                      {flagResult?.enabled ? 'TRUE' : 'FALSE'}
                     </span>
                   </p>
                 </div>

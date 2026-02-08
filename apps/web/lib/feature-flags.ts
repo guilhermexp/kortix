@@ -109,7 +109,7 @@ export async function fetchFlags(): Promise<FeatureFlag[]> {
 export async function fetchFlag(flagId: string): Promise<FeatureFlag | null> {
 	try {
 		const response = await fetch(
-			`${BACKEND_URL.replace(/\/$/, "")}/v3/feature-flags/${flagId}`,
+			`${BACKEND_URL.replace(/\/$/, "")}/v3/feature-flags/${encodeURIComponent(flagId)}`,
 			{
 				method: "GET",
 				headers: {
@@ -174,7 +174,7 @@ export async function updateFlag(
 ): Promise<FeatureFlag> {
 	try {
 		const response = await fetch(
-			`${BACKEND_URL.replace(/\/$/, "")}/v3/feature-flags/${flagId}`,
+			`${BACKEND_URL.replace(/\/$/, "")}/v3/feature-flags/${encodeURIComponent(flagId)}`,
 			{
 				method: "PATCH",
 				headers: {
@@ -203,7 +203,7 @@ export async function updateFlag(
 export async function deleteFlag(flagId: string): Promise<void> {
 	try {
 		const response = await fetch(
-			`${BACKEND_URL.replace(/\/$/, "")}/v3/feature-flags/${flagId}`,
+			`${BACKEND_URL.replace(/\/$/, "")}/v3/feature-flags/${encodeURIComponent(flagId)}`,
 			{
 				method: "DELETE",
 				headers: {
@@ -231,7 +231,7 @@ export async function fetchFlagAuditLog(
 ): Promise<FlagAuditLog[]> {
 	try {
 		const url = new URL(
-			`${BACKEND_URL.replace(/\/$/, "")}/v3/feature-flags/${flagId}/audit`,
+			`${BACKEND_URL.replace(/\/$/, "")}/v3/feature-flags/${encodeURIComponent(flagId)}/audit`,
 		)
 		if (limit) {
 			url.searchParams.set("limit", limit.toString())

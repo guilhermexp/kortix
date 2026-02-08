@@ -63,7 +63,7 @@ export const EvaluationContextSchema = z
 		}),
 		organizationId: z.string().optional().meta({
 			description: "Optional organization ID for organization-scoped flags",
-			example: "org_xyz789",
+			example: "550e8400-e29b-41d4-a716-446655440000",
 		}),
 		environment: z.string().optional().meta({
 			description: "Optional environment identifier (dev, staging, production)",
@@ -81,7 +81,7 @@ export const EvaluationContextSchema = z
 		example: {
 			userId: "user_abc123",
 			userRole: "admin",
-			organizationId: "org_xyz789",
+			organizationId: "550e8400-e29b-41d4-a716-446655440000",
 			environment: "production",
 			customAttributes: exampleCustomAttributes,
 		},
@@ -99,7 +99,7 @@ export const FlagRuleSchema = z
 		}),
 		flag_id: z.string().meta({
 			description: "ID of the feature flag this rule belongs to",
-			example: "flag_xyz789",
+			example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 		}),
 		type: FlagRuleTypeEnum.meta({
 			description:
@@ -139,7 +139,7 @@ export const FlagRuleSchema = z
 		description: "Rule for targeting specific users or implementing gradual rollouts",
 		example: {
 			id: "rule_abc123",
-			flag_id: "flag_xyz789",
+			flag_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 			type: "percentage",
 			conditions: {},
 			rollout_percentage: 25,
@@ -179,7 +179,7 @@ export const FeatureFlagSchema = z
 		}),
 		org_id: z.string().meta({
 			description: "Organization ID this flag belongs to",
-			example: "org_xyz789",
+			example: "550e8400-e29b-41d4-a716-446655440000",
 		}),
 		metadata: z.record(z.string(), z.any()).meta({
 			description:
@@ -206,7 +206,7 @@ export const FeatureFlagSchema = z
 			name: "New Dashboard",
 			description: "Enables the redesigned dashboard with improved analytics",
 			enabled: true,
-			org_id: "org_xyz789",
+			org_id: "550e8400-e29b-41d4-a716-446655440000",
 			metadata: exampleMetadata,
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
@@ -243,7 +243,7 @@ export const CreateFlagSchema = z
 		}),
 		org_id: z.string().uuid().meta({
 			description: "Organization ID this flag belongs to",
-			example: "org_xyz789",
+			example: "550e8400-e29b-41d4-a716-446655440000",
 		}),
 		metadata: z.record(z.string(), z.any()).optional().meta({
 			description: "Additional flag configuration (environments, tags, etc)",
@@ -257,7 +257,7 @@ export const CreateFlagSchema = z
 			name: "New Dashboard",
 			description: "Enables the redesigned dashboard with improved analytics",
 			enabled: false,
-			org_id: "org_xyz789",
+			org_id: "550e8400-e29b-41d4-a716-446655440000",
 			metadata: exampleMetadata,
 		},
 	})
@@ -303,7 +303,7 @@ export const CreateFlagRuleSchema = z
 	.object({
 		flag_id: z.string().uuid().meta({
 			description: "ID of the feature flag this rule belongs to",
-			example: "flag_xyz789",
+			example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 		}),
 		type: FlagRuleTypeEnum.meta({
 			description:
@@ -337,7 +337,7 @@ export const CreateFlagRuleSchema = z
 	.meta({
 		description: "Input schema for creating a new flag rule",
 		example: {
-			flag_id: "flag_xyz789",
+			flag_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 			type: "percentage",
 			conditions: {},
 			rollout_percentage: 25,
@@ -401,7 +401,7 @@ export const FlagAuditLogSchema = z
 		}),
 		flag_id: z.string().meta({
 			description: "ID of the feature flag that was modified",
-			example: "flag_xyz789",
+			example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 		}),
 		user_id: z.string().nullable().optional().meta({
 			description: "User who made the change (NULL for system changes)",
@@ -435,7 +435,7 @@ export const FlagAuditLogSchema = z
 			"Audit log entry tracking changes to feature flags for compliance and debugging",
 		example: {
 			id: "log_abc123",
-			flag_id: "flag_xyz789",
+			flag_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 			user_id: "user_abc123",
 			action: "enabled",
 			old_value: { enabled: false },
@@ -461,7 +461,7 @@ export const EvaluationResultSchema = z
 		}),
 		organizationId: z.string().meta({
 			description: "Organization ID for which the flag was evaluated",
-			example: "org_xyz789",
+			example: "550e8400-e29b-41d4-a716-446655440000",
 		}),
 		cached: z.boolean().meta({
 			description: "Whether this result came from cache",
@@ -472,13 +472,17 @@ export const EvaluationResultSchema = z
 			example: new Date().toISOString(),
 			format: "date-time",
 		}),
+		error: z.string().optional().meta({
+			description:
+				"Error message if evaluation failed (distinguishes errors from disabled flags)",
+		}),
 	})
 	.meta({
 		description: "Result of evaluating a feature flag for a specific context",
 		example: {
 			enabled: true,
 			flagKey: "new_dashboard",
-			organizationId: "org_xyz789",
+			organizationId: "550e8400-e29b-41d4-a716-446655440000",
 			cached: true,
 			evaluatedAt: new Date().toISOString(),
 		},
@@ -496,7 +500,7 @@ export const EvaluateFlagRequestSchema = z
 		}),
 		organizationId: z.string().uuid().meta({
 			description: "Organization ID for evaluation",
-			example: "org_xyz789",
+			example: "550e8400-e29b-41d4-a716-446655440000",
 		}),
 		context: EvaluationContextSchema.optional().meta({
 			description: "Optional evaluation context",
@@ -506,7 +510,7 @@ export const EvaluateFlagRequestSchema = z
 		description: "Request body for evaluating a feature flag",
 		example: {
 			flagKey: "new_dashboard",
-			organizationId: "org_xyz789",
+			organizationId: "550e8400-e29b-41d4-a716-446655440000",
 			context: {
 				userId: "user_abc123",
 				userRole: "admin",

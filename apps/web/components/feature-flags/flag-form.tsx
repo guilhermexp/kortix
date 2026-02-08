@@ -17,7 +17,7 @@ import { Switch } from "@ui/components/switch"
 import { Textarea } from "@ui/components/textarea"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import type { FeatureFlag } from "@repo/validation/feature-flags"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 
 interface FlagFormProps {
@@ -62,14 +62,16 @@ export function FlagForm({ open, onClose, flag }: FlagFormProps) {
 	}
 
 	// Update form when flag prop changes
-	if (flag && formData.key !== flag.key) {
-		setFormData({
-			key: flag.key,
-			name: flag.name,
-			description: flag.description || "",
-			enabled: flag.enabled,
-		})
-	}
+	useEffect(() => {
+		if (flag) {
+			setFormData({
+				key: flag.key,
+				name: flag.name,
+				description: flag.description || "",
+				enabled: flag.enabled,
+			})
+		}
+	}, [flag])
 
 	const createMutation = useMutation({
 		mutationFn: async () => {
