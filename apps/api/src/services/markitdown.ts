@@ -211,8 +211,8 @@ def get_video_title(url):
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
         resp = requests.get(url, headers=headers, timeout=10)
         html = resp.text
-        # Try og:title
-        match = re.search(r'<meta\\s+property=["\\'']og:title["\\'']\\s+content=["\\'']([^"\\'\\']+)["\\'']', html, re.I)
+        # Try og:title (YouTube uses double quotes)
+        match = re.search(r'<meta\\s+property="og:title"\\s+content="([^"]+)"', html, re.I)
         if match:
             return match.group(1)
         # Try title tag
@@ -426,6 +426,7 @@ async function fetchYouTubeTimedTextVtt(
 
 export async function fetchYouTubeTranscriptFallback(
 	videoUrl: string,
+	options?: { skipPythonFallback?: boolean },
 ): Promise<MarkItDownResponse | null> {
 	const videoId = extractYouTubeVideoIdFromUrl(videoUrl)
 	if (!videoId) return null
@@ -516,6 +517,14 @@ export async function fetchYouTubeTranscriptFallback(
 	}
 
 	// Step 3: Final fallback - use Python youtube-transcript-api
+	if (options?.skipPythonFallback) {
+		console.log(
+			"[fetchYouTubeTranscriptFallback] No transcript found for video:",
+			videoId,
+		)
+		return null
+	}
+
 	try {
 		console.log(
 			"[fetchYouTubeTranscriptFallback] Trying Python youtube-transcript-api fallback",

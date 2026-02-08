@@ -36,8 +36,16 @@ const LEVELS: Record<string, number> = {
 const level = LEVELS[LOG_LEVEL] ?? 2
 const originalLog = console.log
 const originalWarn = console.warn
+const originalInfo = console.info
+const originalDebug = console.debug
 console.log = (...args: unknown[]) => {
 	if (level >= 4) originalLog(...args)
+}
+console.debug = (...args: unknown[]) => {
+	if (level >= 4) originalDebug(...args)
+}
+console.info = (...args: unknown[]) => {
+	if (level >= 3) originalInfo(...args)
 }
 console.warn = (...args: unknown[]) => {
 	if (level >= 2) originalWarn(...args)

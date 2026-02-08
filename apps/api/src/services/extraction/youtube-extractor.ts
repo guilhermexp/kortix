@@ -251,9 +251,11 @@ export class YouTubeExtractor extends BaseService implements IYouTubeExtractor {
 		this.logger.debug("Extracting YouTube metadata", { videoId })
 
 		// Use fetchYouTubeTranscriptFallback which also returns metadata
+		// Skip Python fallback here - we only need the title, not the transcript
 		try {
 			const result = await fetchYouTubeTranscriptFallback(
 				`https://www.youtube.com/watch?v=${videoId}`,
+				{ skipPythonFallback: true },
 			)
 
 			// Try to get title from metadata first (now extracted from page HTML)
