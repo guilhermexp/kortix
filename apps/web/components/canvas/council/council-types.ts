@@ -181,4 +181,19 @@ export interface CouncilShapeProps {
 	stage: 0 | 1 | 2 | 3 // 0 = query, 1 = model response, 2 = peer review (not shown), 3 = verdict
 	isVerdict: boolean
 	isStreaming: boolean
+	// For model selector feature
+	fullModelId?: string // Full OpenRouter model ID (e.g., "openai/gpt-5.1")
+	originalQuery?: string // Original query to re-run with different model
+}
+
+// Available model from OpenRouter
+export interface AvailableModel {
+	id: string
+	name: string
+	description: string
+	context_length: number
+	pricing: {
+		prompt: string
+		completion: string
+	}
 }

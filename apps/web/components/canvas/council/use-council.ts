@@ -182,6 +182,8 @@ export function useCouncil(editor: Editor | null, options?: UseCouncilOptions) {
 										h: COUNCIL_SHAPE_HEIGHT,
 										text: result.response,
 										model: shortName,
+										fullModelId: result.model,
+										originalQuery: query,
 										stage: 1,
 										isVerdict: false,
 										isStreaming: false,

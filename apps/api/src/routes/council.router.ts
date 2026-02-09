@@ -193,3 +193,62 @@ councilRouter.get("/health", async (c) => {
 		return c.json({ status: "unavailable", councilUrl: LLM_COUNCIL_URL }, 503)
 	}
 })
+
+/**
+ * GET /models
+ *
+ * List available models from OpenRouter (cached)
+ */
+councilRouter.get("/models", async (c) => {
+	try {
+		const response = await fetch(`${LLM_COUNCIL_URL}/api/models`, {
+			method: "GET",
+			headers: { "Content-Type": "application/json" },
+			signal: AbortSignal.timeout(30000), // 30 second timeout
+		})
+
+		if (!response.ok) {
+			console.error("[council] Failed to fetch models:", response.status)
+			return c.json({ error: "Failed to fetch models" }, response.status)
+		}
+
+		const data = await response.json()
+		return c.json(data)
+	} catch (error) {
+		console.error("[council] Error fetching models:", error)
+		return c.json({ error: "Failed to fetch models" }, 500)
+	}
+})
+
+/**
+ * POST /model/query
+ *
+ * Query a single model with a given prompt
+ */
+councilRouter.post("/model/query", async (c) => {
+	const body = await c.req.json<{ model: string; query: string }>()
+	const { model, query } = body
+
+	if (!model || !query) {
+		return c.json({ error: "Missing model or query" }, 400)
+	}
+
+	try {
+		const response = await fetch(`${LLM_COUNCIL_URL}/api/model/query`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ model, query }),
+		})
+
+		if (!response.ok) {
+			console.error("[council] Failed to query model:", response.status)
+			return c.json({ error: "Failed to query model" }, response.status)
+		}
+
+		const data = await response.json()
+		return c.json(data)
+	} catch (error) {
+		console.error("[council] Error querying model:", error)
+		return c.json({ error: "Failed to query model" }, 500)
+	}
+})

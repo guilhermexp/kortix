@@ -45,7 +45,7 @@ import {
 	type GenerationModel,
 	generateContent,
 } from "./canvas-ai-utils"
-import { useCouncil } from "./council"
+import { useCouncil, useCouncilModelChange } from "./council"
 
 // ============================================================
 // TYPES
@@ -447,6 +447,9 @@ export function CanvasAIBar({ onGenerate, editor }: CanvasAIBarProps) {
 			addMessage("assistant", `Council error: ${error.message}`)
 		},
 	})
+
+	// Hook to handle model changes in Council shapes
+	useCouncilModelChange(editor ?? null)
 
 	// Context actions
 	const handleAddContextAction = useCallback(

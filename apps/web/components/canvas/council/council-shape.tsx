@@ -17,6 +17,8 @@ import {
 } from "tldraw"
 import { type CouncilShapeProps, getModelColor } from "./council-types"
 import { CouncilMarkdown } from "./council-markdown"
+import { CouncilModelSelector } from "./council-model-selector"
+import { dispatchModelChangeEvent } from "./use-council-model-change"
 
 // Shape type definition
 export type CouncilShape = TLBaseShape<"council", CouncilShapeProps>
@@ -32,6 +34,8 @@ export class CouncilShapeUtil extends BaseBoxShapeUtil<CouncilShape> {
 		stage: T.number,
 		isVerdict: T.boolean,
 		isStreaming: T.boolean,
+		fullModelId: T.string.optional(),
+		originalQuery: T.string.optional(),
 	}
 
 	override canEdit = () => false
@@ -61,8 +65,12 @@ export class CouncilShapeUtil extends BaseBoxShapeUtil<CouncilShape> {
 	}
 
 	component(shape: CouncilShape) {
-		const { text, model, stage, isVerdict, isStreaming } = shape.props
-		const modelColor = getModelColor(model)
+		const { text, model, stage, isVerdict, isStreaming, fullModelId, originalQuery } =
+			shape.props
+		const modelColor = getModelColor(fullModelId || model)
+
+		// Can change model only for stage 1 (response) shapes that aren't streaming
+		const canChangeModel = stage === 1 && !isVerdict && !isStreaming && originalQuery
 
 		// Handle wheel event to enable internal scrolling
 		const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
@@ -114,9 +122,22 @@ export class CouncilShapeUtil extends BaseBoxShapeUtil<CouncilShape> {
 				>
 					{/* Header with model name and stage badge */}
 					<div className="council-shape-header">
-						<div className="council-model-name" style={{ color: modelColor }}>
-							{model}
-						</div>
+						{canChangeModel ? (
+							<CouncilModelSelector
+								currentModel={model}
+								fullModelId={fullModelId}
+								disabled={isStreaming}
+								onModelChange={(newModelId) => {
+									if (originalQuery) {
+										dispatchModelChangeEvent(shape.id, newModelId, originalQuery)
+									}
+								}}
+							/>
+						) : (
+							<div className="council-model-name" style={{ color: modelColor }}>
+								{model}
+							</div>
+						)}
 						<div className="council-stage-badge" style={{ backgroundColor: modelColor }}>
 							{stageLabel}
 							{isStreaming && (

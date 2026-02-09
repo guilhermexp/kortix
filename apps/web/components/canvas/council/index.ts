@@ -15,5 +15,10 @@ export { CouncilMarkdown } from "./council-markdown"
 // Layout
 export * from "./council-layout"
 
-// Hook
+// Hooks
 export { useCouncil } from "./use-council"
+export { useAvailableModels } from "./use-available-models"
+export { useCouncilModelChange, dispatchModelChangeEvent } from "./use-council-model-change"
+
+// Model Selector
+export { CouncilModelSelector } from "./council-model-selector"
