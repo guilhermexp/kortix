@@ -72,6 +72,10 @@ export class ErrorBoundary extends Component<
 	override componentDidCatch(error: unknown, errorInfo: React.ErrorInfo): void {
 		// Log error to console
 		console.error("ErrorBoundary caught an error:", error, errorInfo)
+		console.error(
+			"ErrorBoundary component stack (full):\n",
+			errorInfo.componentStack,
+		)
 		console.error("Error type:", typeof error)
 		console.error("Error constructor:", error?.constructor?.name)
 		if (error && typeof error === "object") {

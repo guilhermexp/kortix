@@ -119,6 +119,7 @@ export function TldrawCanvas() {
 
 	// Use canvasProjectId from canvas store, falling back to "default"
 	const effectiveCanvasProjectId = canvasProjectId || "default"
+	const lastSelectedCanvasProjectIdRef = useRef<string | null>(null)
 
 	const {
 		placedDocumentIds,
@@ -1360,6 +1361,12 @@ export function TldrawCanvas() {
 			container.removeEventListener("contextmenu", handleContextMenu, true)
 	}, [editor])
 
+	useEffect(() => {
+		if (showProjectModal) {
+			lastSelectedCanvasProjectIdRef.current = null
+		}
+	}, [showProjectModal])
+
 	// Show loading while fetching from database
 	if (isDbLoading) {
 		return (
@@ -1370,6 +1377,10 @@ export function TldrawCanvas() {
 	}
 
 	const handleCanvasProjectSelect = (projectId: string) => {
+		if (lastSelectedCanvasProjectIdRef.current === projectId) {
+			return
+		}
+		lastSelectedCanvasProjectIdRef.current = projectId
 		setCanvasProjectId(projectId)
 		setShowProjectModal(false)
 	}

@@ -307,15 +307,11 @@ export function ProjectsView() {
 											</motion.div>
 										)}
 										<DropdownMenu>
-											<DropdownMenuTrigger asChild>
-												<Button
-													className="text-foreground dark:text-white/50 hover:text-foreground dark:text-white"
-													onClick={(e) => e.stopPropagation()}
-													size="icon"
-													variant="ghost"
-												>
-													<MoreVertical className="h-4 w-4" />
-												</Button>
+											<DropdownMenuTrigger
+												className="inline-flex h-9 w-9 items-center justify-center rounded-md text-foreground dark:text-white/50 hover:text-foreground dark:text-white hover:bg-accent dark:hover:bg-accent/50"
+												onClick={(e) => e.stopPropagation()}
+											>
+												<MoreVertical className="h-4 w-4" />
 											</DropdownMenuTrigger>
 											<DropdownMenuContent
 												align="end"

@@ -195,15 +195,11 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 											</button>
 											<div className="flex items-center gap-1">
 												<DropdownMenu>
-													<DropdownMenuTrigger asChild>
-														<motion.button
-															className="p-1 hover:bg-muted rounded transition-all"
-															onClick={(e) => e.stopPropagation()}
-															whileHover={{ scale: 1.1 }}
-															whileTap={{ scale: 0.9 }}
-														>
-															<MoreHorizontal className="h-3 w-3 text-muted-foreground" />
-														</motion.button>
+													<DropdownMenuTrigger
+														className="p-1 hover:bg-muted rounded transition-all"
+														onClick={(e) => e.stopPropagation()}
+													>
+														<MoreHorizontal className="h-3 w-3 text-muted-foreground" />
 													</DropdownMenuTrigger>
 													<DropdownMenuContent
 														align="end"

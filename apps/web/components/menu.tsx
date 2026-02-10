@@ -328,22 +328,18 @@ function Menu({
 									<React.Fragment key={item.key}>
 										{index === 1 && <div className="w-6 h-px bg-border my-1" />}
 										<Tooltip>
-											<TooltipTrigger asChild>
-												<motion.button
-													aria-label={item.text}
-													className="flex items-center justify-center w-9 h-9 rounded-lg text-foreground/70 hover:text-foreground hover:bg-foreground/10 transition-all duration-150 cursor-pointer"
-													id={menuItemTourIds[item.key]}
-													onClick={(e) => {
-														e.stopPropagation()
-														e.preventDefault()
-														handleMenuItemClick(item.key)
-													}}
-													type="button"
-													whileHover={{ scale: 1.05 }}
-													whileTap={{ scale: 0.95 }}
-												>
-													<item.icon className="h-5 w-5" />
-												</motion.button>
+											<TooltipTrigger
+												aria-label={item.text}
+												className="flex items-center justify-center w-9 h-9 rounded-lg text-foreground/70 hover:text-foreground hover:bg-foreground/10 transition-all duration-150 cursor-pointer"
+												id={menuItemTourIds[item.key]}
+												onClick={(e) => {
+													e.stopPropagation()
+													e.preventDefault()
+													handleMenuItemClick(item.key)
+												}}
+												type="button"
+											>
+												<item.icon className="h-5 w-5" />
 											</TooltipTrigger>
 											<TooltipContent side="right" sideOffset={8}>
 												{item.text}

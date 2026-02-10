@@ -20,7 +20,7 @@ import {
 	X,
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 interface CanvasProject {
 	id: string
@@ -82,15 +82,11 @@ function ProjectFolderCard({
 			{/* Delete menu - top right */}
 			<div className="absolute -top-1 right-0 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button
-							className="h-7 w-7 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-full shadow-sm"
-							onClick={(e) => e.stopPropagation()}
-							size="icon"
-							variant="ghost"
-						>
-							<MoreHorizontal className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
-						</Button>
+					<DropdownMenuTrigger
+						className="inline-flex h-7 w-7 items-center justify-center bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-full shadow-sm"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<MoreHorizontal className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end" className="w-40 z-[10000]">
 						<DropdownMenuItem
@@ -273,7 +269,14 @@ export function ProjectSelectionModal({
 	const [searchQuery, setSearchQuery] = useState("")
 	const [showCreateForm, setShowCreateForm] = useState(false)
 	const [newProjectName, setNewProjectName] = useState("")
+	const lastSelectedProjectIdRef = useRef<string | null>(null)
 	const queryClient = useQueryClient()
+
+	useEffect(() => {
+		if (!open) {
+			lastSelectedProjectIdRef.current = null
+		}
+	}, [open])
 
 	const { data: projectsData, isLoading } = useQuery({
 		queryKey: ["canvas-projects"],
@@ -349,6 +352,10 @@ export function ProjectSelectionModal({
 	}, [projects, searchQuery])
 
 	const handleProjectSelect = (projectId: string) => {
+		if (lastSelectedProjectIdRef.current === projectId) {
+			return
+		}
+		lastSelectedProjectIdRef.current = projectId
 		console.log("[ProjectModal] Selecting project:", projectId)
 		onSelect(projectId)
 	}

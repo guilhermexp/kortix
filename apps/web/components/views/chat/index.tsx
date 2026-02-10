@@ -72,15 +72,11 @@ export function ChatRewrite({
 				</h3>
 				<div className="flex items-center gap-1">
 					<Dialog onOpenChange={setIsDialogOpen} open={isDialogOpen}>
-						<DialogTrigger asChild>
-							<Button
-								className="h-7 w-7 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-								onClick={() => analytics.chatHistoryViewed()}
-								size="icon"
-								variant="ghost"
-							>
-								<HistoryIcon className="size-3.5" />
-							</Button>
+						<DialogTrigger
+							className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+							onClick={() => analytics.chatHistoryViewed()}
+						>
+							<HistoryIcon className="size-3.5" />
 						</DialogTrigger>
 						<DialogContent className="sm:max-w-lg bg-popover backdrop-blur-xl border-border text-foreground">
 							<DialogHeader className="pb-4 border-b border-border rounded-t-lg">
