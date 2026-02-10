@@ -52,6 +52,10 @@ function ensureShapeId(shape: Record<string, any>): TLShapeId {
 	return createShapeId()
 }
 
+function toTLShapeId(id: string): TLShapeId {
+	return (id.startsWith("shape:") ? id : createShapeId(id)) as TLShapeId
+}
+
 /**
  * Prepare shape for TLDraw createShape API.
  * Ensures proper ID format and sets defaults.
@@ -213,12 +217,39 @@ export function applyCanvasAgentChange(
 		}
 		case "updateShape": {
 			if (change.shape && typeof change.shape === "object") {
-				editor.updateShape(change.shape as any)
+				const rawId = change.shape.id
+				if (typeof rawId !== "string") break
+				const shapeId = toTLShapeId(rawId)
+				const existingShape = editor.getShape(shapeId)
+				if (!existingShape) break
+
+				const nextShape: Record<string, any> = {
+					...change.shape,
+					id: shapeId,
+					type:
+						typeof change.shape.type === "string"
+							? change.shape.type
+							: existingShape.type,
+				}
+
+				// TLDraw v4+ uses richText instead of text for editable content.
+				if (
+					nextShape.props &&
+					typeof nextShape.props === "object" &&
+					typeof nextShape.props.text === "string"
+				) {
+					nextShape.props = { ...nextShape.props }
+					nextShape.props.richText = toRichText(nextShape.props.text)
+					delete nextShape.props.text
+				}
+
+				editor.updateShape(nextShape as any)
 			}
 			break
 		}
 		case "deleteShape": {
-			editor.deleteShape(change.id as any)
+			const shapeId = toTLShapeId(change.id)
+			editor.deleteShape(shapeId)
 			break
 		}
 		case "selectShapes": {

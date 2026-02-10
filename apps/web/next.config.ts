@@ -8,8 +8,11 @@ const isDev = process.env.NODE_ENV !== "production"
 const devLocalImageSources = isDev
 	? " http://localhost:3000 http://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001"
 	: ""
+const devLocalConnectSources = isDev
+	? " http://localhost:3000 http://127.0.0.1:3000 ws://localhost:3000 ws://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001 ws://localhost:3001 ws://127.0.0.1:3001"
+	: ""
 const contentSecurityPolicy =
-	`default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://opengraph.githubassets.com https://*.githubusercontent.com https://i.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:${devLocalImageSources}; font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com https://*.tldraw.com https://unpkg.com https://r2cdn.perplexity.ai; connect-src 'self' http://localhost:4000 https://*; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; frame-src https://www.youtube.com https://youtube.com https://*.figma.com https://*.google.com https://*.excalidraw.com;`
+	`default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://opengraph.githubassets.com https://*.githubusercontent.com https://i.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:${devLocalImageSources}; font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com https://*.tldraw.com https://unpkg.com https://r2cdn.perplexity.ai; connect-src 'self' data: blob: http://localhost:4000${devLocalConnectSources} https://* wss://*; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; frame-src https://www.youtube.com https://youtube.com https://*.figma.com https://*.google.com https://*.excalidraw.com;`
 
 const nextConfig: NextConfig = {
 	// Force new build ID to bust all caches

@@ -75,6 +75,8 @@ const canvasDebugLog = (...args: unknown[]) => {
 	}
 }
 
+const TLDRAW_LICENSE_KEY = process.env.NEXT_PUBLIC_TLDRAW_LICENSE_KEY
+
 // No custom StylePanel - we'll handle hide/show via CSS
 
 // Helper to determine if URL is YouTube
@@ -1420,6 +1422,7 @@ export function TldrawCanvas() {
 						QuickActions: null,
 					}}
 					key={effectiveCanvasProjectId}
+					licenseKey={TLDRAW_LICENSE_KEY}
 					onMount={(editor) => {
 						canvasDebugLog(
 							"[TldrawCanvas] TLDraw mounted for project:",

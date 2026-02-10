@@ -113,10 +113,11 @@ function transformChangeToStreamEvent(change: TLAiChange): StreamEvent | null {
 		}
 
 		case "deleteShape": {
+			const rawId =
+				(change as unknown as { shapeId?: string; id?: string }).shapeId ??
+				(change as unknown as { shapeId?: string; id?: string }).id
 			const shapeId =
-				typeof change.shapeId === "string"
-					? change.shapeId.replace("shape:", "")
-					: String(change.shapeId)
+				typeof rawId === "string" ? rawId.replace("shape:", "") : String(rawId)
 
 			return {
 				type: "delete",

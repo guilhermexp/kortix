@@ -26,6 +26,37 @@ const canvasDebugLog = (...args: unknown[]) => {
 	}
 }
 
+function parseCanvasToolPayload(rawText: string): CanvasChangesPayload | null {
+	const text = typeof rawText === "string" ? rawText.trim() : ""
+	if (!text) return null
+
+	const candidates: string[] = [text]
+
+	// Accept markdown fenced JSON outputs that some SDK/tool layers emit.
+	const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)
+	if (fenceMatch?.[1]) {
+		candidates.push(fenceMatch[1].trim())
+	}
+
+	for (const candidate of candidates) {
+		try {
+			const parsed = JSON.parse(candidate) as unknown
+			if (
+				parsed &&
+				typeof parsed === "object" &&
+				(parsed as { kind?: unknown }).kind === "canvasChanges" &&
+				Array.isArray((parsed as { changes?: unknown }).changes)
+			) {
+				return parsed as CanvasChangesPayload
+			}
+		} catch {
+			// try next candidate
+		}
+	}
+
+	return null
+}
+
 export type CanvasChangesPayload = {
 	kind: "canvasChanges"
 	changes: CanvasAgentChange[]
@@ -141,17 +172,15 @@ export function CanvasAgentProvider({ children }: { children: ReactNode }) {
 			}
 
 			try {
-				const parsed = JSON.parse(outputText)
+				const parsed = parseCanvasToolPayload(outputText)
 				canvasDebugLog("[CanvasAgentProvider] Parsed output:", {
 					kind: parsed?.kind,
 					changesCount: parsed?.changes?.length || 0,
 				})
-				if (parsed && parsed.kind === "canvasChanges") {
-					return applyChanges(parsed as CanvasChangesPayload)
-				}
+				if (parsed) return applyChanges(parsed)
 				console.warn(
 					"[CanvasAgentProvider] Invalid payload - kind is not 'canvasChanges':",
-					parsed?.kind,
+					outputText?.substring(0, 200),
 				)
 			} catch (err) {
 				console.error(
