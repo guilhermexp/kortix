@@ -24,7 +24,6 @@ import {
 import { HeadingH2Bold } from "@repo/ui/text/heading/heading-h2-bold"
 import { GlassMenuEffect } from "@ui/other/glass-effect"
 import {
-	LayoutGrid,
 	List,
 	MessageSquareMore,
 	Plus,
@@ -148,12 +147,6 @@ function Menu({
 			disabled: false,
 		},
 		{
-			icon: LayoutGrid,
-			text: "Canvas",
-			key: "canvas" as const,
-			disabled: false,
-		},
-		{
 			icon: Puzzle,
 			text: "Connections",
 			key: "connections" as const,
@@ -174,7 +167,6 @@ function Menu({
 			| "connections"
 			| "projects"
 			| "profile"
-			| "canvas"
 			| "list",
 	) => {
 		// Prevent multiple rapid clicks
@@ -196,12 +188,6 @@ function Menu({
 		} else if (key === "list") {
 			// Switch to list view mode
 			setViewMode("list")
-			router.push("/")
-			setIsMobileMenuOpen(false)
-			setExpandedView(null)
-		} else if (key === "canvas") {
-			// Switch to infinity canvas view mode
-			setViewMode("infinity")
 			router.push("/")
 			setIsMobileMenuOpen(false)
 			setExpandedView(null)

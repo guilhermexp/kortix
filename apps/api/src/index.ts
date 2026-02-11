@@ -58,7 +58,6 @@ import { cors } from "hono/cors"
 import { env } from "./env"
 import { requireAuth } from "./middleware/auth"
 import { rateLimiter } from "./middleware/rate-limiter"
-import aiActionsRoutes from "./routes/ai-actions"
 import { CreateApiKeySchema, createApiKeyHandler } from "./routes/api-keys"
 // Auth routes (kept inline since they're simple)
 import {
@@ -68,7 +67,6 @@ import {
 	signOut,
 	signUp,
 } from "./routes/auth"
-import { canvasProjectsRouter, canvasRouter } from "./routes/canvas.router"
 import { chatRouter } from "./routes/chat.router"
 import { connectionsRouter } from "./routes/connections.router"
 import { conversationsRouter } from "./routes/conversations.router"
@@ -344,8 +342,6 @@ app.post(
 // MCP Routes
 registerMcpRoutes(app)
 
-// AI Actions routes (for canvas AI context menu)
-app.route("/api/ai-actions", aiActionsRoutes)
 
 // ============================================
 // Protected Routes (require auth)
@@ -364,8 +360,6 @@ app.route("/v3/connections", connectionsRouter)
 app.route("/v3/document-connections", documentConnectionsRouter)
 app.route("/v3/feature-flags", featureFlagsRouter)
 app.route("/v3/settings", settingsRouter)
-app.route("/v3/canvas-projects", canvasProjectsRouter)
-app.route("/v3/canvas", canvasRouter)
 app.route("/v3/conversations", conversationsRouter)
 app.route("/v3/council", councilRouter)
 app.route("/chat", chatRouter)

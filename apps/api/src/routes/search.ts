@@ -245,7 +245,7 @@ export async function searchDocuments(
 				return null
 			}
 
-			// Filter by scoped document IDs if specified (canvas mode)
+			// Filter by scoped document IDs if specified
 			if (scopedDocumentIds.length > 0 && !scopedDocumentIds.includes(doc.id)) {
 				return null
 			}

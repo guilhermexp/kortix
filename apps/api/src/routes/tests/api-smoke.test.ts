@@ -45,7 +45,6 @@ describe("API Smoke - Auth gating and basic endpoints", () => {
 	app.get("/v3/settings", (c) => c.json({ ok: true }))
 	app.post("/chat", (c) => c.json({ ok: true }))
 	app.post("/chat/v2", (c) => c.json({ ok: true }))
-	app.get("/v3/canvas-projects", (c) => c.json({ ok: true }))
 	app.get("/v3/conversations", (c) => c.json({ ok: true }))
 
 	it("/health responde com JSON", async () => {
@@ -110,11 +109,6 @@ describe("API Smoke - Auth gating and basic endpoints", () => {
 			method: "POST",
 			body: JSON.stringify({}),
 		})
-		expect(res.status).toBe(401)
-	})
-
-	it("/v3/canvas-projects requer autenticação", async () => {
-		const res = await app.request("/v3/canvas-projects")
 		expect(res.status).toBe(401)
 	})
 

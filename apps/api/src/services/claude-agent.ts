@@ -436,14 +436,14 @@ export async function executeClaudeAgent(
 		}
 
 		// Handle system prompt based on whether it was explicitly provided
-		// When systemPrompt is provided (e.g., canvas mode), always use it (even on resume)
+		// When systemPrompt is provided, always use it (even on resume)
 		// Otherwise, let SDK load from .claude/CLAUDE.md on new sessions
 		if (systemPrompt) {
 			queryOptions.systemPrompt = systemPrompt
 			// Don't use settingSources when we have a custom prompt
 			delete queryOptions.settingSources
 			console.log(
-				"[executeClaudeAgent] Using custom system prompt (canvas or special mode) - length:",
+				"[executeClaudeAgent] Using custom system prompt - length:",
 				systemPrompt.length,
 				"chars",
 			)

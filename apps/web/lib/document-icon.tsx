@@ -1,4 +1,3 @@
-import { colors } from "@/components/canvas/canvas-constants"
 import {
 	GoogleDocs,
 	GoogleDrive,
@@ -17,7 +16,7 @@ import { FileText } from "lucide-react"
 export const getDocumentIcon = (type: string, className: string) => {
 	const iconProps = {
 		className,
-		style: { color: colors.text.muted },
+		style: { color: "hsl(var(--muted-foreground))" },
 	}
 
 	switch (type) {

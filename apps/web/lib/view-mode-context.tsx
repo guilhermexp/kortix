@@ -9,7 +9,7 @@ import {
 } from "react"
 import { analytics } from "@/lib/analytics"
 
-type ViewMode = "list" | "infinity"
+type ViewMode = "list"
 
 interface ViewModeContextType {
 	viewMode: ViewMode
@@ -36,9 +36,7 @@ const _readStoredViewMode = (): ViewMode | null => {
 	if (typeof window === "undefined") return null
 	try {
 		const storedValue = window.localStorage.getItem(STORAGE_KEY)
-		return storedValue === "list" || storedValue === "infinity"
-			? storedValue
-			: null
+		return storedValue === "list" ? storedValue : null
 	} catch {
 		return null
 	}
@@ -63,10 +61,7 @@ export function ViewModeProvider({ children }: { children: ReactNode }) {
 
 	// Save to cookie whenever view mode changes
 	const handleSetViewMode = (mode: ViewMode) => {
-		// Only track non-infinity modes for analytics
-		if (mode !== "infinity") {
-			analytics.viewModeChanged(mode)
-		}
+		analytics.viewModeChanged(mode)
 		setViewModeState(mode)
 		persistViewMode(mode)
 	}

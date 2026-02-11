@@ -12,7 +12,7 @@ const devLocalConnectSources = isDev
 	? " http://localhost:3000 http://127.0.0.1:3000 ws://localhost:3000 ws://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001 ws://localhost:3001 ws://127.0.0.1:3001"
 	: ""
 const contentSecurityPolicy =
-	`default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://opengraph.githubassets.com https://*.githubusercontent.com https://i.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:${devLocalImageSources}; font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com https://*.tldraw.com https://unpkg.com https://r2cdn.perplexity.ai; connect-src 'self' data: blob: http://localhost:4000${devLocalConnectSources} https://* wss://*; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; frame-src https://www.youtube.com https://youtube.com https://*.figma.com https://*.google.com https://*.excalidraw.com;`
+	`default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://opengraph.githubassets.com https://*.githubusercontent.com https://i.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:${devLocalImageSources}; font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com https://unpkg.com https://r2cdn.perplexity.ai; connect-src 'self' data: blob: http://localhost:4000${devLocalConnectSources} https://* wss://*; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; frame-src https://www.youtube.com https://youtube.com https://*.figma.com https://*.google.com https://*.excalidraw.com;`
 
 const nextConfig: NextConfig = {
 	// Force new build ID to bust all caches
@@ -26,21 +26,12 @@ const nextConfig: NextConfig = {
 	},
 	// Transpile monorepo packages to ensure shared module instances
 	// Include @tanstack/react-query to prevent context isolation across chunks
-	// Include tldraw packages to prevent duplicate imports
 	transpilePackages: [
 		"@repo/lib",
 		"@repo/ui",
 		"@repo/validation",
 		"@repo/hooks",
 		"@tanstack/react-query",
-		"tldraw",
-		"@tldraw/editor",
-		"@tldraw/state",
-		"@tldraw/state-react",
-		"@tldraw/store",
-		"@tldraw/tlschema",
-		"@tldraw/utils",
-		"@tldraw/validate",
 	],
 	turbopack: {}, // Empty config to silence warning
 	outputFileTracingRoot: workspaceRoot,
@@ -143,18 +134,6 @@ const nextConfig: NextConfig = {
 	webpack: (config, { isServer }) => {
 		// Suppress redi warning by marking it as external if loaded
 		if (!isServer) {
-			// Force single instance of tldraw packages to prevent duplicate imports
-			config.resolve.alias = {
-				...config.resolve.alias,
-				"tldraw": path.resolve(workspaceRoot, "node_modules/tldraw"),
-				"@tldraw/editor": path.resolve(workspaceRoot, "node_modules/@tldraw/editor"),
-				"@tldraw/state": path.resolve(workspaceRoot, "node_modules/@tldraw/state"),
-				"@tldraw/state-react": path.resolve(workspaceRoot, "node_modules/@tldraw/state-react"),
-				"@tldraw/store": path.resolve(workspaceRoot, "node_modules/@tldraw/store"),
-				"@tldraw/tlschema": path.resolve(workspaceRoot, "node_modules/@tldraw/tlschema"),
-				"@tldraw/utils": path.resolve(workspaceRoot, "node_modules/@tldraw/utils"),
-				"@tldraw/validate": path.resolve(workspaceRoot, "node_modules/@tldraw/validate"),
-			}
 			config.ignoreWarnings = [
 				...(config.ignoreWarnings || []),
 				{

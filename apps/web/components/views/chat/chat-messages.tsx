@@ -30,21 +30,18 @@ import {
 	ToolHeader,
 	ToolOutput,
 } from "@/components/ai-elements/tool"
-import { useCanvasAgentOptional } from "@/components/canvas/canvas-agent-provider"
 import {
 	InputGroup,
 	InputGroupAddon,
 	InputGroupButton,
 	InputGroupTextarea,
 } from "@/components/ui/input-group"
-import { useViewMode } from "@/lib/view-mode-context"
 import {
 	useChatMentionQueue,
 	useChatOpen,
 	usePersistentChat,
 	useProject,
 } from "@/stores"
-import { useCanvasSelection, useCanvasState } from "@/stores/canvas"
 import { useGraphHighlights } from "@/stores/highlights"
 import { Spinner } from "../../spinner"
 import { ProviderSelector, useProviderSelection } from "./provider-selector"
@@ -624,9 +621,6 @@ function useClaudeChat({
 	const lastMessageTimeRef = useRef<number>(0)
 	const SESSION_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
 
-	// Canvas agent integration
-	const canvasAgent = useCanvasAgentOptional()
-
 	useEffect(() => {
 		debugLog("========================================")
 		debugLog("[Chat Hook] Conversation ID changed:", conversationId)
@@ -668,19 +662,6 @@ function useClaudeChat({
 		}
 		debugLog("========================================")
 	}, [conversationId, getSdkSessionId])
-
-	// Reset session when scoped documents change (user switches document context)
-	const { scopedDocumentIds } = useCanvasSelection()
-	const _scopedIdsKey = JSON.stringify(scopedDocumentIds.sort())
-	useEffect(() => {
-		if (sdkSessionIdRef.current !== null) {
-			sdkSessionIdRef.current = null
-			lastMessageTimeRef.current = 0
-			debugLog(
-				"[Frontend Session] Session reset due to document context change",
-			)
-		}
-	}, [])
 
 	useEffect(() => {
 		messagesRef.current = messagesState
@@ -1179,72 +1160,6 @@ function useClaudeChat({
 									}
 								} else if (record.type === "tool_event") {
 									applyToolEvent(record)
-									// Process canvas changes if this is a canvasApplyChanges tool
-									const toolName =
-										typeof record.toolName === "string" ? record.toolName : ""
-									const outputText =
-										typeof record.outputText === "string"
-											? record.outputText
-											: ""
-									const toolState =
-										typeof record.state === "string" ? record.state : ""
-
-									// Debug: log all tool events
-									if (toolName.includes("canvas")) {
-										debugLog("[ChatMessages] Canvas tool event received:", {
-											toolName,
-											toolState,
-											hasOutputText: !!outputText,
-											outputTextLength: outputText?.length || 0,
-											hasCanvasAgent: !!canvasAgent,
-										})
-									}
-
-									if (
-										toolName.includes("canvasApplyChanges") &&
-										toolState === "output-available" &&
-										outputText &&
-										canvasAgent
-									) {
-										try {
-											debugLog(
-												"[ChatMessages] Processing canvas changes from tool:",
-												toolName,
-											)
-											debugLog(
-												"[ChatMessages] Output text preview:",
-												outputText.substring(0, 200),
-											)
-											const applied = canvasAgent.processToolOutput(
-												toolName,
-												outputText,
-											)
-											if (applied) {
-												debugLog(
-													"[ChatMessages] Canvas changes applied successfully",
-												)
-											} else {
-												console.warn(
-													"[ChatMessages] Canvas changes were not applied",
-												)
-											}
-										} catch (err) {
-											console.error(
-												"[ChatMessages] Failed to apply canvas changes:",
-												err,
-											)
-										}
-									} else if (toolName.includes("canvasApplyChanges")) {
-										console.warn(
-											"[ChatMessages] Canvas tool conditions not met:",
-											{
-												toolName,
-												toolState,
-												hasOutputText: !!outputText,
-												hasCanvasAgent: !!canvasAgent,
-											},
-										)
-									}
 								} else if (record.type === "final") {
 									const messagePayload =
 										record.message && typeof record.message === "object"
@@ -1263,95 +1178,6 @@ function useClaudeChat({
 												{ type: "text", text: finalText },
 											] as ClaudeChatMessage["parts"])
 
-									// Debug: log the final event for canvas debugging
-									debugLog("[ChatMessages] Final event received:", {
-										hasCanvasAgent: !!canvasAgent,
-										hasParts: Array.isArray(messagePayload?.parts),
-										partsLength: Array.isArray(messagePayload?.parts)
-											? messagePayload.parts.length
-											: 0,
-										partsTypes: Array.isArray(messagePayload?.parts)
-											? (
-													messagePayload.parts as Array<Record<string, unknown>>
-												).map((p) => p?.type)
-											: [],
-									})
-
-									// Process canvas tool parts from the final response
-									if (Array.isArray(messagePayload?.parts)) {
-										debugLog("[ChatMessages] Processing parts array:", {
-											length: messagePayload.parts.length,
-											allParts: messagePayload.parts.map(
-												(p: Record<string, unknown>) => ({
-													type: p?.type,
-													toolName: p?.toolName,
-													state: p?.state,
-												}),
-											),
-										})
-										for (const part of messagePayload.parts as Array<
-											Record<string, unknown>
-										>) {
-											// Debug: log each part
-											if (part?.type === "tool-generic") {
-												debugLog("[ChatMessages] Found tool-generic part:", {
-													toolName: part?.toolName,
-													state: part?.state,
-													hasOutputText: typeof part?.outputText === "string",
-													outputTextPreview:
-														typeof part?.outputText === "string"
-															? (part.outputText as string).substring(0, 100)
-															: null,
-												})
-											}
-
-											if (
-												part?.type === "tool-generic" &&
-												typeof part?.toolName === "string" &&
-												part.toolName.includes("canvasApplyChanges") &&
-												part?.state === "output-available" &&
-												typeof part?.outputText === "string"
-											) {
-												debugLog(
-													"[ChatMessages] Processing canvas tool from final parts:",
-													{
-														toolName: part.toolName,
-														outputTextLength: (part.outputText as string)
-															.length,
-														hasCanvasAgent: !!canvasAgent,
-													},
-												)
-
-												if (!canvasAgent) {
-													console.warn(
-														"[ChatMessages] Cannot apply canvas changes - canvasAgent is null",
-													)
-													continue
-												}
-
-												try {
-													const applied = canvasAgent.processToolOutput(
-														part.toolName,
-														part.outputText as string,
-													)
-													if (applied) {
-														debugLog(
-															"[ChatMessages] Canvas changes applied successfully from final parts",
-														)
-													} else {
-														console.warn(
-															"[ChatMessages] Canvas changes were not applied from final parts",
-														)
-													}
-												} catch (err) {
-													console.error(
-														"[ChatMessages] Failed to apply canvas changes from final parts:",
-														err,
-													)
-												}
-											}
-										}
-									}
 									const updatedAssistant = {
 										...assistantPlaceholder,
 										content: finalText,
@@ -1457,69 +1283,6 @@ function useClaudeChat({
 										{ type: "text", text: finalText },
 									] as ClaudeChatMessage["parts"])
 
-							// Process canvas tool parts from the final response (STREAMING PATH)
-							debugLog("[ChatMessages] Final event received (streaming):", {
-								hasCanvasAgent: !!canvasAgent,
-								hasParts: Array.isArray(messagePayload?.parts),
-								partsLength: Array.isArray(messagePayload?.parts)
-									? messagePayload.parts.length
-									: 0,
-							})
-							if (Array.isArray(messagePayload?.parts) && canvasAgent) {
-								debugLog(
-									"[ChatMessages] Processing parts for canvas (streaming):",
-									{
-										length: messagePayload.parts.length,
-										allParts: messagePayload.parts.map(
-											(p: Record<string, unknown>) => ({
-												type: p?.type,
-												toolName: p?.toolName,
-												state: p?.state,
-											}),
-										),
-									},
-								)
-								for (const part of messagePayload.parts as Array<
-									Record<string, unknown>
-								>) {
-									if (
-										part?.type === "tool-generic" &&
-										typeof part?.toolName === "string" &&
-										part.toolName.includes("canvasApplyChanges") &&
-										part?.state === "output-available" &&
-										typeof part?.outputText === "string"
-									) {
-										debugLog(
-											"[ChatMessages] Applying canvas changes (streaming):",
-											{
-												toolName: part.toolName,
-												outputTextLength: (part.outputText as string).length,
-											},
-										)
-										try {
-											const applied = canvasAgent.processToolOutput(
-												part.toolName,
-												part.outputText as string,
-											)
-											if (applied) {
-												debugLog(
-													"[ChatMessages] Canvas changes applied successfully (streaming)",
-												)
-											} else {
-												console.warn(
-													"[ChatMessages] Canvas changes were not applied (streaming)",
-												)
-											}
-										} catch (err) {
-											console.error(
-												"[ChatMessages] Failed to apply canvas changes (streaming):",
-												err,
-											)
-										}
-									}
-								}
-							}
-
 							const updatedAssistant = {
 								...assistantPlaceholder,
 								content: finalText,
@@ -1617,7 +1380,6 @@ function useClaudeChat({
 			onConversationId,
 			setMessages,
 			status,
-			canvasAgent,
 			onComplete,
 			onSdkSessionId,
 		],
@@ -1693,12 +1455,6 @@ export function ChatMessages({
 	const skipHydrationRef = useRef(false)
 
 	const { setDocumentIds, clear } = useGraphHighlights()
-	const { scopedDocumentIds, placedDocumentIds } = useCanvasSelection()
-	const { hasScopedDocuments, scopedCount } = useCanvasState()
-	const { viewMode } = useViewMode()
-
-	// Canvas agent integration for context
-	const canvasAgent = useCanvasAgentOptional()
 
 	// Mode and Model now handled by Claude Agent SDK backend
 	// Project scoping for chat (defaults to global selection or All Projects)
@@ -1824,11 +1580,7 @@ export function ChatMessages({
 					: mentionedDocIdsRef.current
 
 			const scopedIds =
-				currentMentionedIds.length > 0
-					? currentMentionedIds
-					: hasScopedDocuments
-						? scopedDocumentIds
-						: undefined
+				currentMentionedIds.length > 0 ? currentMentionedIds : undefined
 
 			const metadata: Record<string, unknown> = {}
 			if (project && project !== "__ALL__") {
@@ -1840,18 +1592,6 @@ export function ChatMessages({
 			if (currentMentionedIds.length > 0) {
 				metadata.forceRawDocs = true
 				metadata.mentionedDocIds = currentMentionedIds
-			}
-
-			// Add canvas context when user is viewing the canvas
-			if (viewMode === "infinity" && canvasAgent) {
-				const canvasContext = canvasAgent.buildContextForAgent()
-				if (canvasContext) {
-					metadata.canvasContext = canvasContext
-					debugLog(
-						"[ChatMessages] Including canvas context in request:",
-						canvasContext,
-					)
-				}
 			}
 
 			// Clear the pending ref after using it
@@ -1869,13 +1609,9 @@ export function ChatMessages({
 			}
 		},
 		[
-			hasScopedDocuments,
-			scopedDocumentIds,
 			project,
 			expandContext,
 			provider, // Add provider to dependencies
-			viewMode,
-			canvasAgent,
 		],
 	)
 
@@ -1978,81 +1714,48 @@ export function ChatMessages({
 		let ignore = false
 		async function load() {
 			try {
-				// If there are canvas docs, use those. Otherwise fetch all project docs
-				if (placedDocumentIds && placedDocumentIds.length > 0) {
-					const res = await fetch(
-						`${BACKEND_URL}/v3/documents/documents/by-ids`,
-						{
-							method: "POST",
-							credentials: "include",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({ ids: placedDocumentIds, by: "id" }),
-						},
-					)
-					if (!res.ok) return
-					const data = await res.json()
-					if (ignore) return
-					const docs = Array.isArray(data?.documents) ? data.documents : []
-					setCanvasDocs(
-						docs.map((d: any) => ({
-							id: d.id,
-							title: d.title ?? null,
-							type: d.type ?? null,
-							url: d.url ?? null,
-							preview:
-								(d.metadata &&
-									(d.metadata.ogImage ||
-										d.metadata.twitterImage ||
-										d.metadata.previewImage)) ||
-								d.ogImage ||
-								null,
-						})),
-					)
-				} else {
-					// Fetch all documents from current project
-					const containerTags =
-						selectedProject && selectedProject !== DEFAULT_PROJECT_ID
-							? [selectedProject]
-							: undefined
-					const res = await fetch(`${BACKEND_URL}/v3/documents/documents`, {
-						method: "POST",
-						credentials: "include",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							containerTags,
-							limit: 50,
-							page: 1,
-							sort: "updatedAt",
-							order: "desc",
-						}),
-					})
-					if (!res.ok) return
-					const data = await res.json()
-					if (ignore) return
-					const docs = Array.isArray(data?.documents) ? data.documents : []
-					setCanvasDocs(
-						docs.map((d: any) => ({
-							id: d.id,
-							title: d.title ?? null,
-							type: d.type ?? null,
-							url: d.url ?? null,
-							preview:
-								(d.metadata &&
-									(d.metadata.ogImage ||
-										d.metadata.twitterImage ||
-										d.metadata.previewImage)) ||
-								d.ogImage ||
-								null,
-						})),
-					)
-				}
+				const containerTags =
+					selectedProject && selectedProject !== DEFAULT_PROJECT_ID
+						? [selectedProject]
+						: undefined
+				const res = await fetch(`${BACKEND_URL}/v3/documents/documents`, {
+					method: "POST",
+					credentials: "include",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						containerTags,
+						limit: 50,
+						page: 1,
+						sort: "updatedAt",
+						order: "desc",
+					}),
+				})
+				if (!res.ok) return
+				const data = await res.json()
+				if (ignore) return
+				const docs = Array.isArray(data?.documents) ? data.documents : []
+				setCanvasDocs(
+					docs.map((d: any) => ({
+						id: d.id,
+						title: d.title ?? null,
+						type: d.type ?? null,
+						url: d.url ?? null,
+						preview:
+							(d.metadata &&
+								(d.metadata.ogImage ||
+									d.metadata.twitterImage ||
+									d.metadata.previewImage)) ||
+							d.ogImage ||
+							null,
+					})),
+				)
 			} catch {}
 		}
 		load()
 		return () => {
 			ignore = true
 		}
-	}, [placedDocumentIds, selectedProject])
+	}, [selectedProject])
 
 	const filteredMention = useMemo(() => {
 		const q = mentionQuery.trim().toLowerCase()

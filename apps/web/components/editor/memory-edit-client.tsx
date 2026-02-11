@@ -34,7 +34,6 @@ import { ChatRewrite } from "@/components/views/chat"
 import type { DocumentWithMemories } from "@/lib/types/document"
 import { TweetCard } from "@/components/content-cards/tweet"
 import { useChatMentionQueue, useProject } from "@/stores"
-import { useCanvasSelection } from "@/stores/canvas"
 import { formatDate, getDocumentSnippet, stripMarkdown } from "../memories"
 import { RelatedDocumentsPanel } from "../memories/related-documents-panel"
 import { DocumentProjectTransfer } from "./document-project-transfer"
@@ -307,9 +306,6 @@ export function MemoryEditClient({
 	const deleteDocumentMutation = useDeleteDocument(selectedProject)
 	const [isDeleting, setIsDeleting] = useState(false)
 	const { enqueue } = useChatMentionQueue()
-	const { scopedDocumentIds, setScopedDocumentIds, clearScope } =
-		useCanvasSelection()
-	const initialScopeRef = useRef<string[] | null>(null)
 
 	const [activeProjectTag, setActiveProjectTag] = useState<string>(
 		initialDocument.containerTags?.[0] ?? DEFAULT_PROJECT_ID,
@@ -394,24 +390,9 @@ export function MemoryEditClient({
 		}
 	}, [document.id, isLoadingRelatedLinks, router])
 
-	if (initialScopeRef.current === null) {
-		initialScopeRef.current = Array.isArray(scopedDocumentIds)
-			? [...scopedDocumentIds]
-			: []
-	}
-
 	useEffect(() => {
 		enqueue([document.id])
-		setScopedDocumentIds([document.id])
-		return () => {
-			const previous = initialScopeRef.current ?? []
-			if (previous.length > 0) {
-				setScopedDocumentIds(previous)
-			} else {
-				clearScope()
-			}
-		}
-	}, [clearScope, document.id, enqueue, setScopedDocumentIds])
+	}, [document.id, enqueue])
 
 	const [isContentOpen, setIsContentOpen] = useState(false)
 	const [isDesktopLayout, setIsDesktopLayout] = useState(false)

@@ -9,24 +9,16 @@ import { useInfiniteQuery } from "@tanstack/react-query"
 import { Button } from "@ui/components/button"
 import { GlassMenuEffect } from "@ui/other/glass-effect"
 import {
-	Copy,
-	FolderOpen,
 	LoaderIcon,
 	MessageSquare,
-	Palette,
-	Redo2,
 	RefreshCcw,
 	Search,
-	Trash2,
-	Undo2,
 	X,
 } from "lucide-react"
-import { AnimatePresence, motion } from "motion/react"
+import { motion } from "motion/react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import type { z } from "zod"
-import { TldrawCanvas } from "@/components/canvas"
-import { CanvasAgentProvider } from "@/components/canvas/canvas-agent-provider"
 import { InstallPrompt } from "@/components/install-prompt"
 import { MemoryListView } from "@/components/memory-list-view"
 import Menu from "@/components/menu"
@@ -42,70 +34,17 @@ import { ChatRewrite } from "@/components/views/chat"
 import { TOUR_STEP_IDS } from "@/lib/tour-constants"
 import { useViewMode } from "@/lib/view-mode-context"
 import { useChatOpen, useProject } from "@/stores"
-import { useCanvasStore } from "@/stores/canvas"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
 // Experimental mode removed from UI; no project meta needed here
 // type Project = z.infer<typeof ProjectSchema>
 
-// Canvas Actions Bar component - uses editor from global store
-const CanvasActionsBar = () => {
-	const editor = useCanvasStore((s) => s.editor)
-
-	if (!editor) return null
-
-	return (
-		<div className="flex items-center gap-1 bg-background border border-foreground/15 rounded-lg px-1 py-1">
-			<Button
-				className="w-8 h-8 p-0 bg-transparent hover:bg-foreground/10 text-foreground/70 hover:text-foreground rounded-md"
-				onClick={() => editor.undo()}
-				size="sm"
-				title="Desfazer"
-				variant="ghost"
-			>
-				<Undo2 className="h-4 w-4" />
-			</Button>
-			<Button
-				className="w-8 h-8 p-0 bg-transparent hover:bg-foreground/10 text-foreground/70 hover:text-foreground rounded-md"
-				onClick={() => editor.redo()}
-				size="sm"
-				title="Refazer"
-				variant="ghost"
-			>
-				<Redo2 className="h-4 w-4" />
-			</Button>
-			<div className="w-px h-5 bg-foreground/15 mx-1" />
-			<Button
-				className="w-8 h-8 p-0 bg-transparent hover:bg-foreground/10 text-foreground/70 hover:text-foreground rounded-md"
-				onClick={() => editor.deleteShapes(editor.getSelectedShapeIds())}
-				size="sm"
-				title="Excluir"
-				variant="ghost"
-			>
-				<Trash2 className="h-4 w-4" />
-			</Button>
-			<Button
-				className="w-8 h-8 p-0 bg-transparent hover:bg-foreground/10 text-foreground/70 hover:text-foreground rounded-md"
-				onClick={() => editor.duplicateShapes(editor.getSelectedShapeIds())}
-				size="sm"
-				title="Duplicar"
-				variant="ghost"
-			>
-				<Copy className="h-4 w-4" />
-			</Button>
-		</div>
-	)
-}
-
 const MemoryGraphPage = () => {
 	const isMobile = useIsMobile()
-	const { viewMode, setViewMode } = useViewMode()
+	const { viewMode } = useViewMode()
 	const { selectedProject } = useProject()
 	const { isOpen, setIsOpen } = useChatOpen()
-	const setShowProjectModal = useCanvasStore((s) => s.setShowProjectModal)
-	const isPaletteOpen = useCanvasStore((s) => s.isPaletteOpen)
-	const togglePalette = useCanvasStore((s) => s.togglePalette)
 	const [showAddMemoryView, setShowAddMemoryView] = useState(false)
 
 	// URL params for filter persistence
@@ -546,14 +485,6 @@ const MemoryGraphPage = () => {
 		// Document deletion handled by refetch
 	}, [])
 
-	// Handle view mode change
-	const _handleViewModeChange = useCallback(
-		(mode: "list" | "infinity") => {
-			setViewMode(mode)
-		},
-		[setViewMode],
-	)
-
 	// Prevent body scrolling
 	useEffect(() => {
 		document.body.style.overflow = "hidden"
@@ -570,8 +501,7 @@ const MemoryGraphPage = () => {
 	}, [])
 
 	return (
-		<CanvasAgentProvider>
-			<div className="relative h-screen bg-background overflow-hidden touch-none">
+		<div className="relative h-screen bg-background overflow-hidden touch-none">
 				{/* Main content area */}
 				<motion.div
 					animate={{
@@ -586,7 +516,6 @@ const MemoryGraphPage = () => {
 					<motion.div className="absolute top-0 left-0 right-0 z-20 px-4 pt-2">
 						<div className="flex flex-col gap-2">
 							<div className="flex items-center justify-between gap-2">
-								{/* Empty spacer when in canvas mode */}
 								<div className="flex-1" />
 
 								{/* Search Input - only visible in list view, centered */}
@@ -624,54 +553,26 @@ const MemoryGraphPage = () => {
 											Rate limit · aguarde {rateLimitSecondsLeft}s
 										</span>
 									) : null}
-									{viewMode !== "infinity" && (
-										<div
-											className="flex items-center gap-2 pointer-events-auto"
-											id={TOUR_STEP_IDS.MENU_PROJECTS}
-										>
-											<ProjectSelector className="pointer-events-auto" />
-										</div>
-									)}
-									{viewMode === "infinity" && (
-										<>
-											<Button
-												className="bg-background border border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10 px-2 sm:px-3 rounded-md"
-												onClick={() => setShowProjectModal(true)}
-												size="sm"
-												variant="ghost"
-											>
-												<FolderOpen className="h-4 w-4 text-current" />
-												<span className="hidden md:inline ml-2">Projetos</span>
-											</Button>
-											<Button
-												className={`bg-background border px-2 sm:px-3 rounded-md ${
-													isPaletteOpen
-														? "border-foreground/30 text-foreground bg-foreground/10"
-														: "border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10"
-												}`}
-												onClick={togglePalette}
-												size="sm"
-												variant="ghost"
-											>
-												<Palette className="h-4 w-4 text-current" />
-												<span className="hidden md:inline ml-2">Add Docs</span>
-											</Button>
-											<Button
-												className="bg-background border border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10 px-2 sm:px-3 rounded-md"
-												disabled={manualRefreshDisabled}
-												onClick={handleManualRefresh}
-												size="sm"
-												variant="ghost"
-											>
-												{isRefreshing ? (
-													<LoaderIcon className="h-4 w-4 animate-spin text-current" />
-												) : (
-													<RefreshCcw className="h-4 w-4 text-current" />
-												)}
-												<span className="hidden md:inline ml-2">Atualizar</span>
-											</Button>
-										</>
-									)}
+									<div
+										className="flex items-center gap-2 pointer-events-auto"
+										id={TOUR_STEP_IDS.MENU_PROJECTS}
+									>
+										<ProjectSelector className="pointer-events-auto" />
+									</div>
+									<Button
+										className="bg-background border border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10 px-2 sm:px-3 rounded-md"
+										disabled={manualRefreshDisabled}
+										onClick={handleManualRefresh}
+										size="sm"
+										variant="ghost"
+									>
+										{isRefreshing ? (
+											<LoaderIcon className="h-4 w-4 animate-spin text-current" />
+										) : (
+											<RefreshCcw className="h-4 w-4 text-current" />
+										)}
+										<span className="hidden md:inline ml-2">Atualizar</span>
+									</Button>
 								</div>
 							</div>
 
@@ -693,54 +594,33 @@ const MemoryGraphPage = () => {
 						</div>
 					</motion.div>
 
-					{/* Animated content switching */}
-					<AnimatePresence mode="wait">
-						{viewMode === "infinity" ? (
-							<motion.div
-								animate={{ opacity: 1, scale: 1 }}
-								className="absolute inset-0"
-								exit={{ opacity: 0, scale: 0.95 }}
-								initial={{ opacity: 0, scale: 0.95 }}
-								key="infinity"
-								transition={{
-									type: "spring",
-									stiffness: 500,
-									damping: 30,
-								}}
-							>
-								<TldrawCanvas />
-							</motion.div>
-						) : (
-							<motion.div
-								animate={{ opacity: 1, scale: 1 }}
-								className="absolute inset-0 md:ml-18"
-								exit={{ opacity: 0, scale: 0.95 }}
-								id={TOUR_STEP_IDS.MEMORY_LIST}
-								initial={{ opacity: 0, scale: 0.95 }}
-								key="list"
-								transition={{
-									type: "spring",
-									stiffness: 500,
-									damping: 30,
-								}}
-							>
-								<MemoryListView
-									documents={allDocuments}
-									error={error}
-									hasMore={hasMore}
-									isLoading={isPending}
-									isLoadingMore={isLoadingMore}
-									loadMoreDocuments={loadMoreDocuments}
-									onDocumentDeleted={handleDocumentDeleted}
-									totalLoaded={totalLoaded}
-								>
-									<div className="absolute inset-0 flex items-center justify-center">
-										<AddMemoryView inline onClose={() => {}} />
-									</div>
-								</MemoryListView>
-							</motion.div>
-						)}
-					</AnimatePresence>
+					<motion.div
+						animate={{ opacity: 1, scale: 1 }}
+						className="absolute inset-0 md:ml-18"
+						id={TOUR_STEP_IDS.MEMORY_LIST}
+						initial={{ opacity: 0, scale: 0.95 }}
+						key="list"
+						transition={{
+							type: "spring",
+							stiffness: 500,
+							damping: 30,
+						}}
+					>
+						<MemoryListView
+							documents={allDocuments}
+							error={error}
+							hasMore={hasMore}
+							isLoading={isPending}
+							isLoadingMore={isLoadingMore}
+							loadMoreDocuments={loadMoreDocuments}
+							onDocumentDeleted={handleDocumentDeleted}
+							totalLoaded={totalLoaded}
+						>
+							<div className="absolute inset-0 flex items-center justify-center">
+								<AddMemoryView inline onClose={() => {}} />
+							</div>
+						</MemoryListView>
+					</motion.div>
 
 					{/* Top Bar */}
 					{/* Floating Open Chat Button */}
@@ -783,8 +663,6 @@ const MemoryGraphPage = () => {
 							<ThemeToggle className="relative z-10 w-10 h-10 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 p-0" />
 						</div>
 
-						{/* Canvas Actions - only visible in infinity/canvas mode */}
-						{viewMode === "infinity" && <CanvasActionsBar />}
 					</motion.div>
 				</motion.div>
 
@@ -833,8 +711,7 @@ const MemoryGraphPage = () => {
 					isOpen={showReferralModal}
 					onClose={() => setShowReferralModal(false)}
 				/>
-			</div>
-		</CanvasAgentProvider>
+		</div>
 	)
 }
 
