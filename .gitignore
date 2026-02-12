@@ -54,3 +54,8 @@ __pycache__
 .security-key
 logs/security/
 apps/api/.env.bak
+
+# Backup files
+*.bak
+*.bak[0-9]
+*.bakraw
