@@ -28,6 +28,7 @@ import {
 	MessageSquareMore,
 	Plus,
 	Puzzle,
+	Pencil,
 	User,
 	X,
 } from "lucide-react"
@@ -64,9 +65,13 @@ export const MCPIcon = ({ className }: { className?: string }) => {
 function Menu({
 	id,
 	chatRightOffset = 0,
+	hoverReveal = false,
+	flatCanvas = false,
 }: {
 	id?: string
 	chatRightOffset?: number
+	hoverReveal?: boolean
+	flatCanvas?: boolean
 }) {
 	const router = useRouter()
 	const searchParams = useSearchParams()
@@ -82,7 +87,7 @@ function Menu({
 	] as const
 	type ValidView = (typeof validViews)[number]
 
-	const [_isHovered, _setIsHovered] = useState(false)
+	const [isHovered, setIsHovered] = useState(!hoverReveal)
 	const [expandedView, setExpandedView] = useState<
 		"addUrl" | "mcp" | "projects" | "profile" | "integrations" | null
 	>(null)
@@ -147,6 +152,12 @@ function Menu({
 			disabled: false,
 		},
 		{
+			icon: Pencil,
+			text: "Canvas",
+			key: "canvas" as const,
+			disabled: false,
+		},
+		{
 			icon: Puzzle,
 			text: "Connections",
 			key: "connections" as const,
@@ -167,7 +178,10 @@ function Menu({
 			| "connections"
 			| "projects"
 			| "profile"
-			| "list",
+			| "projects"
+			| "profile"
+			| "list"
+			| "canvas",
 	) => {
 		// Prevent multiple rapid clicks
 		if (isClickProcessingRef.current) {
@@ -189,6 +203,10 @@ function Menu({
 			// Switch to list view mode
 			setViewMode("list")
 			router.push("/")
+			setIsMobileMenuOpen(false)
+			setExpandedView(null)
+		} else if (key === "canvas") {
+			router.push("/canvas")
 			setIsMobileMenuOpen(false)
 			setExpandedView(null)
 		} else if (key === "connections") {
@@ -291,6 +309,12 @@ function Menu({
 	const isCollapsedToIcons = !isMobile && !expandedView && isChatPanelOpen
 	const _menuWidth = isCollapsedToIcons ? 280 : 600
 
+	useEffect(() => {
+		if (!hoverReveal) {
+			setIsHovered(true)
+		}
+	}, [hoverReveal])
+
 	// Dynamic z-index for mobile based on active panel
 	const mobileZIndex = isMobile && activePanel === "menu" ? "z-[70]" : "z-[100]"
 
@@ -299,11 +323,29 @@ function Menu({
 			{/* Desktop Floating Sidebar Menu */}
 			{!isMobile && (
 				<TooltipProvider delayDuration={100}>
+					{hoverReveal && (
+						<div
+							className="fixed left-0 top-0 h-screen w-3 z-[9998]"
+							onMouseEnter={() => setIsHovered(true)}
+						/>
+					)}
 					{/* Floating Menu Container - Centered on left side */}
-					<div className="fixed left-4 top-1/2 -translate-y-1/2 z-[10000] pointer-events-auto">
+					<div
+						className={`fixed left-4 top-1/2 -translate-y-1/2 z-[10000] pointer-events-auto transition-transform duration-200 ${
+							hoverReveal && !isHovered ? "-translate-x-[130%]" : "translate-x-0"
+						}`}
+						onMouseEnter={() => setIsHovered(true)}
+						onMouseLeave={() => {
+							if (hoverReveal) {
+								setIsHovered(false)
+							}
+						}}
+					>
 						<motion.nav
 							animate={{ x: 0, opacity: 1, scale: 1 }}
-							className="flex flex-col items-center py-2 px-1.5 bg-background border border-border rounded-xl shadow-2xl"
+							className={`flex flex-col items-center py-2 px-1.5 bg-background border border-border rounded-xl ${
+								flatCanvas ? "shadow-none" : "shadow-2xl"
+							}`}
 							id={id}
 							initial={{ x: -20, opacity: 0, scale: 0.95 }}
 							transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}

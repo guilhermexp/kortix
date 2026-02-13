@@ -840,10 +840,11 @@ function useClaudeChat({
 
 				const pushConversationId = (value: unknown) => {
 					if (typeof value === "string" && value.length > 0) {
-						if (conversationRef.current !== value) {
+						const changed = conversationRef.current !== value
+						if (changed) {
 							conversationRef.current = value
 						}
-						if (onConversationId) {
+						if (changed && onConversationId) {
 							onConversationId(value)
 						}
 					}
@@ -1434,9 +1435,11 @@ function useClaudeChat({
 export function ChatMessages({
 	embedded = false,
 	documentContext,
+	compact = false,
 }: {
 	embedded?: boolean
 	documentContext?: React.ReactNode
+	compact?: boolean
 }) {
 	const { selectedProject } = useProject()
 	const {
@@ -1657,6 +1660,9 @@ export function ChatMessages({
 		getSdkSessionId, // Passar função para carregar sdkSessionId salvo
 		onComplete: handleAssistantComplete,
 		onConversationId: (nextId) => {
+			if (nextId === activeChatIdRef.current && nextId === currentChatId) {
+				return
+			}
 			activeChatIdRef.current = nextId
 			shouldGenerateTitleRef.current = true
 			skipHydrationRef.current = true
@@ -1718,7 +1724,7 @@ export function ChatMessages({
 					selectedProject && selectedProject !== DEFAULT_PROJECT_ID
 						? [selectedProject]
 						: undefined
-				const res = await fetch(`${BACKEND_URL}/v3/documents/documents`, {
+				const res = await fetch(`${BACKEND_URL}/v3/documents`, {
 					method: "POST",
 					credentials: "include",
 					headers: { "Content-Type": "application/json" },
@@ -1997,7 +2003,10 @@ export function ChatMessages({
 		<div className="flex flex-col h-full">
 			<div className="relative flex-1 bg-chat-surface overflow-hidden">
 				<div
-					className="flex flex-col gap-3 absolute inset-0 overflow-y-auto px-4 pt-4 pb-6"
+					className={cn(
+						"flex flex-col absolute inset-0 overflow-y-auto",
+						compact ? "gap-2 px-3 pt-3 pb-4" : "gap-3 px-4 pt-4 pb-6",
+					)}
 					onScroll={onScroll}
 					ref={scrollContainerRef}
 				>
@@ -2017,7 +2026,12 @@ export function ChatMessages({
 								className={cn(
 									"flex flex-col gap-2 w-full",
 									message.role === "user"
-										? "border border-border/30 py-3 px-4 rounded-lg bg-muted/20 backdrop-blur-xl text-foreground"
+										? cn(
+											"border text-foreground",
+											compact
+												? "border-border/10 py-2 px-3 rounded-md bg-muted/10"
+												: "border-border/30 py-3 px-4 rounded-lg bg-muted/20 backdrop-blur-xl",
+										)
 										: "py-1 px-0 text-foreground",
 								)}
 							>
@@ -2326,7 +2340,10 @@ export function ChatMessages({
 							{message.role === "assistant" && (
 								<div className="flex items-center gap-1 mt-1">
 									<Button
-										className="size-7 text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border"
+										className={cn(
+											"text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border/15",
+											compact ? "size-6" : "size-7",
+										)}
 										onClick={() => {
 											const combinedText = message.parts
 												.filter((part) => isTextPart(part))
@@ -2338,10 +2355,13 @@ export function ChatMessages({
 										size="icon"
 										variant="ghost"
 									>
-										<Copy className="size-3.5" />
+										<Copy className={compact ? "size-3" : "size-3.5"} />
 									</Button>
 									<Button
-										className="size-7 text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border"
+										className={cn(
+											"text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border/15",
+											compact ? "size-6" : "size-7",
+										)}
 										disabled={
 											message.id ? savingMessageIds.has(message.id) : false
 										}
@@ -2369,25 +2389,33 @@ export function ChatMessages({
 										variant="ghost"
 									>
 										{message.id && savingMessageIds.has(message.id) ? (
-											<Spinner className="size-3.5" />
+											<Spinner className={compact ? "size-3" : "size-3.5"} />
 										) : (
-											<Plus className="size-3.5" />
+											<Plus className={compact ? "size-3" : "size-3.5"} />
 										)}
 									</Button>
 									<Button
-										className="size-7 text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border"
+										className={cn(
+											"text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border/15",
+											compact ? "size-6" : "size-7",
+										)}
 										onClick={() => regenerate({ messageId: message.id })}
 										size="icon"
 										variant="ghost"
 									>
-										<RotateCcw className="size-3.5" />
+										<RotateCcw className={compact ? "size-3" : "size-3.5"} />
 									</Button>
 								</div>
 							)}
 						</div>
 					))}
 					{isThinking && !hasActiveTools && (
-						<div className="flex text-muted-foreground justify-start gap-1.5 px-4 py-3 items-center w-full">
+						<div
+							className={cn(
+								"flex text-muted-foreground justify-start gap-1.5 items-center w-full",
+								compact ? "px-3 py-2" : "px-4 py-3",
+							)}
+						>
 							<Spinner className="size-3" /> Pensando...
 						</div>
 					)}
@@ -2414,7 +2442,10 @@ export function ChatMessages({
 				</Button>
 			</div>
 			<form
-				className="px-3 pb-3 pt-1 relative bg-chat-surface"
+				className={cn(
+					"relative bg-chat-surface",
+					compact ? "px-2.5 pb-2.5 pt-1" : "px-3 pb-3 pt-1",
+				)}
 				onSubmit={(e) => {
 					e.preventDefault()
 					if (status === "submitted") return
@@ -2471,9 +2502,21 @@ export function ChatMessages({
 						value={provider}
 					/>
 				</div>
-				<InputGroup className="rounded-lg border border-border/20 bg-muted/20 focus-within:border-border/40 focus-within:ring-0 focus-within:ring-offset-0 transition-colors">
+				<InputGroup
+					className={cn(
+						"focus-within:ring-0 focus-within:ring-offset-0 transition-colors",
+						compact
+							? "rounded-md border border-border/10 bg-black/30 focus-within:border-border/25"
+							: "rounded-lg border border-border/20 bg-muted/20 focus-within:border-border/40",
+					)}
+				>
 					<InputGroupTextarea
-						className="text-foreground placeholder-muted-foreground/50 text-sm"
+						className={cn(
+							"text-foreground placeholder-muted-foreground/50",
+							compact
+								? "min-h-[72px] px-3 py-2.5 text-[13px]"
+								: "text-sm",
+						)}
 						onChange={(e) => {
 							debugLog("[Chat Input] onChange:", e.target.value)
 							setInput(e.target.value)

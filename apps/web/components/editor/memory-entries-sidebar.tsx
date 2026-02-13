@@ -187,10 +187,10 @@ export function MemoryEntriesSidebar({
 		return date.toLocaleDateString()
 	}
 
-	const autoSummaryMemory = useMemo(() => {
+	const autoSummaryMemory = useMemo<MemoryEntry | null>(() => {
 		if (memories.length > 0 || !document) return null
 
-		const raw = asRecord(document.raw)
+		const raw = asRecord((document as any).raw)
 		const extraction = asRecord(raw?.extraction)
 		const metadata = asRecord(document.metadata)
 
@@ -214,12 +214,12 @@ export function MemoryEntriesSidebar({
 			return rawTs ? new Date(rawTs) : new Date()
 		})()
 
-		return {
+		const autoSummary: any = {
 			id: `auto-summary-${document.id}`,
 			documentId: document.id,
-			spaceId: document.memoryEntries?.[0]?.spaceId ?? null,
-			orgId: document.orgId,
-			userId: document.userId ?? null,
+			spaceId: (document.memoryEntries?.[0] as any)?.spaceId ?? null,
+			orgId: (document as any).orgId,
+			userId: (document as any).userId ?? null,
 			memory: displayText,
 			metadata: {
 				type: "auto-summary",
@@ -236,13 +236,15 @@ export function MemoryEntriesSidebar({
 			isForgotten: false,
 			forgetAfter: null,
 			forgetReason: null,
-			createdAt: timestamp,
-			updatedAt: timestamp,
+			createdAt: timestamp.toISOString(),
+			updatedAt: timestamp.toISOString(),
 			sourceAddedAt: null,
 			sourceRelevanceScore: null,
 			sourceMetadata: null,
 			spaceContainerTag: null,
-		} as MemoryEntry
+		}
+
+		return autoSummary as MemoryEntry
 	}, [document, memories.length])
 
 	const renderMemories = useMemo(() => {
@@ -311,7 +313,7 @@ export function MemoryEntriesSidebar({
 		if (!document) return null
 
 		const metadata = asRecord(document.metadata)
-		const raw = asRecord(document.raw)
+		const raw = asRecord((document as any).raw)
 		const extraction = asRecord(raw?.extraction)
 		const youtube = asRecord(extraction?.youtube)
 		const firecrawl =
@@ -611,7 +613,7 @@ export function MemoryEntriesSidebar({
 	// Build small gallery of additional images for web/repository URLs
 	const additionalImages = useMemo(() => {
 		if (!document) return [] as string[]
-		const raw = asRecord(document.raw)
+		const raw = asRecord((document as any).raw)
 		const extraction = asRecord(raw?.extraction) || asRecord(raw)
 		const baseUrl =
 			document.url && typeof document.url === "string"
@@ -670,21 +672,22 @@ export function MemoryEntriesSidebar({
 
 	// Get status badge
 	const getStatusBadge = (memory: MemoryEntry) => {
-		if (memory.isForgotten) {
+		const mem = memory as any
+		if (mem.isForgotten) {
 			return (
 				<span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
 					Forgotten
 				</span>
 			)
 		}
-		if (memory.isInference) {
+		if (mem.isInference) {
 			return (
 				<span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
 					Inference
 				</span>
 			)
 		}
-		if (memory.isLatest) {
+		if (mem.isLatest) {
 			return (
 				<span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
 					Latest
@@ -905,7 +908,7 @@ export function MemoryEntriesSidebar({
 										<div className="flex items-center gap-2 flex-1 min-w-0">
 											{getStatusBadge(memory)}
 											<span className="text-xs text-muted-foreground">
-												v{memory.version}
+												v{(memory as any).version}
 											</span>
 										</div>
 										{!isSynthetic && (
@@ -933,8 +936,8 @@ export function MemoryEntriesSidebar({
 
 									<div className="flex items-center justify-between text-xs text-muted-foreground">
 										<span>{formatDate(memory.createdAt.toString())}</span>
-										{memory.sourceCount > 0 && (
-											<span>{memory.sourceCount} sources</span>
+										{(memory as any).sourceCount > 0 && (
+											<span>{(memory as any).sourceCount} sources</span>
 										)}
 									</div>
 								</div>

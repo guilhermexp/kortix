@@ -67,13 +67,13 @@ import { MarkdownContent } from "./markdown-content"
 // Project interface for type safety
 interface Project {
 	id: string
-	name: string
-	containerTag: string
+	name?: string | null
+	containerTag?: string | null
 }
 
 // Simple hook to get projects list (shared with DocumentProjectTransfer)
 function useProjectsList() {
-	return useQuery<Project[]>({
+	return useQuery({
 		queryKey: ["projects"],
 		queryFn: async () => {
 			const response = await $fetch("@get/projects")
@@ -148,7 +148,7 @@ const getDocumentPreview = (
 ): PreviewData | null => {
 
 	const metadata = asRecord(document.metadata)
-	const raw = asRecord(document.raw)
+	const raw = asRecord((document as any).raw)
 	const rawExtraction = asRecord(raw?.extraction)
 	const rawYoutube = asRecord(rawExtraction?.youtube)
 	const rawFirecrawl =
@@ -246,6 +246,16 @@ const getDocumentPreview = (
 			return false
 		}
 	}
+	const isValidPreviewCandidate = (u?: string | null): u is string => {
+		if (typeof u !== "string") return false
+		const trimmed = u.trim()
+		if (!trimmed) return false
+		if (isInlineSvgDataUrl(trimmed)) return false
+		if (isSvgOrBadge(trimmed)) return false
+		if (isDisallowedBadgeDomain(trimmed)) return false
+		if (isLowResolutionImage(trimmed)) return false
+		return true
+	}
 
 	const sanitizedPreviewImage = (() => {
 		if (typeof documentPreviewImage !== "string") return null
@@ -266,7 +276,7 @@ const getDocumentPreview = (
 				metadataImage,
 				rawImage,
 				rawDirectImage,
-			].find((u): u is string => typeof u === "string" && isGitHubOpenGraph(u))
+			].find((u): u is string => isValidPreviewCandidate(u) && isGitHubOpenGraph(u))
 		: undefined
 	const ordered = [
 		sanitizedPreviewImage,
@@ -276,13 +286,8 @@ const getDocumentPreview = (
 		geminiFileUri,
 		geminiFileUrl,
 		metadataImage,
-	].filter(Boolean) as string[]
-	const filtered = ordered.filter(
-		(u) =>
-			!isSvgOrBadge(u) &&
-			!isDisallowedBadgeDomain(u) &&
-			!isLowResolutionImage(u),
-	)
+	].filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+	const filtered = ordered.filter((u) => isValidPreviewCandidate(u))
 	const extractionImages = (() => {
 		const list: string[] = []
 		const push = (value?: unknown) => {
@@ -353,8 +358,7 @@ const getDocumentPreview = (
 	const finalPreviewImage =
 		preferredGitHubOg ||
 		filtered[0] ||
-		ordered.find(isGitHubOpenGraph) ||
-		metadataImage
+		ordered.find((candidate) => isValidPreviewCandidate(candidate) && isGitHubOpenGraph(candidate))
 	const contentType =
 		(typeof rawExtraction?.contentType === "string" &&
 			rawExtraction.contentType) ||
@@ -372,7 +376,7 @@ const getDocumentPreview = (
 		sanitizedPreviewImage ??
 		extractionImages[0] ??
 		memoryImages[0] ??
-		ordered.find((candidate) => !isLowResolutionImage(candidate)) ??
+		ordered.find((candidate) => isValidPreviewCandidate(candidate)) ??
 		null
 
 	if (!fallbackImage && isGitHubHost(originalUrl)) {
@@ -404,6 +408,9 @@ const getDocumentPreview = (
 	const youtubeUrl =
 		safeHttpUrl(rawYoutube?.url) ?? safeHttpUrl(rawYoutube?.embedUrl)
 	const youtubeThumbnail = safeHttpUrl(rawYoutube?.thumbnail)
+	const validYoutubeThumbnail = isValidPreviewCandidate(youtubeThumbnail)
+		? youtubeThumbnail
+		: undefined
 
 	const isVideoDocument =
 		normalizedType === "video" ||
@@ -415,7 +422,7 @@ const getDocumentPreview = (
 		return {
 			kind: "video",
 			src:
-				youtubeThumbnail ?? fallbackImage ?? getYouTubeThumbnail(originalUrl),
+				validYoutubeThumbnail ?? fallbackImage ?? getYouTubeThumbnail(originalUrl),
 			href: youtubeUrl ?? originalUrl ?? undefined,
 			label: contentType === "video/youtube" ? "YouTube" : label || "Video",
 		}
@@ -470,7 +477,7 @@ function DocumentPreviewModal({
 }) {
 	const router = useRouter()
 	const preview = useMemo(() => getDocumentPreview(document), [document])
-	const activeMemories = document.memoryEntries.filter((m) => !m.isForgotten)
+	const activeMemories = document.memoryEntries.filter((m) => !(m as any).isForgotten)
 	// Use formatted summary WITH markdown for expanded dialog view
 	const displayText = getDocumentSummaryFormatted(document)
 
@@ -501,7 +508,7 @@ function DocumentPreviewModal({
 	const isYouTube = !!youtubeId
 
 	// Check if this is a tweet
-	const rawDoc = asRecord(document.raw)
+	const rawDoc = asRecord((document as any).raw)
 	const rawTweet = rawDoc?.tweet
 	const isTweet =
 		document.type === "tweet" ||
@@ -741,7 +748,7 @@ const MasonryCard = memo(
 	}) => {
 		const router = useRouter()
 		const hasPrefetchedRef = useRef(false)
-		const activeMemories = document.memoryEntries.filter((m) => !m.isForgotten)
+		const activeMemories = document.memoryEntries.filter((m) => !(m as any).isForgotten)
 		const preview = useMemo(() => getDocumentPreview(document), [document])
 
 		// Get projects list for showing project name
@@ -749,7 +756,7 @@ const MasonryCard = memo(
 		// containerTag comes from document.containerTags[0] (now properly included in schema)
 		const containerTag =
 			(document as any).containerTags?.[0] ??
-			document.memoryEntries?.[0]?.spaceContainerTag
+			(document.memoryEntries?.[0] as any)?.spaceContainerTag
 		const projectName = useMemo(
 			() => getProjectName(projects, containerTag),
 			[projects, containerTag]
@@ -1260,7 +1267,15 @@ const MasonryCard = memo(
 										)}
 										loading="lazy"
 										onError={handleImageError}
-										onLoad={() => setImageLoaded(true)}
+										onLoad={(e) => {
+											const img = e.currentTarget
+											// Ignore 1x1/empty placeholders (e.g. transparent proxy fallback).
+											if (img.naturalWidth <= 1 || img.naturalHeight <= 1) {
+												handleImageError()
+												return
+											}
+											setImageLoaded(true)
+										}}
 										referrerPolicy="no-referrer"
 										src={
 											tryWithoutProxy
@@ -1523,7 +1538,7 @@ export const MemoryListView = ({
 				...doc,
 				memoryEntries: doc.memoryEntries.filter(
 					(memory) =>
-						(memory.spaceContainerTag ?? memory.spaceId) === selectedSpace,
+						((memory as any).spaceContainerTag ?? (memory as any).spaceId) === selectedSpace,
 				),
 			}))
 			.filter((doc) => doc.memoryEntries.length > 0)

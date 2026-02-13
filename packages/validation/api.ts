@@ -5,10 +5,85 @@ import {
 	DocumentSchema,
 	MemoryEntrySchema,
 	OrganizationSettingsSchema,
-	RequestTypeEnum,
 } from "./schemas"
 
+export * from "./canvas"
+
+export const ConnectionResponseSchema = z.object({
+	id: z.string(),
+	provider: z.string(),
+	email: z.string().optional(),
+	documentLimit: z.number().optional(),
+	metadata: z.record(z.string(), z.unknown()).optional(),
+	expiresAt: z.string().optional(),
+	createdAt: z.string(),
+})
+
 export const MetadataSchema = BaseMetadataSchema
+
+export const SettingsRequestSchema = OrganizationSettingsSchema.pick({
+	shouldLLMFilter: true,
+	filterPrompt: true,
+	includeItems: true,
+	excludeItems: true,
+	googleDriveCustomKeyEnabled: true,
+	googleDriveClientId: true,
+	googleDriveClientSecret: true,
+	notionCustomKeyEnabled: true,
+	notionClientId: true,
+	notionClientSecret: true,
+	onedriveCustomKeyEnabled: true,
+	onedriveClientId: true,
+	onedriveClientSecret: true,
+}).partial()
+
+export const ProjectSchema = z.object({
+	id: z.string(),
+	name: z.string().nullable().optional(),
+	containerTag: z.string().nullable().optional(),
+	createdAt: z.coerce.date(),
+	updatedAt: z.coerce.date(),
+	isExperimental: z.boolean().default(false),
+	documentCount: z.number().optional(),
+})
+export const CreateProjectSchema = z.object({
+	name: z.string().min(1),
+	description: z.string().optional(),
+	visibility: z.enum(["public", "private", "unlisted"]).optional(),
+})
+export const UpdateProjectSchema = z.object({
+	name: z.string().optional(),
+	description: z.string().optional(),
+	visibility: z.enum(["public", "private", "unlisted"]).optional(),
+	isExperimental: z.boolean().optional(),
+})
+
+export const DeleteProjectSchema = z
+	.object({
+		action: z.enum(["move", "delete"]),
+		targetProjectId: z.string().optional(),
+	})
+	.refine(
+		(data) => {
+			if (data.action === "move") {
+				return !!data.targetProjectId
+			}
+			return true
+		},
+		{
+			message: "targetProjectId is required when action is 'move'",
+		},
+	)
+export const DeleteProjectResponseSchema = z.object({
+	success: z.boolean(),
+	message: z.string(),
+	documentsAffected: z.number(),
+	memoriesAffected: z.number(),
+})
+
+export const ListProjectsResponseSchema = z.object({
+	projects: z.array(ProjectSchema),
+})
 
 export const SearchFiltersSchema = z
 	.object({
@@ -256,6 +331,35 @@ export const ListMemoriesResponseSchema = z
 			},
 		},
 	})
+
+export const DocumentsWithMemoriesQuerySchema = z.object({
+	page: z.number().optional().default(1),
+	limit: z.number().optional().default(10),
+	sort: z.enum(["createdAt", "updatedAt"]).optional().default("createdAt"),
+	order: z.enum(["asc", "desc"]).optional().default("desc"),
+	containerTags: z.array(z.string()).optional(),
+	search: z.string().optional(),
+	tagsFilter: z.array(z.string()).optional(),
+	mentionsFilter: z.array(z.string()).optional(),
+	propertiesFilter: z.record(z.string(), z.unknown()).optional(),
+})
+
+export const DocumentsWithMemoriesResponseSchema = z.object({
+	documents: z.array(
+		MemorySchema.extend({
+			memoryEntries: z.array(
+				z.object({
+					id: z.string(),
+					memory: z.string(),
+					metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+					createdAt: z.string(),
+					updatedAt: z.string(),
+				}),
+			),
+		}),
+	),
+	pagination: PaginationSchema,
+})
 
 export const ListMemoriesQuerySchema = z
 	.object({
@@ -694,6 +798,8 @@ export const SearchResultSchema = z.object({
 	}),
 })
 
+export type SearchResult = z.infer<typeof SearchResultSchema>
+
 export const SearchResponseSchema = z.object({
 	results: z.array(SearchResultSchema),
 	timing: z.number(),
@@ -798,7 +904,7 @@ export const MemorySearchResult = z.object({
 						relation: z.enum(["updates", "extends", "derives"]).meta({
 							description:
 								"Relation type between this memory and its parent/child",
-							example: "extends",
+							example: "updates",
 						}),
 						version: z.number().nullable().optional().meta({
 							description:
@@ -808,7 +914,7 @@ export const MemorySearchResult = z.object({
 						memory: z.string().meta({
 							description: "The contextual memory content",
 							example:
-								"Later version: Dhravya has filed the patent successfully.",
+								"Later version: Dhravya patent at Cloudflare was approved.",
 						}),
 						metadata: z
 							.record(z.string(), z.unknown())
@@ -825,662 +931,38 @@ export const MemorySearchResult = z.object({
 				)
 				.optional(),
 		})
-		.optional()
-		.meta({
-			description:
-				"Object containing arrays of parent and child contextual memories",
-		}),
-	documents: z.array(MemorySearchDocumentSchema).optional().meta({
-		description: "Associated documents for this memory entry",
+		.nullable()
+		.optional(),
+	sourceDocument: MemorySearchDocumentSchema.nullable().optional().meta({
+		description: "The document that this memory was derived from",
 	}),
 })
 
 export const MemorySearchResponseSchema = z.object({
 	results: z.array(MemorySearchResult).meta({
-		description: "Array of matching memory entries with similarity scores",
+		description: "List of matching memory entries",
 	}),
-	timing: z.number().meta({
-		description: "Search execution time in milliseconds",
-		example: 245,
-	}),
-	total: z.number().meta({
-		description: "Total number of results returned",
-		example: 5,
+	count: z.number().meta({
+		description: "Total number of matching memory entries",
+		example: 42,
 	}),
 })
 
-export const ErrorResponseSchema = z.object({
-	details: z.string().optional().meta({
-		description: "Additional error details",
-		example: "Query must be at least 1 character long",
-	}),
-	error: z.string().meta({
-		description: "Error message",
-		example: "Invalid request parameters",
+// MCP Migration Schemas
+export const MigrateMCPRequestSchema = z.object({
+	targetUrl: z.string().url().meta({
+		description: "The URL of the MCP server to migrate to",
+		example: "https://mcp.example.com",
 	}),
 })
 
-export type SearchResult = z.infer<typeof SearchResultSchema>
-
-export const SettingsRequestSchema = OrganizationSettingsSchema.omit({
-	id: true,
-	orgId: true,
-	updatedAt: true,
-})
-
-export const ConnectionResponseSchema = z.object({
-	createdAt: z.string().datetime(),
-	documentLimit: z.number().optional(),
-	email: z.string().optional(),
-	expiresAt: z.string().datetime().optional(),
-	id: z.string(),
-	metadata: z.record(z.string(), z.any()).optional(),
-	provider: z.string(),
-})
-
-export const RequestTypeSchema = RequestTypeEnum
-
-export const HourlyAnalyticsSchema = z.object({
-	count: z.number(),
-	hour: z.union([z.date(), z.string()]),
-})
-
-export const ApiKeyAnalyticsBaseSchema = z.object({
-	count: z.number(),
-	keyId: z.string(),
-	keyName: z.string().nullable(),
-	lastUsed: z.union([z.date(), z.string()]).nullable(),
-})
-
-export const AnalyticsUsageResponseSchema = z.object({
-	byKey: z.array(
-		ApiKeyAnalyticsBaseSchema.extend({
-			avgDuration: z.number().optional(),
-		}),
-	),
-	hourly: z.array(
-		HourlyAnalyticsSchema.extend({
-			avgDuration: z.number().optional(),
-		}),
-	),
-	pagination: PaginationSchema,
-	totalMemories: z.number(),
-	usage: z.array(
-		z.object({
-			avgDuration: z.number().optional(),
-			count: z.number(),
-			lastUsed: z.union([z.date(), z.string()]).nullable(),
-			type: RequestTypeSchema,
-		}),
-	),
-})
-
-export const AnalyticsErrorResponseSchema = z.object({
-	byKey: z.array(
-		ApiKeyAnalyticsBaseSchema.extend({
-			errorCount: z.number(),
-			errorRate: z.number(),
-		}),
-	),
-	errors: z.array(
-		z.object({
-			count: z.number(),
-			percentage: z.number(),
-			statusCode: z.number(),
-			type: RequestTypeSchema,
-		}),
-	),
-	hourly: z.array(
-		HourlyAnalyticsSchema.extend({
-			errorCount: z.number(),
-			errorRate: z.number(),
-		}),
-	),
-	pagination: PaginationSchema,
-	summary: z.array(
-		z.object({
-			errorRate: z.number(),
-			lastRequest: z.union([z.date(), z.string()]).nullable(),
-			successRate: z.number(),
-			totalRequests: z.number(),
-			type: RequestTypeSchema,
-		}),
-	),
-})
-
-export const AnalyticsLogSchema = z.object({
-	createdAt: z.date(),
-	duration: z.number(),
-	id: z.string(),
-	ingestion: z
-		.object({
-			createdAt: z.date(),
-			metadata: z.record(z.string(), z.unknown()),
-			status: z.string(),
-			summary: z.string(),
-			title: z.string(),
-			url: z.string(),
-		})
-		.optional(),
-	input: z.record(z.string(), z.unknown()),
-	output: z.discriminatedUnion("type", [
-		z.object({
-			response: MemoryResponseSchema,
-			type: z.literal("add"),
-		}),
-		z.object({
-			response: SearchResponseSchema,
-			type: z.literal("search"),
-		}),
-		z.object({
-			response: z.object({
-				success: z.boolean(),
-			}),
-			type: z.literal("delete"),
-		}),
-		z.object({
-			response: MemoryResponseSchema,
-			type: z.literal("update"),
-		}),
-	]),
-	statusCode: z.number(),
-	type: RequestTypeSchema,
-})
-
-export const AnalyticsLogsResponseSchema = z.object({
-	logs: z.array(z.unknown()),
-	pagination: PaginationSchema,
-})
-
-export const AnalyticsChatResponseSchema = z.object({
-	analytics: z.object({
-		apiUsage: z.object({
-			current: z.number(),
-			limit: z.number(),
-		}),
-		latency: z.object({
-			current: z.number(),
-			trend: z.array(z.number()),
-			unit: z.literal("ms"),
-		}),
-		usage: z.object({
-			currentDay: z.enum(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]),
-			tokensByDay: z.object({
-				Fri: z.number(),
-				Mon: z.number(),
-				Sat: z.number(),
-				Sun: z.number(),
-				Thu: z.number(),
-				Tue: z.number(),
-				Wed: z.number(),
-			}),
-		}),
+export const MigrateMCPResponseSchema = z.object({
+	success: z.boolean().meta({
+		description: "Whether the migration was initiated successfully",
+		example: true,
 	}),
-	overview: z.object({
-		"7d": z.object({
-			amountSaved: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-			tokensProcessed: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-			tokensSent: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-			totalTokensSaved: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-		}),
-		"30d": z.object({
-			amountSaved: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-			tokensProcessed: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-			tokensSent: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-			totalTokensSaved: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-		}),
-		"90d": z.object({
-			amountSaved: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-			tokensProcessed: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-			tokensSent: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-			totalTokensSaved: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-		}),
-		lifetime: z.object({
-			amountSaved: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-			tokensProcessed: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-			tokensSent: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-			totalTokensSaved: z.object({
-				current: z.number(),
-				previousPeriod: z.number(),
-			}),
-		}),
+	jobId: z.string().optional().meta({
+		description: "ID of the background job handling the migration",
+		example: "job_123",
 	}),
 })
-
-export const AnalyticsMemoryResponseSchema = z.object({
-	connectionsGrowth: z.number(),
-	memoriesGrowth: z.number(),
-	searchGrowth: z.number(),
-	searchQueries: z.number(),
-	tokensGrowth: z.number(),
-	tokensProcessed: z.number(),
-	totalConnections: z.number(),
-	totalMemories: z.number(),
-})
-
-export const MemoryEntryAPISchema = MemoryEntrySchema.extend({
-	sourceAddedAt: z.union([z.date(), z.string()]).nullable(), // From join relationship
-	sourceRelevanceScore: z.number().nullable(), // From join relationship
-	sourceMetadata: z.record(z.string(), z.unknown()).nullable(), // From join relationship
-	spaceContainerTag: z.string().nullable(), // From join relationship
-}).meta({
-	description: "Memory entry with source relationship data",
-})
-
-// Extended document schema with memory entries
-export const DocumentWithMemoriesSchema = z
-	.object({
-		id: DocumentSchema.shape.id,
-		customId: DocumentSchema.shape.customId,
-		contentHash: DocumentSchema.shape.contentHash,
-		orgId: DocumentSchema.shape.orgId,
-		userId: DocumentSchema.shape.userId,
-		connectionId: DocumentSchema.shape.connectionId,
-		title: DocumentSchema.shape.title,
-		content: DocumentSchema.shape.content,
-		summary: DocumentSchema.shape.summary,
-		url: DocumentSchema.shape.url,
-		source: DocumentSchema.shape.source,
-		type: DocumentSchema.shape.type,
-		status: DocumentSchema.shape.status,
-		metadata: DocumentSchema.shape.metadata,
-		processingMetadata: DocumentSchema.shape.processingMetadata,
-		raw: DocumentSchema.shape.raw,
-		tags: DocumentSchema.shape.tags,
-		previewImage: DocumentSchema.shape.previewImage,
-		error: DocumentSchema.shape.error,
-		tokenCount: DocumentSchema.shape.tokenCount,
-		wordCount: DocumentSchema.shape.wordCount,
-		chunkCount: DocumentSchema.shape.chunkCount,
-		averageChunkSize: DocumentSchema.shape.averageChunkSize,
-		summaryEmbedding: DocumentSchema.shape.summaryEmbedding,
-		summaryEmbeddingModel: DocumentSchema.shape.summaryEmbeddingModel,
-		createdAt: DocumentSchema.shape.createdAt,
-		updatedAt: DocumentSchema.shape.updatedAt,
-		memoryEntries: z.array(MemoryEntryAPISchema),
-		containerTags: z
-			.array(z.string())
-			.optional()
-			.meta({
-				description: "Container tags (projects) this document belongs to",
-				example: ["sm_project_default"],
-			}),
-	})
-	.meta({
-		description: "Document with associated memory entries",
-	})
-
-export const DocumentsWithMemoriesResponseSchema = z
-	.object({
-		documents: z.array(DocumentWithMemoriesSchema),
-		pagination: PaginationSchema,
-	})
-	.meta({
-		description: "List of documents with their memory entries",
-	})
-
-export const DocumentsWithMemoriesQuerySchema = z
-	.object({
-		page: z.number().default(1).meta({
-			description: "Page number to fetch",
-			example: 1,
-		}),
-		limit: z.number().max(100).default(10).meta({
-			description: "Number of items per page (max 100)",
-			example: 10,
-		}),
-		sort: z.enum(["createdAt", "updatedAt"]).default("createdAt").meta({
-			description: "Field to sort by",
-			example: "createdAt",
-		}),
-		order: z.enum(["asc", "desc"]).default("desc").meta({
-			description: "Sort order",
-			example: "desc",
-		}),
-		containerTags: z
-			.array(z.string())
-			.optional()
-			.meta({
-				description: "Optional container tags to filter documents by",
-				example: ["sm_project_default"],
-			}),
-		includeContent: z.boolean().default(false).meta({
-			description:
-				"Whether to include heavy content fields (content, raw, processing_metadata, summary_embedding). Default false for better performance",
-			example: false,
-		}),
-		search: z.string().max(200).optional().meta({
-			description:
-				"Text to search in document title, summary, and tags. Case-insensitive.",
-			example: "claude code",
-		}),
-	})
-	.meta({
-		description: "Query parameters for listing documents with memory entries",
-	})
-
-export const MigrateMCPRequestSchema = z
-	.object({
-		userId: z.string().meta({
-			description: "User ID to migrate documents for",
-			example: "user_123",
-		}),
-		projectId: z.string().default("default").meta({
-			description: "Project ID to migrate documents to",
-			example: "school",
-		}),
-	})
-	.meta({
-		description: "Request body for migrating MCP documents",
-	})
-
-export const MigrateMCPResponseSchema = z
-	.object({
-		success: z.boolean().meta({
-			description: "Whether the migration was successful",
-			example: true,
-		}),
-		migratedCount: z.number().meta({
-			description: "Number of documents migrated",
-			example: 5,
-		}),
-		message: z.string().meta({
-			description: "Status message",
-			example: "Successfully migrated 5 documents",
-		}),
-		documentIds: z
-			.array(z.string())
-			.optional()
-			.meta({
-				description: "IDs of migrated documents",
-				example: ["doc_123", "doc_456", "doc_789"],
-			}),
-	})
-	.meta({
-		description: "Response for MCP document migration",
-	})
-
-// Processing documents schema
-export const ProcessingDocumentsResponseSchema = z
-	.object({
-		documents: z.array(
-			MemorySchema.pick({
-				id: true,
-				customId: true,
-				title: true,
-				type: true,
-				status: true,
-				createdAt: true,
-				updatedAt: true,
-				metadata: true,
-				containerTags: true,
-			}),
-		),
-		totalCount: z.number().meta({
-			description: "Total number of processing documents",
-			example: 5,
-		}),
-	})
-	.meta({
-		description: "List of documents currently being processed",
-		example: {
-			documents: [
-				{
-					id: "doc_123",
-					customId: "custom_123",
-					title: "My Document",
-					type: "text",
-					status: "extracting",
-					createdAt: "2024-12-27T12:00:00Z",
-					updatedAt: "2024-12-27T12:01:00Z",
-					metadata: {},
-					containerTags: ["sm_project_default"],
-				},
-			],
-			totalCount: 5,
-		},
-	})
-
-// Project schemas
-export const ProjectSchema = z
-	.object({
-		id: z.string().meta({
-			description: "Unique identifier of the project",
-			example: "proj_abc123",
-		}),
-		name: z.string().meta({
-			description: "Display name of the project",
-			example: "My Awesome Project",
-		}),
-		containerTag: z.string().meta({
-			description:
-				"Container tag for organizing memories (format: sm_project_{name})",
-			example: "sm_project_my_awesome_project",
-		}),
-		createdAt: z.string().meta({
-			description: "Creation timestamp",
-			example: new Date().toISOString(),
-			format: "date-time",
-		}),
-		updatedAt: z.string().meta({
-			description: "Last update timestamp",
-			example: new Date().toISOString(),
-			format: "date-time",
-		}),
-		isExperimental: z.boolean().meta({
-			description: "Whether the project (space) is in experimental mode",
-			example: false,
-		}),
-		documentCount: z.number().optional().meta({
-			description: "Number of documents in this project",
-			example: 42,
-		}),
-	})
-	.meta({
-		description: "Project object for organizing memories",
-	})
-
-export const CreateProjectSchema = z
-	.object({
-		name: z.string().min(1).max(100).meta({
-			description: "Name for the project",
-			example: "My Awesome Project",
-			minLength: 1,
-			maxLength: 100,
-		}),
-	})
-	.meta({
-		description: "Request body for creating a new project",
-	})
-
-// Update project (rename)
-export const UpdateProjectSchema = z
-	.object({
-		name: z.string().min(1).max(100).meta({
-			description: "New project name",
-			example: "Renamed Project",
-			minLength: 1,
-			maxLength: 100,
-		}),
-	})
-	.meta({ description: "Request body for updating a project" })
-
-export const ListProjectsResponseSchema = z
-	.object({
-		projects: z.array(ProjectSchema).meta({
-			description: "List of projects",
-		}),
-	})
-	.meta({
-		description: "Response containing list of projects",
-	})
-
-export const DeleteProjectSchema = z
-	.object({
-		action: z.enum(["move", "delete"]).meta({
-			description: "Action to perform on documents in the project",
-			example: "move",
-		}),
-		targetProjectId: z.string().optional().meta({
-			description: "Target project ID when action is 'move'",
-			example: "proj_xyz789",
-		}),
-	})
-	.refine(
-		(data) => {
-			// If action is "move", targetProjectId is required
-			if (data.action === "move") {
-				return !!data.targetProjectId
-			}
-			return true
-		},
-		{
-			message: "targetProjectId is required when action is 'move'",
-			path: ["targetProjectId"],
-		},
-	)
-	.meta({
-		description: "Request body for deleting a project",
-	})
-
-export const DeleteProjectResponseSchema = z
-	.object({
-		success: z.boolean().meta({
-			description: "Whether the deletion was successful",
-			example: true,
-		}),
-		message: z.string().meta({
-			description: "Status message",
-			example: "Project deleted successfully",
-		}),
-		documentsAffected: z.number().meta({
-			description: "Number of documents affected by the operation",
-			example: 10,
-		}),
-		memoriesAffected: z.number().meta({
-			description: "Number of memories affected by the operation",
-			example: 5,
-		}),
-	})
-	.meta({
-		description: "Response for project deletion",
-	})
-
-// Bulk delete schema - supports both IDs and container tags
-export const BulkDeleteMemoriesSchema = z
-	.object({
-		ids: z
-			.array(z.string())
-			.min(1)
-			.max(100)
-			.optional()
-			.meta({
-				description: "Array of memory IDs to delete (max 100 at once)",
-				example: ["acxV5LHMEsG2hMSNb4umbn", "bxcV5LHMEsG2hMSNb4umbn"],
-			}),
-		containerTags: z
-			.array(z.string())
-			.min(1)
-			.optional()
-			.meta({
-				description:
-					"Array of container tags - all memories in these containers will be deleted",
-				example: ["user_123", "project_123"],
-			}),
-	})
-	.refine(
-		(data) => {
-			// At least one of ids or containerTags must be provided
-			return !!data.ids?.length || !!data.containerTags?.length
-		},
-		{
-			message: "Either 'ids' or 'containerTags' must be provided",
-		},
-	)
-	.meta({
-		description:
-			"Request body for bulk deleting memories by IDs or container tags",
-		example: {
-			ids: ["acxV5LHMEsG2hMSNb4umbn", "bxcV5LHMEsG2hMSNb4umbn"],
-		},
-	})
-
-export const BulkDeleteMemoriesResponseSchema = z
-	.object({
-		success: z.boolean().meta({
-			description: "Whether the bulk deletion was successful",
-			example: true,
-		}),
-		deletedCount: z.number().meta({
-			description: "Number of memories successfully deleted",
-			example: 2,
-		}),
-		errors: z
-			.array(
-				z.object({
-					id: z.string(),
-					error: z.string(),
-				}),
-			)
-			.optional()
-			.meta({
-				description:
-					"Array of errors for memories that couldn't be deleted (only applicable when deleting by IDs)",
-			}),
-		containerTags: z
-			.array(z.string())
-			.optional()
-			.meta({
-				description:
-					"Container tags that were processed (only applicable when deleting by container tags)",
-				example: ["user_123", "project_123"],
-			}),
-	})
-	.meta({
-		description: "Response for bulk memory deletion",
-	})

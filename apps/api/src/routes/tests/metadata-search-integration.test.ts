@@ -846,7 +846,7 @@ describe("Metadata Search Integration Tests", () => {
 				documentId: entry.doc.id,
 				createdAt: entry.doc.created_at,
 				updatedAt: entry.doc.updated_at,
-				metadata: entry.doc.metadata,
+				metadata: entry.doc.metadata?.extracted ?? entry.doc.metadata,
 				title: entry.doc.metadata?.title || null,
 				type: entry.doc.type,
 				score: entry.bestScore,

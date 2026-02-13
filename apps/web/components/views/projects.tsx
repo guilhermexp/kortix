@@ -66,7 +66,7 @@ export function ProjectsView() {
 	const {
 		data: projects = [],
 		isLoading,
-		// error,
+		error,
 	} = useQuery({
 		queryKey: ["projects"],
 		queryFn: async () => {
@@ -194,6 +194,17 @@ export function ProjectsView() {
 						</motion.div>
 					))}
 				</div>
+			) : error ? (
+				<motion.div
+					animate={{ opacity: 1, scale: 1 }}
+					className="text-center py-8"
+					initial={{ opacity: 0, scale: 0.9 }}
+					transition={{ type: "spring", damping: 20 }}
+				>
+					<p className="text-red-400 mb-4">
+						Failed to load projects: {error.message}
+					</p>
+				</motion.div>
 			) : projects.length === 0 ? (
 				<motion.div
 					animate={{ opacity: 1, scale: 1 }}
@@ -275,7 +286,7 @@ export function ProjectsView() {
 									initial={{ opacity: 0, x: -20 }}
 									key={project.id}
 									layout
-									onClick={() => handleProjectSelect(project.containerTag)}
+									onClick={() => handleProjectSelect(project.containerTag ?? "")}
 									transition={{ delay: (index + 1) * 0.05 }}
 								>
 									<div className="flex items-center gap-3">
@@ -325,8 +336,8 @@ export function ProjectsView() {
 															open: true,
 															project: {
 																id: project.id,
-																name: project.name,
-																containerTag: project.containerTag,
+																name: project.name ?? "Untitled",
+																containerTag: project.containerTag ?? "",
 															},
 															action: "move",
 															targetProjectId: "",

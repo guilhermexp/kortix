@@ -16,6 +16,7 @@ type SpaceWithDocumentCount = {
 	container_tag: string
 	created_at: string
 	updated_at: string | null
+	org_id: string
 	document_count?: number
 }
 
@@ -27,13 +28,14 @@ function slugify(name: string) {
 }
 
 function mapSpaceToProject(space: SpaceWithDocumentCount) {
+	const updatedAt = space.updated_at ?? space.created_at
 	return ProjectSchema.parse({
 		id: space.id,
 		name: space.name ?? "Untitled Project",
 		containerTag: space.container_tag,
 		createdAt: space.created_at,
-		updatedAt: space.updated_at,
-		isExperimental: false, // Note: is_experimental column doesn't exist in schema
+		updatedAt,
+		isExperimental: false,
 		documentCount: space.document_count ?? 0,
 	})
 }
@@ -45,7 +47,7 @@ export async function listProjects(
 	// Get all spaces for the organization
 	const { data: spaces, error } = await client
 		.from("spaces")
-		.select("id, container_tag, name, created_at, updated_at")
+		.select("id, container_tag, name, created_at, updated_at, org_id")
 		.eq("org_id", organizationId)
 		.order("created_at", { ascending: false })
 
@@ -105,7 +107,7 @@ export async function createProject(
 			name: parsed.name,
 			metadata: {},
 		})
-		.select("id, container_tag, name, created_at, updated_at")
+		.select("id, container_tag, name, created_at, updated_at, org_id")
 		.single()
 
 	if (error) throw error
@@ -230,7 +232,7 @@ export async function updateProject(
 		.update({ name: parsed.name })
 		.eq("id", projectId)
 		.eq("org_id", organizationId)
-		.select("id, container_tag, name, created_at, updated_at")
+		.select("id, container_tag, name, created_at, updated_at, org_id")
 		.single()
 
 	if (error) throw error

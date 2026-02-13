@@ -1729,7 +1729,7 @@ export async function migrateMcpDocuments(
 	const response = {
 		success: true,
 		migratedCount: 0,
-		message: `MCP migration placeholder for user ${payload.userId} in project ${payload.projectId}`,
+		message: `MCP migration placeholder for target ${payload.targetUrl}`,
 		documentIds: [] as string[],
 	}
 

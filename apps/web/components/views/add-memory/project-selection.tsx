@@ -10,8 +10,8 @@ import { useEffect, useState } from "react"
 
 interface Project {
 	id?: string
-	containerTag: string
-	name: string
+	containerTag?: string | null
+	name?: string | null
 }
 
 interface ProjectSelectionProps {
@@ -97,8 +97,8 @@ export function ProjectSelection({
 						.map((project) => (
 							<SelectItem
 								className="text-foreground dark:text-white hover:bg-white/10"
-								key={project.id || project.containerTag}
-								value={project.containerTag}
+								key={project.id || project.containerTag || ""}
+								value={project.containerTag ?? ""}
 							>
 								{project.name}
 							</SelectItem>

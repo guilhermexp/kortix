@@ -3,7 +3,6 @@ import type { Context } from "hono"
 import { z } from "zod"
 import { env } from "../env"
 import { sendEmail } from "../services/mailer"
-import type { SessionContext } from "../session"
 import { ensureMembershipForUser, supabaseAdmin } from "../supabase"
 import { hashPassword, verifyPassword } from "../utils/password"
 
@@ -33,12 +32,6 @@ const UpdatePasswordSchema = z.object({
 			`Password must be at least ${PASSWORD_MIN_LENGTH} characters`,
 		),
 })
-
-type UpdatePasswordContext = Context<
-	{ Variables: { session: SessionContext } },
-	string,
-	{ json: z.infer<typeof UpdatePasswordSchema> }
->
 
 type ResetRequest = z.infer<typeof RequestResetSchema>
 
@@ -192,8 +185,13 @@ export async function completePasswordReset(c: Context) {
 	return c.json({ message: "Password updated" })
 }
 
-export async function updatePassword(c: UpdatePasswordContext) {
-	const payload = c.req.valid("json")
+export async function updatePassword(c: Context) {
+	let payload: z.infer<typeof UpdatePasswordSchema>
+	try {
+		payload = UpdatePasswordSchema.parse(await c.req.json())
+	} catch {
+		return c.json({ error: { message: "Invalid request" } }, 400)
+	}
 	const { userId } = c.var.session
 
 	const { data: user, error } = await supabaseAdmin

@@ -64,8 +64,8 @@ const mcpMigrationSchema = z.object({
 
 interface Project {
 	id: string
-	name: string
-	containerTag: string
+	name?: string | null
+	containerTag?: string | null
 	createdAt: string
 	updatedAt: string
 	isExperimental?: boolean
@@ -131,9 +131,9 @@ export function ConnectAIModal({
 	const mcpMigrationForm = useForm({
 		defaultValues: { url: "" },
 		onSubmit: async ({ value, formApi }) => {
-			const userId = extractUserIdFromMCPUrl(value.url)
-			if (userId) {
-				migrateMCPMutation.mutate({ userId, projectId })
+			const url = value.url.trim()
+			if (url) {
+				migrateMCPMutation.mutate({ targetUrl: url })
 				formApi.reset()
 			}
 		},
@@ -152,14 +152,12 @@ export function ConnectAIModal({
 
 	const migrateMCPMutation = useMutation({
 		mutationFn: async ({
-			userId,
-			projectId,
+			targetUrl,
 		}: {
-			userId: string
-			projectId: string
+			targetUrl: string
 		}) => {
 			const response = await $fetch("@post/documents/migrate-mcp", {
-				body: { userId, projectId },
+				body: { targetUrl },
 			})
 
 			if (response.error) {
@@ -171,8 +169,8 @@ export function ConnectAIModal({
 			return response.data
 		},
 		onSuccess: (data) => {
-			toast.success("Migration completed!", {
-				description: `Successfully migrated ${data?.migratedCount} documents`,
+			toast.success("Migration initiated!", {
+				description: data?.jobId ? `Job ID: ${data.jobId}` : "Migration in progress",
 			})
 			setIsMigrateDialogOpen(false)
 		},
@@ -450,14 +448,15 @@ export function ConnectAIModal({
 																</SelectItem>
 																{projects
 																	.filter(
-																		(p: Project) =>
+																		(p) =>
+																			p.containerTag &&
 																			p.containerTag !== "sm_project_default",
 																	)
-																	.map((project: Project) => (
+																	.map((project) => (
 																		<SelectItem
 																			className="text-foreground hover:bg-muted"
 																			key={project.id}
-																			value={project.containerTag}
+																			value={project.containerTag!}
 																		>
 																			{project.name}
 																		</SelectItem>
@@ -517,14 +516,15 @@ export function ConnectAIModal({
 													</SelectItem>
 													{projects
 														.filter(
-															(p: Project) =>
+															(p) =>
+																p.containerTag &&
 																p.containerTag !== "sm_project_default",
 														)
-														.map((project: Project) => (
+														.map((project) => (
 															<SelectItem
 																className="text-white hover:bg-white/10"
 																key={project.id}
-																value={project.containerTag}
+																value={project.containerTag!}
 															>
 																{project.name}
 															</SelectItem>

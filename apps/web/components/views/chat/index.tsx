@@ -21,10 +21,18 @@ import { ChatMessages } from "./chat-messages"
 
 export function ChatRewrite({
 	embedded = false,
+	showCloseButton,
 	documentContext,
+	className,
+	headerClassName,
+	compact = false,
 }: {
 	embedded?: boolean
+	showCloseButton?: boolean
 	documentContext?: React.ReactNode
+	className?: string
+	headerClassName?: string
+	compact?: boolean
 }) {
 	const { setIsOpen } = useChatOpen()
 	const { selectedProject } = useProject()
@@ -64,9 +72,16 @@ export function ChatRewrite({
 				embedded
 					? "flex-1 min-h-0"
 					: "h-full border-l border-border/30",
+				className,
 			)}
 		>
-			<div className="sticky top-0 z-20 bg-chat-surface/80 backdrop-blur-md px-4 py-2.5 flex justify-between items-center">
+			<div
+				className={cn(
+					"sticky top-0 z-20 bg-chat-surface/80 backdrop-blur-md flex justify-between items-center",
+					compact ? "px-3 py-2" : "px-4 py-2.5",
+					headerClassName,
+				)}
+			>
 				<h3 className="text-sm font-medium line-clamp-1 text-ellipsis overflow-hidden text-foreground/80">
 					{getCurrentChat()?.title ?? "New Chat"}
 				</h3>
@@ -171,7 +186,7 @@ export function ChatRewrite({
 					>
 						<Plus className="size-3.5" />
 					</Button>
-						{!embedded && (
+						{(showCloseButton ?? !embedded) && (
 							<Button
 								className="h-7 w-7 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
 								onClick={() => setIsOpen(false)}
@@ -183,7 +198,12 @@ export function ChatRewrite({
 						)}
 					</div>
 				</div>
-				<ChatMessages documentContext={documentContext} embedded={embedded} />
+				<ChatMessages
+					key={currentChatId ?? "chat-empty"}
+					compact={compact}
+					documentContext={documentContext}
+					embedded={embedded}
+				/>
 			</div>
 	)
 }

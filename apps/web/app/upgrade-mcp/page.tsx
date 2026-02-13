@@ -17,15 +17,12 @@ import { toast } from "sonner"
 import { Spinner } from "@/components/spinner"
 
 interface MigrateMCPRequest {
-	userId: string
-	projectId: string
+	targetUrl: string
 }
 
 interface MigrateMCPResponse {
 	success: boolean
-	migratedCount: number
-	message: string
-	documentIds?: string[]
+	jobId?: string
 }
 
 export default function MigrateMCPPage() {
@@ -81,11 +78,11 @@ export default function MigrateMCPPage() {
 				)
 			}
 
-			return response.data
+			return response.data as MigrateMCPResponse
 		},
 		onSuccess: (data: MigrateMCPResponse) => {
-			toast.success("Migration completed successfully", {
-				description: data.message,
+			toast.success("Migration initiated successfully", {
+				description: data.jobId ? `Job ID: ${data.jobId}` : "Migration in progress",
 			})
 			// Redirect to home page after successful migration
 			setTimeout(() => {
@@ -102,15 +99,13 @@ export default function MigrateMCPPage() {
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 
-		const userId = getUserIdFromUrl(mcpUrl)
-		if (!userId) {
+		if (!mcpUrl.trim()) {
 			toast.error("Please enter a valid MCP URL")
 			return
 		}
 
 		migrateMutation.mutate({
-			userId,
-			projectId: projectId.trim() || "default",
+			targetUrl: mcpUrl.trim(),
 		})
 	}
 
@@ -275,30 +270,11 @@ export default function MigrateMCPPage() {
 															Migration completed successfully!
 														</p>
 													</div>
-													<p className="text-sm text-green-300/80 mb-3">
-														Migrated {migrateMutation.data.migratedCount}{" "}
-														documents
-													</p>
-													{migrateMutation.data.documentIds &&
-														migrateMutation.data.documentIds.length > 0 && (
-															<details className="mt-3">
-																<summary className="cursor-pointer hover:text-green-300 transition-colors text-sm font-medium">
-																	View migrated document IDs
-																</summary>
-																<div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
-																	{migrateMutation.data.documentIds.map(
-																		(id) => (
-																			<code
-																				className="block text-xs bg-black/30 px-3 py-2 rounded-lg border border-green-500/10 text-green-200"
-																				key={id}
-																			>
-																				{id}
-																			</code>
-																		),
-																	)}
-																</div>
-															</details>
-														)}
+													{migrateMutation.data.jobId && (
+														<p className="text-sm text-green-300/80 mb-3">
+															Migration job started. Job ID: {migrateMutation.data.jobId}
+														</p>
+													)}
 												</div>
 											</div>
 										</div>

@@ -19,6 +19,10 @@ import {
 	type SearchResult,
 	SettingsRequestSchema,
 	UpdateProjectSchema,
+	CanvasResponseSchema,
+	CreateCanvasSchema,
+	ListCanvasesResponseSchema,
+	UpdateCanvasSchema,
 } from "../validation/api"
 import {
 	CreateConnectionResponseSchema,
@@ -284,6 +288,33 @@ export const apiSchema = createSchema({
 	// Waitlist operations
 	"@get/waitlist/status": {
 		output: WaitlistStatusResponseSchema,
+	},
+
+	// Canvas operations
+	"@get/canvas": {
+		output: ListCanvasesResponseSchema,
+		query: z
+			.object({
+				projectId: z.string().optional(),
+			})
+			.optional(),
+	},
+	"@get/canvas/:id": {
+		output: CanvasResponseSchema,
+		params: z.object({ id: z.string() }),
+	},
+	"@post/canvas": {
+		input: CreateCanvasSchema,
+		output: CanvasResponseSchema,
+	},
+	"@patch/canvas/:id": {
+		input: UpdateCanvasSchema,
+		output: CanvasResponseSchema,
+		params: z.object({ id: z.string() }),
+	},
+	"@delete/canvas/:id": {
+		output: z.object({ id: z.string() }),
+		params: z.object({ id: z.string() }),
 	},
 })
 

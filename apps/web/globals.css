@@ -359,6 +359,42 @@ small,
 	color: hsl(var(--foreground));
 }
 
+/* Canvas visual harmonization (scoped to canvas editor only) */
+.kortix-canvas .excalidraw.theme--dark {
+	--color-primary: #111214;
+	--color-primary-light: #0b0c0e;
+	--color-primary-darker: #17191d;
+	--color-primary-darkest: #1f2228;
+	--color-surface-primary-container: #111214;
+	--color-on-primary-container: #ffffff;
+	--color-surface-lowest: #000000;
+	--color-surface-low: #090a0c;
+	--color-surface-mid: #0d0f12;
+	--color-surface-high: #121419;
+	--default-bg-color: #0b0b0c;
+	--island-bg-color: #0d0f12;
+	--popup-bg-color: #0d0f12;
+	--default-border-color: rgba(255, 255, 255, 0.1);
+	--sidebar-border-color: rgba(255, 255, 255, 0.1);
+	--button-gray-1: #0d0f12;
+	--button-gray-2: #14171b;
+	--button-gray-3: #1c2026;
+	--button-hover-bg: #14171b;
+	--button-active-border: #252a31;
+	--button-special-active-bg-color: #15181d;
+}
+
+.kortix-canvas .excalidraw.theme--light {
+	--color-primary: #e8eaf0;
+	--color-primary-darker: #d5d9e2;
+	--color-primary-darkest: #c4c9d5;
+	--default-bg-color: #f5f6f8;
+	--island-bg-color: #ffffff;
+	--popup-bg-color: #ffffff;
+}
+
+/* Keep Excalidraw controls fully available; only harmonize visual tokens. */
+
 /* Estilos para a seção "Sources:" */
 .chat-markdown h2:has(+ ol),
 .chat-markdown h3:has(+ ol),
@@ -462,5 +498,46 @@ small,
 
 	.dark .bg-chat-surface code {
 		background-color: transparent;
+	}
+
+	/* Canvas-scoped chat theme: match Excalidraw dark material (no glass/blue tint) */
+	.canvas-chat-shell {
+		--background: 0 0% 4%;
+		--foreground: 0 0% 94%;
+		--muted: 0 0% 8%;
+		--muted-foreground: 0 0% 66%;
+		--popover: 0 0% 8%;
+		--card: 0 0% 8%;
+		--border: 0 0% 13%;
+		--input: 0 0% 11%;
+		--ring: 0 0% 78%;
+	}
+
+	.canvas-chat-shell .bg-chat-surface {
+		background: #08090a;
+		backdrop-filter: none;
+		-webkit-backdrop-filter: none;
+	}
+
+	.canvas-chat-shell .bg-chat-surface > div:not([class*="sticky"]) *:not(button):not(svg) {
+		color: rgb(235, 235, 235);
+	}
+
+	.canvas-chat-shell {
+		font-size: 13px;
+	}
+
+	.canvas-chat-shell .bg-chat-surface .border {
+		border-color: rgba(255, 255, 255, 0.08);
+	}
+
+	.canvas-chat-shell [class*="rounded-2xl"] {
+		border-radius: 0.75rem;
+	}
+
+	.canvas-chat-shell button[class*="!text-black"] {
+		background: #17181b !important;
+		color: #e5e7eb !important;
+		border: 1px solid rgba(255, 255, 255, 0.08);
 	}
 }

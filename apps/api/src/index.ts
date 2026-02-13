@@ -52,6 +52,7 @@ console.warn = (...args: unknown[]) => {
 }
 
 import { serve } from "@hono/node-server"
+import { createServer } from "node:http"
 import { zValidator } from "@hono/zod-validator"
 import { Hono } from "hono"
 import { cors } from "hono/cors"
@@ -67,6 +68,7 @@ import {
 	signOut,
 	signUp,
 } from "./routes/auth"
+import { canvasRouter } from "./routes/canvas.router"
 import { chatRouter } from "./routes/chat.router"
 import { connectionsRouter } from "./routes/connections.router"
 import { conversationsRouter } from "./routes/conversations.router"
@@ -93,6 +95,7 @@ import {
 	startDocumentTimeoutMonitor,
 	stopDocumentTimeoutMonitor,
 } from "./services/document-timeout-monitor"
+import { setupCanvasCollaboration } from "./socket/canvas-collaboration"
 import type { SessionContext } from "./session"
 
 const app = new Hono<{ Variables: { session: SessionContext } }>()
@@ -362,6 +365,7 @@ app.route("/v3/feature-flags", featureFlagsRouter)
 app.route("/v3/settings", settingsRouter)
 app.route("/v3/conversations", conversationsRouter)
 app.route("/v3/council", councilRouter)
+app.route("/v3/canvas", canvasRouter)
 app.route("/chat", chatRouter)
 
 // Waitlist status (simple inline)
@@ -398,9 +402,60 @@ process.on("SIGINT", () => {
 const port = env.PORT ?? 3001
 console.log(`[Boot] Starting Kortix API on port ${port}`)
 
-serve({
-	fetch: app.fetch,
-	port,
+// Create HTTP server for Socket.IO integration
+const httpServer = createServer((req, res) => {
+	const requestUrl = `http://localhost:${port}${req.url ?? "/"}`
+	const method = req.method ?? "GET"
+	const requestInit: RequestInit = {
+		method,
+		headers: req.headers as HeadersInit,
+	}
+	if (method !== "GET" && method !== "HEAD") {
+		requestInit.body = req as unknown as BodyInit
+	}
+
+	Promise.resolve(app.fetch(new Request(requestUrl, requestInit)))
+		.then((response: Response) => {
+			res.writeHead(response.status, Object.fromEntries(response.headers))
+			if (response.body) {
+				const reader = response.body.getReader()
+				const pump = () => {
+					reader
+						.read()
+						.then(
+							({
+								done,
+								value,
+							}: ReadableStreamReadResult<Uint8Array>) => {
+								if (done) {
+									res.end()
+									return
+								}
+								res.write(value)
+								pump()
+							},
+						)
+						.catch((err: unknown) => {
+							console.error("[HTTP] Stream read error:", err)
+							res.end()
+						})
+				}
+				pump()
+			} else {
+				res.end()
+			}
+		})
+		.catch((err: unknown) => {
+			console.error("[HTTP] Request error:", err)
+			res.writeHead(500)
+			res.end("Internal Server Error")
+		})
 })
 
-console.log(`[Boot] Kortix API listening on http://localhost:${port}`)
+// Setup Socket.IO for canvas collaboration
+setupCanvasCollaboration(httpServer)
+
+httpServer.listen(port, () => {
+	console.log(`[Boot] Kortix API listening on http://localhost:${port}`)
+	console.log(`[Boot] Socket.IO enabled for canvas collaboration`)
+})

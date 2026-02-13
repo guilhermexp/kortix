@@ -267,7 +267,7 @@ export async function listConnections(
 	}
 
 	// Order by similarity score (desc) for automatic, created_at (desc) for others
-	query = query.order("similarity_score", { ascending: false, nullsLast: true })
+	query = query.order("similarity_score", { ascending: false })
 	query = query.order("created_at", { ascending: false })
 	query = query.limit(limit)
 

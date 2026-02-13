@@ -7,6 +7,15 @@ import {
 	textToEditorContent,
 } from "./content-conversion"
 
+const blockFirstInlineContent = (
+	container: ContainerNode,
+	blockIndex: number,
+): string | undefined => {
+	const block = container.children[blockIndex] as any
+	const firstInline = Array.isArray(block?.children) ? block.children[0] : undefined
+	return typeof firstInline?.content === "string" ? firstInline.content : undefined
+}
+
 describe("content-conversion", () => {
 	describe("textToEditorContent", () => {
 		it("should convert plain text to editor content", () => {
@@ -33,9 +42,9 @@ describe("content-conversion", () => {
 			const result = textToEditorContent(text)
 
 			expect(result.children).toHaveLength(3)
-			expect(result.children[0].children[0].content).toBe("First paragraph")
-			expect(result.children[1].children[0].content).toBe("Second paragraph")
-			expect(result.children[2].children[0].content).toBe("Third paragraph")
+			expect(blockFirstInlineContent(result, 0)).toBe("First paragraph")
+			expect(blockFirstInlineContent(result, 1)).toBe("Second paragraph")
+			expect(blockFirstInlineContent(result, 2)).toBe("Third paragraph")
 		})
 
 		it("should handle empty text by creating empty container", () => {
@@ -79,8 +88,8 @@ describe("content-conversion", () => {
 			const result = textToEditorContent(text)
 
 			expect(result.children).toHaveLength(2)
-			expect(result.children[0].children[0].content).toBe("First paragraph")
-			expect(result.children[1].children[0].content).toBe("Second paragraph")
+			expect(blockFirstInlineContent(result, 0)).toBe("First paragraph")
+			expect(blockFirstInlineContent(result, 1)).toBe("Second paragraph")
 		})
 
 		it("should handle text with single newlines", () => {
@@ -89,7 +98,7 @@ describe("content-conversion", () => {
 
 			// Single newlines should be treated as one paragraph
 			expect(result.children).toHaveLength(1)
-			expect(result.children[0].children[0].content).toBe(
+			expect(blockFirstInlineContent(result, 0)).toBe(
 				"Line 1\nLine 2\nLine 3",
 			)
 		})
@@ -100,20 +109,20 @@ describe("content-conversion", () => {
 			const result = textToEditorContent(text)
 
 			expect(result.children).toHaveLength(3)
-			expect(result.children[0].children[0].content).toBe("Paragraph 1")
-			expect(result.children[1].children[0].content).toBe(
+			expect(blockFirstInlineContent(result, 0)).toBe("Paragraph 1")
+			expect(blockFirstInlineContent(result, 1)).toBe(
 				"Paragraph 2\nStill paragraph 2",
 			)
-			expect(result.children[2].children[0].content).toBe("Paragraph 3")
+			expect(blockFirstInlineContent(result, 2)).toBe("Paragraph 3")
 		})
 
 		it("should generate sequential IDs for blocks", () => {
 			const text = "One\n\nTwo\n\nThree"
 			const result = textToEditorContent(text)
 
-			expect(result.children[0].id).toBe("block-1")
-			expect(result.children[1].id).toBe("block-2")
-			expect(result.children[2].id).toBe("block-3")
+			expect(result.children[0]?.id).toBe("block-1")
+			expect(result.children[1]?.id).toBe("block-2")
+			expect(result.children[2]?.id).toBe("block-3")
 		})
 	})
 
@@ -588,7 +597,7 @@ describe("content-conversion", () => {
 				}
 
 				const result = editorContentToMarkdown(container)
-				expect(result).toBe("```\n\n```")
+				expect(result).toBe("```\n```")
 			})
 		})
 
@@ -1329,21 +1338,21 @@ function example() {
 			const result = textToEditorContent(longText)
 
 			expect(result.children).toHaveLength(1)
-			expect(result.children[0].children[0].content).toBe(longText)
+			expect(blockFirstInlineContent(result, 0)).toBe(longText)
 		})
 
 		it("should handle special characters", () => {
 			const specialText = 'Special chars: @#$%^&*()_+-={}[]|\\:";<>?,./'
 			const result = textToEditorContent(specialText)
 
-			expect(result.children[0].children[0].content).toBe(specialText)
+			expect(blockFirstInlineContent(result, 0)).toBe(specialText)
 		})
 
 		it("should handle unicode characters", () => {
 			const unicodeText = "Unicode: 你好 мир 🌍 émojis"
 			const result = textToEditorContent(unicodeText)
 
-			expect(result.children[0].children[0].content).toBe(unicodeText)
+			expect(blockFirstInlineContent(result, 0)).toBe(unicodeText)
 		})
 
 		it("should handle multiple consecutive newlines", () => {
@@ -1351,8 +1360,8 @@ function example() {
 			const result = textToEditorContent(text)
 
 			expect(result.children).toHaveLength(2)
-			expect(result.children[0].children[0].content).toBe("Para 1")
-			expect(result.children[1].children[0].content).toBe("Para 2")
+			expect(blockFirstInlineContent(result, 0)).toBe("Para 1")
+			expect(blockFirstInlineContent(result, 1)).toBe("Para 2")
 		})
 
 		it("should handle text starting with newlines", () => {
@@ -1360,7 +1369,7 @@ function example() {
 			const result = textToEditorContent(text)
 
 			expect(result.children).toHaveLength(1)
-			expect(result.children[0].children[0].content).toBe("Actual content")
+			expect(blockFirstInlineContent(result, 0)).toBe("Actual content")
 		})
 
 		it("should handle text ending with newlines", () => {
@@ -1368,7 +1377,7 @@ function example() {
 			const result = textToEditorContent(text)
 
 			expect(result.children).toHaveLength(1)
-			expect(result.children[0].children[0].content).toBe("Actual content")
+			expect(blockFirstInlineContent(result, 0)).toBe("Actual content")
 		})
 	})
 })

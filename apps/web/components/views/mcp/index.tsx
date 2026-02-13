@@ -84,9 +84,9 @@ export function MCPView() {
 	const mcpMigrationForm = useForm({
 		defaultValues: { url: "" },
 		onSubmit: async ({ value, formApi }) => {
-			const userId = extractUserIdFromMCPUrl(value.url)
-			if (userId) {
-				migrateMCPMutation.mutate({ userId, projectId })
+			const url = value.url.trim()
+			if (url) {
+				migrateMCPMutation.mutate({ targetUrl: url })
 				formApi.reset()
 			}
 		},
@@ -106,14 +106,12 @@ export function MCPView() {
 	// Migrate MCP mutation
 	const migrateMCPMutation = useMutation({
 		mutationFn: async ({
-			userId,
-			projectId,
+			targetUrl,
 		}: {
-			userId: string
-			projectId: string
+			targetUrl: string
 		}) => {
 			const response = await $fetch("@post/documents/migrate-mcp", {
-				body: { userId, projectId },
+				body: { targetUrl },
 			})
 
 			if (response.error) {
@@ -125,8 +123,8 @@ export function MCPView() {
 			return response.data
 		},
 		onSuccess: (data) => {
-			toast.success("Migration completed!", {
-				description: `Successfully migrated ${data?.migratedCount} documents`,
+			toast.success("Migration initiated!", {
+				description: data?.jobId ? `Job ID: ${data.jobId}` : "Migration in progress",
 			})
 			setIsMigrateDialogOpen(false)
 		},

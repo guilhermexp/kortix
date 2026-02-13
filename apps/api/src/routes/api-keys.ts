@@ -2,7 +2,6 @@ import { createHash } from "node:crypto"
 import type { Context } from "hono"
 import { customAlphabet } from "nanoid"
 import { z } from "zod"
-import type { SessionContext } from "../session"
 import { supabaseAdmin } from "../supabase"
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
@@ -14,18 +13,17 @@ export const CreateApiKeySchema = z.object({
 	metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
-type CreateApiKeyContext = Context<
-	{ Variables: { session: SessionContext } },
-	string,
-	{ json: z.infer<typeof CreateApiKeySchema> }
->
-
 function hashSecret(secret: string) {
 	return createHash("sha256").update(secret).digest("hex")
 }
 
-export async function createApiKeyHandler(c: CreateApiKeyContext) {
-	const payload = c.req.valid("json")
+export async function createApiKeyHandler(c: Context) {
+	let payload: z.infer<typeof CreateApiKeySchema>
+	try {
+		payload = CreateApiKeySchema.parse(await c.req.json())
+	} catch {
+		return c.json({ error: { message: "Invalid request" } }, 400)
+	}
 	const { organizationId, userId } = c.var.session
 
 	const secretSuffix = generateSecret()

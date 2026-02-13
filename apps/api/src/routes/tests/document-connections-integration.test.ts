@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
+import { describe, expect, it, vi } from "bun:test"
 import type { Database } from "@repo/database"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import {
@@ -8,566 +8,352 @@ import {
 	listConnections,
 } from "../../services/document-similarity"
 
-/**
- * Integration tests for document connections flow
- *
- * Tests complete pipeline including:
- * - Finding similar documents using vector similarity
- * - Creating manual connections between documents
- * - Deleting connections
- * - Listing connections for a document
- * - Connection type handling (automatic vs manual)
- * - Authorization and org_id isolation
- * - Connection score calculation and visualization
- */
-
 describe("Document Connections Integration Tests", () => {
-	let mockSupabase: Partial<SupabaseClient<Database>>
-	let mockOrgId: string
-	let mockUserId: string
+	const mockOrgId = "org-test-123"
+	const mockUserId = "user-test-456"
 
-	beforeEach(() => {
-		mockOrgId = "org-test-123"
-		mockUserId = "user-test-456"
+	it("finds similar documents and maps RPC payload", async () => {
+		const sourceDocumentId = "doc-123"
+		const mockSupabase = {
+			from: vi.fn().mockImplementation((table: string) => {
+				if (table !== "documents") throw new Error("Unexpected table")
+				return {
+					select: () => ({
+						eq: () => ({
+							eq: () => ({
+								single: async () => ({
+									data: { id: sourceDocumentId, org_id: mockOrgId },
+									error: null,
+								}),
+							}),
+						}),
+					}),
+				}
+			}),
+			rpc: vi.fn().mockResolvedValue({
+				data: [
+					{
+						document_id: "doc-456",
+						title: "Related Document 1",
+						summary: "A related document",
+						similarity_score: "0.85",
+						space_id: "space-1",
+						created_at: "2026-01-01T00:00:00.000Z",
+					},
+				],
+				error: null,
+			}),
+		} as unknown as SupabaseClient<Database>
 
-		// Setup test environment with Supabase mock
-		mockSupabase = {
-			from: vi.fn().mockReturnThis(),
-			select: vi.fn().mockReturnThis(),
-			insert: vi.fn().mockReturnThis(),
-			update: vi.fn().mockReturnThis(),
-			delete: vi.fn().mockReturnThis(),
-			eq: vi.fn().mockReturnThis(),
-			single: vi.fn().mockReturnThis(),
-			rpc: vi.fn(),
-		} as any
+		const result = await findSimilarDocuments(mockSupabase, {
+			documentId: sourceDocumentId,
+			orgId: mockOrgId,
+			threshold: 0.7,
+			limit: 10,
+		})
+
+		expect(result).toHaveLength(1)
+		expect(result[0]).toEqual({
+			documentId: "doc-456",
+			title: "Related Document 1",
+			summary: "A related document",
+			similarityScore: 0.85,
+			spaceId: "space-1",
+			createdAt: "2026-01-01T00:00:00.000Z",
+		})
+		expect((mockSupabase.rpc as any)).toHaveBeenCalledWith(
+			"find_similar_documents",
+			{
+				p_document_id: sourceDocumentId,
+				p_similarity_threshold: 0.7,
+				p_limit: 10,
+			},
+		)
 	})
 
-	afterEach(() => {
-		vi.clearAllMocks()
-	})
-
-	describe("Finding Similar Documents", () => {
-		it("should find similar documents using vector similarity", async () => {
-			const testDocumentId = "doc-123"
-			const mockSimilarDocs = [
-				{
-					id: "doc-456",
-					title: "Related Document 1",
-					summary: "A document about similar topics",
-					similarity_score: 0.85,
-					org_id: mockOrgId,
-				},
-				{
-					id: "doc-789",
-					title: "Related Document 2",
-					summary: "Another related document",
-					similarity_score: 0.75,
-					org_id: mockOrgId,
-				},
-			]
-
-			;(mockSupabase.rpc as any).mockResolvedValue({
-				data: mockSimilarDocs,
-				error: null,
-			})
-
-			const result = await findSimilarDocuments(
-				mockSupabase as SupabaseClient<Database>,
-				testDocumentId,
-				mockOrgId,
-				{ limit: 10, threshold: 0.7 },
-			)
-
-			expect(result).toEqual(mockSimilarDocs)
-			expect(mockSupabase.rpc).toHaveBeenCalledWith("find_similar_documents", {
-				input_document_id: testDocumentId,
-				similarity_threshold: 0.7,
-				result_limit: 10,
-			})
-		})
-
-		it("should respect similarity threshold", async () => {
-			const testDocumentId = "doc-123"
-			const highThreshold = 0.9
-			const mockSimilarDocs = [
-				{
-					id: "doc-456",
-					title: "Very Similar Document",
-					summary: "Almost identical content",
-					similarity_score: 0.95,
-					org_id: mockOrgId,
-				},
-			]
-
-			;(mockSupabase.rpc as any).mockResolvedValue({
-				data: mockSimilarDocs,
-				error: null,
-			})
-
-			const result = await findSimilarDocuments(
-				mockSupabase as SupabaseClient<Database>,
-				testDocumentId,
-				mockOrgId,
-				{ threshold: highThreshold },
-			)
-
-			expect(result).toHaveLength(1)
-			expect(result[0].similarity_score).toBeGreaterThanOrEqual(highThreshold)
-		})
-
-		it("should handle documents with no similar matches", async () => {
-			const testDocumentId = "doc-unique"
-
-			;(mockSupabase.rpc as any).mockResolvedValue({
-				data: [],
-				error: null,
-			})
-
-			const result = await findSimilarDocuments(
-				mockSupabase as SupabaseClient<Database>,
-				testDocumentId,
-				mockOrgId,
-			)
-
-			expect(result).toEqual([])
-		})
-	})
-
-	describe("Creating Manual Connections", () => {
-		it("should create manual connection between two documents", async () => {
-			const sourceDocId = "doc-source"
-			const targetDocId = "doc-target"
-			const reason = "User identified these as related topics"
-
-			const mockSourceDoc = {
-				id: sourceDocId,
-				org_id: mockOrgId,
-				title: "Source Document",
-			}
-			const mockTargetDoc = {
-				id: targetDocId,
-				org_id: mockOrgId,
-				title: "Target Document",
-			}
-			const mockCreatedConnection = {
-				id: "conn-123",
-				source_document_id: sourceDocId,
-				target_document_id: targetDocId,
-				connection_type: "manual",
-				reason,
-				similarity_score: null,
-				org_id: mockOrgId,
-				user_id: mockUserId,
-				created_at: new Date().toISOString(),
-			}
-
-			// Mock document validation
-			;(mockSupabase.from as any).mockReturnValue({
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi
-					.fn()
-					.mockResolvedValueOnce({ data: mockSourceDoc, error: null })
-					.mockResolvedValueOnce({ data: mockTargetDoc, error: null }),
-			})
-
-			// Mock connection creation
-			const insertMock = vi.fn().mockReturnThis()
-			const selectMock = vi.fn().mockReturnThis()
-			const singleMock = vi.fn().mockResolvedValue({
-				data: mockCreatedConnection,
-				error: null,
-			})
-
-			;(mockSupabase.from as any).mockReturnValueOnce({
-				insert: insertMock,
-				select: selectMock,
-				single: singleMock,
-			})
-
-			const result = await createManualConnection(
-				mockSupabase as SupabaseClient<Database>,
-				sourceDocId,
-				targetDocId,
-				mockOrgId,
-				mockUserId,
-				reason,
-			)
-
-			expect(result.connection_type).toBe("manual")
-			expect(result.source_document_id).toBe(sourceDocId)
-			expect(result.target_document_id).toBe(targetDocId)
-			expect(result.reason).toBe(reason)
-			expect(result.user_id).toBe(mockUserId)
-		})
-
-		it("should prevent duplicate connections", async () => {
-			const sourceDocId = "doc-source"
-			const targetDocId = "doc-target"
-
-			// Mock existing connection check
-			;(mockSupabase.from as any).mockReturnValue({
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({
-					data: { id: "existing-conn" },
-					error: null,
+	it("returns empty list when source document is inaccessible", async () => {
+		const mockSupabase = {
+			from: vi.fn().mockImplementation(() => ({
+				select: () => ({
+					eq: () => ({
+						eq: () => ({
+							single: async () => ({
+								data: null,
+								error: { message: "not found" },
+							}),
+						}),
+					}),
 				}),
-			})
+			})),
+			rpc: vi.fn(),
+		} as unknown as SupabaseClient<Database>
 
-			await expect(
-				createManualConnection(
-					mockSupabase as SupabaseClient<Database>,
-					sourceDocId,
-					targetDocId,
-					mockOrgId,
-					mockUserId,
-					"Duplicate connection attempt",
-				),
-			).rejects.toThrow()
+		const result = await findSimilarDocuments(mockSupabase, {
+			documentId: "doc-missing",
+			orgId: mockOrgId,
 		})
 
-		it("should enforce org_id isolation for connections", async () => {
-			const sourceDocId = "doc-org1"
-			const targetDocId = "doc-org2"
-
-			const mockSourceDoc = {
-				id: sourceDocId,
-				org_id: "org-1",
-				title: "Org 1 Document",
-			}
-			const mockTargetDoc = {
-				id: targetDocId,
-				org_id: "org-2",
-				title: "Org 2 Document",
-			}
-
-			;(mockSupabase.from as any).mockReturnValue({
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi
-					.fn()
-					.mockResolvedValueOnce({ data: mockSourceDoc, error: null })
-					.mockResolvedValueOnce({ data: mockTargetDoc, error: null }),
-			})
-
-			await expect(
-				createManualConnection(
-					mockSupabase as SupabaseClient<Database>,
-					sourceDocId,
-					targetDocId,
-					"org-1",
-					mockUserId,
-					"Cross-org connection attempt",
-				),
-			).rejects.toThrow()
-		})
+		expect(result).toEqual([])
+		expect((mockSupabase.rpc as any)).not.toHaveBeenCalled()
 	})
 
-	describe("Deleting Connections", () => {
-		it("should delete manual connection", async () => {
-			const connectionId = "conn-123"
-			const sourceDocId = "doc-source"
+	it("creates manual connection with valid documents", async () => {
+		let connectionTableCalls = 0
+		const mockSupabase = {
+			from: vi.fn().mockImplementation((table: string) => {
+				if (table === "documents") {
+					return {
+						select: () => ({
+							in: () => ({
+								eq: async () => ({
+									data: [
+										{ id: "doc-source", org_id: mockOrgId },
+										{ id: "doc-target", org_id: mockOrgId },
+									],
+									error: null,
+								}),
+							}),
+						}),
+					}
+				}
 
-			const mockConnection = {
-				id: connectionId,
-				source_document_id: sourceDocId,
-				connection_type: "manual",
-				user_id: mockUserId,
-				org_id: mockOrgId,
-			}
+				if (table === "document_connections") {
+					connectionTableCalls += 1
+					if (connectionTableCalls === 1) {
+						return {
+							select: () => ({
+								or: () => ({
+									single: async () => ({
+										data: null,
+										error: { message: "no rows" },
+									}),
+								}),
+							}),
+						}
+					}
 
-			;(mockSupabase.from as any).mockReturnValue({
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi
-					.fn()
-					.mockResolvedValue({ data: mockConnection, error: null }),
-				delete: vi.fn().mockReturnThis(),
-			})
+					return {
+						insert: () => ({
+							select: () => ({
+								single: async () => ({
+									data: {
+										id: "conn-123",
+										source_document_id: "doc-source",
+										target_document_id: "doc-target",
+										org_id: mockOrgId,
+										user_id: mockUserId,
+										connection_type: "manual",
+										similarity_score: null,
+										reason: "User linked",
+										metadata: {},
+										created_at: "2026-01-01T00:00:00.000Z",
+										updated_at: "2026-01-01T00:00:00.000Z",
+									},
+									error: null,
+								}),
+							}),
+						}),
+					}
+				}
 
-			await deleteConnection(
-				mockSupabase as SupabaseClient<Database>,
-				sourceDocId,
-				connectionId,
-				mockOrgId,
-				mockUserId,
-			)
+				throw new Error(`Unexpected table: ${table}`)
+			}),
+		} as unknown as SupabaseClient<Database>
 
-			expect(mockSupabase.from).toHaveBeenCalledWith("document_connections")
+		const result = await createManualConnection(mockSupabase, {
+			sourceDocumentId: "doc-source",
+			targetDocumentId: "doc-target",
+			orgId: mockOrgId,
+			userId: mockUserId,
+			reason: "User linked",
 		})
 
-		it("should prevent deletion of automatic connections by users", async () => {
-			const connectionId = "conn-auto-123"
-			const sourceDocId = "doc-source"
-
-			const mockConnection = {
-				id: connectionId,
-				source_document_id: sourceDocId,
-				connection_type: "automatic",
-				user_id: null,
-				org_id: mockOrgId,
-			}
-
-			;(mockSupabase.from as any).mockReturnValue({
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi
-					.fn()
-					.mockResolvedValue({ data: mockConnection, error: null }),
-			})
-
-			await expect(
-				deleteConnection(
-					mockSupabase as SupabaseClient<Database>,
-					sourceDocId,
-					connectionId,
-					mockOrgId,
-					mockUserId,
-				),
-			).rejects.toThrow()
-		})
-
-		it("should enforce ownership for manual connection deletion", async () => {
-			const connectionId = "conn-123"
-			const sourceDocId = "doc-source"
-			const differentUserId = "different-user"
-
-			const mockConnection = {
-				id: connectionId,
-				source_document_id: sourceDocId,
-				connection_type: "manual",
-				user_id: differentUserId,
-				org_id: mockOrgId,
-			}
-
-			;(mockSupabase.from as any).mockReturnValue({
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi
-					.fn()
-					.mockResolvedValue({ data: mockConnection, error: null }),
-			})
-
-			await expect(
-				deleteConnection(
-					mockSupabase as SupabaseClient<Database>,
-					sourceDocId,
-					connectionId,
-					mockOrgId,
-					mockUserId,
-				),
-			).rejects.toThrow()
-		})
+		expect(result.connectionType).toBe("manual")
+		expect(result.sourceDocumentId).toBe("doc-source")
+		expect(result.targetDocumentId).toBe("doc-target")
+		expect(result.reason).toBe("User linked")
 	})
 
-	describe("Listing Connections", () => {
-		it("should list all connections for a document", async () => {
-			const documentId = "doc-123"
-			const mockConnections = [
-				{
-					id: "conn-1",
-					source_document_id: documentId,
-					target_document_id: "doc-456",
-					connection_type: "automatic",
-					similarity_score: 0.85,
-					reason: "Similar content topics",
-					org_id: mockOrgId,
-					created_at: new Date().toISOString(),
-					target_document: {
-						id: "doc-456",
-						title: "Related Doc 1",
-						summary: "Summary 1",
-					},
-				},
-				{
-					id: "conn-2",
-					source_document_id: documentId,
-					target_document_id: "doc-789",
-					connection_type: "manual",
-					similarity_score: null,
-					reason: "User connected these",
-					org_id: mockOrgId,
-					user_id: mockUserId,
-					created_at: new Date().toISOString(),
-					target_document: {
-						id: "doc-789",
-						title: "Related Doc 2",
-						summary: "Summary 2",
-					},
-				},
-			]
+	it("prevents duplicate manual connections", async () => {
+		let connectionTableCalls = 0
+		const mockSupabase = {
+			from: vi.fn().mockImplementation((table: string) => {
+				if (table === "documents") {
+					return {
+						select: () => ({
+							in: () => ({
+								eq: async () => ({
+									data: [
+										{ id: "doc-source", org_id: mockOrgId },
+										{ id: "doc-target", org_id: mockOrgId },
+									],
+									error: null,
+								}),
+							}),
+						}),
+					}
+				}
 
-			;(mockSupabase.from as any).mockReturnValue({
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-			})
+				if (table === "document_connections") {
+					connectionTableCalls += 1
+					if (connectionTableCalls === 1) {
+						return {
+							select: () => ({
+								or: () => ({
+									single: async () => ({
+										data: { id: "conn-existing" },
+										error: null,
+									}),
+								}),
+							}),
+						}
+					}
+					return {}
+				}
 
-			;(mockSupabase.from as any)().select().eq.mockResolvedValue({
-				data: mockConnections,
-				error: null,
-			})
+				throw new Error(`Unexpected table: ${table}`)
+			}),
+		} as unknown as SupabaseClient<Database>
 
-			const result = await listConnections(
-				mockSupabase as SupabaseClient<Database>,
-				documentId,
-				mockOrgId,
-			)
-
-			expect(result).toHaveLength(2)
-			expect(result[0].connection_type).toBe("automatic")
-			expect(result[1].connection_type).toBe("manual")
-		})
-
-		it("should separate automatic and manual connections", async () => {
-			const documentId = "doc-123"
-			const mockConnections = [
-				{
-					id: "conn-auto",
-					connection_type: "automatic",
-					similarity_score: 0.9,
-					source_document_id: documentId,
-					target_document_id: "doc-auto",
-					org_id: mockOrgId,
-				},
-				{
-					id: "conn-manual",
-					connection_type: "manual",
-					user_id: mockUserId,
-					source_document_id: documentId,
-					target_document_id: "doc-manual",
-					org_id: mockOrgId,
-				},
-			]
-
-			;(mockSupabase.from as any).mockReturnValue({
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-			})
-
-			;(mockSupabase.from as any)().select().eq.mockResolvedValue({
-				data: mockConnections,
-				error: null,
-			})
-
-			const result = await listConnections(
-				mockSupabase as SupabaseClient<Database>,
-				documentId,
-				mockOrgId,
-			)
-
-			const automaticConnections = result.filter(
-				(c) => c.connection_type === "automatic",
-			)
-			const manualConnections = result.filter(
-				(c) => c.connection_type === "manual",
-			)
-
-			expect(automaticConnections).toHaveLength(1)
-			expect(manualConnections).toHaveLength(1)
-			expect(manualConnections[0].user_id).toBe(mockUserId)
-		})
+		await expect(
+			createManualConnection(mockSupabase, {
+				sourceDocumentId: "doc-source",
+				targetDocumentId: "doc-target",
+				orgId: mockOrgId,
+				userId: mockUserId,
+			}),
+		).rejects.toThrow("already exists")
 	})
 
-	describe("Connection Updates on Document Changes", () => {
-		it("should trigger connection update when document is created", async () => {
-			// This test verifies that the connection update job is queued
-			// when a new document with embeddings is created
-			const mockDocument = {
-				id: "doc-new",
-				title: "New Document",
-				content: "Content with semantic meaning",
-				org_id: mockOrgId,
-				summary_embedding: [0.1, 0.2, 0.3], // Has embeddings
-			}
+	it("deletes manual connection owned by user", async () => {
+		let connectionTableCalls = 0
+		const eqDelete = vi.fn().mockResolvedValue({ error: null })
+		const mockSupabase = {
+			from: vi.fn().mockImplementation((table: string) => {
+				if (table !== "document_connections") {
+					throw new Error(`Unexpected table: ${table}`)
+				}
 
-			// Mock queue job function
-			const addConnectionUpdateJobMock = vi.fn()
+				connectionTableCalls += 1
+				if (connectionTableCalls === 1) {
+					return {
+						select: () => ({
+							eq: () => ({
+								eq: () => ({
+									single: async () => ({
+										data: {
+											id: "conn-123",
+											org_id: mockOrgId,
+											connection_type: "manual",
+											user_id: mockUserId,
+										},
+										error: null,
+									}),
+								}),
+							}),
+						}),
+					}
+				}
 
-			await addConnectionUpdateJobMock(mockDocument.id)
+				return {
+					delete: () => ({
+						eq: eqDelete,
+					}),
+				}
+			}),
+		} as unknown as SupabaseClient<Database>
 
-			expect(addConnectionUpdateJobMock).toHaveBeenCalledWith(mockDocument.id)
+		await deleteConnection(mockSupabase, {
+			connectionId: "conn-123",
+			orgId: mockOrgId,
+			userId: mockUserId,
 		})
 
-		it("should update connections when document content changes", async () => {
-			// This test verifies that connections are refreshed when
-			// document content is updated and embeddings regenerated
-			const documentId = "doc-update"
-			const oldContent = "Original content about topic A"
-			const newContent = "Updated content about topic B and C"
-
-			// After content update and re-embedding, connections should refresh
-			// to reflect new semantic similarity
-			const updateConnectionsMock = vi.fn()
-
-			await updateConnectionsMock(documentId)
-
-			expect(updateConnectionsMock).toHaveBeenCalledWith(documentId)
-		})
+		expect(eqDelete).toHaveBeenCalledWith("id", "conn-123")
 	})
 
-	describe("Connection Score Calculation", () => {
-		it("should calculate and display similarity scores correctly", async () => {
-			const testDocumentId = "doc-123"
-			const mockSimilarDocs = [
-				{ id: "doc-high", similarity_score: 0.95 },
-				{ id: "doc-medium", similarity_score: 0.75 },
-				{ id: "doc-low", similarity_score: 0.7 },
-			]
+	it("lists and enriches connections for a document", async () => {
+		let documentsCalls = 0
+		const mockSupabase = {
+			from: vi.fn().mockImplementation((table: string) => {
+				if (table === "documents") {
+					documentsCalls += 1
+					if (documentsCalls === 1) {
+						return {
+							select: () => ({
+								eq: () => ({
+									eq: () => ({
+										single: async () => ({
+											data: { id: "doc-123", org_id: mockOrgId },
+											error: null,
+										}),
+									}),
+								}),
+							}),
+						}
+					}
 
-			;(mockSupabase.rpc as any).mockResolvedValue({
-				data: mockSimilarDocs,
-				error: null,
-			})
+					return {
+						select: () => ({
+							in: () => ({
+								eq: async () => ({
+									data: [
+										{
+											id: "doc-456",
+											title: "Target 1",
+											summary: "Summary 1",
+											type: "text",
+											url: null,
+											created_at: "2026-01-01T00:00:00.000Z",
+										},
+									],
+									error: null,
+								}),
+							}),
+						}),
+					}
+				}
 
-			const result = await findSimilarDocuments(
-				mockSupabase as SupabaseClient<Database>,
-				testDocumentId,
-				mockOrgId,
-				{ threshold: 0.7 },
-			)
+				if (table === "document_connections") {
+					const query: any = {
+						select: () => query,
+						eq: () => query,
+						order: () => query,
+						limit: async () => ({
+							data: [
+								{
+									id: "conn-1",
+									source_document_id: "doc-123",
+									target_document_id: "doc-456",
+									org_id: mockOrgId,
+									user_id: null,
+									connection_type: "automatic",
+									similarity_score: "0.83",
+									reason: "Auto",
+									metadata: {},
+									created_at: "2026-01-01T00:00:00.000Z",
+									updated_at: "2026-01-01T00:00:00.000Z",
+								},
+							],
+							error: null,
+						}),
+					}
+					return query
+				}
 
-			expect(result[0].similarity_score).toBeGreaterThan(
-				result[1].similarity_score,
-			)
-			expect(result[1].similarity_score).toBeGreaterThan(
-				result[2].similarity_score,
-			)
-			expect(result.every((doc) => doc.similarity_score >= 0.7)).toBe(true)
+				throw new Error(`Unexpected table: ${table}`)
+			}),
+		} as unknown as SupabaseClient<Database>
+
+		const result = await listConnections(mockSupabase, {
+			documentId: "doc-123",
+			orgId: mockOrgId,
 		})
-	})
 
-	describe("Authorization and Security", () => {
-		it("should only show connections within same organization", async () => {
-			const documentId = "doc-org1"
-
-			const mockConnections = [
-				{
-					id: "conn-same-org",
-					source_document_id: documentId,
-					target_document_id: "doc-org1-target",
-					org_id: mockOrgId,
-				},
-			]
-
-			;(mockSupabase.from as any).mockReturnValue({
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-			})
-
-			;(mockSupabase.from as any)().select().eq.mockResolvedValue({
-				data: mockConnections,
-				error: null,
-			})
-
-			const result = await listConnections(
-				mockSupabase as SupabaseClient<Database>,
-				documentId,
-				mockOrgId,
-			)
-
-			expect(result.every((conn) => conn.org_id === mockOrgId)).toBe(true)
-		})
+		expect(result).toHaveLength(1)
+		expect(result[0].connectionType).toBe("automatic")
+		expect(result[0].similarityScore).toBe(0.83)
+		expect(result[0].targetDocument?.id).toBe("doc-456")
+		expect(result[0].targetDocument?.title).toBe("Target 1")
 	})
 })

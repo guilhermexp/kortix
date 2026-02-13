@@ -1,7 +1,6 @@
 "use client"
 
 import { BACKEND_URL } from "@lib/env"
-import { useDeleteDocument } from "@lib/queries"
 import { cn } from "@lib/utils"
 import { DEFAULT_PROJECT_ID } from "@repo/lib/constants"
 import { Button } from "@repo/ui/components/button"
@@ -33,7 +32,7 @@ import remarkGfm from "remark-gfm"
 import { ChatRewrite } from "@/components/views/chat"
 import type { DocumentWithMemories } from "@/lib/types/document"
 import { TweetCard } from "@/components/content-cards/tweet"
-import { useChatMentionQueue, useProject } from "@/stores"
+import { useChatMentionQueue } from "@/stores"
 import { formatDate, getDocumentSnippet, stripMarkdown } from "../memories"
 import { RelatedDocumentsPanel } from "../memories/related-documents-panel"
 import { DocumentProjectTransfer } from "./document-project-transfer"
@@ -152,7 +151,7 @@ const extractDocumentImages = (
 	document: DocumentWithMemories,
 ): { mainImage: string | null; relatedImages: string[] } => {
 	const metadata = asRecord(document.metadata)
-	const raw = asRecord(document.raw)
+	const raw = asRecord((document as any).raw)
 	const rawExtraction = asRecord(raw?.extraction)
 	const rawFirecrawl =
 		asRecord(raw?.firecrawl) ?? asRecord(rawExtraction?.firecrawl)
@@ -264,7 +263,7 @@ type RelatedLink = {
 }
 
 const extractRelatedLinks = (document: DocumentWithMemories): RelatedLink[] => {
-	const raw = asRecord(document.raw)
+	const raw = asRecord((document as any).raw)
 	if (!raw) return []
 
 	const relatedLinks = raw.relatedLinks
@@ -301,10 +300,7 @@ interface MemoryEditClientProps {
 export function MemoryEditClient({
 	document: initialDocument,
 }: MemoryEditClientProps) {
-	const { selectedProject } = useProject()
 	const router = useRouter()
-	const deleteDocumentMutation = useDeleteDocument(selectedProject)
-	const [isDeleting, setIsDeleting] = useState(false)
 	const { enqueue } = useChatMentionQueue()
 
 	const [activeProjectTag, setActiveProjectTag] = useState<string>(
@@ -336,21 +332,6 @@ export function MemoryEditClient({
 		}),
 		[initialDocument, activeProjectTag],
 	)
-
-	const handleDeleteDocument = useCallback(async () => {
-		if (isDeleting || deleteDocumentMutation.isPending) {
-			return
-		}
-		setIsDeleting(true)
-		try {
-			await deleteDocumentMutation.mutateAsync(document.id)
-			router.push("/")
-		} catch (error) {
-			console.error("Failed to delete document:", error)
-		} finally {
-			setIsDeleting(false)
-		}
-	}, [deleteDocumentMutation, document.id, isDeleting, router])
 
 	// Find related links handler
 	const handleFindRelatedLinks = useCallback(async () => {
@@ -433,7 +414,7 @@ export function MemoryEditClient({
 		() => getDocumentSnippet(document),
 		[document],
 	)
-	const activeMemories = document.memoryEntries.filter((m) => !m.isForgotten)
+	const activeMemories = document.memoryEntries.filter((m) => !(m as any).isForgotten)
 	const sourceUrl =
 		document.url ||
 		(document.metadata as any)?.originalUrl ||
@@ -441,7 +422,7 @@ export function MemoryEditClient({
 	const isVideo = isYouTubeUrl(sourceUrl) || document.type === "video"
 
 	// Check if this is a tweet with raw data
-	const rawDoc = asRecord(document.raw)
+	const rawDoc = asRecord((document as any).raw)
 	const rawTweet = rawDoc?.tweet
 	const isTweet =
 		document.type === "tweet" ||
@@ -598,11 +579,19 @@ export function MemoryEditClient({
 								initial={{ opacity: 0, height: 0 }}
 								transition={{ duration: 0.2 }}
 							>
-								<div className="h-[60vh] min-h-[400px]">
+								<div
+									className={cn(
+										"h-[48vh] min-h-[280px] max-h-[520px] overflow-hidden",
+										"[&_h1]:text-2xl [&_h2]:text-xl [&_h3]:text-lg [&_h4]:text-base",
+										"[&_p]:text-sm [&_li]:text-sm [&_blockquote]:text-sm",
+										"[&_[data-node-type='h1']]:text-2xl [&_[data-node-type='h2']]:text-xl",
+										"[&_[data-node-type='h3']]:text-lg [&_[data-node-type='p']]:text-sm",
+									)}
+								>
 									<LazyRichEditorWrapper
 										document={document}
-										onDelete={handleDeleteDocument}
-										showNavigation={true}
+										readOnly={true}
+										showNavigation={false}
 									/>
 								</div>
 							</motion.div>

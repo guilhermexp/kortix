@@ -101,7 +101,12 @@ const PROPERTY_VALUES = {
 	],
 }
 
-describe("Metadata Search Performance Tests", () => {
+const RUN_METADATA_PERF_TESTS =
+	process.env.RUN_METADATA_PERF_TESTS === "1" &&
+	Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+const describeMetadataPerf = RUN_METADATA_PERF_TESTS ? describe : describe.skip
+
+describeMetadataPerf("Metadata Search Performance Tests", () => {
 	let supabase: SupabaseClient
 	let testOrgId: string
 	let testSpaceId: string
@@ -114,7 +119,7 @@ describe("Metadata Search Performance Tests", () => {
 		// Initialize Supabase client
 		const supabaseUrl = process.env.SUPABASE_URL || "http://localhost:54321"
 		const supabaseKey =
-			process.env.SUPABASE_ANON_KEY || "test-anon-key-for-local-development"
+			process.env.SUPABASE_SERVICE_ROLE_KEY || "test-service-role-key"
 
 		supabase = createClient(supabaseUrl, supabaseKey)
 
@@ -143,6 +148,7 @@ describe("Metadata Search Performance Tests", () => {
 			.insert({
 				name: "Performance Test Space",
 				org_id: testOrgId,
+				container_tag: `perf-space-${Date.now()}`,
 			})
 			.select()
 			.single()
@@ -189,7 +195,7 @@ describe("Metadata Search Performance Tests", () => {
 		console.log(
 			`✅ Created ${documentIds.length} test documents in ${bulkInsertTime.toFixed(0)}ms`,
 		)
-		expect(bulkInsertTime).toBeLessThan(TEST_CONFIG.BULK_INSERT_MS)
+		expect(bulkInsertTime).toBeLessThan(PERFORMANCE_THRESHOLDS.BULK_INSERT_MS)
 		expect(documentIds.length).toBeGreaterThanOrEqual(1000)
 	}, 30000) // 30s timeout for setup
 

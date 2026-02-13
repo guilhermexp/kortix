@@ -50,7 +50,7 @@ const extractImagesFromDocument = (
 	document: DocumentWithMemories,
 ): ImageData[] => {
 	const metadata = asRecord(document.metadata)
-	const raw = asRecord(document.raw)
+	const raw = asRecord((document as any).raw)
 	const rawExtraction = asRecord(raw?.extraction)
 	const rawFirecrawl =
 		asRecord(raw?.firecrawl) ?? asRecord(rawExtraction?.firecrawl)

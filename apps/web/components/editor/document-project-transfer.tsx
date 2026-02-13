@@ -16,8 +16,8 @@ import { moveDocumentToProject } from "@/lib/api/documents-client"
 
 interface Project {
 	id: string
-	name: string
-	containerTag: string
+	name?: string | null
+	containerTag?: string | null
 	createdAt: string
 	updatedAt: string
 	isExperimental?: boolean
@@ -53,7 +53,7 @@ export function DocumentProjectTransfer({
 		isLoading,
 		isError,
 		refetch,
-	} = useQuery<Project[]>({
+	} = useQuery({
 		queryKey: PROJECTS_QUERY_KEY,
 		queryFn: async () => {
 			const response = await $fetch("@get/projects")
@@ -70,7 +70,9 @@ export function DocumentProjectTransfer({
 	const projectOptions = useMemo(() => {
 		const map = new Map<string, Project>()
 		for (const project of projects) {
-			map.set(project.containerTag, project)
+			if (project.containerTag) {
+				map.set(project.containerTag, project as unknown as Project)
+			}
 		}
 		if (!map.has(DEFAULT_PROJECT_ID)) {
 			map.set(DEFAULT_PROJECT_ID, {
@@ -81,7 +83,7 @@ export function DocumentProjectTransfer({
 				updatedAt: "",
 			})
 		}
-		return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+		return Array.from(map.values()).sort((a, b) => (a.name || "").localeCompare(b.name || ""))
 	}, [projects])
 
 	const moveMutation = useMutation({
@@ -237,8 +239,8 @@ export function DocumentProjectTransfer({
 					return (
 						<SelectItem
 							disabled={isCurrent}
-							key={project.containerTag}
-							value={project.containerTag}
+							key={project.containerTag || ""}
+							value={project.containerTag || ""}
 						>
 							<span className="flex items-center gap-2 text-xs">
 								{project.name}

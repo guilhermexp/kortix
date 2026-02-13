@@ -39,7 +39,7 @@ const asRecord = (obj: unknown): Record<string, unknown> | undefined => {
 }
 
 const extractRelatedLinks = (document: DocumentWithMemories): RelatedLink[] => {
-	const raw = asRecord(document.raw)
+	const raw = asRecord((document as any).raw)
 	if (!raw) return []
 
 	const relatedLinks = raw.relatedLinks

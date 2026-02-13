@@ -43,10 +43,20 @@ export function extractAccessToken(
 			key.includes("-auth-token")
 		) {
 			try {
-				const parsed = JSON.parse(value)
+				// Handle base64- prefixed cookies
+				let cookieValue = value
+				if (value.startsWith("base64-")) {
+					cookieValue = Buffer.from(value.slice(7), "base64").toString("utf-8")
+				}
+
+				const parsed = JSON.parse(cookieValue)
 				return parsed.access_token || parsed[0]?.access_token || null
 			} catch {
-				// Not JSON, try as raw token
+				// Not JSON, try as raw token (strip base64- prefix if present)
+				if (value.startsWith("base64-")) {
+					const decoded = Buffer.from(value.slice(7), "base64").toString("utf-8")
+					return decoded
+				}
 				return value
 			}
 		}

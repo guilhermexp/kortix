@@ -334,7 +334,7 @@ function buildMcpApp(context: {
 	return app
 }
 
-export function registerMcpRoutes(app: Hono) {
+export function registerMcpRoutes<E extends object>(app: Hono<E>) {
 	app.get("/mcp", (c) =>
 		c.json({
 			status: "ok",

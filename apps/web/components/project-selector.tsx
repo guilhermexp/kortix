@@ -42,15 +42,6 @@ import { useProjectName } from "@/hooks/use-project-name"
 import { useProject } from "@/stores"
 import { CreateProjectDialog } from "./create-project-dialog"
 
-interface Project {
-	id: string
-	name: string
-	containerTag: string
-	createdAt: string
-	updatedAt: string
-	isExperimental?: boolean
-}
-
 interface ProjectSelectorProps {
 	className?: string
 }
@@ -83,7 +74,11 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 		newName: string
 	}>({ open: false, projectId: "", currentName: "", newName: "" })
 
-	const { data: projects = [], isLoading } = useQuery({
+	const {
+		data: projects = [],
+		isLoading,
+		error,
+	} = useQuery({
 		queryKey: ["projects"],
 		queryFn: async () => {
 			const response = await $fetch("@get/projects")
@@ -96,6 +91,10 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 		},
 		staleTime: 30 * 1000,
 	})
+
+	if (error) {
+		console.error("Failed to load projects:", error)
+	}
 
 	// (no enable experimental endpoint)
 
@@ -168,8 +167,8 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 
 								{/* User Projects */}
 								{projects
-									.filter((p: Project) => p.containerTag !== DEFAULT_PROJECT_ID)
-									.map((project: Project, index: number) => (
+									.filter((p) => p.containerTag !== DEFAULT_PROJECT_ID)
+									.map((project, index: number) => (
 										<motion.div
 											animate={{ opacity: 1, x: 0 }}
 											className={`flex items-center justify-between p-2 rounded-md transition-colors group ${
@@ -398,7 +397,7 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 								<DialogHeader>
 									<DialogTitle>Delete Project</DialogTitle>
 									<DialogDescription className="text-white/60">
-										Are you sure you want to delete "{deleteDialog.project.name}
+										Are you sure you want to delete "{deleteDialog.project?.name}
 										"? Choose what to do with the documents in this project.
 									</DialogDescription>
 								</DialogHeader>
@@ -448,11 +447,11 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 														{/* All Projects is a global viewer; not a move target */}
 														{projects
 															.filter(
-																(p: Project) =>
+																(p) =>
 																	p.id !== deleteDialog.project?.id &&
 																	p.containerTag !== DEFAULT_PROJECT_ID,
 															)
-															.map((project: Project) => (
+															.map((project) => (
 																<SelectItem
 																	className="text-white hover:bg-white/10"
 																	key={project.id}
