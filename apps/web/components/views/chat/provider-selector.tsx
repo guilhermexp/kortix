@@ -1,12 +1,5 @@
 "use client"
 
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@ui/components/select"
 import { useEffect, useState } from "react"
 
 export type ProviderId = "glm"
@@ -38,67 +31,15 @@ export function ProviderSelector({
 	onChange,
 	disabled = false,
 }: ProviderSelectorProps) {
-	const [selectedProvider, setSelectedProvider] = useState<ProviderId>(
-		value || "glm",
-	)
-
-	useEffect(() => {
-		if (value && value !== selectedProvider) {
-			setSelectedProvider(value)
-		}
-	}, [value, selectedProvider])
-
-	const handleChange = (newProvider: string) => {
-		const providerId = newProvider as ProviderId
-		setSelectedProvider(providerId)
-		if (onChange) {
-			onChange(providerId)
-		}
-
-		// Save to localStorage for persistence
-		if (typeof window !== "undefined") {
-			localStorage.setItem("preferred_provider", providerId)
-		}
-	}
-
+	const selectedProvider = value || "glm"
 	const currentProvider = PROVIDERS.find((p) => p.id === selectedProvider)
 
+	// With a single provider, render as a static label
 	return (
 		<div className="flex items-center gap-1.5">
-			<Select
-				disabled={disabled}
-				onValueChange={handleChange}
-				value={selectedProvider}
-			>
-				<SelectTrigger className="h-6 px-1.5 w-fit bg-transparent hover:bg-transparent border-0 shadow-none text-muted-foreground hover:text-foreground text-xs font-normal gap-1">
-					<SelectValue placeholder="Select provider">
-						{currentProvider && (
-							<span className="text-[11px]">{currentProvider.displayName}</span>
-						)}
-					</SelectValue>
-				</SelectTrigger>
-				<SelectContent className="bg-background backdrop-blur-xl border-border">
-					{PROVIDERS.map((provider) => (
-						<SelectItem
-							className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer text-xs"
-							key={provider.id}
-							value={provider.id}
-						>
-							<div className="flex flex-col gap-0.5">
-								<div className="flex items-center gap-1.5">
-									<span className="font-medium text-xs">{provider.name}</span>
-									<span className="text-[10px] text-muted-foreground font-mono">
-										{provider.displayName}
-									</span>
-								</div>
-								<span className="text-[10px] text-muted-foreground">
-									{provider.description}
-								</span>
-							</div>
-						</SelectItem>
-					))}
-				</SelectContent>
-			</Select>
+			<span className="h-6 px-1.5 inline-flex items-center text-muted-foreground text-[11px] font-normal">
+				{currentProvider?.displayName ?? "GLM-4.6V"}
+			</span>
 		</div>
 	)
 }

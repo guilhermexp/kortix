@@ -18,12 +18,12 @@ chatRouter.post("/", async (c) => {
 })
 
 chatRouter.post("/v2", async (c) => {
-	const { organizationId, userId } = c.var.session
+	const { organizationId, internalUserId } = c.var.session
 	const body = await c.req.json()
 	const supabase = createClientForSession(c.var.session)
 	return handleChatV2({
 		orgId: organizationId,
-		userId,
+		userId: internalUserId,
 		client: supabase,
 		body,
 	})

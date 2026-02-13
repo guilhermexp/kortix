@@ -199,7 +199,6 @@ export function ChatRewrite({
 					</div>
 				</div>
 				<ChatMessages
-					key={currentChatId ?? "chat-empty"}
 					compact={compact}
 					documentContext={documentContext}
 					embedded={embedded}

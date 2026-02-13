@@ -1474,6 +1474,7 @@ export function ChatMessages({
 	const [_loadingProjects, setLoadingProjects] = useState(false)
 
 	useEffect(() => {
+		if (!effectiveOpen) return
 		let ignore = false
 		async function load() {
 			try {
@@ -1709,6 +1710,10 @@ export function ChatMessages({
 		preview?: string | null
 	}
 	const [canvasDocs, setCanvasDocs] = useState<CanvasDoc[]>([])
+	const { isOpen } = useChatOpen()
+	const effectiveOpen = isOpen
+	const prevIsOpenRef = useRef(false)
+	const lastClosedTimeRef = useRef<number>(0)
 	const canvasDocMap = useMemo(() => {
 		const map = new Map<string, CanvasDoc>()
 		for (const doc of canvasDocs) {
@@ -1724,7 +1729,7 @@ export function ChatMessages({
 					selectedProject && selectedProject !== DEFAULT_PROJECT_ID
 						? [selectedProject]
 						: undefined
-				const res = await fetch(`${BACKEND_URL}/v3/documents`, {
+				const res = await fetch(`${BACKEND_URL}/v3/documents/documents`, {
 					method: "POST",
 					credentials: "include",
 					headers: { "Content-Type": "application/json" },
@@ -1761,7 +1766,7 @@ export function ChatMessages({
 		return () => {
 			ignore = true
 		}
-	}, [selectedProject])
+	}, [effectiveOpen, selectedProject])
 
 	const filteredMention = useMemo(() => {
 		const q = mentionQuery.trim().toLowerCase()
@@ -1807,12 +1812,6 @@ export function ChatMessages({
 		setMessages([])
 		shouldGenerateTitleRef.current = false
 	}, [setMessages])
-
-	// Create new chat when chat is opened (to avoid showing old messages)
-	const { isOpen } = useChatOpen()
-	const prevIsOpenRef = useRef(false)
-	const lastClosedTimeRef = useRef<number>(0)
-	const effectiveOpen = embedded || isOpen
 
 	useEffect(() => {
 		// Detect when chat is opened (transitions from closed to open)
@@ -1902,7 +1901,7 @@ export function ChatMessages({
 		const rawActiveId = currentChatId ?? id
 		const msgs = getCurrentConversation()
 		if (Array.isArray(msgs) && msgs.length > 0) {
-			const normalized = msgs.map((message) => {
+			const normalized = msgs.map((message, index) => {
 				const record = message as Record<string, unknown>
 				const content =
 					typeof record.content === "string" ? (record.content as string) : ""
@@ -1911,12 +1910,14 @@ export function ChatMessages({
 					: ([
 							{ type: "text", text: content } as TextPart,
 						] as ClaudeChatMessage["parts"])
+				const role = record.role === "assistant" ? "assistant" : "user"
+				const stableFallbackId = `${rawActiveId ?? "chat"}:${role}:${index}:${content.slice(0, 32)}`
 				return {
 					id:
 						typeof record.id === "string"
 							? (record.id as string)
-							: generateMessageId(),
-					role: record.role === "assistant" ? "assistant" : "user",
+							: stableFallbackId,
+					role,
 					content,
 					parts,
 				} satisfies ClaudeChatMessage
@@ -1929,8 +1930,7 @@ export function ChatMessages({
 		if (!rawActiveId) {
 			shouldGenerateTitleRef.current = false
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [currentChatId, getCurrentConversation, id, setMessages])
+	}, [currentChatId, id, setMessages])
 
 	useEffect(() => {
 		const rawActiveId = currentChatId ?? id

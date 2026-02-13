@@ -39,6 +39,10 @@ export const documentsRouter = new Hono<{
 	Variables: { session: SessionContext }
 }>()
 
+const MemoryCreateSchema = MemoryAddSchema.extend({
+	content: z.string().trim().min(1, "Content is required to create a document"),
+})
+
 // Queue metrics endpoint
 documentsRouter.get("/queue/metrics", async (c) => {
 	try {
@@ -98,7 +102,7 @@ documentsRouter.post(
 )
 
 // Add document (text or URL)
-documentsRouter.post("/", zValidator("json", MemoryAddSchema), async (c) => {
+documentsRouter.post("/", zValidator("json", MemoryCreateSchema), async (c) => {
 	const { organizationId, internalUserId } = c.var.session
 	const payload = c.req.valid("json")
 	const supabase = createClientForSession(c.var.session)
@@ -133,7 +137,7 @@ documentsRouter.post("/", zValidator("json", MemoryAddSchema), async (c) => {
 
 // Batch add documents (e.g. Twitter bookmarks import)
 const BatchDocumentsSchema = z.object({
-	documents: z.array(MemoryAddSchema).min(1).max(100),
+	documents: z.array(MemoryCreateSchema).min(1).max(100),
 	metadata: z
 		.record(z.string(), z.unknown())
 		.optional(),

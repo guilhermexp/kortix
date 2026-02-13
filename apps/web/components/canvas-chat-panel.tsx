@@ -299,13 +299,15 @@ export function CanvasChatPanel() {
 							<X className="h-4 w-4" />
 						</Button>
 					</div>
-					<ChatRewrite
-						className="h-full bg-[#08090a]"
-						compact
-						embedded
-						headerClassName="px-4 py-3 bg-[#0b0b0c] backdrop-blur-none border-b border-[rgba(255,255,255,0.05)]"
-						showCloseButton={false}
-					/>
+					{isOpen ? (
+						<ChatRewrite
+							className="h-full bg-[#08090a]"
+							compact
+							embedded
+							headerClassName="px-4 py-3 bg-[#0b0b0c] backdrop-blur-none border-b border-[rgba(255,255,255,0.05)]"
+							showCloseButton={false}
+						/>
+					) : null}
 					{!isMobile && (
 						<button
 							aria-label="Resize chat panel"

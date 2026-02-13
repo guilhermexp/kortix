@@ -75,8 +75,9 @@ canvasRouter.post("/", zValidator("json", CreateCanvasSchema), async (c) => {
 		)
 		return c.json(canvas, 201)
 	} catch (error) {
-		console.error("Failed to create canvas", error)
-		return c.json({ error: { message: "Failed to create canvas" } }, 400)
+		const detail = error instanceof Error ? error.message : JSON.stringify(error)
+		console.error("Failed to create canvas", { userId, payload, error: detail })
+		return c.json({ error: { message: `Failed to create canvas: ${detail}` } }, 400)
 	}
 })
 
