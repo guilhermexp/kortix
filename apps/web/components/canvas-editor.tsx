@@ -1,5 +1,6 @@
 "use client"
 
+import "@excalidraw/excalidraw/index.css"
 import { useAuth } from "@lib/auth-context"
 import { BACKEND_URL } from "@lib/env"
 import { $fetch } from "@repo/lib/api"
