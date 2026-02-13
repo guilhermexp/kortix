@@ -11,7 +11,6 @@ const ExcalidrawContentSchema = z.union([
 export const CanvasSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
-  orgId: z.string().uuid(),
   projectId: z.string().uuid().nullable().optional(),
   name: z.string().min(1),
   content: ExcalidrawContentSchema.nullable().optional(),

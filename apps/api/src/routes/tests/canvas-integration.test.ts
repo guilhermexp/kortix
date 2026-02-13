@@ -51,7 +51,6 @@ describe("Canvas API Integration", () => {
     expect(canvasService.listCanvases).toHaveBeenCalledWith(
       expect.anything(),
       "test-user-id",
-      "test-org-id",
       undefined,
     )
   })
@@ -67,7 +66,6 @@ describe("Canvas API Integration", () => {
       expect.anything(),
       "550e8400-e29b-41d4-a716-446655440000",
       "test-user-id",
-      "test-org-id",
     )
   })
 
@@ -86,7 +84,6 @@ describe("Canvas API Integration", () => {
     expect(canvasService.createCanvas).toHaveBeenCalledWith(
       expect.anything(),
       "test-user-id",
-      "test-org-id",
       newCanvas,
     )
   })
@@ -106,7 +103,6 @@ describe("Canvas API Integration", () => {
     expect(canvasService.createCanvas).toHaveBeenCalledWith(
       expect.anything(),
       "test-user-id",
-      "test-org-id",
       newCanvas,
     )
   })
@@ -127,7 +123,6 @@ describe("Canvas API Integration", () => {
       expect.anything(),
       "550e8400-e29b-41d4-a716-446655440000",
       "test-user-id",
-      "test-org-id",
       updateData,
     )
   })
@@ -144,7 +139,6 @@ describe("Canvas API Integration", () => {
       expect.anything(),
       "550e8400-e29b-41d4-a716-446655440000",
       "test-user-id",
-      "test-org-id",
     )
   })
 })

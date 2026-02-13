@@ -13,7 +13,6 @@ function mapCanvasToResponse(canvas: any) {
 	return CanvasResponseSchema.parse({
 		id: canvas.id,
 		userId: canvas.user_id,
-		orgId: canvas.org_id,
 		projectId: canvas.project_id,
 		name: canvas.name,
 		content: canvas.content,
@@ -26,14 +25,12 @@ function mapCanvasToResponse(canvas: any) {
 export async function listCanvases(
 	client: SupabaseClient,
 	userId: string,
-	organizationId: string,
 	projectId?: string,
 ) {
 	let query = client
 		.from("canvases")
 		.select("*")
 		.eq("user_id", userId)
-		.eq("org_id", organizationId)
 		.order("updated_at", { ascending: false })
 
 	if (projectId) {
@@ -51,14 +48,12 @@ export async function getCanvas(
 	client: SupabaseClient,
 	id: string,
 	userId: string,
-	organizationId: string,
 ) {
 	const { data, error } = await client
 		.from("canvases")
 		.select("*")
 		.eq("id", id)
 		.eq("user_id", userId)
-		.eq("org_id", organizationId)
 		.single()
 
 	if (error) throw error
@@ -70,30 +65,12 @@ export async function getCanvas(
 export async function createCanvas(
 	client: SupabaseClient,
 	userId: string,
-	organizationId: string,
 	payload: CreateCanvasInput,
 ) {
-	// Validate project ownership if projectId is provided
-	if (payload.projectId) {
-		const { data: project, error: projectError } = await client
-			.from("spaces")
-			.select("id")
-			.eq("id", payload.projectId)
-			.eq("org_id", organizationId)
-			.single()
-
-		if (projectError || !project) {
-			throw new Error(
-				"Project not found or does not belong to your organization",
-			)
-		}
-	}
-
 	const { data, error } = await client
 		.from("canvases")
 		.insert({
 			user_id: userId,
-			org_id: organizationId,
 			project_id: payload.projectId,
 			name: payload.name,
 			content: payload.content,
@@ -110,7 +87,6 @@ export async function updateCanvas(
 	client: SupabaseClient,
 	id: string,
 	userId: string,
-	organizationId: string,
 	payload: UpdateCanvasInput,
 ) {
 	const updates: any = {
@@ -126,7 +102,6 @@ export async function updateCanvas(
 		.update(updates)
 		.eq("id", id)
 		.eq("user_id", userId)
-		.eq("org_id", organizationId)
 		.select("*")
 		.single()
 
@@ -139,7 +114,6 @@ export async function deleteCanvas(
 	client: SupabaseClient,
 	id: string,
 	userId: string,
-	organizationId: string,
 ) {
 	// Verify canvas exists before deleting
 	const { data: existing, error: findError } = await client
@@ -147,7 +121,6 @@ export async function deleteCanvas(
 		.select("id")
 		.eq("id", id)
 		.eq("user_id", userId)
-		.eq("org_id", organizationId)
 		.maybeSingle()
 
 	if (findError) throw findError
@@ -158,7 +131,6 @@ export async function deleteCanvas(
 		.delete()
 		.eq("id", id)
 		.eq("user_id", userId)
-		.eq("org_id", organizationId)
 
 	if (error) throw error
 

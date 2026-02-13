@@ -30,7 +30,7 @@ canvasRouter.get(
 		}),
 	),
 	async (c) => {
-		const { userId, organizationId } = c.var.session
+		const { userId } = c.var.session
 		const { projectId } = c.req.valid("query")
 		const supabase = createClientForSession(c.var.session)
 
@@ -38,7 +38,6 @@ canvasRouter.get(
 			const canvases = await listCanvases(
 				supabase,
 				userId,
-				organizationId,
 				projectId,
 			)
 			return c.json(canvases)
@@ -50,12 +49,12 @@ canvasRouter.get(
 )
 
 canvasRouter.get("/:id", async (c) => {
-	const { userId, organizationId } = c.var.session
+	const { userId } = c.var.session
 	const id = c.req.param("id")
 	const supabase = createClientForSession(c.var.session)
 
 	try {
-		const canvas = await getCanvas(supabase, id, userId, organizationId)
+		const canvas = await getCanvas(supabase, id, userId)
 		return c.json(canvas)
 	} catch (error) {
 		console.error("Failed to get canvas", error)
@@ -64,7 +63,7 @@ canvasRouter.get("/:id", async (c) => {
 })
 
 canvasRouter.post("/", zValidator("json", CreateCanvasSchema), async (c) => {
-	const { userId, organizationId } = c.var.session
+	const { userId } = c.var.session
 	const payload = c.req.valid("json")
 	const supabase = createClientForSession(c.var.session)
 
@@ -72,7 +71,6 @@ canvasRouter.post("/", zValidator("json", CreateCanvasSchema), async (c) => {
 		const canvas = await createCanvas(
 			supabase,
 			userId,
-			organizationId,
 			payload,
 		)
 		return c.json(canvas, 201)
@@ -86,7 +84,7 @@ canvasRouter.patch(
 	"/:id",
 	zValidator("json", UpdateCanvasSchema),
 	async (c) => {
-		const { userId, organizationId } = c.var.session
+		const { userId } = c.var.session
 		const id = c.req.param("id")
 		const payload = c.req.valid("json")
 		const supabase = createClientForSession(c.var.session)
@@ -96,7 +94,6 @@ canvasRouter.patch(
 				supabase,
 				id,
 				userId,
-				organizationId,
 				payload,
 			)
 			return c.json(canvas)
@@ -108,7 +105,7 @@ canvasRouter.patch(
 )
 
 canvasRouter.delete("/:id", async (c) => {
-	const { userId, organizationId } = c.var.session
+	const { userId } = c.var.session
 	const id = c.req.param("id")
 	const supabase = createClientForSession(c.var.session)
 
@@ -117,7 +114,6 @@ canvasRouter.delete("/:id", async (c) => {
 			supabase,
 			id,
 			userId,
-			organizationId,
 		)
 		return c.json(result)
 	} catch (error) {
