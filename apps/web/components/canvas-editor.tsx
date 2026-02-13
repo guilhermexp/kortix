@@ -83,7 +83,7 @@ export function CanvasEditor({
 	const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 	const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
-	const [socket, setSocket] = useState<Socket | null>(null)
+	const socketRef = useRef<Socket | null>(null)
 	const [collaborators, setCollaborators] = useState<Map<string, Collaborator>>(new Map())
 	const isBootstrapping = useRef(true)
 
@@ -319,12 +319,12 @@ export function CanvasEditor({
 			}
 		})
 
-		setSocket(newSocket)
+		socketRef.current = newSocket
 
 		return () => {
 			newSocket.emit("leave-canvas", { canvasId, userId: user.id })
 			newSocket.close()
-			setSocket(null)
+			socketRef.current = null
 		}
 	}, [canvasId, user])
 
@@ -339,14 +339,14 @@ export function CanvasEditor({
 			// Bump scene version to trigger auto-save
 			sceneVersionRef.current += 1
 
-			if (socket) {
-				socket.emit("element-update", {
+			if (socketRef.current) {
+				socketRef.current.emit("element-update", {
 					canvasId,
 					elements: Array.from(elements),
 				})
 			}
 		},
-		[socket, canvasId],
+		[canvasId],
 	)
 
 	// Force canvas visual mode after hydration so Excalidraw/local state
