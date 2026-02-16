@@ -23,7 +23,7 @@ const chatRequestSchema = z.object({
 	mode: z.enum(["simple", "agentic", "deep"]).default("simple"),
 	metadata: z.record(z.string(), z.any()).optional(),
 	model: z.string().optional(),
-	provider: z.enum(["glm", "minimax", "anthropic", "kimi"]).optional(), // AI provider selection
+	provider: z.enum(["kimi"]).optional(),
 	scopedDocumentIds: z.array(z.string()).optional(),
 })
 
@@ -44,7 +44,7 @@ const legacyChatRequestSchema = z.object({
 	mode: z.enum(["simple", "agentic", "deep"]).default("simple"),
 	metadata: z.record(z.string(), z.any()).optional(),
 	model: z.string().optional(),
-	provider: z.enum(["glm", "minimax", "anthropic", "kimi"]).optional(), // AI provider selection
+	provider: z.enum(["kimi"]).optional(),
 	scopedDocumentIds: z.array(z.string()).optional(),
 })
 

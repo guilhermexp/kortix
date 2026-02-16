@@ -1,31 +1,28 @@
 /**
  * Provider Configuration
  *
- * Defines the GLM/Z.AI provider for AI chat
+ * Defines the Kimi (K2.5) provider for AI chat
  *
- * API key can be configured via environment variable:
- * - GLM_API_KEY
- *
- * If not provided, falls back to hardcoded value for backward compatibility.
+ * API key configured via environment variable:
+ * - KIMI_API_KEY
  */
 
 import { env } from "../env"
 
 export const PROVIDER_CONFIGS = {
-	glm: {
-		id: "glm" as const,
-		name: "Z.AI (GLM)",
-		displayName: "GLM-4.6V",
-		apiKey: env.GLM_API_KEY,
-		baseURL: "https://api.z.ai/api/anthropic",
+	kimi: {
+		id: "kimi" as const,
+		name: "Kimi (K2.5)",
+		displayName: "kimi-k2.5-coding",
+		apiKey: env.KIMI_API_KEY,
+		baseURL: "https://api.kimi.com/coding",
 		models: {
-			fast: "GLM-4.6V",
-			balanced: "GLM-4.6V",
-			advanced: "GLM-4.6V",
+			fast: "kimi-k2.5-coding",
+			balanced: "kimi-k2.5-coding",
+			advanced: "kimi-k2.5-coding",
 		},
-		// Optional: provider-specific settings
 		settings: {
-			timeout: 300000, // 5 minutes
+			timeout: 3000000, // 50 minutes (matching profile)
 		},
 	},
 } as const
@@ -62,5 +59,5 @@ export function isValidProvider(providerId: string): providerId is ProviderId {
  * Get default provider
  */
 export function getDefaultProvider(): ProviderId {
-	return "glm" // Default to GLM-4.6V
+	return "kimi"
 }

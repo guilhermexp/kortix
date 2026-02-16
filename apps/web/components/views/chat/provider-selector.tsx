@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 
-export type ProviderId = "glm"
+export type ProviderId = "kimi"
 
 interface ProviderConfig {
 	id: ProviderId
@@ -13,10 +13,10 @@ interface ProviderConfig {
 
 const PROVIDERS: ProviderConfig[] = [
 	{
-		id: "glm",
-		name: "Z.AI",
-		displayName: "GLM-4.6V",
-		description: "Fast and balanced general-purpose model with vision",
+		id: "kimi",
+		name: "Kimi",
+		displayName: "K2.5",
+		description: "Fast and balanced coding model by Moonshot AI",
 	},
 ]
 
@@ -31,14 +31,14 @@ export function ProviderSelector({
 	onChange,
 	disabled = false,
 }: ProviderSelectorProps) {
-	const selectedProvider = value || "glm"
+	const selectedProvider = value || "kimi"
 	const currentProvider = PROVIDERS.find((p) => p.id === selectedProvider)
 
 	// With a single provider, render as a static label
 	return (
 		<div className="flex items-center gap-1.5">
 			<span className="h-6 px-1.5 inline-flex items-center text-muted-foreground text-[11px] font-normal">
-				{currentProvider?.displayName ?? "GLM-4.6V"}
+				{currentProvider?.displayName ?? "K2.5"}
 			</span>
 		</div>
 	)
@@ -48,16 +48,17 @@ export function ProviderSelector({
  * Hook to manage provider selection with persistence
  */
 export function useProviderSelection() {
-	const [provider, setProvider] = useState<ProviderId>("glm")
+	const [provider, setProvider] = useState<ProviderId>("kimi")
 
-	// Load from localStorage on mount
+	// Load from localStorage on mount, resetting stale values (e.g. "glm")
 	useEffect(() => {
 		if (typeof window !== "undefined") {
-			const saved = localStorage.getItem(
-				"preferred_provider",
-			) as ProviderId | null
-			if (saved && saved === "glm") {
+			const saved = localStorage.getItem("preferred_provider")
+			if (saved === "kimi") {
 				setProvider(saved)
+			} else {
+				// Reset stale provider values to kimi
+				localStorage.setItem("preferred_provider", "kimi")
 			}
 		}
 	}, [])

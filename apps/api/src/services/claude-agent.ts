@@ -48,7 +48,7 @@ export type ClaudeAgentOptions = {
 	orgId: string
 	systemPrompt?: string
 	model?: string
-	provider?: ProviderId // AI provider to use (glm or minimax)
+	provider?: ProviderId
 	context?: AgentContextOptions
 	allowedTools?: string[]
 	maxTurns?: number
@@ -128,66 +128,6 @@ export type AgentPart =
 			error?: string
 	  }
 
-function sanitizeContent(value: string) {
-	return value.replace(/\s+/g, " ").trim()
-}
-
-/**
- * Normalize content to array of content blocks
- * Handles both legacy string format and new structured format
- */
-function normalizeContent(content: string | ContentBlock[]): ContentBlock[] {
-	if (typeof content === "string") {
-		const sanitized = sanitizeContent(content)
-		return sanitized ? [{ type: "text", text: sanitized }] : []
-	}
-	return content
-}
-
-function createPromptStream(messages: AgentMessage[]) {
-	return (async function* promptGenerator() {
-		for (let i = 0; i < messages.length; i++) {
-			const message = messages[i]
-
-			// ⚠️ Claude Agent SDK limitation: prompt stream accepts ONLY user messages
-			// Assistant messages must be handled through SDK's session management or system prompt
-			if (message.role !== "user") {
-				continue
-			}
-
-			// Normalize content to array of blocks (handles both string and array formats)
-			const contentBlocks = normalizeContent(message.content)
-
-			if (contentBlocks.length === 0) {
-				console.warn(`[createPromptStream] Skipping empty message ${i}`)
-				continue
-			}
-
-			const payload = {
-				role: "user" as const,
-				content: contentBlocks,
-			}
-
-			const contentPreview = contentBlocks
-				.map((b) =>
-					b.type === "text" ? b.text.substring(0, 30) : `[${b.type}]`,
-				)
-				.join(" ")
-
-			console.log(`[createPromptStream] Yielding message ${i}:`, {
-				type: "user",
-				role: payload.role,
-				blockCount: contentBlocks.length,
-				blockTypes: contentBlocks.map((b) => b.type),
-				contentPreview,
-			})
-
-			yield { type: "user" as const, message: payload }
-		}
-		console.log("[createPromptStream] Finished yielding all messages")
-	})()
-}
-
 function collectTextFromContent(content: unknown): string[] {
 	if (!content) return []
 	if (typeof content === "string") {
@@ -215,45 +155,6 @@ function collectTextFromContent(content: unknown): string[] {
 		}
 	}
 	return []
-}
-
-function _extractAssistantText(events: unknown[]): string {
-	const parts: string[] = []
-
-	for (const event of events) {
-		if (!event || typeof event !== "object") continue
-		const typed = event as Record<string, unknown>
-
-		if (typeof typed.type === "string" && typed.type.includes("output_text")) {
-			const delta = typed.delta ?? typed.output_text ?? typed.text
-			if (typeof delta === "string") {
-				parts.push(delta)
-				continue
-			}
-			if (delta && typeof delta === "object") {
-				parts.push(...collectTextFromContent(delta))
-				continue
-			}
-		}
-
-		const message =
-			typed.message && typeof typed.message === "object"
-				? (typed.message as Record<string, unknown>)
-				: null
-
-		if (message && message.role === "assistant") {
-			if (message.content) {
-				parts.push(...collectTextFromContent(message.content))
-			}
-			continue
-		}
-
-		if (typed.content && typed.role === "assistant") {
-			parts.push(...collectTextFromContent(typed.content))
-		}
-	}
-
-	return parts.join("")
 }
 
 export async function executeClaudeAgent(
@@ -300,34 +201,34 @@ export async function executeClaudeAgent(
 	// Validate baseURL against whitelist to prevent credential leakage
 	const ALLOWED_BASE_URLS = [
 		"https://api.anthropic.com",
-		"https://api.z.ai/api/anthropic",
-		"https://api.minimax.io/anthropic",
-		"https://api.kimi.com/coding/",
+		"https://api.kimi.com/coding",
 	]
 
 	if (!ALLOWED_BASE_URLS.includes(providerConfig.baseURL)) {
 		throw new Error(`Invalid provider base URL: ${providerConfig.baseURL}`)
 	}
 
+	// Use provider's default model if no specific model provided
+	const resolvedModel = model || providerConfig.models.balanced
+
 	// Apply provider-specific configuration to environment
 	// Note: This modifies global state. In production, consider using a per-request
 	// Anthropic client instance instead of environment variables.
 	process.env.ANTHROPIC_API_KEY = providerConfig.apiKey
+	process.env.ANTHROPIC_AUTH_TOKEN = providerConfig.apiKey
 	process.env.ANTHROPIC_BASE_URL = providerConfig.baseURL
-
-	// Use provider's default model if no specific model provided
-	const resolvedModel = model || providerConfig.models.balanced
+	process.env.ANTHROPIC_MODEL = resolvedModel
+	process.env.ANTHROPIC_SMALL_FAST_MODEL = providerConfig.models.fast
+	process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = providerConfig.models.balanced
+	process.env.ANTHROPIC_DEFAULT_OPUS_MODEL = providerConfig.models.advanced
+	process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL = providerConfig.models.fast
 
 	console.log("[executeClaudeAgent] Using base URL:", providerConfig.baseURL)
 	console.log("[executeClaudeAgent] Using model:", resolvedModel)
 
 	try {
-		// Create prompt stream with just the current message
-		const userMessage: AgentMessage = {
-			role: "user",
-			content: message,
-		}
-		const prompt = createPromptStream([userMessage])
+		// Pass message directly as string — the SDK accepts string | AsyncIterable<SDKUserMessage>
+		const prompt = message
 		const toolsServer = createKortixTools(client, orgId, context)
 		const toolNames =
 			Array.isArray(allowedTools) && allowedTools.length > 0
@@ -409,8 +310,6 @@ export async function executeClaudeAgent(
 				"grep",
 				"KillShell",
 				"killshell",
-				"Agent",
-				"agent",
 				"BashOutput",
 				"bashoutput",
 				"ExitPlanMode",
@@ -611,26 +510,24 @@ export async function executeClaudeAgent(
 		console.error("[executeClaudeAgent] Error:", error)
 		// Fallback: use direct Anthropic Messages API when CLI process fails (common under Bun)
 		try {
-			if (providerId === "anthropic") {
-				const client = new Anthropic({
-					apiKey: providerConfig.apiKey,
-					baseURL: providerConfig.baseURL,
-				})
-				const resp = await client.messages.create({
-					model: resolvedModel,
-					max_tokens: 512,
-					messages: [{ role: "user", content: message }],
-				})
-				const txt = resp.content
-					.map((c: any) => (c.type === "text" ? c.text : ""))
-					.join("")
-					.trim()
-				return {
-					events: [resp],
-					text: txt,
-					parts: txt ? [{ type: "text", text: txt }] : [],
-					sdkSessionId: null,
-				}
+			const fallbackClient = new Anthropic({
+				apiKey: providerConfig.apiKey,
+				baseURL: providerConfig.baseURL,
+			})
+			const resp = await fallbackClient.messages.create({
+				model: resolvedModel,
+				max_tokens: 512,
+				messages: [{ role: "user", content: message }],
+			})
+			const txt = resp.content
+				.map((c) => (c.type === "text" ? c.text : ""))
+				.join("")
+				.trim()
+			return {
+				events: [resp],
+				text: txt,
+				parts: txt ? [{ type: "text" as const, text: txt }] : [],
+				sdkSessionId: null,
 			}
 		} catch (fallbackErr) {
 			console.error("[executeClaudeAgent] Fallback failed:", fallbackErr)

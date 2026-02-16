@@ -1456,6 +1456,8 @@ export function ChatMessages({
 	const activeChatIdRef = useRef<string | null>(null)
 	const shouldGenerateTitleRef = useRef<boolean>(false)
 	const skipHydrationRef = useRef(false)
+	// Track previous chat ID to prevent persisting stale messages when switching chats
+	const prevPersistChatIdRef = useRef<string | null | undefined>(undefined)
 
 	const { setDocumentIds, clear } = useGraphHighlights()
 
@@ -1934,6 +1936,21 @@ export function ChatMessages({
 
 	useEffect(() => {
 		const rawActiveId = currentChatId ?? id
+
+		// When the active chat ID changes (e.g. user clicked "+"), skip this
+		// persistence run. The messages state still holds the PREVIOUS chat's
+		// messages and would be incorrectly saved to the new chat ID.
+		// The hydration effect (above) will set the correct messages, and the
+		// next run of this effect will persist them properly.
+		const chatIdJustChanged =
+			prevPersistChatIdRef.current !== undefined &&
+			rawActiveId !== prevPersistChatIdRef.current
+		prevPersistChatIdRef.current = rawActiveId ?? null
+
+		if (chatIdJustChanged) {
+			return
+		}
+
 		if (rawActiveId && messages.length > 0) {
 			setConversation(rawActiveId, messages)
 		}

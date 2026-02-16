@@ -24,7 +24,7 @@ export type ClaudeDirectOptions = {
 	orgId: string
 	systemPrompt?: string
 	model?: string
-	provider?: ProviderId // AI provider to use (glm or minimax)
+	provider?: ProviderId
 	context?: AgentContextOptions
 	maxTurns?: number
 }
@@ -39,7 +39,7 @@ async function handleSearchDatabase(
 	context?: AgentContextOptions,
 ): Promise<string> {
 	try {
-		const results = await searchDocuments(client, orgId, {
+		const response = await searchDocuments(client, orgId, {
 			q: query,
 			limit: 10,
 			includeSummary: true,
@@ -50,21 +50,21 @@ async function handleSearchDatabase(
 			scopedDocumentIds: context?.scopedDocumentIds,
 		})
 
-		if (!results || results.length === 0) {
+		if (!response || response.results.length === 0) {
 			return "Nenhum documento encontrado para a busca."
 		}
 
 		// Formatar resultados para o Claude
-		const formatted = results
+		const formatted = response.results
 			.slice(0, 10)
-			.map((doc, i) => {
+			.map((doc: { title?: string | null; score?: number; content?: string | null }, i: number) => {
 				return `[${i + 1}] ${doc.title || "Sem título"}
-Relevância: ${(doc.score * 100).toFixed(1)}%
+Relevância: ${((doc.score ?? 0) * 100).toFixed(1)}%
 Conteúdo: ${doc.content?.slice(0, 300) || "Sem conteúdo"}...`
 			})
 			.join("\n\n")
 
-		return `Encontrados ${results.length} documentos:\n\n${formatted}`
+		return `Encontrados ${response.results.length} documentos:\n\n${formatted}`
 	} catch (error) {
 		console.error("Error searching database:", error)
 		return `Erro ao buscar documentos: ${error instanceof Error ? error.message : "Erro desconhecido"}`

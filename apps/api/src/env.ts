@@ -52,10 +52,8 @@ const envSchema = z.object({
 	OPENROUTER_MODEL: z.string().optional(),
 	// Voyage AI (embeddings provider)
 	VOYAGE_API_KEY: z.string().min(1).optional(),
-	// Multi-provider AI keys (optional - falls back to hardcoded if not provided)
-	GLM_API_KEY: z.string().min(1).optional(),
-	MINIMAX_API_KEY: z.string().min(1).optional(),
-	KIMI_API_KEY: z.string().min(1).optional(),
+	// Kimi AI provider key
+	KIMI_API_KEY: z.string().min(1),
 	OPENROUTER_TEMPERATURE: z
 		.string()
 		.optional()
@@ -125,8 +123,6 @@ const parsed = envSchema.safeParse({
 	OPENROUTER_TEMPERATURE: process.env.OPENROUTER_TEMPERATURE,
 	OPENROUTER_MAX_TOKENS: process.env.OPENROUTER_MAX_TOKENS,
 	VOYAGE_API_KEY: process.env.VOYAGE_API_KEY,
-	GLM_API_KEY: process.env.GLM_API_KEY,
-	MINIMAX_API_KEY: process.env.MINIMAX_API_KEY,
 	KIMI_API_KEY: process.env.KIMI_API_KEY,
 	SEQ_MCP_COMMAND: process.env.SEQ_MCP_COMMAND,
 	SEQ_MCP_ARGS: process.env.SEQ_MCP_ARGS,
