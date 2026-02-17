@@ -12,6 +12,10 @@ import {
 	ConversationStorageUnavailableError,
 	EventStorageService,
 } from "../services/event-storage"
+import {
+	buildChatSessionKey,
+	chatSessionManager,
+} from "../services/chat-session-manager"
 
 // New schema (SDK session-based)
 const chatRequestSchema = z.object({
@@ -103,7 +107,7 @@ type ToolEventState =
 	| "output-error"
 
 type ContentBlockTracker =
-	| { kind: "thinking" }
+	| { kind: "thinking"; buffer: string }
 	| { kind: "tool_use"; toolUseId?: string; toolName: string }
 	| {
 			kind: "tool_result"
@@ -155,6 +159,12 @@ function extractTextFromDelta(delta: unknown): string {
 	}
 	if (typeof delta.text === "string") {
 		return delta.text
+	}
+	if (typeof delta.thinking === "string") {
+		return delta.thinking
+	}
+	if (typeof delta.partial_json === "string") {
+		return delta.partial_json
 	}
 	if (Array.isArray(delta.content)) {
 		return flattenToolContent(delta.content)
@@ -690,8 +700,37 @@ export async function handleChatV2({
 
 		const encoder = new TextEncoder()
 
+		const streamSessionKey = buildChatSessionKey({
+			orgId,
+			userId,
+			conversationId,
+		})
+		let activeSessionId: string | null = null
+		let activeSessionAbortController: AbortController | null = null
+		let streamClosed = false
+
 		const stream = new ReadableStream<Uint8Array>({
 			async start(controller) {
+				const startedSession = chatSessionManager.start({
+					sessionKey: streamSessionKey,
+					orgId,
+					userId,
+					conversationId,
+					requestedSdkSessionId: payload.sdkSessionId,
+				})
+				activeSessionId = startedSession.sessionId
+				activeSessionAbortController = startedSession.abortController
+				const sessionAbortController = startedSession.abortController
+
+				console.log(
+					`[Chat V2] Session started (${activeSessionId}) for key ${streamSessionKey}`,
+				)
+				if (startedSession.replacedSessionId) {
+					console.log(
+						`[Chat V2] Replaced active session ${startedSession.replacedSessionId} for key ${streamSessionKey}`,
+					)
+				}
+
 				const enqueue = (payload: Record<string, unknown>) => {
 					try {
 						controller.enqueue(encoder.encode(`${JSON.stringify(payload)}\n`))
@@ -727,7 +766,7 @@ export async function handleChatV2({
 							if (!blockType) continue
 
 							if (blockType === "thinking") {
-								contentTrackers.set(index, { kind: "thinking" })
+								contentTrackers.set(index, { kind: "thinking", buffer: "" })
 								if (thinkingDepth === 0) {
 									emitThinking(true)
 								}
@@ -793,11 +832,16 @@ export async function handleChatV2({
 							const index = toSafeIndex(event.index)
 							if (index === null) continue
 							const tracker = contentTrackers.get(index)
-							if (!tracker || tracker.kind !== "tool_result") continue
+							if (!tracker) continue
 							const deltaText =
 								"delta" in event ? extractTextFromDelta(event.delta) : ""
 							if (deltaText.length > 0) {
-								tracker.buffer += deltaText
+								if (tracker.kind === "thinking") {
+									tracker.buffer += deltaText
+									enqueue({ type: "thinking_delta", text: deltaText })
+								} else if (tracker.kind === "tool_result") {
+									tracker.buffer += deltaText
+								}
 							}
 							continue
 						}
@@ -810,6 +854,12 @@ export async function handleChatV2({
 							contentTrackers.delete(index)
 
 							if (tracker.kind === "thinking") {
+								if (tracker.buffer.trim().length > 0) {
+									enqueue({
+										type: "thinking_done",
+										text: tracker.buffer,
+									})
+								}
 								if (thinkingDepth > 0) {
 									thinkingDepth -= 1
 								}
@@ -866,7 +916,15 @@ export async function handleChatV2({
 				if (conversationId) {
 					enqueue({ type: "conversation", conversationId })
 				}
+				enqueue({
+					type: "session_started",
+					sessionId: activeSessionId,
+					conversationId,
+					requestedSdkSessionId: payload.sdkSessionId ?? null,
+				})
 
+				let streamResultStatus: "completed" | "failed" | "aborted" =
+					"completed"
 				try {
 					const {
 						events,
@@ -886,9 +944,13 @@ export async function handleChatV2({
 							provider: payload.provider, // Pass provider selection
 							context: toolContext,
 							maxTurns,
+							abortSignal: sessionAbortController.signal,
 						},
 						{
 							onEvent: async (event) => {
+								if (activeSessionId) {
+									chatSessionManager.touch(activeSessionId)
+								}
 								try {
 									processProgressEvent(event)
 								} catch (error) {
@@ -946,6 +1008,12 @@ export async function handleChatV2({
 
 					// Update SDK session ID if returned and conversation exists
 					if (conversationId && returnedSessionId) {
+						if (activeSessionId) {
+							chatSessionManager.setSdkSessionId(
+								activeSessionId,
+								returnedSessionId,
+							)
+						}
 						try {
 							await eventStorage.updateSdkSessionId(
 								conversationId,
@@ -994,16 +1062,69 @@ export async function handleChatV2({
 						events,
 					})
 				} catch (error) {
+					const aborted = Boolean(activeSessionAbortController?.signal.aborted)
+					streamResultStatus = aborted
+						? "aborted"
+						: "failed"
 					const message =
 						error instanceof Error ? error.message : "Internal chat failure"
 					console.error("[Chat V2] Streaming error:", error)
-					enqueue({
-						type: "error",
-						message,
-					})
+
+					if (!aborted) {
+						enqueue({
+							type: "error",
+							message,
+						})
+					} else {
+						console.log(
+							`[Chat V2] Session ${activeSessionId ?? "(unknown)"} aborted`,
+						)
+						enqueue({
+							type: "session_aborted",
+							sessionId: activeSessionId,
+							conversationId,
+						})
+					}
 				} finally {
-					controller.close()
+					if (activeSessionId) {
+						chatSessionManager.finish(activeSessionId, {
+							status: activeSessionAbortController?.signal.aborted
+								? "aborted"
+								: streamResultStatus,
+						})
+						enqueue({
+							type: "session_finished",
+							sessionId: activeSessionId,
+							conversationId,
+							status: activeSessionAbortController?.signal.aborted
+								? "aborted"
+								: streamResultStatus,
+						})
+						activeSessionId = null
+					}
+					if (!streamClosed) {
+						streamClosed = true
+						try {
+							controller.close()
+						} catch {
+							// Stream may already be closed by runtime
+						}
+					}
 				}
+			},
+			cancel(reason) {
+				console.log("[Chat V2] Stream canceled by client", reason)
+				if (activeSessionId) {
+					chatSessionManager.abort(
+						activeSessionId,
+						typeof reason === "string" ? reason : "Client disconnected",
+					)
+					activeSessionId = null
+				}
+				if (activeSessionAbortController && !activeSessionAbortController.signal.aborted) {
+					activeSessionAbortController.abort("Client disconnected")
+				}
+				streamClosed = true
 			},
 		})
 

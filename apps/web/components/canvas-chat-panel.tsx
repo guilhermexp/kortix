@@ -2,14 +2,16 @@
 
 import { cn } from "@lib/utils"
 import { Button } from "@ui/components/button"
-import { MessageSquare, X } from "lucide-react"
+import { MessageSquare } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { MouseEvent as ReactMouseEvent } from "react"
 import { ChatRewrite } from "@/components/views/chat"
+import { CouncilChat } from "@/components/views/council"
 import { useChatOpen } from "@/stores"
 
 const PANEL_SIZE_STORAGE_KEY = "canvas-chat-panel-size-v2"
 const PANEL_POSITION_STORAGE_KEY = "canvas-chat-panel-position-v2"
+const PANEL_MODE_STORAGE_KEY = "canvas-chat-panel-mode-v1"
 const DEFAULT_WIDTH = 390
 const DEFAULT_HEIGHT = 560
 const MIN_WIDTH = 360
@@ -22,6 +24,7 @@ type ResizeMode = "width" | "height" | "both"
 export function CanvasChatPanel() {
 	const { isOpen, setIsOpen } = useChatOpen()
 	const [isMobile, setIsMobile] = useState(false)
+	const [mode, setMode] = useState<"default" | "council">("default")
 	const [panelSize, setPanelSize] = useState({
 		width: DEFAULT_WIDTH,
 		height: DEFAULT_HEIGHT,
@@ -91,6 +94,23 @@ export function CanvasChatPanel() {
 			setPanelSize(size)
 		} catch {}
 	}, [clampSize])
+
+	useEffect(() => {
+		if (typeof window === "undefined") return
+		try {
+			const raw = localStorage.getItem(PANEL_MODE_STORAGE_KEY)
+			if (raw === "default" || raw === "council") {
+				setMode(raw)
+			}
+		} catch {}
+	}, [])
+
+	useEffect(() => {
+		if (typeof window === "undefined") return
+		try {
+			localStorage.setItem(PANEL_MODE_STORAGE_KEY, mode)
+		} catch {}
+	}, [mode])
 
 	useEffect(() => {
 		if (typeof window === "undefined") return
@@ -288,26 +308,23 @@ export function CanvasChatPanel() {
 							type="button"
 						/>
 					)}
-					<div className="absolute right-2 top-2 z-30">
-						<Button
-							className="h-7 w-7 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80"
-							onClick={() => setIsOpen(false)}
-							size="icon"
-							type="button"
-							variant="ghost"
-						>
-							<X className="h-4 w-4" />
-						</Button>
-					</div>
-					{isOpen ? (
-						<ChatRewrite
-							className="h-full bg-[#08090a]"
-							compact
-							embedded
-							headerClassName="px-4 py-3 bg-[#0b0b0c] backdrop-blur-none border-b border-[rgba(255,255,255,0.05)]"
-							showCloseButton={false}
-						/>
-					) : null}
+					{isOpen &&
+						(mode === "council" ? (
+							<CouncilChat
+								compact
+								onClose={() => setIsOpen(false)}
+								onSwitchToAgent={() => setMode("default")}
+							/>
+						) : (
+							<ChatRewrite
+								className="h-full bg-[#08090a]"
+								compact
+								embedded
+								headerClassName="px-4 py-3 bg-[#0b0b0c] backdrop-blur-none border-b border-[rgba(255,255,255,0.05)]"
+								onSwitchToCouncil={() => setMode("council")}
+								showCloseButton
+							/>
+						))}
 					{!isMobile && (
 						<button
 							aria-label="Resize chat panel"

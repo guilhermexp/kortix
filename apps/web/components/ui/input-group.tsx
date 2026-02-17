@@ -77,7 +77,7 @@ const InputGroupAddon = React.forwardRef<
 	return (
 		<div
 			className={cn(
-				"absolute flex gap-1.5 px-3 py-2 pointer-events-none",
+				"absolute z-10 flex gap-1.5 px-3 py-2 pointer-events-none",
 				alignClasses[align],
 				positionClasses[align],
 				"[&>*]:pointer-events-auto",

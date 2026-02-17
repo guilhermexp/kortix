@@ -52,6 +52,7 @@ export type ClaudeAgentOptions = {
 	context?: AgentContextOptions
 	allowedTools?: string[]
 	maxTurns?: number
+	abortSignal?: AbortSignal
 }
 
 export type ClaudeAgentCallbacks = {
@@ -171,6 +172,7 @@ export async function executeClaudeAgent(
 		context,
 		allowedTools,
 		maxTurns,
+		abortSignal,
 	}: ClaudeAgentOptions,
 	callbacks: ClaudeAgentCallbacks = {},
 ): Promise<{
@@ -390,6 +392,20 @@ export async function executeClaudeAgent(
 		}
 		if (typeof maxTurns === "number") {
 			queryOptions.maxTurns = maxTurns
+		}
+
+		if (abortSignal) {
+			const sdkAbortController = new AbortController()
+			if (abortSignal.aborted) {
+				sdkAbortController.abort("Request aborted")
+			} else {
+				abortSignal.addEventListener(
+					"abort",
+					() => sdkAbortController.abort("Request aborted"),
+					{ once: true },
+				)
+			}
+			queryOptions.abortController = sdkAbortController
 		}
 
 		console.log("[executeClaudeAgent] Query options:", {

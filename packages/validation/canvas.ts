@@ -5,7 +5,7 @@ import { z } from "zod";
 // managed by Excalidraw and may change between versions.
 const ExcalidrawContentSchema = z.union([
   z.string(), // Serialized JSON string
-  z.record(z.unknown()), // Already-parsed object (elements, appState, files)
+  z.record(z.string(), z.unknown()), // Already-parsed object (elements, appState, files)
 ]);
 
 export const CanvasSchema = z.object({

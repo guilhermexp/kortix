@@ -168,30 +168,32 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 								{/* User Projects */}
 								{projects
 									.filter((p) => p.containerTag !== DEFAULT_PROJECT_ID)
-									.map((project, index: number) => (
-										<motion.div
-											animate={{ opacity: 1, x: 0 }}
-											className={`flex items-center justify-between p-2 rounded-md transition-colors group ${
-												selectedProject === project.containerTag
-													? "bg-muted"
-													: "hover:bg-muted/50"
-											}`}
-											initial={{ opacity: 0, x: -5 }}
-											key={project.id}
-											transition={{ delay: index * 0.03 }}
-										>
-											<button
-												className="flex items-center gap-2 flex-1 cursor-pointer rounded-md bg-transparent text-left focus:outline-none"
-												onClick={() =>
-													handleProjectSelect(project.containerTag)
-												}
-												type="button"
+									.map((project, index: number) => {
+										const containerTag =
+											project.containerTag ?? DEFAULT_PROJECT_ID
+										const projectName = project.name ?? "Untitled Project"
+										return (
+											<motion.div
+												animate={{ opacity: 1, x: 0 }}
+												className={`flex items-center justify-between p-2 rounded-md transition-colors group ${
+													selectedProject === containerTag
+														? "bg-muted"
+														: "hover:bg-muted/50"
+												}`}
+												initial={{ opacity: 0, x: -5 }}
+												key={project.id}
+												transition={{ delay: index * 0.03 }}
 											>
-												<FolderIcon className="h-3.5 w-3.5 text-muted-foreground" />
-												<span className="text-xs font-medium text-foreground truncate max-w-32">
-													{project.name}
-												</span>
-											</button>
+												<button
+													className="flex items-center gap-2 flex-1 cursor-pointer rounded-md bg-transparent text-left focus:outline-none"
+													onClick={() => handleProjectSelect(containerTag)}
+													type="button"
+												>
+													<FolderIcon className="h-3.5 w-3.5 text-muted-foreground" />
+													<span className="text-xs font-medium text-foreground truncate max-w-32">
+														{projectName}
+													</span>
+												</button>
 											<div className="flex items-center gap-1">
 												<DropdownMenu>
 													<DropdownMenuTrigger
@@ -211,8 +213,8 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 																setRenameDialog({
 																	open: true,
 																	projectId: project.id,
-																	currentName: project.name,
-																	newName: project.name,
+																	currentName: projectName,
+																	newName: projectName,
 																})
 																setIsOpen(false)
 															}}
@@ -228,8 +230,8 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 																	open: true,
 																	project: {
 																		id: project.id,
-																		name: project.name,
-																		containerTag: project.containerTag,
+																		name: projectName,
+																		containerTag,
 																	},
 																	action: "move",
 																	targetProjectId: "",
@@ -244,7 +246,8 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 												</DropdownMenu>
 											</div>
 										</motion.div>
-									))}
+										)
+									})}
 
 								<motion.div
 									animate={{ opacity: 1 }}

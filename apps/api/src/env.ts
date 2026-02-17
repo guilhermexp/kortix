@@ -86,6 +86,8 @@ const envSchema = z.object({
 	DEEPWIKI_ENABLED: z.string().optional().default("false"),
 	// LLM Council backend URL
 	LLM_COUNCIL_URL: z.string().url().optional().default("http://localhost:8001"),
+	COUNCIL_MODELS: z.string().optional(),
+	COUNCIL_CHAIRMAN_MODEL: z.string().optional(),
 })
 
 const parsed = envSchema.safeParse({
@@ -129,6 +131,8 @@ const parsed = envSchema.safeParse({
 	SEQ_MCP_ENABLED: process.env.SEQ_MCP_ENABLED,
 	DEEPWIKI_ENABLED: process.env.DEEPWIKI_ENABLED,
 	LLM_COUNCIL_URL: process.env.LLM_COUNCIL_URL,
+	COUNCIL_MODELS: process.env.COUNCIL_MODELS,
+	COUNCIL_CHAIRMAN_MODEL: process.env.COUNCIL_CHAIRMAN_MODEL,
 })
 
 if (!parsed.success) {

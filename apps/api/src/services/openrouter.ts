@@ -12,6 +12,7 @@ export async function openRouterChat(
 		temperature?: number
 		maxTokens?: number
 		timeoutMs?: number
+		signal?: AbortSignal
 		refererUrl?: string
 		siteTitle?: string
 		reasoningEffort?: "none" | "low" | "medium" | "high"
@@ -52,7 +53,9 @@ export async function openRouterChat(
 			method: "POST",
 			headers,
 			body: JSON.stringify(body),
-			signal: AbortSignal.timeout(timeoutMs),
+			signal: options?.signal
+				? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)])
+				: AbortSignal.timeout(timeoutMs),
 		})
 
 		if (!res.ok) {

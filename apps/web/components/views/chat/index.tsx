@@ -26,13 +26,15 @@ export function ChatRewrite({
 	className,
 	headerClassName,
 	compact = false,
+	onSwitchToCouncil,
 }: {
 	embedded?: boolean
 	showCloseButton?: boolean
-	documentContext?: React.ReactNode
+	documentContext?: ReactNode
 	className?: string
 	headerClassName?: string
 	compact?: boolean
+	onSwitchToCouncil?: () => void
 }) {
 	const { setIsOpen } = useChatOpen()
 	const { selectedProject } = useProject()
@@ -63,12 +65,10 @@ export function ChatRewrite({
 		return formatDistanceToNow(new Date(isoString), { addSuffix: true })
 	}
 
-	// No header controls (kept only in composer)
-
 	return (
 		<div
 			className={cn(
-				"flex flex-col overflow-y-hidden bg-chat-surface",
+				"flex flex-col overflow-y-hidden bg-black",
 				embedded
 					? "flex-1 min-h-0"
 					: "h-full border-l border-border/30",
@@ -77,13 +77,13 @@ export function ChatRewrite({
 		>
 			<div
 				className={cn(
-					"sticky top-0 z-20 bg-chat-surface/80 backdrop-blur-md flex justify-between items-center",
+					"sticky top-0 z-20 bg-black/90 backdrop-blur-md flex justify-between items-center",
 					compact ? "px-3 py-2" : "px-4 py-2.5",
 					headerClassName,
 				)}
 			>
 				<h3 className="text-sm font-medium line-clamp-1 text-ellipsis overflow-hidden text-foreground/80">
-					{getCurrentChat()?.title ?? "New Chat"}
+					{getCurrentChat()?.title ?? "Greeting"}
 				</h3>
 				<div className="flex items-center gap-1">
 					<Dialog onOpenChange={setIsDialogOpen} open={isDialogOpen}>
@@ -202,6 +202,7 @@ export function ChatRewrite({
 					compact={compact}
 					documentContext={documentContext}
 					embedded={embedded}
+					onSwitchToCouncil={onSwitchToCouncil}
 				/>
 			</div>
 	)

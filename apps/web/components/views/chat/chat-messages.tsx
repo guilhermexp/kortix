@@ -3,16 +3,26 @@
 import { BACKEND_URL } from "@lib/env"
 import { cn } from "@lib/utils"
 import { DEFAULT_PROJECT_ID } from "@repo/lib/constants"
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu"
 import { Button } from "@ui/components/button"
 // Select components removed - no longer needed with Claude Agent SDK
 import {
 	ArrowUp,
+	Circle,
 	Check,
 	ChevronDown,
 	ChevronRight,
 	Copy,
-	Plus,
+	Infinity,
+	ListTree,
+	Paperclip,
 	RotateCcw,
+	Sparkles,
 	X,
 } from "lucide-react"
 import type { ReactNode } from "react"
@@ -24,12 +34,6 @@ import {
 	CodeBlockCopyButton,
 } from "@/components/ai-elements/code-block"
 import { Response } from "@/components/ai-elements/response"
-import {
-	Tool,
-	ToolContent,
-	ToolHeader,
-	ToolOutput,
-} from "@/components/ai-elements/tool"
 import {
 	InputGroup,
 	InputGroupAddon,
@@ -44,7 +48,7 @@ import {
 } from "@/stores"
 import { useGraphHighlights } from "@/stores/highlights"
 import { Spinner } from "../../spinner"
-import { ProviderSelector, useProviderSelection } from "./provider-selector"
+import { useProviderSelection } from "./provider-selector"
 
 interface MemoryResult {
 	documentId?: string
@@ -113,6 +117,13 @@ type MentionedDocsPart = {
 	docIds: string[]
 }
 
+type ThinkingPart = {
+	type: "tool-thinking"
+	state: ToolState
+	text?: string
+	durationMs?: number
+}
+
 const debugLog = (..._args: unknown[]) => {}
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -175,6 +186,14 @@ function isMentionedDocsPart(part: unknown): part is MentionedDocsPart {
 		part.type === "mentioned-docs" &&
 		Array.isArray(part.docIds) &&
 		part.docIds.every((id) => typeof id === "string" && id.length > 0)
+	)
+}
+
+function isThinkingPart(part: unknown): part is ThinkingPart {
+	return (
+		isObject(part) &&
+		part.type === "tool-thinking" &&
+		isToolState((part as ThinkingPart).state)
 	)
 }
 
@@ -268,7 +287,7 @@ function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
 						if (isClickable) {
 							return (
 								<a
-									className="block p-3 bg-muted/80 rounded-md border border-border hover:bg-muted hover:border-border/80 transition-colors cursor-pointer"
+									className="block p-3 bg-[#0c0d10] rounded-md border border-white/10 hover:bg-[#101217] hover:border-white/15 transition-colors cursor-pointer"
 									href={result.url}
 									key={result.documentId || index}
 									rel="noopener noreferrer"
@@ -281,7 +300,7 @@ function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
 
 						return (
 							<div
-								className="p-3 bg-muted/80 rounded-md border border-border"
+								className="p-3 bg-[#0c0d10] rounded-md border border-white/10"
 								key={result.documentId || index}
 							>
 								{content}
@@ -357,7 +376,41 @@ interface ToolCardProps {
 	loadingMessage?: ReactNode
 	successMessage?: ReactNode
 	errorMessage?: string
+	title?: string
 	children?: ReactNode
+}
+
+function formatToolLabel(type: string): string {
+	const raw = type
+		.replace(/^tool-/, "")
+		.replace(/^mcp__/, "")
+		.replace(/__/g, " ")
+		.replace(/_/g, " ")
+		.trim()
+	if (!raw) return "command"
+	return raw
+}
+
+function isSubAgentToolName(toolName: string): boolean {
+	const normalized = toolName.toLowerCase().trim()
+	return (
+		normalized === "task" ||
+		normalized.includes("sub_agent") ||
+		normalized.includes("subagent") ||
+		normalized.includes("__agent") ||
+		normalized.endsWith("_agent") ||
+		normalized.endsWith(" agent") ||
+		normalized.includes("tool-task") ||
+		normalized.includes("taskcreate") ||
+		normalized.includes("taskupdate") ||
+		normalized.includes("taskget") ||
+		normalized.includes("tasklist")
+	)
+}
+
+function normalizeSubAgentLabel(toolName: string): string {
+	const label = formatToolLabel(toolName)
+	return label.length > 0 ? label : "sub-agent"
 }
 
 function ToolCard({
@@ -367,16 +420,17 @@ function ToolCard({
 	loadingMessage,
 	successMessage,
 	errorMessage,
+	title,
 	children,
 }: ToolCardProps) {
 	const isLoading = state === "input-streaming" || state === "input-available"
-	const isSuccess = state === "output-available"
 	const isError = state === "output-error"
 	const durationLabel = formatDuration(durationMs)
+	const toolLabel = title ?? formatToolLabel(type)
 
 	const resolvedLoading =
 		typeof loadingMessage === "string" ? (
-			<span className="flex items-center gap-2 text-xs text-muted-foreground">
+			<span className="flex items-center gap-2 text-xs text-zinc-400">
 				<Spinner className="size-3" /> {loadingMessage}
 			</span>
 		) : (
@@ -396,29 +450,66 @@ function ToolCard({
 	const shouldRenderContent = hasContent || isError
 
 	return (
-		<Tool
-			className="border-border/30 bg-background/5 backdrop-blur-xl"
-			defaultOpen={isSuccess || isError}
-		>
-			<ToolHeader state={state} type={type} />
+		<div className="rounded-xl border border-white/10 bg-[#08090b] overflow-hidden">
+			<div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
+				<span className="text-xs text-zinc-400 truncate">
+					{isLoading ? "Running" : "Ran"} command: {toolLabel}
+				</span>
+				{durationLabel && (
+					<span className="text-[11px] text-zinc-500 tabular-nums">{durationLabel}</span>
+				)}
+			</div>
 			{shouldRenderContent && (
-				<ToolContent>
-					{durationLabel && (
-						<p className="text-[11px] uppercase text-muted-foreground/70">
-							Duração: {durationLabel}
-						</p>
+				<div className="px-3 py-2.5 text-xs">
+					{isError ? (
+						<div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-300">
+							{errorMessage ?? "Falha ao executar a ferramenta"}
+						</div>
+					) : (
+						<div className="rounded-md border border-white/10 bg-[#050608] px-3 py-2 text-zinc-200">
+							{outputNode}
+						</div>
 					)}
-					<ToolOutput
-						errorText={
-							isError
-								? (errorMessage ?? "Falha ao executar a ferramenta")
-								: undefined
-						}
-						output={isError ? undefined : outputNode}
-					/>
-				</ToolContent>
+				</div>
 			)}
-		</Tool>
+		</div>
+	)
+}
+
+function ThinkingStep({
+	part,
+	defaultExpanded,
+}: {
+	part: ThinkingPart
+	defaultExpanded: boolean
+}) {
+	const [expanded, setExpanded] = useState(defaultExpanded)
+	const thinkingText = part.text?.trim() ?? ""
+	const preview = thinkingText.replace(/\s+/g, " ").trim()
+
+	return (
+		<div className="space-y-1">
+			<button
+				className="w-full flex items-center justify-between rounded-md px-2 py-1 text-xs text-zinc-400 hover:bg-white/5 transition-colors"
+				onClick={() => setExpanded((v) => !v)}
+				type="button"
+			>
+				<span className="inline-flex items-center gap-2">
+					<span className="font-semibold text-zinc-300">Thought</span>
+					{!expanded && preview.length > 0 ? (
+						<span className="truncate max-w-[480px] text-zinc-500">{preview}</span>
+					) : null}
+				</span>
+				{expanded ? (
+					<ChevronDown className="size-3.5" />
+				) : (
+					<ChevronRight className="size-3.5" />
+				)}
+			</button>
+			{expanded && thinkingText.length > 0 ? (
+				<div className="px-2 text-sm text-zinc-400 whitespace-pre-wrap">{thinkingText}</div>
+			) : null}
+		</div>
 	)
 }
 
@@ -513,6 +604,7 @@ type ClaudeChatMessage = {
 		| SearchMemoriesPart
 		| AddMemoryPart
 		| GenericToolPart
+		| ThinkingPart
 		| MentionedDocsPart
 		| unknown
 	>
@@ -561,6 +653,49 @@ function createTextMessage(
 		content,
 		parts: [{ type: "text", text: content }],
 	}
+}
+
+function normalizeStoredMessages(
+	rawMessages: unknown[],
+	activeId: string | null,
+): ClaudeChatMessage[] {
+	return rawMessages.map((message, index) => {
+		const record = message as Record<string, unknown>
+		const role = record.role === "assistant" ? "assistant" : "user"
+		const contentFromField =
+			typeof record.content === "string" ? (record.content as string) : ""
+		const partsSource = Array.isArray(record.parts)
+			? (record.parts as ClaudeChatMessage["parts"])
+			: Array.isArray(record.content)
+				? (record.content as ClaudeChatMessage["parts"])
+				: ([] as ClaudeChatMessage["parts"])
+		const textFromParts = partsSource
+			.find(
+				(part): part is TextPart =>
+					Boolean(
+						part &&
+							typeof part === "object" &&
+							(part as Record<string, unknown>).type === "text" &&
+							typeof (part as Record<string, unknown>).text === "string",
+					),
+			)
+			?.text
+		const content = contentFromField || textFromParts || ""
+		const parts =
+			partsSource.length > 0
+				? partsSource
+				: ([{ type: "text", text: content }] as ClaudeChatMessage["parts"])
+		const stableFallbackId = `${activeId ?? "chat"}:${role}:${index}:${content.slice(0, 32)}`
+		return {
+			id:
+				typeof record.id === "string"
+					? (record.id as string)
+					: stableFallbackId,
+			role,
+			content,
+			parts,
+		} satisfies ClaudeChatMessage
+	})
 }
 
 function areClaudeMessagesEqual(
@@ -620,6 +755,12 @@ function useClaudeChat({
 	const sdkSessionIdRef = useRef<string | null>(null)
 	const lastMessageTimeRef = useRef<number>(0)
 	const SESSION_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
+	const cancelEndpoint = endpoint.endsWith("/v2")
+		? `${endpoint}/cancel`
+		: `${endpoint.replace(/\/$/, "")}/v2/cancel`
+	const isActiveEndpoint = endpoint.endsWith("/v2")
+		? `${endpoint}/is-active`
+		: `${endpoint.replace(/\/$/, "")}/v2/is-active`
 
 	useEffect(() => {
 		debugLog("========================================")
@@ -720,6 +861,21 @@ function useClaudeChat({
 		if (abortRef.current) {
 			abortRef.current.abort()
 			abortRef.current = null
+			const activeConversationId = conversationRef.current
+			const activeSdkSessionId = sdkSessionIdRef.current
+			void fetch(cancelEndpoint, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({
+					...(activeConversationId
+						? { conversationId: activeConversationId }
+						: {}),
+					...(activeSdkSessionId ? { sdkSessionId: activeSdkSessionId } : {}),
+				}),
+			}).catch((error) => {
+				console.warn("[Chat] Failed to cancel backend session", error)
+			})
 			setStatus("ready")
 			setIsThinking(false)
 			setMessages((prev) => {
@@ -738,7 +894,62 @@ function useClaudeChat({
 				return prev
 			})
 		}
-	}, [setMessages])
+	}, [cancelEndpoint, setMessages])
+
+	const checkBackendSessionIsActive = useCallback(async () => {
+		if (status === "ready") return
+		const activeConversationId = conversationRef.current
+		const activeSdkSessionId = sdkSessionIdRef.current
+		if (!activeConversationId && !activeSdkSessionId) return
+
+		try {
+			const response = await fetch(isActiveEndpoint, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({
+					...(activeConversationId ? { conversationId: activeConversationId } : {}),
+					...(activeSdkSessionId ? { sdkSessionId: activeSdkSessionId } : {}),
+				}),
+			})
+			if (!response.ok) return
+			const payload = (await response.json()) as { active?: boolean }
+			if (payload.active === false) {
+				debugLog("[Chat] Backend reports no active session, resetting stream state")
+				if (abortRef.current) {
+					abortRef.current.abort()
+					abortRef.current = null
+				}
+				setIsThinking(false)
+				setStatus("ready")
+			}
+		} catch (error) {
+			console.warn("[Chat] Failed to check backend session state", error)
+		}
+	}, [isActiveEndpoint, status])
+
+	useEffect(() => {
+		if (status === "ready") return
+		void checkBackendSessionIsActive()
+		let cancelled = false
+		let timeout: ReturnType<typeof setTimeout> | null = null
+		let currentDelay = 1500
+
+		const scheduleNext = () => {
+			if (cancelled) return
+			timeout = setTimeout(async () => {
+				await checkBackendSessionIsActive()
+				currentDelay = Math.min(currentDelay + 1000, 8000)
+				scheduleNext()
+			}, currentDelay)
+		}
+
+		scheduleNext()
+		return () => {
+			cancelled = true
+			if (timeout) clearTimeout(timeout)
+		}
+	}, [checkBackendSessionIsActive, status])
 
 	const sendMessage = useCallback(
 		async ({ text, mentionedDocIds }: SendMessagePayload) => {
@@ -867,6 +1078,82 @@ function useClaudeChat({
 				}
 
 				const toolStartTimes = new Map<string, number>()
+				let thinkingStartTime: number | null = null
+
+				const applyThinkingState = (active: boolean) => {
+					setIsThinking(active)
+					const now = Date.now()
+					mutateAssistant((message) => {
+						const existingParts = Array.isArray(message.parts)
+							? [...message.parts]
+							: []
+						const existingIndex = existingParts.findIndex((part) =>
+							isThinkingPart(part),
+						)
+
+						if (active) {
+							if (thinkingStartTime === null) {
+								thinkingStartTime = now
+							}
+							const nextPart: ThinkingPart =
+								existingIndex >= 0 && isThinkingPart(existingParts[existingIndex])
+									? { ...existingParts[existingIndex] }
+									: { type: "tool-thinking", state: "input-streaming", text: "" }
+							nextPart.state = "input-streaming"
+							if (existingIndex >= 0) {
+								existingParts[existingIndex] = nextPart
+							} else {
+								existingParts.push(nextPart)
+							}
+						} else if (existingIndex >= 0 && isThinkingPart(existingParts[existingIndex])) {
+							const existingThinking = existingParts[
+								existingIndex
+							] as ThinkingPart
+							const nextPart = {
+								...existingThinking,
+								state: "output-available",
+								durationMs:
+									thinkingStartTime !== null
+										? Math.max(0, now - thinkingStartTime)
+										: existingThinking.durationMs,
+							} as ThinkingPart
+							existingParts[existingIndex] = nextPart
+							thinkingStartTime = null
+						}
+
+						return {
+							...message,
+							parts: existingParts as ClaudeChatMessage["parts"],
+						}
+					})
+				}
+
+				const applyThinkingDelta = (deltaText: string) => {
+					if (!deltaText) return
+					mutateAssistant((message) => {
+						const existingParts = Array.isArray(message.parts)
+							? [...message.parts]
+							: []
+						const existingIndex = existingParts.findIndex((part) =>
+							isThinkingPart(part),
+						)
+						const nextPart: ThinkingPart =
+							existingIndex >= 0 && isThinkingPart(existingParts[existingIndex])
+								? { ...existingParts[existingIndex] }
+								: { type: "tool-thinking", state: "input-streaming", text: "" }
+						nextPart.state = "input-streaming"
+						nextPart.text = `${nextPart.text ?? ""}${deltaText}`
+						if (existingIndex >= 0) {
+							existingParts[existingIndex] = nextPart
+						} else {
+							existingParts.push(nextPart)
+						}
+						return {
+							...message,
+							parts: existingParts as ClaudeChatMessage["parts"],
+						}
+					})
+				}
 
 				const applyToolEvent = (eventRecord: Record<string, unknown>) => {
 					const rawState =
@@ -1118,6 +1405,36 @@ function useClaudeChat({
 					assistantMessage: ClaudeChatMessage,
 				): ClaudeChatMessage[] => {
 					const current = messagesRef.current
+					const currentLastAssistant =
+						Array.isArray(current) && current.length > 0
+							? current[current.length - 1]
+							: null
+					const streamedThinkingParts =
+						currentLastAssistant &&
+						currentLastAssistant.role === "assistant" &&
+						Array.isArray(currentLastAssistant.parts)
+							? currentLastAssistant.parts.filter((part) => isThinkingPart(part))
+							: []
+					if (streamedThinkingParts.length > 0) {
+						const currentFinalParts = Array.isArray(assistantMessage.parts)
+							? assistantMessage.parts
+							: []
+						const hasThinkingInFinal = currentFinalParts.some((part) =>
+							isThinkingPart(part),
+						)
+						if (!hasThinkingInFinal) {
+							assistantMessage = {
+								...assistantMessage,
+								parts: [
+									...streamedThinkingParts.map((part) => ({
+										...(part as ThinkingPart),
+										state: "output-available",
+									})),
+									...currentFinalParts,
+								],
+							}
+						}
+					}
 					if (Array.isArray(current) && current.length > 0) {
 						const base = [...current]
 						const last = base[base.length - 1]
@@ -1157,10 +1474,34 @@ function useClaudeChat({
 								})
 								if (record.type === "thinking") {
 									if (typeof record.active === "boolean") {
-										setIsThinking(Boolean(record.active))
+										applyThinkingState(Boolean(record.active))
 									}
+								} else if (record.type === "session_started") {
+									setStatus("streaming")
+								} else if (
+									record.type === "thinking_delta" &&
+									typeof record.text === "string"
+								) {
+									applyThinkingDelta(record.text)
+								} else if (
+									record.type === "thinking_done" &&
+									typeof record.text === "string"
+								) {
+									applyThinkingState(false)
 								} else if (record.type === "tool_event") {
 									applyToolEvent(record)
+								} else if (record.type === "session_aborted") {
+									setIsThinking(false)
+									setStatus("ready")
+									finished = true
+								} else if (record.type === "session_finished") {
+									const sessionStatus =
+										typeof record.status === "string" ? record.status : null
+									if (sessionStatus === "aborted" || sessionStatus === "failed") {
+										setIsThinking(false)
+										setStatus("ready")
+										finished = true
+									}
 								} else if (record.type === "final") {
 									const messagePayload =
 										record.message && typeof record.message === "object"
@@ -1247,10 +1588,46 @@ function useClaudeChat({
 						const record = payload as Record<string, unknown>
 						const type = record.type
 
+						if (type === "session_started") {
+							setStatus("streaming")
+							continue
+						}
+
+						if (type === "session_aborted") {
+							setIsThinking(false)
+							setStatus("ready")
+							aborted = true
+							finished = true
+							break
+						}
+
+						if (type === "session_finished") {
+							const sessionStatus =
+								typeof record.status === "string" ? record.status : null
+							if (sessionStatus === "aborted" || sessionStatus === "failed") {
+								setIsThinking(false)
+								setStatus("ready")
+								aborted = sessionStatus === "aborted"
+								finished = true
+								break
+							}
+							continue
+						}
+
 						if (type === "thinking") {
 							if (typeof record.active === "boolean") {
-								setIsThinking(Boolean(record.active))
+								applyThinkingState(Boolean(record.active))
 							}
+							continue
+						}
+
+						if (type === "thinking_delta" && typeof record.text === "string") {
+							applyThinkingDelta(record.text)
+							continue
+						}
+
+						if (type === "thinking_done" && typeof record.text === "string") {
+							applyThinkingState(false)
 							continue
 						}
 
@@ -1436,10 +1813,12 @@ export function ChatMessages({
 	embedded = false,
 	documentContext,
 	compact = false,
+	onSwitchToCouncil,
 }: {
 	embedded?: boolean
 	documentContext?: React.ReactNode
 	compact?: boolean
+	onSwitchToCouncil?: () => void
 }) {
 	const { selectedProject } = useProject()
 	const {
@@ -1571,7 +1950,7 @@ export function ChatMessages({
 	}, [addMentionedDocId, consumePendingMentionDocIds, pendingMentionDocIds])
 
 	// Provider selection
-	const { provider, setProvider } = useProviderSelection()
+	const { provider } = useProviderSelection()
 
 	const composeRequestBody = useCallback(
 		(
@@ -1691,6 +2070,10 @@ export function ChatMessages({
 	const [input, setInput] = useState("")
 	const [mentionOpen, setMentionOpen] = useState(false)
 	const [mentionQuery, setMentionQuery] = useState("")
+	const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({})
+	const [hydrationOrigin, setHydrationOrigin] = useState<
+		"server" | "cache" | null
+	>(null)
 	const mentionInputRef = useRef<HTMLInputElement | null>(null)
 	useEffect(() => {
 		if (!mentionOpen) return
@@ -1703,6 +2086,12 @@ export function ChatMessages({
 		})
 		return () => cancelAnimationFrame(frame)
 	}, [mentionOpen])
+
+	useEffect(() => {
+		if (!hydrationOrigin) return
+		const timeout = setTimeout(() => setHydrationOrigin(null), 7000)
+		return () => clearTimeout(timeout)
+	}, [hydrationOrigin])
 
 	type CanvasDoc = {
 		id: string
@@ -1804,11 +2193,6 @@ export function ChatMessages({
 		} catch {}
 		return null
 	}
-	const [savingInput, setSavingInput] = useState(false)
-	const [savingMessageIds, setSavingMessageIds] = useState<Set<string>>(
-		new Set(),
-	)
-
 	// Reset conversation when project changes to avoid cross-project context bleed
 	useEffect(() => {
 		setMessages([])
@@ -1822,17 +2206,18 @@ export function ChatMessages({
 			const timeSinceClosed = now - lastClosedTimeRef.current
 			const QUICK_REOPEN_THRESHOLD = 60 * 1000 // 1 minute
 
-			// Always create a new chat when opening, unless:
-			// - Chat was closed and reopened within 1 minute (quick toggle)
-			// - AND there are already messages in the current chat
+			// Always create a new chat when opening, unless chat was
+			// closed and reopened quickly. This avoids relying on local
+			// messages state to decide session continuity.
 			const isQuickReopen =
-				timeSinceClosed < QUICK_REOPEN_THRESHOLD && messages.length > 0
+				timeSinceClosed < QUICK_REOPEN_THRESHOLD && Boolean(currentChatId)
 
 			if (!isQuickReopen) {
 				const newChatId = crypto.randomUUID()
 				setCurrentChatId(newChatId)
 				setMessages([])
 				shouldGenerateTitleRef.current = false
+				setHydrationOrigin(null)
 			}
 		}
 
@@ -1842,51 +2227,7 @@ export function ChatMessages({
 		}
 
 		prevIsOpenRef.current = effectiveOpen
-	}, [effectiveOpen, messages.length, setCurrentChatId, setMessages])
-
-	async function saveMemory(content: string) {
-		const trimmed = content.trim()
-		if (!trimmed) {
-			toast.error("Nothing to save")
-			return
-		}
-		if (selectedProject === DEFAULT_PROJECT_ID) {
-			toast.error("Select a project to save")
-			return
-		}
-		try {
-			const res = await fetch(`${BACKEND_URL}/v3/documents`, {
-				method: "POST",
-				credentials: "include",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					content: trimmed,
-					containerTags:
-						selectedProject && selectedProject !== DEFAULT_PROJECT_ID
-							? [selectedProject]
-							: undefined,
-					metadata: {
-						source: "chat",
-						type: "text",
-						from_chat: true,
-						projectId: selectedProject,
-					},
-				}),
-			})
-			if (!res.ok) {
-				let msg = "Failed to save memory"
-				try {
-					const data = await res.json()
-					msg = data?.error?.message || msg
-				} catch {}
-				throw new Error(msg)
-			}
-			toast.success("Memory added")
-		} catch (err) {
-			console.error(err)
-			toast.error(err instanceof Error ? err.message : "Failed to save memory")
-		}
-	}
+	}, [currentChatId, effectiveOpen, setCurrentChatId, setMessages])
 
 	useEffect(() => {
 		activeChatIdRef.current = currentChatId ?? id ?? null
@@ -1901,38 +2242,94 @@ export function ChatMessages({
 			return
 		}
 		const rawActiveId = currentChatId ?? id
-		const msgs = getCurrentConversation()
-		if (Array.isArray(msgs) && msgs.length > 0) {
-			const normalized = msgs.map((message, index) => {
-				const record = message as Record<string, unknown>
-				const content =
-					typeof record.content === "string" ? (record.content as string) : ""
-				const parts = Array.isArray(record.parts)
-					? (record.parts as ClaudeChatMessage["parts"])
-					: ([
-							{ type: "text", text: content } as TextPart,
-						] as ClaudeChatMessage["parts"])
-				const role = record.role === "assistant" ? "assistant" : "user"
-				const stableFallbackId = `${rawActiveId ?? "chat"}:${role}:${index}:${content.slice(0, 32)}`
-				return {
-					id:
-						typeof record.id === "string"
-							? (record.id as string)
-							: stableFallbackId,
-					role,
-					content,
-					parts,
-				} satisfies ClaudeChatMessage
-			})
-			setMessages(normalized)
-		} else {
-			setMessages([])
+		let cancelled = false
+
+		const hydrateFromServer = async () => {
+			if (!rawActiveId) {
+				setMessages([])
+				setInput("")
+				setHydrationOrigin(null)
+				shouldGenerateTitleRef.current = false
+				return
+			}
+
+			try {
+				const historyResponse = await fetch(
+					`${BACKEND_URL}/v3/conversations/${rawActiveId}/history`,
+					{
+						method: "GET",
+						credentials: "include",
+					},
+				)
+
+				if (historyResponse.ok) {
+					const historyPayload = (await historyResponse.json()) as {
+						messages?: unknown[]
+					}
+					const serverMessages = Array.isArray(historyPayload.messages)
+						? historyPayload.messages
+						: []
+					const normalized = normalizeStoredMessages(serverMessages, rawActiveId)
+
+					if (cancelled) return
+					setMessages(normalized)
+					setConversation(rawActiveId, normalized)
+					setHydrationOrigin("server")
+
+					const conversationResponse = await fetch(
+						`${BACKEND_URL}/v3/conversations/${rawActiveId}`,
+						{
+							method: "GET",
+							credentials: "include",
+						},
+					)
+					if (conversationResponse.ok && !cancelled) {
+						const conversationPayload = (await conversationResponse.json()) as {
+							conversation?: Record<string, unknown>
+						}
+						const conversation = conversationPayload.conversation
+						const remoteSdkSessionId =
+							typeof conversation?.sdk_session_id === "string"
+								? conversation.sdk_session_id
+								: typeof conversation?.sdkSessionId === "string"
+									? conversation.sdkSessionId
+									: null
+						setSdkSessionId(rawActiveId, remoteSdkSessionId)
+					}
+
+					setInput("")
+					return
+				}
+			} catch (error) {
+				debugLog("[Chat Hydration] Server history fetch failed, using local cache", error)
+			}
+
+			const localMessages = getCurrentConversation()
+			if (cancelled) return
+			if (Array.isArray(localMessages) && localMessages.length > 0) {
+				const normalized = normalizeStoredMessages(localMessages, rawActiveId)
+				setMessages(normalized)
+				setHydrationOrigin("cache")
+			} else {
+				setMessages([])
+				setHydrationOrigin(null)
+			}
+			setInput("")
 		}
-		setInput("")
-		if (!rawActiveId) {
-			shouldGenerateTitleRef.current = false
+
+		void hydrateFromServer()
+		return () => {
+			cancelled = true
 		}
-	}, [currentChatId, id, setMessages])
+	}, [
+		currentChatId,
+		getCurrentConversation,
+		id,
+		setConversation,
+		setMessages,
+		setSdkSessionId,
+		setHydrationOrigin,
+	])
 
 	useEffect(() => {
 		const rawActiveId = currentChatId ?? id
@@ -2006,7 +2403,9 @@ export function ChatMessages({
 			const parts = Array.isArray(message.parts) ? message.parts : []
 			for (const part of parts) {
 				if (
-					(isGenericToolPart(part) || isSearchMemoriesPart(part)) &&
+					(isGenericToolPart(part) ||
+						isSearchMemoriesPart(part) ||
+						isThinkingPart(part)) &&
 					(part.state === "input-streaming" || part.state === "input-available")
 				) {
 					return true
@@ -2018,26 +2417,35 @@ export function ChatMessages({
 
 	return (
 		<div className="flex flex-col h-full">
-			<div className="relative flex-1 bg-chat-surface overflow-hidden">
+			<div className="relative flex-1 bg-black overflow-hidden">
 				<div
 					className={cn(
 						"flex flex-col absolute inset-0 overflow-y-auto",
-						compact ? "gap-2 px-3 pt-3 pb-4" : "gap-3 px-4 pt-4 pb-6",
+						compact ? "gap-2 px-3 pt-3 pb-4" : "gap-3 px-6 pt-3 pb-6",
 					)}
 					onScroll={onScroll}
 					ref={scrollContainerRef}
 				>
+					{hydrationOrigin && (
+						<div className="mb-1 px-1">
+							<span className="inline-flex items-center rounded-md border border-white/10 bg-[#0e1118] px-2 py-1 text-[11px] text-zinc-400">
+								{hydrationOrigin === "server"
+									? "History loaded from server"
+									: "History loaded from local cache"}
+							</span>
+						</div>
+					)}
 					{/* Document context rendered at the top of chat */}
 					{documentContext && (
 						<div className="space-y-4 mb-4">{documentContext}</div>
 					)}
-					{messages.map((message) => (
+					{messages.map((message, messageIndex) => (
 						<div
 							className={cn(
 								"flex flex-col gap-1",
 								message.role === "user" ? "items-end" : "items-start",
 							)}
-							key={message.id}
+							key={message.id ?? `message-${messageIndex}-${message.role}`}
 						>
 							<div
 								className={cn(
@@ -2046,10 +2454,10 @@ export function ChatMessages({
 										? cn(
 											"border text-foreground",
 											compact
-												? "border-border/10 py-2 px-3 rounded-md bg-muted/10"
-												: "border-border/30 py-3 px-4 rounded-lg bg-muted/20 backdrop-blur-xl",
+												? "border-white/10 py-2.5 px-4 rounded-2xl bg-[#0b0c10]"
+												: "border-white/10 py-3 px-4 rounded-2xl bg-[#0b0c10]",
 										)
-										: "py-1 px-0 text-foreground",
+										: "py-1 px-0 text-zinc-100",
 								)}
 							>
 								{(() => {
@@ -2062,7 +2470,8 @@ export function ChatMessages({
 										if (
 											isSearchMemoriesPart(part) ||
 											isAddMemoryPart(part) ||
-											isGenericToolPart(part)
+											isGenericToolPart(part) ||
+											isThinkingPart(part)
 										) {
 											toolParts.push({ part, index })
 										} else if (isTextPart(part)) {
@@ -2071,41 +2480,6 @@ export function ChatMessages({
 											otherParts.push({ part, index })
 										}
 									})
-
-									// Encontrar o último tool ativo (priorizando os que estão rodando)
-									const getToolPriority = (part: any) => {
-										if (
-											isSearchMemoriesPart(part) ||
-											isAddMemoryPart(part) ||
-											isGenericToolPart(part)
-										) {
-											const state = part.state
-											// Prioridade: rodando > erro > completo
-											if (
-												state === "input-streaming" ||
-												state === "input-available"
-											)
-												return 3
-											if (state === "output-error") return 2
-											if (state === "output-available") return 1
-										}
-										return 0
-									}
-
-									const activeTool =
-										toolParts.length > 0
-											? toolParts.reduce((latest, current) => {
-													const currentPriority = getToolPriority(current.part)
-													const latestPriority = getToolPriority(latest.part)
-													if (currentPriority > latestPriority) return current
-													if (
-														currentPriority === latestPriority &&
-														current.index > latest.index
-													)
-														return current
-													return latest
-												})
-											: null
 
 									// Renderizar texto primeiro
 									const textElements = textParts.flatMap(({ part, index }) => {
@@ -2136,139 +2510,137 @@ export function ChatMessages({
 										})
 									})
 
-									// Renderizar apenas o tool ativo
-									const toolElement = activeTool
-										? (() => {
-												const { part, index } = activeTool
-												const partKey = `${message.id}-${index}`
+									const toolElements = toolParts.flatMap(({ part, index }) => {
+										const partKey = `${message.id}-${index}`
 
-												if (isSearchMemoriesPart(part)) {
-													const isSuccess = part.state === "output-available"
-													const countValue = isSuccess
-														? part.output?.count
+										if (isSearchMemoriesPart(part)) {
+											const isSuccess = part.state === "output-available"
+											const countValue = isSuccess ? part.output?.count : undefined
+											const foundCount =
+												typeof countValue === "number"
+													? countValue
+													: typeof countValue === "string"
+														? Number(countValue)
 														: undefined
-													const foundCount =
-														typeof countValue === "number"
-															? countValue
-															: typeof countValue === "string"
-																? Number(countValue)
-																: undefined
-													const results = isSuccess
-														? toMemoryResults(part.output?.results)
-														: []
+											const results = isSuccess
+												? toMemoryResults(part.output?.results)
+												: []
 
-													return (
-														<ToolCard
-															durationMs={part.durationMs}
-															errorMessage={
-																part.error ?? "Erro ao buscar memórias"
-															}
-															key={`${partKey}-search`}
-															loadingMessage="Procurando memórias relevantes..."
-															state={part.state}
-															type="tool-search_memories"
-														>
-															{isSuccess ? (
-																<ExpandableMemories
-																	foundCount={foundCount ?? results.length}
-																	results={results}
-																/>
-															) : null}
-														</ToolCard>
-													)
-												}
-
-												if (isAddMemoryPart(part)) {
-													const _isSuccess = part.state === "output-available"
-													return (
-														<ToolCard
-															durationMs={part.durationMs}
-															errorMessage={
-																part.error ??
-																"Não foi possível salvar a memória"
-															}
-															key={`${partKey}-add`}
-															loadingMessage="Salvando memória..."
-															state={part.state}
-															successMessage={
-																<span className="text-xs text-muted-foreground">
-																	Memória adicionada com sucesso
-																</span>
-															}
-															type="tool-add_memory"
+											return [
+												<ToolCard
+													durationMs={part.durationMs}
+													errorMessage={part.error ?? "Erro ao buscar memórias"}
+													key={`${partKey}-search`}
+													loadingMessage="Procurando memórias relevantes..."
+													state={part.state}
+													title="searchMemories"
+													type="tool-search_memories"
+												>
+													{isSuccess ? (
+														<ExpandableMemories
+															foundCount={foundCount ?? results.length}
+															results={results}
 														/>
-													)
-												}
+													) : null}
+												</ToolCard>,
+											]
+										}
 
-												if (isGenericToolPart(part)) {
-													const outputSegments = part.outputText
-														? splitTextIntoSegments(part.outputText)
-														: []
-													const isSuccess = part.state === "output-available"
+										if (isAddMemoryPart(part)) {
+											return [
+												<ToolCard
+													durationMs={part.durationMs}
+													errorMessage={part.error ?? "Não foi possível salvar a memória"}
+													key={`${partKey}-add`}
+													loadingMessage="Salvando memória..."
+													state={part.state}
+													successMessage={
+														<span className="text-xs text-zinc-300">
+															Memória adicionada com sucesso
+														</span>
+													}
+													title="addMemory"
+													type="tool-add_memory"
+												/>,
+											]
+										}
 
-													return (
-														<ToolCard
-															durationMs={part.durationMs}
-															errorMessage={
-																part.error ??
-																(typeof part.outputText === "string" &&
-																part.outputText.trim().length > 0
-																	? part.outputText
-																	: undefined)
-															}
-															key={`${partKey}-tool`}
-															loadingMessage="Executando..."
-															state={part.state}
-															successMessage={
-																isSuccess && outputSegments.length === 0 ? (
-																	<span className="text-xs text-muted-foreground">
-																		Ferramenta executada com sucesso
-																	</span>
-																) : null
-															}
-															type={buildToolType(
-																part.toolName,
-																part.toolUseId,
-															)}
-														>
-															{isSuccess && outputSegments.length > 0
-																? outputSegments.map((segment, outputIndex) => {
-																		const segmentKey = `${partKey}-tool-output-${outputIndex}`
-																		if (segment.type === "code") {
-																			return (
-																				<CodeBlock
-																					className="mt-2"
-																					code={segment.content.trimEnd()}
-																					key={segmentKey}
-																					language={
-																						segment.language ?? undefined
-																					}
-																				>
-																					<CodeBlockCopyButton className="h-7 px-2 text-[11px]" />
-																				</CodeBlock>
-																			)
-																		}
-																		if (segment.content.trim().length === 0) {
-																			return (
-																				<div className="h-2" key={segmentKey} />
-																			)
-																		}
-																		return (
-																			<Response key={segmentKey}>
-																				<Streamdown>
-																					{segment.content}
-																				</Streamdown>
-																			</Response>
-																		)
-																	})
-																: null}
-														</ToolCard>
-													)
-												}
+										if (isThinkingPart(part)) {
+											return [
+												<ThinkingStep
+													defaultExpanded={status === "streaming"}
+													key={`${partKey}-thinking`}
+													part={part}
+												/>,
+											]
+										}
 
-												return null
-											})()
-										: null
+										if (isGenericToolPart(part)) {
+											const outputSegments = part.outputText
+												? splitTextIntoSegments(part.outputText)
+												: []
+											const isSuccess = part.state === "output-available"
+											const isSubAgentTool = isSubAgentToolName(part.toolName)
+											const toolTitle = isSubAgentTool
+												? `sub-agent • ${normalizeSubAgentLabel(part.toolName)}`
+												: part.toolName
+
+											return [
+												<ToolCard
+													durationMs={part.durationMs}
+													errorMessage={
+														part.error ??
+														(typeof part.outputText === "string" &&
+														part.outputText.trim().length > 0
+															? part.outputText
+															: undefined)
+													}
+													key={`${partKey}-tool`}
+													loadingMessage="Executando..."
+													state={part.state}
+													successMessage={
+														isSuccess && outputSegments.length === 0 ? (
+															<span className="text-xs text-zinc-300">
+																{isSubAgentTool
+																	? "Sub-agent concluído com sucesso"
+																	: "Ferramenta executada com sucesso"}
+															</span>
+														) : null
+													}
+													title={toolTitle}
+													type={buildToolType(part.toolName, part.toolUseId)}
+												>
+													{isSuccess && outputSegments.length > 0
+														? outputSegments.map((segment, outputIndex) => {
+																const segmentKey = `${partKey}-tool-output-${outputIndex}`
+																if (segment.type === "code") {
+																	return (
+																		<CodeBlock
+																			className="mt-2"
+																			code={segment.content.trimEnd()}
+																			key={segmentKey}
+																			language={segment.language ?? undefined}
+																		>
+																			<CodeBlockCopyButton className="h-7 px-2 text-[11px]" />
+																		</CodeBlock>
+																	)
+																}
+																if (segment.content.trim().length === 0) {
+																	return <div className="h-2" key={segmentKey} />
+																}
+																return (
+																	<Response key={segmentKey}>
+																		<Streamdown>{segment.content}</Streamdown>
+																	</Response>
+																)
+															})
+														: null}
+												</ToolCard>,
+											]
+										}
+
+										return []
+									})
 
 									// Renderizar outros parts
 									const otherElements = otherParts.flatMap(
@@ -2311,7 +2683,7 @@ export function ChatMessages({
 																				src={preview}
 																			/>
 																		) : (
-																			<span className="w-5 h-5 rounded-sm bg-muted inline-block" />
+																			<span className="w-5 h-5 rounded-sm bg-[#121419] inline-block" />
 																		)}
 																		<span className="truncate max-w-[160px]">
 																			@{label}
@@ -2320,7 +2692,7 @@ export function ChatMessages({
 																)
 																return href ? (
 																	<a
-																		className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-muted/50 text-foreground hover:bg-muted transition"
+																		className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-white/10 bg-[#0f1116] text-foreground hover:bg-[#141823] transition"
 																		href={href}
 																		key={id}
 																		rel="noreferrer"
@@ -2330,7 +2702,7 @@ export function ChatMessages({
 																	</a>
 																) : (
 																	<div
-																		className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-muted/50 text-foreground"
+																		className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-white/10 bg-[#0f1116] text-foreground"
 																		key={id}
 																	>
 																		{content}
@@ -2346,19 +2718,80 @@ export function ChatMessages({
 										},
 									)
 
-									// Retornar todos os elementos: texto, tool ativo, e outros
-									return [
-										...textElements,
-										...(toolElement ? [toolElement] : []),
-										...otherElements,
-									]
+									const shouldShowSteps =
+										message.role === "assistant" && toolElements.length > 0
+									const subAgentCount = toolParts.filter(({ part }) =>
+										isGenericToolPart(part)
+											? isSubAgentToolName(part.toolName)
+											: false,
+									).length
+									const areStepsExpanded =
+										expandedSteps[message.id] ?? status === "streaming"
+
+									const stepBlock = shouldShowSteps ? (
+										<div className="space-y-2">
+											<button
+												className="w-full flex items-center justify-between rounded-md px-2 py-1 text-xs text-zinc-400 hover:bg-white/5 transition-colors"
+												onClick={() =>
+													setExpandedSteps((prev) => ({
+														...prev,
+														[message.id]: !areStepsExpanded,
+													}))
+												}
+												type="button"
+											>
+												<span className="inline-flex items-center gap-1.5">
+													<ListTree className="size-3.5" />
+													{toolElements.length} steps
+													{subAgentCount > 0 ? (
+														<span className="text-zinc-500">
+															• {subAgentCount} sub-agents
+														</span>
+													) : null}
+												</span>
+												{areStepsExpanded ? (
+													<ChevronDown className="size-3.5" />
+												) : (
+													<ChevronRight className="size-3.5" />
+												)}
+											</button>
+											{areStepsExpanded ? (
+												<div className="space-y-2">{toolElements}</div>
+											) : (
+												<div className="space-y-2">
+													{toolElements[toolElements.length - 1] ?? null}
+												</div>
+											)}
+										</div>
+									) : null
+
+									const responseBlock =
+										message.role === "assistant" && textElements.length > 0 ? (
+											<div className="space-y-2.5">
+												<div className="h-px w-full bg-white/10" />
+												<div className="text-[11px] font-semibold tracking-[0.12em] text-zinc-500 uppercase px-1">
+													Response
+												</div>
+												<div className="space-y-2">{textElements}</div>
+											</div>
+										) : (
+											textElements
+										)
+
+									return (
+										<>
+											{stepBlock}
+											{responseBlock}
+											{otherElements}
+										</>
+									)
 								})()}
 							</div>
 							{message.role === "assistant" && (
-								<div className="flex items-center gap-1 mt-1">
+								<div className="flex items-center gap-1 mt-1 px-1">
 									<Button
 										className={cn(
-											"text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border/15",
+											"text-zinc-500 hover:text-zinc-300 hover:bg-white/5 border-0",
 											compact ? "size-6" : "size-7",
 										)}
 										onClick={() => {
@@ -2376,44 +2809,7 @@ export function ChatMessages({
 									</Button>
 									<Button
 										className={cn(
-											"text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border/15",
-											compact ? "size-6" : "size-7",
-										)}
-										disabled={
-											message.id ? savingMessageIds.has(message.id) : false
-										}
-										onClick={async () => {
-											const id = message.id
-											if (!id) return
-											if (savingMessageIds.has(id)) return
-											const combinedText = message.parts
-												.filter((part) => isTextPart(part))
-												.map((part) => part.text)
-												.join("\n")
-											setSavingMessageIds((prev) => new Set(prev).add(id))
-											try {
-												await saveMemory(combinedText)
-											} finally {
-												setSavingMessageIds((prev) => {
-													const next = new Set(prev)
-													next.delete(id)
-													return next
-												})
-											}
-										}}
-										size="icon"
-										title="Add this reply to memory"
-										variant="ghost"
-									>
-										{message.id && savingMessageIds.has(message.id) ? (
-											<Spinner className={compact ? "size-3" : "size-3.5"} />
-										) : (
-											<Plus className={compact ? "size-3" : "size-3.5"} />
-										)}
-									</Button>
-									<Button
-										className={cn(
-											"text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border/15",
+											"text-zinc-500 hover:text-zinc-300 hover:bg-white/5 border-0",
 											compact ? "size-6" : "size-7",
 										)}
 										onClick={() => regenerate({ messageId: message.id })}
@@ -2460,13 +2856,12 @@ export function ChatMessages({
 			</div>
 			<form
 				className={cn(
-					"relative bg-chat-surface",
-					compact ? "px-2.5 pb-2.5 pt-1" : "px-3 pb-3 pt-1",
+					"relative bg-black",
+					compact ? "px-2.5 pb-2.5 pt-1" : "px-6 pb-3 pt-1",
 				)}
 				onSubmit={(e) => {
 					e.preventDefault()
-					if (status === "submitted") return
-					if (status === "streaming") {
+					if (status === "streaming" || status === "submitted") {
 						stop()
 						return
 					}
@@ -2486,7 +2881,7 @@ export function ChatMessages({
 							const preview = doc ? getPreviewUrl(doc) : null
 							return (
 								<button
-									className="text-[10px] pl-1 pr-1.5 py-0.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted/50 inline-flex items-center gap-1 transition-colors"
+									className="text-[10px] pl-1 pr-1.5 py-0.5 rounded bg-[#101319] text-muted-foreground hover:text-foreground hover:bg-[#151922] inline-flex items-center gap-1 transition-colors"
 									key={id}
 									onClick={() => removeMentionedDocId(id)}
 									title={doc?.title || id}
@@ -2500,7 +2895,7 @@ export function ChatMessages({
 											src={preview}
 										/>
 									) : (
-										<span className="w-3 h-3 rounded-sm bg-muted/50 inline-block" />
+										<span className="w-3 h-3 rounded-sm bg-[#1a1f2b] inline-block" />
 									)}
 									<span>
 										@{doc?.title || id}
@@ -2511,28 +2906,35 @@ export function ChatMessages({
 						})}
 					</div>
 				)}
-				{/* Provider selector */}
-				<div className="flex items-center px-1 pb-1.5">
-					<ProviderSelector
-						disabled={status === "submitted"}
-						onChange={setProvider}
-						value={provider}
-					/>
-				</div>
+				{(status === "streaming" || status === "submitted") && (
+					<div className="mb-1.5 flex items-center justify-between rounded-3xl border border-white/10 bg-[#080a0f] px-5 py-3">
+						<span className="text-[16px] leading-none font-medium text-zinc-400">
+							Generating..
+						</span>
+						<button
+							className="inline-flex items-center gap-2 text-zinc-100 hover:text-white transition-colors"
+							onClick={stop}
+							type="button"
+						>
+							<span className="text-[16px] leading-none font-medium">Stop</span>
+							<span className="text-[13px] leading-none text-zinc-500">^C</span>
+						</button>
+					</div>
+				)}
 				<InputGroup
 					className={cn(
-						"focus-within:ring-0 focus-within:ring-offset-0 transition-colors",
+						"focus-within:ring-0 focus-within:ring-offset-0 transition-colors shadow-[0_0_0_1px_rgba(31,86,216,0.35)]",
 						compact
-							? "rounded-md border border-border/10 bg-black/30 focus-within:border-border/25"
-							: "rounded-lg border border-border/20 bg-muted/20 focus-within:border-border/40",
+							? "rounded-3xl border border-[#1f56d8] bg-[#07090d] focus-within:border-[#2f67f2]"
+							: "rounded-3xl border border-[#1f56d8] bg-[#07090d] focus-within:border-[#2f67f2]",
 					)}
 				>
 					<InputGroupTextarea
 						className={cn(
-							"text-foreground placeholder-muted-foreground/50",
+							"text-zinc-100 placeholder-zinc-500",
 							compact
-								? "min-h-[72px] px-3 py-2.5 text-[13px]"
-								: "text-sm",
+								? "min-h-[96px] px-4 pt-3 pb-10 text-[13px]"
+								: "min-h-[96px] px-4 pt-3 pb-10 text-sm",
 						)}
 						onChange={(e) => {
 							debugLog("[Chat Input] onChange:", e.target.value)
@@ -2570,7 +2972,11 @@ export function ChatMessages({
 							// Submit on Enter
 							if (e.key === "Enter" && !e.shiftKey) {
 								e.preventDefault()
-								if (input.trim() && status !== "submitted") {
+								if (
+									input.trim() &&
+									status !== "submitted" &&
+									status !== "streaming"
+								) {
 									enableAutoScroll()
 									scrollToBottom("auto")
 									sendUserMessage(input)
@@ -2579,61 +2985,93 @@ export function ChatMessages({
 								}
 							}
 						}}
-						placeholder="Ask, Search or Chat..."
+						placeholder={
+							status === "streaming" || status === "submitted"
+								? "Add to the queue"
+								: "Plan, @ for context, / for commands"
+						}
 						value={input}
 					/>
-					{/* Left bottom corner: quick-save button */}
 					<InputGroupAddon align="inline-start" className="gap-1 bottom-0">
+						<div className="ml-2 mb-2 flex items-center gap-1 text-zinc-400">
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<button
+										className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] hover:bg-white/5 transition-colors"
+										type="button"
+									>
+										<Infinity className="size-3.5" />
+										<span>Agent</span>
+										<ChevronDown className="size-3.5" />
+									</button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent
+									align="start"
+									className="border-white/10 bg-[#0b0d12] text-zinc-100"
+									side="top"
+								>
+									<DropdownMenuItem className="text-zinc-300">
+										Agent
+									</DropdownMenuItem>
+									<DropdownMenuItem
+										className="cursor-pointer text-zinc-300"
+										onSelect={() => onSwitchToCouncil?.()}
+									>
+										Council
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+							<button
+								className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] hover:bg-white/5 transition-colors"
+								type="button"
+							>
+								<Sparkles className="size-3.5" />
+								<span>{provider === "kimi" ? "K2.5" : "Model"}</span>
+								<ChevronDown className="size-3.5" />
+							</button>
+						</div>
+					</InputGroupAddon>
+
+					<InputGroupAddon align="inline-end" className="gap-1 bottom-0">
 						<InputGroupButton
-							className="h-7 w-7 p-0 hover:bg-muted/50 text-muted-foreground hover:text-foreground rounded-md transition-colors"
-							disabled={savingInput || status === "submitted"}
-							onClick={async () => {
-								if (!input.trim()) {
-									toast.error("Type something to save")
-									return
-								}
-								setSavingInput(true)
-								try {
-									await saveMemory(input)
-								} finally {
-									setSavingInput(false)
-								}
-							}}
+							className="mb-2 h-8 w-8 p-0 bg-[#050608] border border-white/10 text-zinc-600 hover:text-zinc-300 hover:bg-[#0a0c11] rounded-lg transition-colors"
+							disabled={status === "submitted"}
 							size="sm"
 							type="button"
 							variant="ghost"
 						>
-							{savingInput ? (
-								<Spinner className="size-3" />
-							) : (
-								<Plus className="size-3.5" />
-							)}
+							<Circle className="size-3.5" />
 						</InputGroupButton>
-					</InputGroupAddon>
-
-					{/* Submit button */}
-					<InputGroupAddon align="inline-end" className="gap-1 bottom-0">
 						<InputGroupButton
-							className="h-7 w-7 p-0 bg-foreground/10 hover:bg-foreground/20 text-foreground rounded-md disabled:opacity-30 transition-colors"
-							disabled={status === "submitted" || status === "streaming"}
+							className="mb-2 h-8 w-8 p-0 text-zinc-400 hover:text-zinc-200 hover:bg-white/5 rounded-lg transition-colors"
+							disabled={status === "submitted"}
+							size="sm"
+							type="button"
+							variant="ghost"
+						>
+							<Paperclip className="size-3.5" />
+						</InputGroupButton>
+						<InputGroupButton
+							className="mb-2 mr-2 h-8 w-8 p-0 bg-zinc-200 hover:bg-white text-zinc-900 rounded-full disabled:opacity-30 transition-colors"
+							disabled={false}
 							size="sm"
 							type="submit"
 						>
-							{status === "ready" ? (
-								<ArrowUp className="size-3.5" />
-							) : status === "submitted" || status === "streaming" ? (
-								<Spinner className="size-3" />
-							) : (
+							{status === "streaming" || status === "submitted" ? (
 								<X className="size-3.5" />
+							) : status === "ready" ? (
+								<ArrowUp className="size-3.5" />
+							) : (
+								<ArrowUp className="size-3.5" />
 							)}
 						</InputGroupButton>
 					</InputGroupAddon>
 				</InputGroup>
 				{mentionOpen && (
-					<div className="absolute bottom-16 left-3 right-3 max-h-64 overflow-auto rounded-lg border border-border/30 bg-background/95 backdrop-blur-xl z-10 p-2 shadow-lg">
+					<div className="absolute bottom-24 left-6 right-6 max-h-64 overflow-auto rounded-lg border border-white/10 bg-[#090b10]/95 backdrop-blur-xl z-10 p-2 shadow-lg">
 						<div className="mb-2">
 							<input
-								className="w-full text-xs bg-muted/30 border-0 rounded-md px-2.5 py-1.5 text-foreground placeholder-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border/50"
+								className="w-full text-xs bg-[#11141b] border-0 rounded-md px-2.5 py-1.5 text-foreground placeholder-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-white/20"
 								onChange={(e) => setMentionQuery(e.target.value)}
 								placeholder="Search documents..."
 								ref={mentionInputRef}
@@ -2650,7 +3088,7 @@ export function ChatMessages({
 									const preview = getPreviewUrl(d)
 									return (
 										<button
-											className="w-full text-left text-xs text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-md px-2 py-1.5 flex items-center gap-2 transition-colors"
+											className="w-full text-left text-xs text-foreground/80 hover:text-foreground hover:bg-[#11141b] rounded-md px-2 py-1.5 flex items-center gap-2 transition-colors"
 											key={d.id}
 											onClick={() => {
 												addMentionedDocId(d.id)
@@ -2666,7 +3104,7 @@ export function ChatMessages({
 													src={preview}
 												/>
 											) : (
-												<span className="w-6 h-4 rounded-sm bg-muted/50 inline-block" />
+												<span className="w-6 h-4 rounded-sm bg-[#1a1f2b] inline-block" />
 											)}
 											<span className="truncate">@{d.title || d.id}</span>
 										</button>

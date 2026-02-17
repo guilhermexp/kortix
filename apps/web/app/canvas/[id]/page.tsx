@@ -30,13 +30,19 @@ export default function CanvasEditorPage() {
 					throw new Error(response.error.message)
 				}
 
-				let content = null
-				if (response.data.content) {
+				let content: Record<string | number | symbol, unknown> | null = null
+				const rawContent = response.data.content
+				if (typeof rawContent === "string" && rawContent.length > 0) {
 					try {
-						content = JSON.parse(response.data.content)
+						content = JSON.parse(rawContent) as Record<
+							string | number | symbol,
+							unknown
+						>
 					} catch (e) {
 						console.error("Failed to parse canvas content", e)
 					}
+				} else if (rawContent && typeof rawContent === "object") {
+					content = rawContent as Record<string | number | symbol, unknown>
 				}
 
 				setInitialData({
