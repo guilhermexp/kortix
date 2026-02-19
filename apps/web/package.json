@@ -3,8 +3,8 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"dev": "sh -c 'PORT=${PORT:-3001}; HOST=${HOST:-127.0.0.1}; exec next dev --turbo --port \"$PORT\" --hostname \"$HOST\"'",
-		"dev:no-turbo": "sh -c 'PORT=${PORT:-3001}; HOST=${HOST:-127.0.0.1}; exec next dev --port \"$PORT\" --hostname \"$HOST\"'",
+		"dev": "sh -c 'PORT=${PORT:-3001}; HOST=${HOST:-localhost}; exec next dev --turbo --port \"$PORT\" --hostname \"$HOST\"'",
+		"dev:no-turbo": "sh -c 'PORT=${PORT:-3001}; HOST=${HOST:-localhost}; exec next dev --port \"$PORT\" --hostname \"$HOST\"'",
 		"build": "next build --webpack",
 		"start": "next start",
 		"test": "vitest run",

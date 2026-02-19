@@ -261,24 +261,33 @@ export function usePersistentChat() {
 
 	const currentChatId = projectState?.currentChatId ?? null
 
-	function setCurrentChatId(chatId: string | null): void {
-		setCurrentChatIdRaw(projectId, chatId)
-	}
+	const setCurrentChatId = useCallback(
+		(chatId: string | null): void => {
+			setCurrentChatIdRaw(projectId, chatId)
+		},
+		[projectId, setCurrentChatIdRaw],
+	)
 
-	function setConversation(chatId: string, messages: PersistedMessage[]): void {
-		setConversationRaw(projectId, chatId, messages)
-	}
+	const setConversation = useCallback(
+		(chatId: string, messages: PersistedMessage[]): void => {
+			setConversationRaw(projectId, chatId, messages)
+		},
+		[projectId, setConversationRaw],
+	)
 
-	function deleteConversation(chatId: string): void {
-		deleteConversationRaw(projectId, chatId)
-	}
+	const deleteConversation = useCallback(
+		(chatId: string): void => {
+			deleteConversationRaw(projectId, chatId)
+		},
+		[projectId, deleteConversationRaw],
+	)
 
-	function setConversationTitle(
-		chatId: string,
-		title: string | undefined,
-	): void {
-		setConversationTitleRaw(projectId, chatId, title)
-	}
+	const setConversationTitle = useCallback(
+		(chatId: string, title: string | undefined): void => {
+			setConversationTitleRaw(projectId, chatId, title)
+		},
+		[projectId, setConversationTitleRaw],
+	)
 
 	const getCurrentConversation = useCallback((): PersistedMessage[] | undefined => {
 		const convs = projectState?.conversations ?? {}
@@ -287,7 +296,7 @@ export function usePersistentChat() {
 		return convs[id]?.messages
 	}, [currentChatId, projectState])
 
-	function getCurrentChat(): ConversationSummary | undefined {
+	const getCurrentChat = useCallback((): ConversationSummary | undefined => {
 		const id = currentChatId
 		if (!id) return undefined
 		const rec = projectState?.conversations?.[id]
@@ -298,11 +307,14 @@ export function usePersistentChat() {
 			lastUpdated: rec.lastUpdated,
 			sdkSessionId: rec.sdkSessionId,
 		}
-	}
+	}, [currentChatId, projectState])
 
-	function setSdkSessionId(chatId: string, sdkSessionId: string | null): void {
-		setSdkSessionIdRaw(projectId, chatId, sdkSessionId)
-	}
+	const setSdkSessionId = useCallback(
+		(chatId: string, sdkSessionId: string | null): void => {
+			setSdkSessionIdRaw(projectId, chatId, sdkSessionId)
+		},
+		[projectId, setSdkSessionIdRaw],
+	)
 
 	const getSdkSessionId = useCallback(
 		(chatId?: string): string | null | undefined => {

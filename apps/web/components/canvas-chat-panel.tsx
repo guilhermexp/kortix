@@ -7,11 +7,10 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import type { MouseEvent as ReactMouseEvent } from "react"
 import { ChatRewrite } from "@/components/views/chat"
 import { CouncilChat } from "@/components/views/council"
-import { useChatOpen } from "@/stores"
+import { useChatMode, useChatOpen } from "@/stores"
 
 const PANEL_SIZE_STORAGE_KEY = "canvas-chat-panel-size-v2"
 const PANEL_POSITION_STORAGE_KEY = "canvas-chat-panel-position-v2"
-const PANEL_MODE_STORAGE_KEY = "canvas-chat-panel-mode-v1"
 const DEFAULT_WIDTH = 390
 const DEFAULT_HEIGHT = 560
 const MIN_WIDTH = 360
@@ -21,10 +20,10 @@ const MAX_HEIGHT = 860
 
 type ResizeMode = "width" | "height" | "both"
 
-export function CanvasChatPanel() {
+export function CanvasChatPanel({ canvasId }: { canvasId?: string }) {
 	const { isOpen, setIsOpen } = useChatOpen()
+	const { mode, setMode } = useChatMode()
 	const [isMobile, setIsMobile] = useState(false)
-	const [mode, setMode] = useState<"default" | "council">("default")
 	const [panelSize, setPanelSize] = useState({
 		width: DEFAULT_WIDTH,
 		height: DEFAULT_HEIGHT,
@@ -94,23 +93,6 @@ export function CanvasChatPanel() {
 			setPanelSize(size)
 		} catch {}
 	}, [clampSize])
-
-	useEffect(() => {
-		if (typeof window === "undefined") return
-		try {
-			const raw = localStorage.getItem(PANEL_MODE_STORAGE_KEY)
-			if (raw === "default" || raw === "council") {
-				setMode(raw)
-			}
-		} catch {}
-	}, [])
-
-	useEffect(() => {
-		if (typeof window === "undefined") return
-		try {
-			localStorage.setItem(PANEL_MODE_STORAGE_KEY, mode)
-		} catch {}
-	}, [mode])
 
 	useEffect(() => {
 		if (typeof window === "undefined") return
@@ -317,6 +299,7 @@ export function CanvasChatPanel() {
 							/>
 						) : (
 							<ChatRewrite
+								canvasId={canvasId}
 								className="h-full bg-[#08090a]"
 								compact
 								embedded

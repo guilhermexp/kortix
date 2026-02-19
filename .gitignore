@@ -40,6 +40,9 @@ yarn-error.log*
 .DS_Store
 *.pem
 
+# MCP config (contains secrets)
+.mcp.json
+
 .venv
 __pycache__
 

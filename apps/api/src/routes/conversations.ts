@@ -3,6 +3,19 @@ import { z } from "zod"
 import { ErrorHandler } from "../services/error-handler"
 import { EventStorageService } from "../services/event-storage"
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function validateConversationId(conversationId: unknown): string {
+	if (!conversationId || typeof conversationId !== "string") {
+		throw ErrorHandler.validation("Invalid conversation ID")
+	}
+	// Reject non-UUID IDs (e.g. "claude-1234567890" from local cache)
+	if (!UUID_RE.test(conversationId)) {
+		throw ErrorHandler.notFound("Conversation", conversationId)
+	}
+	return conversationId
+}
+
 // Validation schemas
 const createConversationSchema = z.object({
 	title: z.string().min(1).max(500).optional(),
@@ -76,9 +89,7 @@ export async function handleGetConversation({
 	conversationId: string
 }) {
 	try {
-		if (!conversationId || typeof conversationId !== "string") {
-			throw ErrorHandler.validation("Invalid conversation ID")
-		}
+		validateConversationId(conversationId)
 
 		const eventStorage = new EventStorageService(client)
 		const conversation = await eventStorage.getConversation(conversationId)
@@ -115,9 +126,7 @@ export async function handleGetConversationEvents({
 	conversationId: string
 }) {
 	try {
-		if (!conversationId || typeof conversationId !== "string") {
-			throw ErrorHandler.validation("Invalid conversation ID")
-		}
+		validateConversationId(conversationId)
 
 		const eventStorage = new EventStorageService(client)
 
@@ -157,9 +166,7 @@ export async function handleGetConversationHistory({
 	conversationId: string
 }) {
 	try {
-		if (!conversationId || typeof conversationId !== "string") {
-			throw ErrorHandler.validation("Invalid conversation ID")
-		}
+		validateConversationId(conversationId)
 
 		const eventStorage = new EventStorageService(client)
 
@@ -201,9 +208,7 @@ export async function handleUpdateConversation({
 	body: unknown
 }) {
 	try {
-		if (!conversationId || typeof conversationId !== "string") {
-			throw ErrorHandler.validation("Invalid conversation ID")
-		}
+		validateConversationId(conversationId)
 
 		const payload = updateConversationSchema.parse(body ?? {})
 		const eventStorage = new EventStorageService(client)
@@ -250,9 +255,7 @@ export async function handleDeleteConversation({
 	conversationId: string
 }) {
 	try {
-		if (!conversationId || typeof conversationId !== "string") {
-			throw ErrorHandler.validation("Invalid conversation ID")
-		}
+		validateConversationId(conversationId)
 
 		const eventStorage = new EventStorageService(client)
 		const existing = await eventStorage.getConversation(conversationId)

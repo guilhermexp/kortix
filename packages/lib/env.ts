@@ -58,6 +58,8 @@ export const MCP_SERVER_URL =
 	`${BACKEND_URL.replace(/\/$/, "")}/mcp`
 export const DOCS_URL =
 	process.env.NEXT_PUBLIC_DOCS_URL ?? `${APP_URL.replace(/\/$/, "")}/docs`
+export const CANVAS_AGENT_UI_ENABLED =
+	process.env.NEXT_PUBLIC_CANVAS_AGENT_UI_ENABLED !== "false"
 
 export const APP_HOSTNAME = (() => {
 	try {

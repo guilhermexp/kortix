@@ -2,12 +2,6 @@
 
 import { BACKEND_URL } from "@lib/env"
 import { cn } from "@lib/utils"
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@repo/ui/components/dropdown-menu"
 import { Button } from "@ui/components/button"
 import {
 	Dialog,
@@ -41,6 +35,7 @@ import {
 	InputGroupTextarea,
 } from "@/components/ui/input-group"
 import { Spinner } from "../../spinner"
+import { ChatModeSelector } from "../chat/chat-mode-selector"
 
 type CouncilConversationMeta = {
 	id: string
@@ -695,33 +690,14 @@ export function CouncilChat({
 					/>
 					<InputGroupAddon align="inline-start" className="bottom-0 gap-1">
 						<div className="ml-2 mb-2 flex items-center gap-1 text-zinc-400">
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<button
-										className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] hover:bg-white/5"
-										type="button"
-									>
-										<Bot className="size-3.5" />
-										<span>Council</span>
-										<ChevronDown className="size-3.5" />
-									</button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent
-									align="start"
-									className="border-white/10 bg-[#0b0d12] text-zinc-100"
-									side="top"
-								>
-									<DropdownMenuItem
-										className="cursor-pointer text-zinc-300"
-										onSelect={() => onSwitchToAgent?.()}
-									>
-										Agent
-									</DropdownMenuItem>
-									<DropdownMenuItem className="text-zinc-300">
-										Council
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
+							<ChatModeSelector
+								mode="council"
+								onSelectMode={(mode) => {
+									if (mode === "agent") {
+										onSwitchToAgent?.()
+									}
+								}}
+							/>
 						</div>
 					</InputGroupAddon>
 					<InputGroupAddon align="inline-end" className="bottom-0 gap-1">

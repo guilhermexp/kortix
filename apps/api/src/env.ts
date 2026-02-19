@@ -84,6 +84,7 @@ const envSchema = z.object({
 	SEQ_MCP_ENABLED: z.string().optional().default("false"),
 	// Enable deepwiki MCP server for external research
 	DEEPWIKI_ENABLED: z.string().optional().default("false"),
+	CANVAS_AGENT_TOOLS_ENABLED: z.string().optional().default("true"),
 	// LLM Council backend URL
 	LLM_COUNCIL_URL: z.string().url().optional().default("http://localhost:8001"),
 	COUNCIL_MODELS: z.string().optional(),
@@ -130,6 +131,7 @@ const parsed = envSchema.safeParse({
 	SEQ_MCP_ARGS: process.env.SEQ_MCP_ARGS,
 	SEQ_MCP_ENABLED: process.env.SEQ_MCP_ENABLED,
 	DEEPWIKI_ENABLED: process.env.DEEPWIKI_ENABLED,
+	CANVAS_AGENT_TOOLS_ENABLED: process.env.CANVAS_AGENT_TOOLS_ENABLED,
 	LLM_COUNCIL_URL: process.env.LLM_COUNCIL_URL,
 	COUNCIL_MODELS: process.env.COUNCIL_MODELS,
 	COUNCIL_CHAIRMAN_MODEL: process.env.COUNCIL_CHAIRMAN_MODEL,

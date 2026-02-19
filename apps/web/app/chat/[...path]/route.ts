@@ -6,7 +6,6 @@ function normalizeBaseUrl(value: string | undefined): string | null {
 	return trimmed.replace(/\/$/, "")
 }
 
-// Prefer internal service URL for SSR/server routes (avoid NEXT_PUBLIC_* empty-string config).
 const API_URL =
 	normalizeBaseUrl(process.env.BACKEND_URL_INTERNAL) ??
 	normalizeBaseUrl(process.env.API_INTERNAL_URL) ??
@@ -61,15 +60,8 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
 	const searchParams = request.nextUrl.searchParams.toString()
 	const queryString = searchParams ? `?${searchParams}` : ""
 
-	const url = `${API_URL}/v3/${path}${queryString}`
-
-	if (process.env.DEBUG_V3_PROXY === "1") {
-		console.debug(`[V3 PROXY] ${request.method} /v3/${path} -> ${url}`)
-	}
-
+	const url = `${API_URL}/chat/${path}${queryString}`
 	const headers = new Headers()
-
-	// Forward relevant headers
 	const headersToForward = [
 		"content-type",
 		"authorization",
@@ -91,24 +83,20 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
 		credentials: "include",
 	}
 
-	// Add body for methods that support it
 	if (["POST", "PUT", "PATCH"].includes(request.method)) {
 		try {
 			const body = await request.text()
 			if (body) {
 				options.body = body
 			}
-		} catch (_error) {
-			// No body
+		} catch {
+			// no-op
 		}
 	}
 
 	try {
 		const response = await fetch(url, options)
-
 		const responseHeaders = new Headers()
-
-		// Forward response headers
 		const headersToReturn = ["content-type", "set-cookie", "cache-control"]
 
 		for (const header of headersToReturn) {
@@ -119,8 +107,6 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
 		}
 
 		const contentType = response.headers.get("content-type") || ""
-
-		// Handle streaming responses - don't buffer, stream directly
 		const isStreaming =
 			contentType.includes("text/event-stream") ||
 			contentType.includes("application/x-ndjson") ||
@@ -143,7 +129,7 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
 			headers: responseHeaders,
 		})
 	} catch (error) {
-		console.error(`Proxy error for /v3/${path}:`, error)
+		console.error(`Proxy error for /chat/${path}:`, error)
 		return new Response(
 			JSON.stringify({ error: { message: "Proxy request failed" } }),
 			{

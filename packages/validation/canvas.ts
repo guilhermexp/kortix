@@ -15,6 +15,7 @@ export const CanvasSchema = z.object({
   name: z.string().min(1),
   content: ExcalidrawContentSchema.nullable().optional(),
   preview: z.string().nullable().optional(),
+  version: z.number().int().min(1).default(1),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -29,8 +30,37 @@ export const UpdateCanvasSchema = z.object({
   name: z.string().min(1).optional(),
   content: ExcalidrawContentSchema.optional(),
   preview: z.string().max(500_000).optional(), // Cap preview size at 500KB
+  baseVersion: z.number().int().min(1).optional(),
 });
 
 export const CanvasResponseSchema = CanvasSchema;
 
 export const ListCanvasesResponseSchema = z.array(CanvasSchema);
+
+export const CanvasToolModeSchema = z.enum(["append", "replace"]).default("append");
+
+export const CanvasCreateViewInputSchema = z.object({
+  canvasId: z.string().uuid().optional(),
+  input: z.string().min(2),
+  checkpointId: z.string().uuid().optional(),
+  mode: CanvasToolModeSchema.optional(),
+  baseVersion: z.number().int().min(1).optional(),
+});
+
+export const CanvasCreateViewResultSchema = z.object({
+  checkpointId: z.string().uuid().nullable().optional(),
+  canvasId: z.string().uuid(),
+  appliedElementIds: z.array(z.string()).default([]),
+  deletedElementIds: z.array(z.string()).default([]),
+  camera: z
+    .object({
+      x: z.number().optional(),
+      y: z.number().optional(),
+      width: z.number().optional(),
+      height: z.number().optional(),
+    })
+    .optional(),
+  conflictStatus: z.enum(["none", "stale_base"]).default("none"),
+  canvasVersion: z.number().int().min(1),
+  message: z.string().optional(),
+});

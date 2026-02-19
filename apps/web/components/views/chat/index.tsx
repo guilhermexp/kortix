@@ -27,6 +27,7 @@ export function ChatRewrite({
 	headerClassName,
 	compact = false,
 	onSwitchToCouncil,
+	canvasId,
 }: {
 	embedded?: boolean
 	showCloseButton?: boolean
@@ -35,6 +36,7 @@ export function ChatRewrite({
 	headerClassName?: string
 	compact?: boolean
 	onSwitchToCouncil?: () => void
+	canvasId?: string
 }) {
 	const { setIsOpen } = useChatOpen()
 	const { selectedProject } = useProject()
@@ -199,6 +201,7 @@ export function ChatRewrite({
 					</div>
 				</div>
 				<ChatMessages
+					canvasId={canvasId}
 					compact={compact}
 					documentContext={documentContext}
 					embedded={embedded}

@@ -9,7 +9,27 @@ import type { z } from "zod"
 export type CreateCanvasInput = z.infer<typeof CreateCanvasSchema>
 export type UpdateCanvasInput = z.infer<typeof UpdateCanvasSchema>
 
+export class CanvasVersionConflictError extends Error {
+	expectedVersion: number
+	currentVersion: number
+
+	constructor(expectedVersion: number, currentVersion: number) {
+		super(
+			`Canvas version conflict: expected ${expectedVersion}, current ${currentVersion}`,
+		)
+		this.name = "CanvasVersionConflictError"
+		this.expectedVersion = expectedVersion
+		this.currentVersion = currentVersion
+	}
+}
+
 function mapCanvasToResponse(canvas: any) {
+	if (!canvas || typeof canvas !== "object") {
+		throw new Error("Canvas data is null or invalid - the canvases table may not exist. Run migration 0015_add_canvases_table.sql")
+	}
+	if (!canvas.id) {
+		throw new Error("Canvas insert returned empty data - check RLS policies and that the canvases table has all required columns (id, user_id, name, content, created_at, updated_at, version)")
+	}
 	return CanvasResponseSchema.parse({
 		id: canvas.id,
 		userId: canvas.user_id,
@@ -17,8 +37,12 @@ function mapCanvasToResponse(canvas: any) {
 		name: canvas.name,
 		content: canvas.content,
 		preview: canvas.preview,
-		createdAt: new Date(canvas.created_at).toISOString(),
-		updatedAt: new Date(canvas.updated_at).toISOString(),
+		version:
+			typeof canvas.version === "number" && Number.isFinite(canvas.version)
+				? canvas.version
+				: 1,
+		createdAt: canvas.created_at ? new Date(canvas.created_at).toISOString() : new Date().toISOString(),
+		updatedAt: canvas.updated_at ? new Date(canvas.updated_at).toISOString() : new Date().toISOString(),
 	})
 }
 
@@ -89,6 +113,23 @@ export async function updateCanvas(
 	userId: string,
 	payload: UpdateCanvasInput,
 ) {
+	if (payload.baseVersion !== undefined) {
+		const { data: current, error: currentError } = await client
+			.from("canvases")
+			.select("version")
+			.eq("id", id)
+			.eq("user_id", userId)
+			.single()
+		if (currentError) throw currentError
+		const currentVersion =
+			typeof current?.version === "number" && Number.isFinite(current.version)
+				? current.version
+				: 1
+		if (currentVersion !== payload.baseVersion) {
+			throw new CanvasVersionConflictError(payload.baseVersion, currentVersion)
+		}
+	}
+
 	const updates: any = {
 		updated_at: new Date().toISOString(),
 	}
@@ -96,16 +137,24 @@ export async function updateCanvas(
 	if (payload.name !== undefined) updates.name = payload.name
 	if (payload.content !== undefined) updates.content = payload.content
 	if (payload.preview !== undefined) updates.preview = payload.preview
+	if (payload.baseVersion !== undefined) {
+		updates.version = payload.baseVersion + 1
+	}
 
-	const { data, error } = await client
+	let query = client
 		.from("canvases")
 		.update(updates)
 		.eq("id", id)
 		.eq("user_id", userId)
-		.select("*")
-		.single()
+	if (payload.baseVersion !== undefined) {
+		query = query.eq("version", payload.baseVersion)
+	}
+	const { data, error } = await query.select("*").single()
 
 	if (error) throw error
+	if (!data) {
+		throw new Error("Canvas not found")
+	}
 
 	return mapCanvasToResponse(data)
 }

@@ -36,7 +36,13 @@ const metadataBase = (() => {
 	}
 
 	try {
-		return new URL(APP_URL)
+		const url = new URL(APP_URL)
+		// Never use localhost as metadataBase in production - let Next.js
+		// auto-detect from the request URL instead
+		if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+			return undefined
+		}
+		return url
 	} catch {
 		return undefined
 	}

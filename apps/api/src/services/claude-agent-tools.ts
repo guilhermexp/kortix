@@ -1,13 +1,22 @@
 import { createHash } from "node:crypto"
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk"
+import { CanvasCreateViewInputSchema } from "@repo/validation/api"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { z } from "zod"
+import { env } from "../env"
 import { searchDocuments } from "../routes/search"
 import { getCacheService } from "./cache"
+import {
+	applyCanvasCreateView,
+	CANVAS_READ_ME_TEXT,
+	resolveCanvasToolTarget,
+} from "./canvas-agent-service"
 
 type ToolContext = {
 	containerTags?: string[]
 	scopedDocumentIds?: string[]
+	canvasId?: string
+	userId?: string
 }
 
 function safeString(value: unknown) {
@@ -25,6 +34,9 @@ export function createKortixTools(
 	const baseScopedIds = Array.isArray(context.scopedDocumentIds)
 		? context.scopedDocumentIds
 		: undefined
+	const contextCanvasId = safeString(context.canvasId)
+	const contextUserId = safeString(context.userId)
+	const canvasToolsEnabled = env.CANVAS_AGENT_TOOLS_ENABLED === "true"
 
 	const cache = getCacheService()
 	const CACHE_TTL = 3600 // 1 hour
@@ -195,6 +207,111 @@ export function createKortixTools(
 					}
 				},
 			),
+			...(canvasToolsEnabled
+				? [
+						tool(
+							"canvas_read_me",
+							"Read the canvas manipulation cheat sheet with element format, pseudo-elements (cameraUpdate, restoreCheckpoint, delete), and best practices.",
+							{},
+							async () => {
+								return {
+									content: [
+										{
+											type: "text",
+											text: CANVAS_READ_ME_TEXT,
+										},
+									],
+								}
+							},
+						),
+						tool(
+							"canvas_create_view",
+							"Create or update Excalidraw canvas content from a JSON array string. Supports regular elements and pseudo-elements cameraUpdate, restoreCheckpoint, and delete.",
+							{
+								canvasId: CanvasCreateViewInputSchema.shape.canvasId.describe(
+									"Canvas ID. Optional in Canvas page context where active canvas is already known.",
+								),
+								input: CanvasCreateViewInputSchema.shape.input.describe(
+									"JSON array string containing Excalidraw elements and pseudo-elements.",
+								),
+								checkpointId:
+									CanvasCreateViewInputSchema.shape.checkpointId.describe(
+										"Optional checkpoint id to restore before applying operations.",
+									),
+								mode: CanvasCreateViewInputSchema.shape.mode.describe(
+									"append (default) or replace",
+								),
+								baseVersion:
+									CanvasCreateViewInputSchema.shape.baseVersion.describe(
+										"Optional optimistic concurrency base version.",
+									),
+							},
+							async ({ canvasId, input, checkpointId, mode, baseVersion }) => {
+								if (!contextUserId) {
+									return {
+										content: [
+											{
+												type: "text",
+												text: "canvas_create_view failed: missing authenticated user context",
+											},
+										],
+										isError: true as const,
+									}
+								}
+
+								const resolvedCanvasId = resolveCanvasToolTarget({
+									requestedCanvasId: safeString(canvasId),
+									contextCanvasId,
+								})
+								if (!resolvedCanvasId) {
+									return {
+										content: [
+											{
+												type: "text",
+												text: "canvas_create_view requires canvasId. No active canvas context found.",
+											},
+										],
+										isError: true as const,
+									}
+								}
+
+								try {
+									const result = await applyCanvasCreateView({
+										client,
+										userId: contextUserId,
+										canvasId: resolvedCanvasId,
+										input,
+										checkpointId,
+										mode,
+										baseVersion,
+										source: "agent",
+									})
+									return {
+										content: [
+											{
+												type: "text",
+												text: JSON.stringify(result, null, 2),
+											},
+										],
+									}
+								} catch (error) {
+									const message =
+										error instanceof Error ? error.message : "Unknown error"
+									console.error("[canvas_create_view] Tool error:", error)
+									return {
+										content: [
+											{
+												type: "text",
+												text: `canvas_create_view failed: ${message}`,
+											},
+										],
+										isError: true as const,
+									}
+								}
+							},
+						),
+					]
+				: []),
 		],
 	})
 }

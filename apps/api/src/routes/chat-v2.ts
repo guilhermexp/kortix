@@ -54,6 +54,7 @@ const legacyChatRequestSchema = z.object({
 
 type MetadataPayload = {
 	projectId?: string
+	canvasId?: string
 	expandContext?: boolean
 	forceRawDocs?: boolean
 	preferredTone?: string
@@ -493,6 +494,17 @@ export async function handleChatV2({
 
 	// Validate conversation ownership when provided
 	if (conversationId) {
+		// Non-UUID IDs are local-only artifacts (e.g. "claude-1234567890") —
+		// silently discard them and start a fresh conversation.
+		const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conversationId)
+		if (!isUUID) {
+			console.warn(
+				`[Chat V2] Non-UUID conversation ID "${conversationId}" — starting a new conversation.`,
+			)
+			conversationId = undefined
+		}
+	}
+	if (conversationId) {
 		try {
 			const existingConversation =
 				await eventStorage.getConversation(conversationId)
@@ -540,6 +552,11 @@ export async function handleChatV2({
 			? metadata.projectId.trim()
 			: undefined
 	const expandContext = Boolean(metadata.expandContext)
+	const canvasId =
+		typeof metadata.canvasId === "string" &&
+		metadata.canvasId.trim().length > 0
+			? metadata.canvasId.trim()
+			: undefined
 	const preferredTone =
 		typeof metadata.preferredTone === "string"
 			? metadata.preferredTone.trim()
@@ -610,6 +627,8 @@ export async function handleChatV2({
 		containerTags:
 			projectId && projectId !== "__ALL__" ? [projectId] : undefined,
 		scopedDocumentIds: effectiveScopedIds,
+		canvasId,
+		userId,
 	}
 
 	let messageForAgent = payload.message

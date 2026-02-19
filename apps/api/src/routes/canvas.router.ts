@@ -10,6 +10,7 @@ import { z } from "zod"
 import type { SessionContext } from "../session"
 import { createClientForSession } from "../supabase"
 import {
+	CanvasVersionConflictError,
 	createCanvas,
 	deleteCanvas,
 	getCanvas,
@@ -99,6 +100,19 @@ canvasRouter.patch(
 			)
 			return c.json(canvas)
 		} catch (error) {
+			if (error instanceof CanvasVersionConflictError) {
+				return c.json(
+					{
+						error: {
+							message: error.message,
+							type: "version_conflict",
+							expectedVersion: error.expectedVersion,
+							currentVersion: error.currentVersion,
+						},
+					},
+					409,
+				)
+			}
 			console.error("Failed to update canvas", error)
 			return c.json({ error: { message: "Failed to update canvas" } }, 400)
 		}

@@ -31,9 +31,10 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle"
 import { AddMemoryView } from "@/components/views/add-memory"
 import { ChatRewrite } from "@/components/views/chat"
+import { CouncilChat } from "@/components/views/council"
 import { TOUR_STEP_IDS } from "@/lib/tour-constants"
 import { useViewMode } from "@/lib/view-mode-context"
-import { useChatOpen, useProject } from "@/stores"
+import { useChatMode, useChatOpen, useProject } from "@/stores"
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
@@ -45,6 +46,7 @@ const MemoryGraphPage = () => {
 	const { viewMode } = useViewMode()
 	const { selectedProject } = useProject()
 	const { isOpen, setIsOpen } = useChatOpen()
+	const { mode, setMode } = useChatMode()
 	const [showAddMemoryView, setShowAddMemoryView] = useState(false)
 
 	// URL params for filter persistence
@@ -698,7 +700,17 @@ const MemoryGraphPage = () => {
 								title="Drag to resize"
 							/>
 						)}
-						{isOpen && <ChatRewrite />}
+						{isOpen &&
+							(mode === "council" ? (
+								<CouncilChat
+									onClose={() => setIsOpen(false)}
+									onSwitchToAgent={() => setMode("default")}
+								/>
+							) : (
+								<ChatRewrite
+									onSwitchToCouncil={() => setMode("council")}
+								/>
+							))}
 					</motion.div>
 				</motion.div>
 

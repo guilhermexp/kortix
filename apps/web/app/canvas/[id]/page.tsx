@@ -86,7 +86,7 @@ export default function CanvasEditorPage() {
 					title={initialData.name}
 					forceDarkMode
 				/>
-				<CanvasChatPanel />
+				<CanvasChatPanel canvasId={id} />
 			</main>
 		</div>
 	)

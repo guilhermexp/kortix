@@ -25,6 +25,23 @@ import { DEFAULT_PROJECT_ID } from "@repo/lib/constants"
 
 type Canvas = z.infer<typeof ListCanvasesResponseSchema>[0]
 
+function isUuid(value: string): boolean {
+	return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+		value,
+	)
+}
+
+function resolveScopedProjectId(selectedProject: string | null | undefined) {
+	if (
+		!selectedProject ||
+		selectedProject === "default" ||
+		selectedProject === DEFAULT_PROJECT_ID
+	) {
+		return undefined
+	}
+	return isUuid(selectedProject) ? selectedProject : undefined
+}
+
 export default function CanvasListPage() {
 	const { user, isLoading: isAuthLoading } = useAuth()
 	const { selectedProject } = useProject()
@@ -39,14 +56,10 @@ export default function CanvasListPage() {
 	const { data: canvases, isLoading, refetch } = useQuery({
 		queryKey: ["canvases", selectedProject],
 		queryFn: async () => {
+			const projectId = resolveScopedProjectId(selectedProject)
 			const response = await $fetch("@get/canvas", {
 				query: {
-					projectId:
-						selectedProject &&
-						selectedProject !== "default" &&
-						selectedProject !== DEFAULT_PROJECT_ID
-							? selectedProject
-							: undefined,
+					projectId,
 				},
 			})
 			if (response.error) {
@@ -60,15 +73,11 @@ export default function CanvasListPage() {
 	const handleCreateCanvas = async () => {
 		setIsCreating(true)
 		try {
+			const projectId = resolveScopedProjectId(selectedProject)
 			const response = await $fetch("@post/canvas", {
 				body: {
 					name: "Untitled Canvas",
-					projectId:
-						selectedProject &&
-						selectedProject !== "default" &&
-						selectedProject !== DEFAULT_PROJECT_ID
-							? selectedProject
-							: undefined,
+					projectId,
 					content: JSON.stringify({ elements: [], appState: {} }),
 				},
 			})

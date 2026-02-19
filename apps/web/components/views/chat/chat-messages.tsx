@@ -1,14 +1,8 @@
 "use client"
 
-import { BACKEND_URL } from "@lib/env"
+import { CANVAS_AGENT_UI_ENABLED } from "@lib/env"
 import { cn } from "@lib/utils"
 import { DEFAULT_PROJECT_ID } from "@repo/lib/constants"
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@repo/ui/components/dropdown-menu"
 import { Button } from "@ui/components/button"
 // Select components removed - no longer needed with Claude Agent SDK
 import {
@@ -18,7 +12,6 @@ import {
 	ChevronDown,
 	ChevronRight,
 	Copy,
-	Infinity,
 	ListTree,
 	Paperclip,
 	RotateCcw,
@@ -48,6 +41,7 @@ import {
 } from "@/stores"
 import { useGraphHighlights } from "@/stores/highlights"
 import { Spinner } from "../../spinner"
+import { ChatModeSelector } from "./chat-mode-selector"
 import { useProviderSelection } from "./provider-selector"
 
 interface MemoryResult {
@@ -1814,11 +1808,13 @@ export function ChatMessages({
 	documentContext,
 	compact = false,
 	onSwitchToCouncil,
+	canvasId,
 }: {
 	embedded?: boolean
 	documentContext?: React.ReactNode
 	compact?: boolean
 	onSwitchToCouncil?: () => void
+	canvasId?: string
 }) {
 	const { selectedProject } = useProject()
 	const {
@@ -1835,6 +1831,31 @@ export function ChatMessages({
 	const activeChatIdRef = useRef<string | null>(null)
 	const shouldGenerateTitleRef = useRef<boolean>(false)
 	const skipHydrationRef = useRef(false)
+	const missingConversationIdsRef = useRef<Set<string>>(
+		(() => {
+			try {
+				const stored = typeof window !== "undefined" ? sessionStorage.getItem("kortix_missing_conversations") : null
+				return stored ? new Set(JSON.parse(stored) as string[]) : new Set<string>()
+			} catch {
+				return new Set<string>()
+			}
+		})(),
+	)
+	const markConversationMissing = useCallback((id: string) => {
+		const set = missingConversationIdsRef.current
+		set.add(id)
+		// Cap at 200 entries to prevent unbounded growth
+		if (set.size > 200) {
+			const first = set.values().next().value
+			if (first !== undefined) set.delete(first)
+		}
+		try {
+			sessionStorage.setItem(
+				"kortix_missing_conversations",
+				JSON.stringify([...set]),
+			)
+		} catch { /* quota exceeded – ignore */ }
+	}, [])
 	// Track previous chat ID to prevent persisting stale messages when switching chats
 	const prevPersistChatIdRef = useRef<string | null | undefined>(undefined)
 
@@ -1860,7 +1881,7 @@ export function ChatMessages({
 		async function load() {
 			try {
 				setLoadingProjects(true)
-				const res = await fetch(`${BACKEND_URL}/v3/projects`, {
+				const res = await fetch(`/v3/projects`, {
 					credentials: "include",
 					headers: { "Content-Type": "application/json" },
 				})
@@ -1978,6 +1999,13 @@ export function ChatMessages({
 				metadata.forceRawDocs = true
 				metadata.mentionedDocIds = currentMentionedIds
 			}
+			if (
+				CANVAS_AGENT_UI_ENABLED &&
+				canvasId &&
+				canvasId.trim().length > 0
+			) {
+				metadata.canvasId = canvasId.trim()
+			}
 
 			// Clear the pending ref after using it
 			pendingMentionedDocIdsRef.current = []
@@ -1993,11 +2021,7 @@ export function ChatMessages({
 				provider, // Include provider selection
 			}
 		},
-		[
-			project,
-			expandContext,
-			provider, // Add provider to dependencies
-		],
+		[project, expandContext, provider, canvasId],
 	)
 
 	const handleAssistantComplete = useCallback(
@@ -2009,7 +2033,7 @@ export function ChatMessages({
 			if (!trimmed) return
 			shouldGenerateTitleRef.current = false
 			try {
-				const response = await fetch(`${BACKEND_URL}/chat/title`, {
+				const response = await fetch(`/chat/title`, {
 					method: "POST",
 					credentials: "include",
 					headers: { "Content-Type": "application/json" },
@@ -2037,7 +2061,7 @@ export function ChatMessages({
 		isThinking,
 	} = useClaudeChat({
 		conversationId: currentChatId || undefined,
-		endpoint: `${BACKEND_URL}/chat/v2`,
+		endpoint: "/chat/v2",
 		buildRequestBody: composeRequestBody,
 		getSdkSessionId, // Passar função para carregar sdkSessionId salvo
 		onComplete: handleAssistantComplete,
@@ -2120,7 +2144,7 @@ export function ChatMessages({
 					selectedProject && selectedProject !== DEFAULT_PROJECT_ID
 						? [selectedProject]
 						: undefined
-				const res = await fetch(`${BACKEND_URL}/v3/documents/documents`, {
+				const res = await fetch(`/v3/documents/documents`, {
 					method: "POST",
 					credentials: "include",
 					headers: { "Content-Type": "application/json" },
@@ -2252,10 +2276,30 @@ export function ChatMessages({
 				shouldGenerateTitleRef.current = false
 				return
 			}
+			// Skip server fetch for non-UUID IDs (e.g. "claude-1234567890" local-only IDs)
+			const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawActiveId)
+			if (!isUUID) {
+				markConversationMissing(rawActiveId)
+			}
+
+			if (missingConversationIdsRef.current.has(rawActiveId)) {
+				const localMessages = getCurrentConversation()
+				if (cancelled) return
+				if (Array.isArray(localMessages) && localMessages.length > 0) {
+					const normalized = normalizeStoredMessages(localMessages, rawActiveId)
+					setMessages(normalized)
+					setHydrationOrigin("cache")
+				} else {
+					setMessages([])
+					setHydrationOrigin(null)
+				}
+				setInput("")
+				return
+			}
 
 			try {
 				const historyResponse = await fetch(
-					`${BACKEND_URL}/v3/conversations/${rawActiveId}/history`,
+					`/v3/conversations/${rawActiveId}/history`,
 					{
 						method: "GET",
 						credentials: "include",
@@ -2277,7 +2321,7 @@ export function ChatMessages({
 					setHydrationOrigin("server")
 
 					const conversationResponse = await fetch(
-						`${BACKEND_URL}/v3/conversations/${rawActiveId}`,
+						`/v3/conversations/${rawActiveId}`,
 						{
 							method: "GET",
 							credentials: "include",
@@ -2295,10 +2339,15 @@ export function ChatMessages({
 									? conversation.sdkSessionId
 									: null
 						setSdkSessionId(rawActiveId, remoteSdkSessionId)
+					} else if (conversationResponse.status === 404) {
+						markConversationMissing(rawActiveId)
 					}
 
 					setInput("")
 					return
+				}
+				if (historyResponse.status === 404) {
+					markConversationMissing(rawActiveId)
 				}
 			} catch (error) {
 				debugLog("[Chat Hydration] Server history fetch failed, using local cache", error)
@@ -2994,33 +3043,14 @@ export function ChatMessages({
 					/>
 					<InputGroupAddon align="inline-start" className="gap-1 bottom-0">
 						<div className="ml-2 mb-2 flex items-center gap-1 text-zinc-400">
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<button
-										className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] hover:bg-white/5 transition-colors"
-										type="button"
-									>
-										<Infinity className="size-3.5" />
-										<span>Agent</span>
-										<ChevronDown className="size-3.5" />
-									</button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent
-									align="start"
-									className="border-white/10 bg-[#0b0d12] text-zinc-100"
-									side="top"
-								>
-									<DropdownMenuItem className="text-zinc-300">
-										Agent
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										className="cursor-pointer text-zinc-300"
-										onSelect={() => onSwitchToCouncil?.()}
-									>
-										Council
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
+							<ChatModeSelector
+								mode="agent"
+								onSelectMode={(mode) => {
+									if (mode === "council") {
+										onSwitchToCouncil?.()
+									}
+								}}
+							/>
 							<button
 								className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] hover:bg-white/5 transition-colors"
 								type="button"

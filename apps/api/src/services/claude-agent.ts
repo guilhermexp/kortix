@@ -37,6 +37,8 @@ export type AgentMessage = {
 export type AgentContextOptions = {
 	containerTags?: string[]
 	scopedDocumentIds?: string[]
+	canvasId?: string
+	userId?: string
 }
 
 export type ClaudeAgentOptions = {
@@ -212,6 +214,10 @@ export async function executeClaudeAgent(
 
 	// Use provider's default model if no specific model provided
 	const resolvedModel = model || providerConfig.models.balanced
+
+	// Prevent the claude-agent-sdk CLI from detecting a nested session when the
+	// API server is launched from inside Claude Code (which sets CLAUDECODE).
+	delete process.env.CLAUDECODE
 
 	// Apply provider-specific configuration to environment
 	// Note: This modifies global state. In production, consider using a per-request
