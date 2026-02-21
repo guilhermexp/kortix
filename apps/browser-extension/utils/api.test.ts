@@ -96,7 +96,7 @@ const mockFetch = mock(async (url: string, options?: RequestInit) => {
 		}
 	}
 
-	if (url.includes("/v4/search")) {
+	if (url.includes("/v3/search")) {
 		return {
 			ok: true,
 			status: 200,
@@ -208,9 +208,9 @@ async function saveMemory(payload: MemoryPayload): Promise<unknown> {
 
 async function searchMemories(query: string): Promise<unknown> {
 	try {
-		const response = await makeAuthenticatedRequest<unknown>("/v4/search", {
+		const response = await makeAuthenticatedRequest<unknown>("/v3/search", {
 			method: "POST",
-			body: JSON.stringify({ q: query, include: { relatedMemories: true } }),
+			body: JSON.stringify({ q: query }),
 		})
 		return response
 	} catch (error) {
@@ -332,12 +332,11 @@ describe("Browser Extension API", () => {
 			await searchMemories("test query")
 
 			const call = mockFetch.mock.calls[0]
-			expect(call[0]).toContain("/v4/search")
+			expect(call[0]).toContain("/v3/search")
 			expect(call[1]?.method).toBe("POST")
 
 			const body = JSON.parse(call[1]?.body as string)
 			expect(body.q).toBe("test query")
-			expect(body.include.relatedMemories).toBe(true)
 		})
 	})
 

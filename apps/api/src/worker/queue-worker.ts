@@ -290,6 +290,11 @@ async function processDocument(job: Job<DocumentJobData>): Promise<void> {
 
 	// Update metadata
 	const metaTags = extraction?.extractionMetadata?.metaTags ?? {}
+
+	// Fallback: use Firecrawl OG image as preview when PreviewGeneratorService didn't find one
+	if (!documentUpdate.preview_image && metaTags.ogImage) {
+		documentUpdate.preview_image = metaTags.ogImage
+	}
 	documentUpdate.metadata = {
 		...document.metadata,
 		processingCompleted: true,
@@ -323,6 +328,7 @@ async function processDocument(job: Job<DocumentJobData>): Promise<void> {
 				source: extraction.source,
 				contentType: extraction.contentType,
 				extractorUsed: extraction.extractorUsed,
+				metaTags,
 			},
 		}
 	}

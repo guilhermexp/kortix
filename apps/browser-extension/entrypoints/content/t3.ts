@@ -2,7 +2,6 @@ import {
 	DOMAINS,
 	ELEMENT_IDS,
 	MESSAGE_TYPES,
-	POSTHOG_EVENT_KEY,
 	STORAGE_KEYS,
 	UI_CONFIG,
 } from "../../utils/constants"
@@ -132,7 +131,7 @@ function addKortixIconToT3Input() {
 		}
 
 		const kortixIcon = createT3InputBarElement(async () => {
-			await getRelatedMemoriesForT3(POSTHOG_EVENT_KEY.T3_CHAT_MEMORIES_SEARCHED)
+			await getRelatedMemoriesForT3("t3_chat_memories_searched")
 		})
 
 		kortixIcon.id = `${ELEMENT_IDS.T3_INPUT_BAR_ELEMENT}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
@@ -662,7 +661,7 @@ async function setupT3AutoFetch() {
 
 			if (content.length > 2) {
 				await getRelatedMemoriesForT3(
-					POSTHOG_EVENT_KEY.T3_CHAT_MEMORIES_AUTO_SEARCHED,
+					"t3_chat_memories_auto_searched",
 				)
 			} else if (content.length === 0) {
 				const icons = document.querySelectorAll(

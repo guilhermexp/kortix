@@ -41,7 +41,16 @@ export function LoginPage() {
 			const redirectTo = searchParams.get("redirect") || "/";
 			// Ensure redirect is a relative path (security check)
 			const safePath = redirectTo.startsWith("/") ? redirectTo : "/";
-			window.location.href = safePath;
+
+			// Preserve extension-auth-success param through the redirect
+			const extensionAuth = searchParams.get("extension-auth-success");
+			if (extensionAuth) {
+				const redirectUrl = new URL(safePath, window.location.origin);
+				redirectUrl.searchParams.set("extension-auth-success", extensionAuth);
+				window.location.href = redirectUrl.toString();
+			} else {
+				window.location.href = safePath;
+			}
 		} catch (err) {
 			if (err instanceof Error) {
 				setError(err.message);

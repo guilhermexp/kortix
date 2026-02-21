@@ -139,6 +139,12 @@ export async function processDocumentInline(
 			}
 		}
 
+		// For tweets with raw_tweet data, skip URL fetching entirely.
+		// The content (markdown) and preview image are already set from the tweet data above.
+		const isTweetWithData =
+			document.type === "tweet" &&
+			!!(document.metadata as Record<string, unknown>)?.raw_tweet
+
 		// Generate preview first (fast, for UI)
 		let previewUrl: string | null = null
 		try {
@@ -152,7 +158,7 @@ export async function processDocumentInline(
 				}
 			}
 
-			if (!previewUrl && document.url) {
+			if (!previewUrl && document.url && !isTweetWithData) {
 				const svc = await getPreviewService()
 				const previewResult = await svc.generate({
 					title: document.title || "Untitled",
@@ -179,10 +185,12 @@ export async function processDocumentInline(
 		}
 
 		// Process with orchestrator
+		// For tweets, pass url: null to prevent the orchestrator from fetching the tweet URL
+		// (x.com pages require JavaScript and return useless "JS is not available" HTML)
 		const orch = await getOrchestrator()
 		const result = await orch.processDocument({
 			content: document.content ?? "",
-			url: document.url ?? null,
+			url: isTweetWithData ? null : (document.url ?? null),
 			type: document.type ?? null,
 			userId: userId ?? "",
 			organizationId: orgId,
@@ -211,6 +219,10 @@ export async function processDocumentInline(
 		if (extraction?.title) finalUpdate.title = extraction.title
 		if (processed?.summary) finalUpdate.summary = processed.summary
 		if (preview?.url) finalUpdate.preview_image = preview.url
+		// Fallback: use Firecrawl OG image as preview when PreviewGeneratorService didn't find one
+		if (!finalUpdate.preview_image && metaTags.ogImage) {
+			finalUpdate.preview_image = metaTags.ogImage
+		}
 		if (extraction?.wordCount) finalUpdate.word_count = extraction.wordCount
 		if (processed?.tags?.length) finalUpdate.tags = processed.tags
 
@@ -233,7 +245,7 @@ export async function processDocumentInline(
 
 			finalUpdate.raw = {
 				...(extraction?.raw ?? {}),
-				extraction: { images: allImages, source: extraction?.source },
+				extraction: { images: allImages, source: extraction?.source, metaTags },
 			}
 		}
 

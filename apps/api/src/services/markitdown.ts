@@ -591,54 +591,6 @@ export async function convertWithMarkItDown(
 	}
 }
 
-export async function convertUrlWithMarkItDown(
-	url: string,
-): Promise<MarkItDownResponse> {
-	// Use Python API directly for URLs (supports YouTube transcripts, etc)
-	console.log("[MarkItDown] Using convert_url() for:", url)
-
-	// Implement retry with exponential backoff for rate limiting
-	try {
-		const result = await retryWithBackoff(() => runMarkItDownPythonAPI(url), {
-			maxRetries: 2,
-			initialDelayMs: 2000,
-			maxDelayMs: 8000,
-			backoffMultiplier: 2,
-			shouldRetry: (error) => {
-				const errorMsg = error.message.toLowerCase()
-				const isRateLimit =
-					errorMsg.includes("429") ||
-					errorMsg.includes("too many requests") ||
-					errorMsg.includes("ipblocked") ||
-					errorMsg.includes("rate limit") ||
-					errorMsg.includes("invalid youtube transcript") ||
-					errorMsg.includes("likely rate limited")
-				return isRateLimit
-			},
-		})
-
-		console.log("[MarkItDown] Result:", {
-			chars: result.markdown.length,
-			title: result.metadata.title,
-			preview: result.markdown.substring(0, 100),
-		})
-
-		return result
-	} catch (err) {
-		// Fallback to YouTube timedtext if applicable
-		console.warn("MarkItDown URL conversion failed warn:", err)
-		const fallback = await fetchYouTubeTranscriptFallback(url)
-		if (fallback) {
-			console.log("[MarkItDown] Fallback transcript (timedtext) used:", {
-				chars: fallback.markdown.length,
-				preview: fallback.markdown.substring(0, 80),
-			})
-			return fallback
-		}
-		throw err
-	}
-}
-
 export async function checkMarkItDownHealth(): Promise<boolean> {
 	// Use cache if already checked
 	if (markitdownAvailable !== null) {

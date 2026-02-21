@@ -190,11 +190,6 @@ export const usePersistentChatStore = create<ConversationsStoreState>()(
 			},
 
 			setSdkSessionId(projectId, chatId, sdkSessionId) {
-				console.log("========================================")
-				console.log("💾 [Store] Saving SDK session ID to localStorage...")
-				console.log("[Store] Project:", projectId)
-				console.log("[Store] Chat ID:", chatId)
-				console.log("[Store] SDK Session ID:", sdkSessionId)
 				set((state) => {
 					const project = state.byProject[projectId] ?? {
 						currentChatId: null,
@@ -202,14 +197,11 @@ export const usePersistentChatStore = create<ConversationsStoreState>()(
 					}
 					const existing = project.conversations[chatId]
 					if (!existing) {
-						console.log(
-							"⚠️ [Store] Conversation not found, cannot save SDK session ID",
+						console.warn(
+							"[Store] Conversation not found, cannot save SDK session ID",
 						)
-						console.log("========================================")
 						return { byProject: state.byProject }
 					}
-					console.log("✅ [Store] SDK session ID saved successfully")
-					console.log("========================================")
 					return {
 						byProject: {
 							...state.byProject,

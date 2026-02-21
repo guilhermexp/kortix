@@ -508,11 +508,11 @@ export async function handleChatV2({
 		try {
 			const existingConversation =
 				await eventStorage.getConversation(conversationId)
-			if (!existingConversation) {
-				return ErrorHandler.notFound("Conversation", conversationId).toResponse()
-			}
-			if (existingConversation.org_id !== orgId) {
-				return ErrorHandler.authorization("conversation", "access").toResponse()
+			if (!existingConversation || existingConversation.org_id !== orgId) {
+				console.warn(
+					`[Chat V2] Conversation ${conversationId} not found or wrong org — will create new.`,
+				)
+				conversationId = undefined
 			}
 		} catch (error) {
 			if (error instanceof ConversationStorageUnavailableError) {
@@ -523,8 +523,8 @@ export async function handleChatV2({
 			// Continue without conversation tracking
 			conversationId = undefined
 		}
-	} else {
-		// Create new conversation when conversationId is not provided
+	}
+	if (!conversationId) {
 		try {
 			const conversation = await eventStorage.createConversation(
 				orgId,

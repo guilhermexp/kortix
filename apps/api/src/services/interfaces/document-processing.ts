@@ -58,6 +58,10 @@ export interface ExtractionResult {
 	extractorUsed?: string
 	/** Extraction metadata */
 	extractionMetadata?: Record<string, unknown>
+	/** Extracted image URLs */
+	images?: string[]
+	/** Additional metadata (e.g., preview image) */
+	metadata?: Record<string, unknown>
 }
 
 /**

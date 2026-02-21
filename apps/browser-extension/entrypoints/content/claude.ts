@@ -2,7 +2,6 @@ import {
 	DOMAINS,
 	ELEMENT_IDS,
 	MESSAGE_TYPES,
-	POSTHOG_EVENT_KEY,
 	STORAGE_KEYS,
 	UI_CONFIG,
 } from "../../utils/constants"
@@ -135,7 +134,7 @@ function addKortixIconToClaudeInput() {
 
 		const kortixIcon = createClaudeInputBarElement(async () => {
 			await getRelatedMemoriesForClaude(
-				POSTHOG_EVENT_KEY.CLAUDE_CHAT_MEMORIES_SEARCHED,
+				"claude_chat_memories_searched",
 			)
 		})
 
@@ -619,7 +618,7 @@ async function setupClaudeAutoFetch() {
 
 			if (content.length > 2) {
 				await getRelatedMemoriesForClaude(
-					POSTHOG_EVENT_KEY.CLAUDE_CHAT_MEMORIES_AUTO_SEARCHED,
+					"claude_chat_memories_auto_searched",
 				)
 			} else if (content.length === 0) {
 				const icons = document.querySelectorAll(

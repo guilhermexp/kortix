@@ -3,9 +3,7 @@ import {
 	CONTAINER_TAGS,
 	CONTEXT_MENU_IDS,
 	MESSAGE_TYPES,
-	POSTHOG_EVENT_KEY,
 } from "../utils/constants"
-import { trackEvent } from "../utils/posthog"
 import { captureTwitterTokens } from "../utils/twitter-auth"
 import {
 	type TwitterImportConfig,
@@ -28,10 +26,6 @@ export default defineBackground(() => {
 		})
 
 		if (details.reason === "install") {
-			await trackEvent("extension_installed", {
-				reason: details.reason,
-				version: browser.runtime.getManifest().version,
-			})
 			browser.tabs.create({
 				url: browser.runtime.getURL("/welcome.html"),
 			})
@@ -122,12 +116,6 @@ export default defineBackground(() => {
 
 			const responseData = await saveMemory(payload)
 
-			await trackEvent(POSTHOG_EVENT_KEY.SAVE_MEMORY_ATTEMPTED, {
-				source: `${POSTHOG_EVENT_KEY.SOURCE}_${actionSource}`,
-				has_highlight: !!data.highlightedText,
-				url_domain: data.url ? new URL(data.url).hostname : undefined,
-			})
-
 			return { success: true, data: responseData }
 		} catch (error) {
 			return {
@@ -150,8 +138,6 @@ export default defineBackground(() => {
 			response.results?.forEach((result, index) => {
 				memories.push(`${index + 1}. ${result.memory} \n`)
 			})
-			console.log("Memories:", memories)
-			await trackEvent(eventSource)
 			return { success: true, data: memories }
 		} catch (error) {
 			return {

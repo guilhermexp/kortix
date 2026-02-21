@@ -1,5 +1,5 @@
 const DEFAULT_API_URL = "http://localhost:4000"
-const DEFAULT_APP_URL = "http://localhost:3000"
+const DEFAULT_APP_URL = "http://localhost:3001"
 
 const KORTIX_API =
 	(import.meta.env.VITE_KORTIX_API as string | undefined) ?? DEFAULT_API_URL
@@ -19,6 +19,7 @@ export const API_ENDPOINTS = {
  */
 export const STORAGE_KEYS = {
 	BEARER_TOKEN: "bearer-token",
+	REFRESH_TOKEN: "refresh-token",
 	USER_DATA: "user-data",
 	TOKENS_LOGGED: "tokens-logged",
 	TWITTER_COOKIE: "twitter-cookie",
@@ -89,17 +90,4 @@ export const MESSAGE_TYPES = {
 
 export const CONTEXT_MENU_IDS = {
 	SAVE_TO_KORTIX: "sm-save-to-kortix",
-} as const
-
-export const POSTHOG_EVENT_KEY = {
-	TWITTER_IMPORT_STARTED: "twitter_import_started",
-	SAVE_MEMORY_ATTEMPTED: "save_memory_attempted",
-	SAVE_MEMORY_ATTEMPT_FAILED: "save_memory_attempt_failed",
-	SOURCE: "extension",
-	T3_CHAT_MEMORIES_SEARCHED: "t3_chat_memories_searched",
-	T3_CHAT_MEMORIES_AUTO_SEARCHED: "t3_chat_memories_auto_searched",
-	CLAUDE_CHAT_MEMORIES_SEARCHED: "claude_chat_memories_searched",
-	CLAUDE_CHAT_MEMORIES_AUTO_SEARCHED: "claude_chat_memories_auto_searched",
-	CHATGPT_CHAT_MEMORIES_SEARCHED: "chatgpt_chat_memories_searched",
-	CHATGPT_CHAT_MEMORIES_AUTO_SEARCHED: "chatgpt_chat_memories_auto_searched",
 } as const

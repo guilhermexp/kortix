@@ -603,6 +603,10 @@ async function hydrateDocument(
 	if (extraction?.title) finalUpdate.title = extraction.title
 	if (processed?.summary) finalUpdate.summary = processed.summary
 	if (preview?.url) finalUpdate.preview_image = preview.url
+	// Fallback: use Firecrawl OG image as preview when PreviewGeneratorService didn't find one
+	if (!finalUpdate.preview_image && metaTags.ogImage) {
+		finalUpdate.preview_image = metaTags.ogImage
+	}
 	if (extraction?.wordCount) finalUpdate.word_count = extraction.wordCount
 	if (processed?.tags?.length) finalUpdate.tags = processed.tags
 
@@ -638,6 +642,7 @@ async function hydrateDocument(
 				source: extraction?.source,
 				contentType: extraction?.contentType,
 				extractorUsed: extraction?.extractorUsed,
+				metaTags,
 			},
 		}
 	}

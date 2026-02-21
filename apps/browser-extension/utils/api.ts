@@ -25,7 +25,43 @@ async function getBearerToken(): Promise<string> {
 }
 
 /**
- * Make authenticated API request
+ * Try to refresh the access token using the refresh token
+ */
+async function tryRefreshToken(): Promise<string | null> {
+	try {
+		const result = await chrome.storage.local.get([STORAGE_KEYS.REFRESH_TOKEN])
+		const refreshToken = result[STORAGE_KEYS.REFRESH_TOKEN]
+		if (!refreshToken) return null
+
+		const response = await fetch(
+			`${API_ENDPOINTS.KORTIX_API}/api/auth/refresh`,
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ refresh_token: refreshToken }),
+			},
+		)
+
+		if (!response.ok) return null
+
+		const data = await response.json()
+		if (data.session?.access_token) {
+			await chrome.storage.local.set({
+				[STORAGE_KEYS.BEARER_TOKEN]: data.session.access_token,
+				...(data.session.refresh_token && {
+					[STORAGE_KEYS.REFRESH_TOKEN]: data.session.refresh_token,
+				}),
+			})
+			return data.session.access_token
+		}
+		return null
+	} catch {
+		return null
+	}
+}
+
+/**
+ * Make authenticated API request with automatic token refresh on 401
  */
 async function makeAuthenticatedRequest<T>(
 	endpoint: string,
@@ -33,18 +69,35 @@ async function makeAuthenticatedRequest<T>(
 ): Promise<T> {
 	const token = await getBearerToken()
 
-	const response = await fetch(`${API_ENDPOINTS.KORTIX_API}${endpoint}`, {
-		...options,
-		credentials: "omit",
-		headers: {
-			Authorization: `Bearer ${token}`,
-			"Content-Type": "application/json",
-			...options.headers,
-		},
-	})
+	const doRequest = async (accessToken: string) => {
+		return fetch(`${API_ENDPOINTS.KORTIX_API}${endpoint}`, {
+			...options,
+			credentials: "omit",
+			headers: {
+				Authorization: `Bearer ${accessToken}`,
+				"Content-Type": "application/json",
+				...options.headers,
+			},
+		})
+	}
+
+	let response = await doRequest(token)
+
+	// On 401, attempt token refresh and retry once
+	if (response.status === 401) {
+		const newToken = await tryRefreshToken()
+		if (newToken) {
+			response = await doRequest(newToken)
+		}
+	}
 
 	if (!response.ok) {
 		if (response.status === 401) {
+			// Clear invalid tokens
+			await chrome.storage.local.remove([
+				STORAGE_KEYS.BEARER_TOKEN,
+				STORAGE_KEYS.REFRESH_TOKEN,
+			])
 			throw new AuthenticationError("Invalid or expired token")
 		}
 		throw new KortixAPIError(
@@ -149,9 +202,9 @@ export async function saveMemory(payload: MemoryPayload): Promise<unknown> {
  */
 export async function searchMemories(query: string): Promise<unknown> {
 	try {
-		const response = await makeAuthenticatedRequest<unknown>("/v4/search", {
+		const response = await makeAuthenticatedRequest<unknown>("/v3/search", {
 			method: "POST",
-			body: JSON.stringify({ q: query, include: { relatedMemories: true } }),
+			body: JSON.stringify({ q: query }),
 		})
 		return response
 	} catch (error) {

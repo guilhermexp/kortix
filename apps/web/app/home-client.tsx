@@ -746,7 +746,14 @@ export default function HomePage() {
 		)
 
 		if (authenticateChromeExtension) {
-			const sessionToken = session?.token
+			// Use the access token from localStorage (JWT), NOT session?.token
+			// which is a session identifier. The extension needs the JWT for API calls.
+			const sessionToken = typeof window !== "undefined"
+				? localStorage.getItem("kortix_auth_token")
+				: null
+			const refreshToken = typeof window !== "undefined"
+				? localStorage.getItem("kortix_refresh_token")
+				: null
 			const userData = {
 				email: user?.email,
 				name: user?.name,
@@ -754,8 +761,10 @@ export default function HomePage() {
 			}
 
 			if (sessionToken && userData?.email) {
-				const encodedToken = encodeURIComponent(sessionToken)
-				window.postMessage({ token: encodedToken, userData }, "*")
+				window.postMessage(
+					{ token: sessionToken, refreshToken, userData },
+					"*",
+				)
 				url.searchParams.delete("extension-auth-success")
 				window.history.replaceState({}, "", url.toString())
 			}

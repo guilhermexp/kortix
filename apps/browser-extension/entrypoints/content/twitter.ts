@@ -2,9 +2,7 @@ import {
 	DOMAINS,
 	ELEMENT_IDS,
 	MESSAGE_TYPES,
-	POSTHOG_EVENT_KEY,
 } from "../../utils/constants"
-import { trackEvent } from "../../utils/posthog"
 import { createTwitterImportButton, DOMUtils } from "../../utils/ui-components"
 
 export function initializeTwitter() {
@@ -39,9 +37,6 @@ function addTwitterImportButton() {
 		try {
 			await browser.runtime.sendMessage({
 				type: MESSAGE_TYPES.BATCH_IMPORT_ALL,
-			})
-			await trackEvent(POSTHOG_EVENT_KEY.TWITTER_IMPORT_STARTED, {
-				source: `${POSTHOG_EVENT_KEY.SOURCE}_content_script`,
 			})
 		} catch (error) {
 			console.error("Error starting import:", error)

@@ -740,10 +740,11 @@ function useClaudeChat({
 	const abortRef = useRef<AbortController | null>(null)
 	const messagesRef = useRef<ClaudeChatMessage[]>(messagesState)
 	const conversationRef = useRef<string>(
-		conversationId && conversationId.length > 0
-			? conversationId
-			: `claude-${Date.now()}`,
+		conversationId && conversationId.length > 0 ? conversationId : "",
 	)
+
+	// Track backend-assigned conversation ID (only set from server responses)
+	const serverConversationIdRef = useRef<string | null>(null)
 
 	// Session management state
 	const sdkSessionIdRef = useRef<string | null>(null)
@@ -759,6 +760,8 @@ function useClaudeChat({
 	useEffect(() => {
 		debugLog("========================================")
 		debugLog("[Chat Hook] Conversation ID changed:", conversationId)
+		// Reset server conversation ID when switching conversations
+		serverConversationIdRef.current = null
 		if (conversationId && conversationId.length > 0) {
 			conversationRef.current = conversationId
 			// Carregar sdkSessionId salvo da conversa
@@ -1016,6 +1019,10 @@ function useClaudeChat({
 
 			try {
 				const body = buildRequestBody(trimmed, sdkSessionId, continueSession)
+				// Inject server-assigned conversationId so subsequent messages reuse the same conversation
+				if (serverConversationIdRef.current && !body.conversationId) {
+					body.conversationId = serverConversationIdRef.current
+				}
 				debugLog("📦 [Send Message] Request body:", {
 					...body,
 					message: `${String(body.message ?? "").substring(0, 50)}...`,
@@ -1045,6 +1052,7 @@ function useClaudeChat({
 
 				const pushConversationId = (value: unknown) => {
 					if (typeof value === "string" && value.length > 0) {
+						serverConversationIdRef.current = value
 						const changed = conversationRef.current !== value
 						if (changed) {
 							conversationRef.current = value
@@ -2238,6 +2246,7 @@ export function ChatMessages({
 
 			if (!isQuickReopen) {
 				const newChatId = crypto.randomUUID()
+				skipHydrationRef.current = true // Prevent 404 fetch for new chats
 				setCurrentChatId(newChatId)
 				setMessages([])
 				shouldGenerateTitleRef.current = false
@@ -2294,6 +2303,17 @@ export function ChatMessages({
 					setHydrationOrigin(null)
 				}
 				setInput("")
+				return
+			}
+
+			// Skip server fetch for brand-new chats with no local record.
+			// getCurrentConversation() returns undefined when no record exists in the store (brand new),
+			// vs [] (empty array) for an existing record with no messages.
+			const localRecord = getCurrentConversation()
+			if (localRecord === undefined) {
+				setMessages([])
+				setInput("")
+				setHydrationOrigin(null)
 				return
 			}
 

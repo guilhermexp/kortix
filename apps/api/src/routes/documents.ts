@@ -423,15 +423,28 @@ export async function ensureSpace(
 
 	const { data: created, error: insertError } = await client
 		.from("spaces")
-		.insert({
-			org_id: organizationId,
-			container_tag: containerTag,
-			name,
-		})
+		.upsert(
+			{
+				org_id: organizationId,
+				container_tag: containerTag,
+				name,
+			},
+			{ onConflict: "org_id,container_tag", ignoreDuplicates: true },
+		)
 		.select("id")
 		.single()
 
-	if (insertError) throw insertError
+	if (insertError) {
+		// If upsert race: another request created it first, just fetch it
+		const { data: retry } = await client
+			.from("spaces")
+			.select("id")
+			.eq("org_id", organizationId)
+			.eq("container_tag", containerTag)
+			.single()
+		if (retry) return retry.id
+		throw insertError
+	}
 	return created.id
 }
 

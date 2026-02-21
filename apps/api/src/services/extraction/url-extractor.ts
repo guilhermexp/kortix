@@ -1,14 +1,13 @@
 /**
- * URL Extractor (HTTP Fetch)
+ * URL Extractor (Firecrawl + HTTP Fetch Fallback)
  *
- * Specialized extractor for web URLs using basic HTTP fetch.
+ * Specialized extractor for web URLs.
  * Features:
- * - Simple HTTP fetch for text extraction
- * - Image extraction from HTML
+ * - Primary: Firecrawl API for clean markdown extraction
+ * - Fallback: Basic HTTP fetch with HTML scraping
+ * - Image extraction from markdown and HTML
  * - Meta tag extraction (og:image, twitter:image, etc.)
  * - Preview generation support
- *
- * Note: MarkItDown is disabled - using basic HTML scraping instead.
  */
 
 import { safeFetch } from "../../security/url-validator"
@@ -18,22 +17,30 @@ import type {
 	ExtractionResult,
 	URLExtractor as IURLExtractor,
 	MetaTags,
-	RateLimitInfo,
+	ExtractionRateLimitInfo,
 	URLExtractorOptions,
 } from "../interfaces"
+
+// ============================================================================
+// Firecrawl Configuration
+// ============================================================================
+
+const FIRECRAWL_API_URL = process.env.FIRECRAWL_API_URL
+const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY
+const FIRECRAWL_TIMEOUT_MS = 30000
 
 // ============================================================================
 // URL Extractor Implementation
 // ============================================================================
 
 /**
- * Extractor for web URLs using HTTP fetch
+ * Extractor for web URLs using Firecrawl API with HTTP fetch fallback
  */
 export class URLExtractor extends BaseService implements IURLExtractor {
-	private rateLimitInfo: RateLimitInfo = {
-		remaining: 999999, // HTTP fetch has no rate limits
+	private rateLimitInfo: ExtractionRateLimitInfo = {
+		remaining: 999999,
 		limit: 999999,
-		resetTime: new Date(Date.now() + 3600000), // 1 hour
+		resetTime: new Date(Date.now() + 3600000),
 		used: 0,
 	}
 
@@ -69,7 +76,6 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 */
 	canHandle(input: ExtractionInput): boolean {
 		// Can handle any URL that's not YouTube or a direct file
-		// NOTE: GitHub URLs are now handled by MarkItDown (RepositoryExtractor disabled)
 		if (!input.url) return false
 
 		const url = input.url.toLowerCase()
@@ -104,7 +110,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	// ========================================================================
 
 	/**
-	 * Extract content from a web URL using MarkItDown
+	 * Extract content from a web URL using Firecrawl (primary) or HTTP fetch (fallback)
 	 */
 	async extractFromUrl(
 		url: string,
@@ -115,14 +121,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		const tracker = this.performanceMonitor.startOperation("extractFromUrl")
 
 		try {
-			this.logger.info("Extracting URL with HTTP fetch", { url })
-
-			const result = await this.extractWithHttpFetch(url, options)
-
-			this.logger.debug("HTTP fetch extraction completed", {
-				url,
-				chars: result.text.length,
-			})
+			const result = await this.extractWithFirecrawl(url, options)
 
 			tracker.end(true)
 			return result
@@ -136,32 +135,190 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 * Check service health
 	 */
 	async checkServiceHealth(): Promise<boolean> {
-		// MarkItDown runs locally, always available
-		return true
+		if (!FIRECRAWL_API_URL || !FIRECRAWL_API_KEY) {
+			this.logger.debug("Firecrawl not configured, using HTTP fetch fallback")
+			return true
+		}
+
+		try {
+			const response = await fetch(FIRECRAWL_API_URL, {
+				signal: AbortSignal.timeout(5000),
+			})
+			return response.ok || response.status === 404 || response.status === 405
+		} catch {
+			this.logger.warn("Firecrawl health check failed, fallback available")
+			return true
+		}
 	}
 
 	/**
 	 * Get rate limit information
 	 */
-	async getRateLimitInfo(): Promise<RateLimitInfo> {
+	async getRateLimitInfo(): Promise<ExtractionRateLimitInfo> {
 		return { ...this.rateLimitInfo }
 	}
 
 	// ========================================================================
-	// Private Methods
+	// Firecrawl Extraction (Primary)
 	// ========================================================================
 
 	/**
-	 * Extract using basic HTTP fetch
-	 * Extracts: text, images, meta tags, previews
+	 * Extract using Firecrawl API, falling back to HTTP fetch on failure
 	 */
-	private async extractWithHttpFetch(
+	private async extractWithFirecrawl(
 		url: string,
 		options?: URLExtractorOptions,
 	): Promise<ExtractionResult> {
-		this.logger.debug("Extracting with HTTP fetch", { url })
+		// If Firecrawl env vars are missing, go straight to fallback
+		if (!FIRECRAWL_API_URL || !FIRECRAWL_API_KEY) {
+			this.logger.info("Firecrawl not configured, using HTTP fetch fallback", { url })
+			return this.extractWithHttpFetchFallback(url, options)
+		}
 
-		// Basic HTML scraping - fetch and parse HTML directly
+		try {
+			this.logger.info("Extracting URL with Firecrawl", { url })
+
+			const response = await fetch(`${FIRECRAWL_API_URL}/v1/scrape`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
+				},
+				body: JSON.stringify({ url, formats: ["markdown", "html"] }),
+				signal: AbortSignal.timeout(options?.timeout ?? FIRECRAWL_TIMEOUT_MS),
+			})
+
+			if (!response.ok) {
+				this.logger.warn("Firecrawl HTTP error, falling back to HTTP fetch", {
+					url,
+					status: response.status,
+				})
+				return this.extractWithHttpFetchFallback(url, options)
+			}
+
+			const data = await response.json() as {
+				success?: boolean
+				data?: {
+					markdown?: string
+					html?: string
+					metadata?: {
+						title?: string
+						description?: string
+						ogImage?: string
+						twitterImage?: string
+						favicon?: string
+					}
+				}
+			}
+
+			if (!data.success || !data.data?.markdown) {
+				this.logger.warn("Firecrawl returned unsuccessful result, falling back", {
+					url,
+					success: data.success,
+				})
+				return this.extractWithHttpFetchFallback(url, options)
+			}
+
+			const markdown = this.cleanMarkdownContent(data.data.markdown)
+			const title = data.data.metadata?.title || this.extractTitleFromContent(markdown)
+			const previewImage = data.data.metadata?.ogImage || data.data.metadata?.twitterImage
+
+			// Extract images from HTML (comprehensive) + markdown (supplemental)
+			const htmlImages = data.data.html
+				? this.extractImagesFromHtml(data.data.html, url)
+				: []
+			const markdownImages = this.extractImagesFromMarkdown(markdown)
+			const images = [...htmlImages]
+			for (const img of markdownImages) {
+				if (!images.includes(img)) {
+					images.push(img)
+				}
+			}
+
+			this.logger.info("Firecrawl extraction completed", {
+				url,
+				chars: markdown.length,
+				imageCount: images.length,
+				htmlImageCount: htmlImages.length,
+				markdownImageCount: markdownImages.length,
+			})
+
+			const metaTags: MetaTags = {
+				title: title || undefined,
+				description: data.data.metadata?.description,
+				ogImage: data.data.metadata?.ogImage,
+				twitterImage: data.data.metadata?.twitterImage,
+				favicon: data.data.metadata?.favicon,
+			}
+
+			return {
+				text: markdown,
+				title,
+				source: "firecrawl",
+				url,
+				contentType: "text/markdown",
+				raw: { markdown, html: data.data.html, images },
+				images,
+				wordCount: this.countWords(markdown),
+				extractorUsed: "URLExtractor (Firecrawl)",
+				metadata: previewImage ? { image: previewImage } : undefined,
+				extractionMetadata: { metaTags },
+			}
+		} catch (error) {
+			this.logger.warn("Firecrawl extraction failed, falling back to HTTP fetch", {
+				url,
+				error: error instanceof Error ? error.message : String(error),
+			})
+			return this.extractWithHttpFetchFallback(url, options)
+		}
+	}
+
+	/**
+	 * Extract images from markdown content (parses ![alt](url) patterns)
+	 */
+	private extractImagesFromMarkdown(markdown: string): string[] {
+		const images: string[] = []
+		const imgRegex = /!\[[^\]]*\]\(([^)]+)\)/g
+		let match
+
+		while ((match = imgRegex.exec(markdown)) !== null) {
+			const src = match[1]
+
+			// Skip data URLs and SVGs
+			if (src.startsWith("data:")) continue
+			if (src.endsWith(".svg")) continue
+
+			if (!images.includes(src)) {
+				images.push(src)
+			}
+		}
+
+		return images
+	}
+
+	/**
+	 * Clean markdown content (remove null bytes, normalize breaks)
+	 */
+	private cleanMarkdownContent(markdown: string): string {
+		let cleaned = markdown.replace(/\0/g, "")
+		cleaned = cleaned.replace(/\n{4,}/g, "\n\n\n")
+		cleaned = cleaned.trim()
+		return cleaned
+	}
+
+	// ========================================================================
+	// HTTP Fetch Fallback
+	// ========================================================================
+
+	/**
+	 * Extract using basic HTTP fetch (fallback when Firecrawl is unavailable)
+	 */
+	private async extractWithHttpFetchFallback(
+		url: string,
+		options?: URLExtractorOptions,
+	): Promise<ExtractionResult> {
+		this.logger.debug("Extracting with HTTP fetch fallback", { url })
+
 		const response = await safeFetch(url, {
 			headers: {
 				"User-Agent":
@@ -187,7 +344,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			this.extractTitleFromContent(cleanedContent)
 
 		const metaTags: MetaTags = {
-			title,
+			title: title ?? undefined,
 			description:
 				this.extractMetaTag(html, "og:description") ||
 				this.extractMetaTag(html, "description"),
@@ -196,13 +353,10 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			favicon: this.extractFavicon(html, url),
 		}
 
-		// Extract images from HTML
 		const images = this.extractImagesFromHtml(html, url)
-
-		// Use ogImage or twitterImage as preview image
 		const previewImage = metaTags.ogImage || metaTags.twitterImage
 
-		this.logger.debug("Extracted images from HTML", {
+		this.logger.debug("HTTP fetch fallback extraction completed", {
 			url,
 			imageCount: images.length,
 		})
@@ -214,7 +368,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			url,
 			contentType: "text/html",
 			raw: { html, images },
-			images, // Array of image URLs for frontend gallery
+			images,
 			wordCount: this.countWords(cleanedContent),
 			extractorUsed: "URLExtractor (HTML scraping)",
 			metadata: previewImage ? { image: previewImage } : undefined,
@@ -222,27 +376,28 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		}
 	}
 
+	// ========================================================================
+	// HTML Parsing (used by fallback)
+	// ========================================================================
+
 	/**
 	 * Extract images from HTML
 	 */
 	private extractImagesFromHtml(html: string, baseUrl: string): string[] {
 		const images: string[] = []
 
-		// Match img tags with src attribute
 		const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi
 		let match
 
 		while ((match = imgRegex.exec(html)) !== null) {
 			const src = match[1]
 
-			// Skip data URLs, SVGs, and very small images (likely icons)
 			if (src.startsWith("data:")) continue
 			if (src.endsWith(".svg")) continue
 			if (src.includes("1x1")) continue
 			if (src.includes("icon")) continue
 
 			try {
-				// Make absolute URL
 				let absoluteUrl: string
 				if (src.startsWith("http://") || src.startsWith("https://")) {
 					absoluteUrl = src
@@ -251,7 +406,6 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 					absoluteUrl = new URL(src, base.origin).toString()
 				}
 
-				// Avoid duplicates
 				if (!images.includes(absoluteUrl)) {
 					images.push(absoluteUrl)
 				}
@@ -265,17 +419,14 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 * Extract text from HTML (basic implementation)
 	 */
 	private extractTextFromHtml(html: string): string {
-		// Remove scripts and styles
 		let text = html.replace(
 			/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
 			"",
 		)
 		text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
 
-		// Remove HTML tags
 		text = text.replace(/<[^>]+>/g, " ")
 
-		// Decode HTML entities
 		text = text
 			.replace(/&nbsp;/g, " ")
 			.replace(/&amp;/g, "&")
@@ -315,7 +466,6 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			if (match) return match[1]
 		}
 
-		// Special handling for title tag
 		if (property === "title") {
 			const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
 			if (titleMatch) return titleMatch[1]
@@ -334,7 +484,6 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 
 		if (iconMatch) {
 			const iconUrl = iconMatch[1]
-			// Make absolute URL
 			if (iconUrl.startsWith("http")) {
 				return iconUrl
 			}
@@ -353,7 +502,6 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 * Extract title from content
 	 */
 	private extractTitleFromContent(content: string): string | null {
-		// Get first line or first 100 characters
 		const firstLine = content.split("\n")[0].trim()
 		if (firstLine.length > 0 && firstLine.length <= 200) {
 			return firstLine
@@ -367,18 +515,10 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 * Clean extracted content
 	 */
 	private cleanContent(content: string): string {
-		// Remove null bytes
 		let cleaned = content.replace(/\0/g, "")
-
-		// Normalize whitespace
 		cleaned = cleaned.replace(/\s+/g, " ")
-
-		// Remove excessive line breaks
 		cleaned = cleaned.replace(/\n{3,}/g, "\n\n")
-
-		// Trim
 		cleaned = cleaned.trim()
-
 		return cleaned
 	}
 
@@ -405,7 +545,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 // ============================================================================
 
 /**
- * Create URL extractor (uses MarkItDown internally)
+ * Create URL extractor (uses Firecrawl with HTTP fetch fallback)
  */
 export function createURLExtractor(): URLExtractor {
 	return new URLExtractor()

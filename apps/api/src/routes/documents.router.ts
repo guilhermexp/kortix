@@ -24,6 +24,7 @@ import {
 	checkUrlExists,
 	DocumentsByIdsSchema,
 	deleteDocument,
+	ensureSpace,
 	findDocumentRelatedLinks,
 	getDocument,
 	getDocumentStatus,
@@ -150,6 +151,20 @@ documentsRouter.post(
 		const { organizationId, internalUserId } = c.var.session
 		const { documents, metadata: batchMetadata } = c.req.valid("json")
 		const supabase = createClientForSession(c.var.session)
+
+		// Pre-create spaces sequentially to avoid race condition where parallel
+		// addDocument calls each create duplicate spaces for the same containerTag
+		const uniqueTags = new Set<string>()
+		for (const doc of documents) {
+			const tag =
+				doc.containerTags && doc.containerTags.length > 0
+					? doc.containerTags[0]
+					: "sm_project_default"
+			uniqueTags.add(tag)
+		}
+		for (const tag of uniqueTags) {
+			await ensureSpace(supabase, organizationId, tag)
+		}
 
 		const results = await Promise.allSettled(
 			documents.map(async (doc) => {

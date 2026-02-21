@@ -146,10 +146,17 @@ export class TwitterImporter {
 			for (const tweet of tweets) {
 				try {
 					const tweetUrl = `https://x.com/${tweet.user.screen_name}/status/${tweet.id_str}`
-					const metadata = {
+					// Pick best preview image: photo > video thumbnail > profile pic
+					const previewImage =
+						tweet.photos?.[0]?.url ||
+						tweet.videos?.[0]?.thumbnail_url ||
+						tweet.user.profile_image_url_https ||
+						""
+					const metadata: Record<string, unknown> = {
 						sm_source: "consumer",
 						type: "tweet",
 						url: tweetUrl,
+						originalUrl: tweetUrl,
 						tweet_id: tweet.id_str,
 						author: tweet.user.screen_name,
 						created_at: tweet.created_at,
@@ -157,6 +164,7 @@ export class TwitterImporter {
 						retweets: tweet.retweet_count || 0,
 						sm_internal_group_id: uniqueGroupId,
 						raw_tweet: JSON.stringify(tweet),
+						...(previewImage && { image: previewImage }),
 					}
 					documents.push({
 						containerTags: ["sm_project_twitter_bookmarks"],

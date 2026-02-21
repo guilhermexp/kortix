@@ -46,16 +46,18 @@ export function setupGlobalKeyboardShortcut() {
 
 export function setupStorageListener() {
 	window.addEventListener("message", (event) => {
-		if (event.source !== window) {
+		// Do NOT check event.source === window here. In Chrome MV3, content scripts
+		// run in an isolated world where event.source from the main world is a
+		// different reference than the content script's window object.
+		// Security is enforced by the hostname check below.
+		if (!event.data || typeof event.data !== "object") {
 			return
 		}
 		const bearerToken = event.data.token
+		const refreshToken = event.data.refreshToken
 		const userData = event.data.userData
 		if (bearerToken && userData) {
 			if (!DOMAINS.KORTIX.includes(window.location.hostname)) {
-				console.log(
-					"Bearer token and user data can only be used on trusted Kortix origins",
-				)
 				return
 			}
 
@@ -63,6 +65,9 @@ export function setupStorageListener() {
 				{
 					[STORAGE_KEYS.BEARER_TOKEN]: bearerToken,
 					[STORAGE_KEYS.USER_DATA]: userData,
+					...(refreshToken && {
+						[STORAGE_KEYS.REFRESH_TOKEN]: refreshToken,
+					}),
 				},
 				() => {},
 			)
