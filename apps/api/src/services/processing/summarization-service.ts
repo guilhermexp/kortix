@@ -11,7 +11,6 @@
  * - Multi-language support (EN, PT)
  */
 
-import { BaseService } from "../base/base-service"
 import type {
 	ExtractionResult,
 	SummarizationService as ISummarizationService,
@@ -35,20 +34,25 @@ const DEFAULT_STYLE = "concise" as const
 /**
  * Service for AI-powered document summarization
  */
-export class SummarizationService
-	extends BaseService
-	implements ISummarizationService
-{
+export class SummarizationService implements ISummarizationService {
+	private initialized = false
 	private readonly provider: "openrouter" | "gemini"
 	private readonly maxLength: number
 	private readonly style: "concise" | "detailed" | "technical"
 
 	constructor(options?: SummarizationOptions) {
-		super("SummarizationService")
-
 		this.provider = options?.provider ?? "openrouter"
 		this.maxLength = options?.maxLength ?? DEFAULT_MAX_LENGTH
 		this.style = options?.style ?? DEFAULT_STYLE
+	}
+
+	// ========================================================================
+	// Initialization
+	// ========================================================================
+
+	async initialize(): Promise<void> {
+		if (this.initialized) return
+		this.initialized = true
 	}
 
 	// ========================================================================
@@ -62,10 +66,6 @@ export class SummarizationService
 		content: string,
 		options?: SummarizationOptions,
 	): Promise<SummarizationResult> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("summarize")
-
 		try {
 			const config = {
 				provider: options?.provider ?? this.provider,
@@ -74,7 +74,7 @@ export class SummarizationService
 				context: options?.context,
 			}
 
-			this.logger.info("Generating summary", {
+			console.info("Generating summary", {
 				contentLength: content.length,
 				provider: config.provider,
 				style: config.style,
@@ -95,9 +95,7 @@ export class SummarizationService
 			// Validate summary quality
 			const quality = this.assessSummaryQuality(summary, safeContent)
 
-			tracker.end(true)
-
-			this.logger.info("Summary generated", {
+			console.info("Summary generated", {
 				summaryLength: summary.length,
 				quality,
 			})
@@ -114,8 +112,7 @@ export class SummarizationService
 				},
 			}
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "summarize")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -135,7 +132,7 @@ export class SummarizationService
 		// Handle short content gracefully - use title/description as summary
 		const textLength = extraction.text?.length || 0
 		if (textLength < 100) {
-			this.logger.info(
+			console.info(
 				"Content too short for AI summarization, using fallback",
 				{
 					textLength,
@@ -165,36 +162,6 @@ export class SummarizationService
 		return await this.summarize(extraction.text, { context })
 	}
 
-	/**
-	 * Validate summarization options
-	 */
-	validateSummarizationOptions(options: SummarizationOptions): void {
-		if (options.maxLength !== undefined) {
-			if (options.maxLength < 50) {
-				throw this.createError(
-					"INVALID_MAX_LENGTH",
-					"Max length must be at least 50 words",
-				)
-			}
-			if (options.maxLength > 2000) {
-				throw this.createError(
-					"INVALID_MAX_LENGTH",
-					"Max length cannot exceed 2000 words",
-				)
-			}
-		}
-
-		if (options.style !== undefined) {
-			const validStyles = ["concise", "detailed", "technical"]
-			if (!validStyles.includes(options.style)) {
-				throw this.createError(
-					"INVALID_STYLE",
-					`Style must be one of: ${validStyles.join(", ")}`,
-				)
-			}
-		}
-	}
-
 	// ========================================================================
 	// Private Methods - Summary Generation
 	// ========================================================================
@@ -213,13 +180,13 @@ export class SummarizationService
 				return summary
 			}
 		} catch (error) {
-			this.logger.warn("Primary summarization failed", {
+			console.warn("Primary summarization failed", {
 				error: (error as Error).message,
 			})
 		}
 
 		// Fallback to extractive summary
-		this.logger.info("Using extractive summary fallback")
+		console.info("Using extractive summary fallback")
 		return this.generateExtractiveSummary(content, config)
 	}
 
@@ -298,14 +265,11 @@ export class SummarizationService
 	 */
 	private validateInput(content: string): void {
 		if (!content || content.trim().length === 0) {
-			throw this.createError("EMPTY_CONTENT", "Content cannot be empty")
+			throw new Error("Content cannot be empty")
 		}
 
 		if (content.length < 100) {
-			throw this.createError(
-				"CONTENT_TOO_SHORT",
-				"Content must be at least 100 characters",
-			)
+			throw new Error("Content must be at least 100 characters")
 		}
 	}
 
@@ -376,7 +340,7 @@ export class SummarizationService
 			return content
 		}
 
-		this.logger.warn("Content truncated for summarization", {
+		console.warn("Content truncated for summarization", {
 			originalLength: content.length,
 			truncatedLength: maxLength,
 		})
@@ -405,37 +369,4 @@ export class SummarizationService
 	private countWords(text: string): number {
 		return text.trim().split(/\s+/).length
 	}
-
-	// ========================================================================
-	// Lifecycle Hooks
-	// ========================================================================
-
-	protected async onHealthCheck(): Promise<boolean> {
-		// Test summarization with sample text
-		try {
-			const sampleText = `
-				This is a test document for health checking the summarization service.
-				It contains multiple sentences to ensure the service can process text correctly.
-				The service should be able to generate a concise summary of this content.
-				This test helps verify that the AI provider is accessible and functioning properly.
-			`
-			const result = await this.summarize(sampleText, { maxLength: 50 })
-			return result.summary.length > 0
-		} catch {
-			return false
-		}
-	}
-}
-
-// ============================================================================
-// Factory Function
-// ============================================================================
-
-/**
- * Create summarization service with optional configuration
- */
-export function createSummarizationService(
-	options?: SummarizationOptions,
-): SummarizationService {
-	return new SummarizationService(options)
 }

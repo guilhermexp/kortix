@@ -10,7 +10,6 @@
  * - File metadata extraction
  */
 
-import { BaseService } from "../base/base-service"
 import type {
 	ExtractionInput,
 	ExtractionResult,
@@ -67,12 +66,26 @@ const SUPPORTED_FORMATS = [...OFFICE_FORMATS, ...TEXT_FORMATS] as const
 /**
  * Extractor for various file formats
  */
-export class FileExtractor extends BaseService implements IFileExtractor {
+export class FileExtractor implements IFileExtractor {
+	readonly serviceName = "FileExtractor"
+	private initialized = false
 	private readonly markitdownEnabled: boolean
 
 	constructor(markitdownEnabled = true) {
-		super("FileExtractor")
 		this.markitdownEnabled = markitdownEnabled
+	}
+
+	async initialize(): Promise<void> {
+		if (this.initialized) return
+		this.initialized = true
+	}
+
+	async healthCheck(): Promise<boolean> {
+		return true
+	}
+
+	async cleanup(): Promise<void> {
+		// No resources to clean up
 	}
 
 	// ========================================================================
@@ -83,13 +96,8 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	 * Extract content from the given input
 	 */
 	async extract(input: ExtractionInput): Promise<ExtractionResult> {
-		this.assertInitialized()
-
 		if (!input.fileBuffer) {
-			throw this.createError(
-				"MISSING_FILE",
-				"File buffer is required for file extraction",
-			)
+			throw new Error("File buffer is required for file extraction")
 		}
 
 		const fileType = this.detectFileType(input)
@@ -139,32 +147,23 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	 */
 	async validateInput(input: ExtractionInput): Promise<void> {
 		if (!input.fileBuffer) {
-			throw this.createError("VALIDATION_ERROR", "File buffer is required")
+			throw new Error("File buffer is required")
 		}
 
 		// Validate file size
 		const maxSize = 50 * 1024 * 1024 // 50MB
 		if (input.fileBuffer.length > maxSize) {
-			throw this.createError(
-				"FILE_TOO_LARGE",
-				"File exceeds maximum size of 50MB",
-			)
+			throw new Error("File exceeds maximum size of 50MB")
 		}
 
 		// Validate file type
 		const fileType = this.detectFileType(input)
 		if (!fileType) {
-			throw this.createError(
-				"UNKNOWN_FILE_TYPE",
-				"Unable to determine file type",
-			)
+			throw new Error("Unable to determine file type")
 		}
 
 		if (!this.isSupportedFormat(fileType)) {
-			throw this.createError(
-				"UNSUPPORTED_FILE_TYPE",
-				`File type '${fileType}' is not supported`,
-			)
+			throw new Error(`File type '${fileType}' is not supported`)
 		}
 	}
 
@@ -179,20 +178,12 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 		buffer: Buffer,
 		options?: FileOptions,
 	): Promise<ExtractionResult> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("extractFromFile")
-
 		try {
 			const fileType =
 				options?.fileType || this.detectFileTypeFromBuffer(buffer)
 			const fileName = options?.fileName || "document"
 
-			this.logger.info("Extracting file content", {
-				fileType,
-				fileName,
-				size: buffer.length,
-			})
+			console.info("Extracting file content", `fileType=${fileType}`, `fileName=${fileName}`, `size=${buffer.length}`)
 
 			// Extract metadata
 			const metadata = await this.extractMetadata(buffer, options)
@@ -207,13 +198,9 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 					const result = await convertWithMarkItDown(buffer, fileName)
 					text = result.markdown
 					extractionMethod = "markitdown"
-					this.logger.debug("MarkItDown extraction successful", {
-						length: text.length,
-					})
+					console.debug("MarkItDown extraction successful", `length=${text.length}`)
 				} catch (error) {
-					this.logger.warn("MarkItDown extraction failed, trying fallback", {
-						error: (error as Error).message,
-					})
+					console.warn("MarkItDown extraction failed, trying fallback", (error as Error).message)
 					// Fall through to fallback
 				}
 			}
@@ -224,9 +211,7 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 					text = await this.extractTextFromBuffer(buffer, fileType)
 					extractionMethod = "direct-text"
 				} catch (error) {
-					this.logger.warn("Direct text extraction failed", {
-						error: (error as Error).message,
-					})
+					console.warn("Direct text extraction failed", (error as Error).message)
 				}
 			}
 
@@ -237,23 +222,16 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 					text = result.markdown
 					extractionMethod = "markitdown-fallback"
 				} catch (error) {
-					this.logger.warn("MarkItDown fallback failed", {
-						error: (error as Error).message,
-					})
+					console.warn("MarkItDown fallback failed", (error as Error).message)
 				}
 			}
 
 			// If still no text, throw error
 			if (!text) {
-				throw this.createError(
-					"EXTRACTION_FAILED",
-					`Failed to extract content from ${fileType} file`,
-				)
+				throw new Error(`Failed to extract content from ${fileType} file`)
 			}
 
 			const cleanedText = this.cleanContent(text)
-
-			tracker.end(true)
 
 			return {
 				text: cleanedText,
@@ -279,8 +257,7 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 				},
 			}
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "extractFromFile")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -294,16 +271,11 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 		const fileName = options?.fileName || "document"
 		const mimeType = options?.mimeType || "application/octet-stream"
 
-		// Basic metadata that we can always provide
 		const metadata: FileMetadata = {
 			fileName,
 			mimeType,
 			fileSize: buffer.length,
 		}
-
-		// TODO: Extract more detailed metadata from Office documents
-		// This would require parsing the document structure
-		// For now, return basic metadata
 
 		return metadata
 	}
@@ -386,8 +358,7 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 
 			return text
 		} catch (error) {
-			throw this.createError(
-				"TEXT_EXTRACTION_FAILED",
+			throw new Error(
 				`Failed to extract text from ${fileType}: ${(error as Error).message}`,
 			)
 		}
@@ -443,14 +414,12 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 			magicBytes[3] === 0x04
 		) {
 			// This is a ZIP file, could be Office document
-			// Check for specific Office signatures in the ZIP
 			const content = buffer.toString("utf-8", 0, Math.min(1000, buffer.length))
 
 			if (content.includes("word/")) return "docx"
 			if (content.includes("xl/")) return "xlsx"
 			if (content.includes("ppt/")) return "pptx"
 
-			// Default to docx if Office-like
 			if (
 				content.includes("_rels/") ||
 				content.includes("[Content_Types].xml")
@@ -464,11 +433,9 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 			const text = buffer.toString("utf-8", 0, Math.min(1000, buffer.length))
 			if (this.isValidUtf8Text(text)) {
 				const trimmed = text.trim().toLowerCase()
-				// Try to determine text format
 				if (text.trim().startsWith("{") || text.trim().startsWith("["))
 					return "json"
 				if (text.trim().startsWith("<?xml")) return "xml"
-				// Detect HTML (before generic XML check)
 				if (
 					trimmed.startsWith("<!doctype html") ||
 					trimmed.startsWith("<html") ||
@@ -477,14 +444,12 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 					trimmed.includes("<script")
 				)
 					return "html"
-				// Detect JavaScript/TypeScript
 				if (
 					/^(import\s+|export\s+|const\s+|let\s+|var\s+|function\s+|class\s+|\/\/|\/\*)/m.test(
 						text.trim(),
 					)
 				)
 					return "js"
-				// Generic XML
 				if (text.includes("<") && text.includes(">")) return "xml"
 				if (/^[a-z_]+:\s/im.test(text)) return "yaml"
 				return "txt"
@@ -500,13 +465,10 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	 * Check if text is valid UTF-8
 	 */
 	private isValidUtf8Text(text: string): boolean {
-		// Check for common non-printable characters that shouldn't be in text
 		const nonPrintableCount = (
 			text.match(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g) || []
 		).length
 		const ratio = nonPrintableCount / text.length
-
-		// If less than 5% non-printable, consider it text
 		return ratio < 0.05
 	}
 
@@ -543,7 +505,6 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 			"application/x-yaml": "yaml",
 			"text/yaml": "yaml",
 			"text/csv": "csv",
-			// Web formats
 			"text/html": "html",
 			"application/xhtml+xml": "html",
 			"text/javascript": "js",
@@ -579,7 +540,6 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 			yaml: "application/x-yaml",
 			yml: "application/x-yaml",
 			csv: "text/csv",
-			// Web formats
 			html: "text/html",
 			htm: "text/html",
 			js: "text/javascript",
@@ -630,7 +590,6 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	 * Extract title from content
 	 */
 	private extractTitleFromContent(content: string): string | null {
-		// Get first line or first 100 characters
 		const firstLine = content.split("\n")[0].trim()
 		if (firstLine.length > 0 && firstLine.length <= 200) {
 			return firstLine
@@ -644,18 +603,10 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 	 * Clean extracted content
 	 */
 	private cleanContent(content: string): string {
-		// Remove null bytes
 		let cleaned = content.replace(/\0/g, "")
-
-		// Normalize whitespace (but preserve formatting for code/structured text)
 		cleaned = cleaned.replace(/[ \t]+/g, " ")
-
-		// Remove excessive line breaks (more than 3)
 		cleaned = cleaned.replace(/\n{4,}/g, "\n\n\n")
-
-		// Trim
 		cleaned = cleaned.trim()
-
 		return cleaned
 	}
 
@@ -667,24 +618,4 @@ export class FileExtractor extends BaseService implements IFileExtractor {
 		if (!normalized) return 0
 		return normalized.split(/\s+/).length
 	}
-
-	// ========================================================================
-	// Lifecycle Hooks
-	// ========================================================================
-
-	protected async onHealthCheck(): Promise<boolean> {
-		// File extractor is always healthy if it can load
-		return true
-	}
-}
-
-// ============================================================================
-// Factory Function
-// ============================================================================
-
-/**
- * Create file extractor with optional MarkItDown support
- */
-export function createFileExtractor(markitdownEnabled = true): FileExtractor {
-	return new FileExtractor(markitdownEnabled)
 }

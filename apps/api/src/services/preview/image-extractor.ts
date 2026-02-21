@@ -11,7 +11,6 @@
  * - URL normalization and resolution
  */
 
-import { BaseService } from "../base/base-service"
 import type {
 	ExtractionResult,
 	ImageExtractor as IImageExtractor,
@@ -91,12 +90,11 @@ function getYouTubeThumbnailUrl(
 /**
  * Service for extracting preview images from documents and URLs
  */
-export class ImageExtractor extends BaseService implements IImageExtractor {
+export class ImageExtractor implements IImageExtractor {
 	private readonly defaultOptions: Required<ImageExtractionOptions>
+	private initialized = false
 
 	constructor(options?: Partial<ImageExtractionOptions>) {
-		super("ImageExtractor")
-
 		this.defaultOptions = {
 			preferOgImage: options?.preferOgImage ?? true,
 			preferTwitterImage: options?.preferTwitterImage ?? false,
@@ -108,6 +106,11 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			allowedFormats: options?.allowedFormats ?? DEFAULT_ALLOWED_FORMATS,
 			timeout: options?.timeout ?? DEFAULT_TIMEOUT,
 		}
+	}
+
+	async initialize(): Promise<void> {
+		if (this.initialized) return
+		this.initialized = true
 	}
 
 	async extractImages(document: {
@@ -180,13 +183,10 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 		extraction: ExtractionResult,
 		options?: ImageExtractionOptions,
 	): Promise<string | null> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("extract")
 		const config = { ...this.defaultOptions, ...options }
 
 		try {
-			this.logger.info("Extracting preview image", {
+			console.info("Extracting preview image", {
 				title: extraction.title,
 				url: extraction.url,
 				source: extraction.source,
@@ -199,16 +199,14 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 					// Try maxresdefault first
 					const maxresThumbnail = getYouTubeThumbnailUrl(videoId, "maxres")
 					if (await this.validateImageUrl(maxresThumbnail)) {
-						tracker.end(true)
-						this.logger.info("YouTube maxres thumbnail found", {
+						console.info("YouTube maxres thumbnail found", {
 							imageUrl: maxresThumbnail,
 						})
 						return maxresThumbnail
 					}
 					// Fallback to hqdefault (always exists)
 					const hqThumbnail = getYouTubeThumbnailUrl(videoId, "hq")
-					tracker.end(true)
-					this.logger.info("YouTube hq thumbnail used", {
+					console.info("YouTube hq thumbnail used", {
 						imageUrl: hqThumbnail,
 					})
 					return hqThumbnail
@@ -219,8 +217,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			if (extraction.metadata?.image) {
 				const imageUrl = extraction.metadata.image as string
 				if (await this.validateImageUrl(imageUrl)) {
-					tracker.end(true)
-					this.logger.info("Image found in extraction metadata", { imageUrl })
+					console.info("Image found in extraction metadata", { imageUrl })
 					return imageUrl
 				}
 			}
@@ -229,8 +226,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			if (extraction.url) {
 				const result = await this.extractFromUrl(extraction.url, config)
 				if (result.imageUrl) {
-					tracker.end(true)
-					this.logger.info("Image extracted from URL", {
+					console.info("Image extracted from URL", {
 						url: extraction.url,
 						imageUrl: result.imageUrl,
 					})
@@ -246,24 +242,21 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 					// Return first valid image
 					for (const imageUrl of images) {
 						if (await this.validateImageUrl(imageUrl)) {
-							tracker.end(true)
-							this.logger.info("Image extracted from HTML", { imageUrl })
+							console.info("Image extracted from HTML", { imageUrl })
 							return imageUrl
 						}
 					}
 				}
 			}
 
-			tracker.end(false)
-			this.logger.warn("No preview image found", {
+			console.warn("No preview image found", {
 				title: extraction.title,
 				url: extraction.url,
 			})
 
 			return null
 		} catch (error) {
-			tracker.end(false)
-			this.logger.error("Failed to extract preview image", {
+			console.error("Failed to extract preview image", {
 				error: (error as Error).message,
 				extraction: extraction.title,
 			})
@@ -278,17 +271,14 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 		url: string,
 		options?: ImageExtractionOptions,
 	): Promise<ImageExtractionResult> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("extractFromUrl")
 		const config = { ...this.defaultOptions, ...options }
 
 		try {
-			this.logger.debug("Extracting image from URL", { url })
+			console.debug("Extracting image from URL", { url })
 
 			// Validate URL
 			if (!this.isValidUrl(url)) {
-				throw this.createError("INVALID_URL", `Invalid URL: ${url}`)
+				throw new Error(`Invalid URL: ${url}`)
 			}
 
 			// Handle YouTube URLs directly (most reliable)
@@ -298,8 +288,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 					// Try maxresdefault first
 					const maxresThumbnail = getYouTubeThumbnailUrl(videoId, "maxres")
 					if (await this.validateImageUrl(maxresThumbnail)) {
-						tracker.end(true)
-						this.logger.info("YouTube maxres thumbnail found", {
+						console.info("YouTube maxres thumbnail found", {
 							imageUrl: maxresThumbnail,
 						})
 						return {
@@ -314,8 +303,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 					}
 					// Fallback to hqdefault (always exists for any valid video)
 					const hqThumbnail = getYouTubeThumbnailUrl(videoId, "hq")
-					tracker.end(true)
-					this.logger.info("YouTube hq thumbnail used", {
+					console.info("YouTube hq thumbnail used", {
 						imageUrl: hqThumbnail,
 					})
 					return {
@@ -334,7 +322,6 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			if (config.preferOgImage) {
 				const ogImage = await this.extractOgImage(url)
 				if (ogImage) {
-					tracker.end(true)
 					// Skip metadata fetch for GitHub OpenGraph images to avoid 429 rate limiting
 					const isGitHubOg = ogImage.includes("opengraph.githubassets.com")
 					return {
@@ -351,7 +338,6 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			if (config.preferTwitterImage || !config.preferOgImage) {
 				const twitterImage = await this.extractTwitterImage(url)
 				if (twitterImage) {
-					tracker.end(true)
 					return {
 						imageUrl: twitterImage,
 						source: "twitter",
@@ -367,7 +353,6 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			// Find best image
 			for (const imageUrl of images) {
 				if (await this.validateImageUrl(imageUrl)) {
-					tracker.end(true)
 					return {
 						imageUrl,
 						source: "html",
@@ -379,7 +364,6 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			// Fallback: Try to get favicon
 			const faviconUrl = await this.extractFavicon(url, html)
 			if (faviconUrl) {
-				tracker.end(true)
 				return {
 					imageUrl: faviconUrl,
 					source: "favicon",
@@ -387,15 +371,13 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 				}
 			}
 
-			tracker.end(false)
 			return {
 				imageUrl: null,
 				source: "none",
 				metadata: null,
 			}
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "extractFromUrl")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -403,12 +385,8 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 	 * Extract images from HTML
 	 */
 	async extractFromHtml(html: string, baseUrl?: string): Promise<string[]> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("extractFromHtml")
-
 		try {
-			this.logger.debug("Extracting images from HTML", {
+			console.debug("Extracting images from HTML", {
 				htmlLength: html.length,
 				hasBaseUrl: !!baseUrl,
 			})
@@ -431,16 +409,13 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			// Remove duplicates
 			const uniqueImages = [...new Set(resolvedImages)]
 
-			tracker.end(true)
-
-			this.logger.debug("Images extracted from HTML", {
+			console.debug("Images extracted from HTML", {
 				count: uniqueImages.length,
 			})
 
 			return uniqueImages
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "extractFromHtml")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -448,8 +423,6 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 	 * Extract OpenGraph image
 	 */
 	async extractOgImage(url: string): Promise<string | null> {
-		this.assertInitialized()
-
 		try {
 			const html = await this.fetchHtml(url, this.defaultOptions.timeout)
 
@@ -469,14 +442,14 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 				const match = html.match(pattern)
 				if (match?.[1]) {
 					const imageUrl = this.resolveUrl(match[1], url)
-					this.logger.debug("OpenGraph image found", { imageUrl })
+					console.debug("OpenGraph image found", { imageUrl })
 					return imageUrl
 				}
 			}
 
 			return null
 		} catch (error) {
-			this.logger.warn("Failed to extract OpenGraph image", {
+			console.warn("Failed to extract OpenGraph image", {
 				error: (error as Error).message,
 				url,
 			})
@@ -488,8 +461,6 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 	 * Extract favicon from URL
 	 */
 	async extractFavicon(url: string, html?: string): Promise<string | null> {
-		this.assertInitialized()
-
 		try {
 			const baseUrl = new URL(url)
 			const htmlContent =
@@ -513,7 +484,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 				if (match?.[1]) {
 					const iconUrl = this.resolveUrl(match[1], url)
 					if (await this.validateImageUrl(iconUrl)) {
-						this.logger.debug("Apple touch icon found", { iconUrl })
+						console.debug("Apple touch icon found", { iconUrl })
 						return iconUrl
 					}
 				}
@@ -545,7 +516,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			}
 
 			if (bestIcon && (await this.validateImageUrl(bestIcon.url))) {
-				this.logger.debug("Sized favicon found", {
+				console.debug("Sized favicon found", {
 					iconUrl: bestIcon.url,
 					size: bestIcon.size,
 				})
@@ -558,7 +529,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 				if (match) {
 					const iconUrl = this.resolveUrl(match[1] || match[2], url)
 					if (await this.validateImageUrl(iconUrl)) {
-						this.logger.debug("Standard favicon found", { iconUrl })
+						console.debug("Standard favicon found", { iconUrl })
 						return iconUrl
 					}
 				}
@@ -567,7 +538,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			// Fallback: Try default /favicon.ico
 			const defaultFavicon = `${baseUrl.origin}/favicon.ico`
 			if (await this.validateImageUrl(defaultFavicon)) {
-				this.logger.debug("Default favicon.ico found", {
+				console.debug("Default favicon.ico found", {
 					iconUrl: defaultFavicon,
 				})
 				return defaultFavicon
@@ -575,7 +546,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 
 			return null
 		} catch (error) {
-			this.logger.warn("Failed to extract favicon", {
+			console.warn("Failed to extract favicon", {
 				error: (error as Error).message,
 				url,
 			})
@@ -587,8 +558,6 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 	 * Extract Twitter card image
 	 */
 	async extractTwitterImage(url: string): Promise<string | null> {
-		this.assertInitialized()
-
 		try {
 			const html = await this.fetchHtml(url, this.defaultOptions.timeout)
 
@@ -607,14 +576,14 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 				const match = html.match(pattern)
 				if (match?.[1]) {
 					const imageUrl = this.resolveUrl(match[1], url)
-					this.logger.debug("Twitter card image found", { imageUrl })
+					console.debug("Twitter card image found", { imageUrl })
 					return imageUrl
 				}
 			}
 
 			return null
 		} catch (error) {
-			this.logger.warn("Failed to extract Twitter image", {
+			console.warn("Failed to extract Twitter image", {
 				error: (error as Error).message,
 				url,
 			})
@@ -626,8 +595,6 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 	 * Validate image URL
 	 */
 	async validateImageUrl(url: string): Promise<boolean> {
-		this.assertInitialized()
-
 		try {
 			// Basic URL validation
 			if (!this.isValidUrl(url)) {
@@ -686,12 +653,8 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 	 * Get image metadata
 	 */
 	async getImageMetadata(url: string): Promise<ImageMetadata> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("getImageMetadata")
-
 		try {
-			this.logger.debug("Getting image metadata", { url })
+			console.debug("Getting image metadata", { url })
 
 			// Add GitHub token for GitHub URLs to increase rate limit
 			const headers: Record<string, string> = {}
@@ -725,10 +688,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			}
 
 			if (!response.ok) {
-				throw this.createError(
-					"IMAGE_NOT_ACCESSIBLE",
-					`Image not accessible: ${response.status}`,
-				)
+				throw new Error(`Image not accessible: ${response.status}`)
 			}
 
 			// Extract metadata from headers
@@ -745,14 +705,11 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 				isVector: contentType === "image/svg+xml",
 			}
 
-			tracker.end(true)
-
-			this.logger.debug("Image metadata retrieved", metadata)
+			console.debug("Image metadata retrieved", metadata)
 
 			return metadata
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "getImageMetadata")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -764,7 +721,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 		try {
 			return await this.getImageMetadata(url)
 		} catch (error) {
-			this.logger.warn("Failed to get image metadata, using defaults", {
+			console.warn("Failed to get image metadata, using defaults", {
 				url,
 				error: error instanceof Error ? error.message : String(error),
 			})
@@ -878,10 +835,7 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 		})
 
 		if (!response.ok) {
-			throw this.createError(
-				"FETCH_FAILED",
-				`Failed to fetch URL: ${response.status}`,
-			)
+			throw new Error(`Failed to fetch URL: ${response.status}`)
 		}
 
 		return await response.text()
@@ -942,10 +896,10 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 	}
 
 	// ========================================================================
-	// Lifecycle Hooks
+	// Lifecycle
 	// ========================================================================
 
-	protected async onHealthCheck(): Promise<boolean> {
+	async healthCheck(): Promise<boolean> {
 		// Test image extraction with a reliable URL
 		try {
 			const testUrl = "https://www.example.com"
@@ -957,17 +911,9 @@ export class ImageExtractor extends BaseService implements IImageExtractor {
 			return false
 		}
 	}
+
+	async cleanup(): Promise<void> {
+		// No resources to clean up
+	}
 }
 
-// ============================================================================
-// Factory Function
-// ============================================================================
-
-/**
- * Create image extractor service with optional configuration
- */
-export function createImageExtractor(
-	options?: Partial<ImageExtractionOptions>,
-): ImageExtractor {
-	return new ImageExtractor(options)
-}

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
 import type { ChunkingOptions } from "../../interfaces"
-import { ChunkingService, createChunkingService } from "../chunking-service"
+import { ChunkingService } from "../chunking-service"
 
 /**
  * Unit tests for ChunkingService
@@ -591,7 +591,7 @@ Third paragraph continues the discussion from the second paragraph.`
 
 	describe("Factory Function", () => {
 		it("should create service with default options", () => {
-			const service = createChunkingService()
+			const service = new ChunkingService()
 			expect(service).toBeDefined()
 			expect(service.getName()).toBe("ChunkingService")
 		})
@@ -603,7 +603,7 @@ Third paragraph continues the discussion from the second paragraph.`
 				strategy: "fixed-size",
 			}
 
-			const service = createChunkingService(customOptions)
+			const service = new ChunkingService(customOptions)
 			expect(service).toBeDefined()
 		})
 	})

@@ -11,7 +11,6 @@
  * - Responsive generation with configurable dimensions
  */
 
-import { BaseService } from "../base/base-service"
 import type { ExtractionResult, SVGGenerationOptions } from "../interfaces"
 
 // ============================================================================
@@ -72,9 +71,14 @@ type ThemeName = keyof typeof THEMES
 /**
  * Service for generating SVG preview images
  */
-export class SVGGenerator extends BaseService {
-	constructor() {
-		super("SVGGenerator")
+export class SVGGenerator {
+	private initialized = false
+
+	constructor() {}
+
+	async initialize(): Promise<void> {
+		if (this.initialized) return
+		this.initialized = true
 	}
 
 	// ========================================================================
@@ -85,12 +89,8 @@ export class SVGGenerator extends BaseService {
 	 * Generate SVG preview for extraction result
 	 */
 	async generate(extraction: ExtractionResult, options?: SVGGenerationOptions) {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("generate")
-
 		try {
-			this.logger.info("Generating SVG preview", {
+			console.info("Generating SVG preview", {
 				title: extraction.title,
 				source: extraction.source,
 			})
@@ -119,17 +119,14 @@ export class SVGGenerator extends BaseService {
 			// Optimize if needed
 			const optimized = this.optimizeSVG(svg)
 
-			tracker.end(true)
-
-			this.logger.info("SVG preview generated", {
+			console.info("SVG preview generated", {
 				theme,
 				size: optimized.length,
 			})
 
 			return optimized
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "generate")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -140,10 +137,7 @@ export class SVGGenerator extends BaseService {
 		const gradientColors = colors || THEMES.default.gradient
 
 		if (gradientColors.length < 2) {
-			throw this.createError(
-				"INVALID_COLORS",
-				"At least 2 colors required for gradient",
-			)
+			throw new Error("At least 2 colors required for gradient")
 		}
 
 		return `
@@ -461,10 +455,10 @@ export class SVGGenerator extends BaseService {
 	}
 
 	// ========================================================================
-	// Lifecycle Hooks
+	// Lifecycle
 	// ========================================================================
 
-	protected async onHealthCheck(): Promise<boolean> {
+	async healthCheck(): Promise<boolean> {
 		// Test SVG generation
 		try {
 			const testExtraction = {
@@ -480,15 +474,9 @@ export class SVGGenerator extends BaseService {
 			return false
 		}
 	}
+
+	async cleanup(): Promise<void> {
+		// No resources to clean up
+	}
 }
 
-// ============================================================================
-// Factory Function
-// ============================================================================
-
-/**
- * Create SVG generator service
- */
-export function createSVGGenerator(): SVGGenerator {
-	return new SVGGenerator()
-}

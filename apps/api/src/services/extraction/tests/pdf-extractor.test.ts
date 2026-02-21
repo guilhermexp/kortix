@@ -6,7 +6,7 @@ import type {
 	PDFOptions,
 	ProcessingError,
 } from "../../interfaces"
-import { createPDFExtractor, PDFExtractor } from "../pdf-extractor"
+import { PDFExtractor } from "../pdf-extractor"
 
 /**
  * Unit tests for PDFExtractor
@@ -841,9 +841,9 @@ describe("PDFExtractor", () => {
 		})
 	})
 
-	describe("Factory Function", () => {
+	describe("Constructor", () => {
 		it("should create extractor with default options", () => {
-			const extractor = createPDFExtractor()
+			const extractor = new PDFExtractor()
 			expect(extractor).toBeDefined()
 			expect(extractor.getSupportedTypes()).toContain("pdf")
 		})
@@ -854,7 +854,7 @@ describe("PDFExtractor", () => {
 				enableOCR: false,
 			}
 
-			const extractor = createPDFExtractor(customOptions)
+			const extractor = new PDFExtractor(customOptions)
 			expect(extractor).toBeDefined()
 		})
 	})

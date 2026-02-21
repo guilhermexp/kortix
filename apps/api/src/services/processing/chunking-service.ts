@@ -11,7 +11,6 @@
  * - Boundary detection and validation
  */
 
-import { BaseService } from "../base/base-service"
 import type {
 	Chunk,
 	ChunkingOptions,
@@ -31,8 +30,6 @@ const TOKENS_PER_CHAR = 0.25 // Approximate ratio for English text
 
 // Sentence boundary markers
 const SENTENCE_ENDINGS = [".", "!", "?", "。", "！", "？"]
-const _SENTENCE_REGEX = /[.!?。！？]+[\s\n]+/g
-
 // Paragraph markers
 const PARAGRAPH_REGEX = /\n\s*\n/g
 
@@ -43,12 +40,11 @@ const PARAGRAPH_REGEX = /\n\s*\n/g
 /**
  * Service for intelligent text chunking
  */
-export class ChunkingService extends BaseService implements IChunkingService {
+export class ChunkingService implements IChunkingService {
+	private initialized = false
 	private readonly defaultOptions: Required<ChunkingOptions>
 
 	constructor(options?: Partial<ChunkingOptions>) {
-		super("ChunkingService")
-
 		this.defaultOptions = {
 			chunkSize: options?.chunkSize ?? DEFAULT_CHUNK_SIZE,
 			chunkOverlap: options?.chunkOverlap ?? DEFAULT_OVERLAP,
@@ -62,6 +58,15 @@ export class ChunkingService extends BaseService implements IChunkingService {
 	}
 
 	// ========================================================================
+	// Initialization
+	// ========================================================================
+
+	async initialize(): Promise<void> {
+		if (this.initialized) return
+		this.initialized = true
+	}
+
+	// ========================================================================
 	// Public API
 	// ========================================================================
 
@@ -69,15 +74,11 @@ export class ChunkingService extends BaseService implements IChunkingService {
 	 * Chunk text content
 	 */
 	async chunk(content: string, options?: ChunkingOptions): Promise<Chunk[]> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("chunk")
-
 		try {
 			const config = { ...this.defaultOptions, ...options }
 			this.validateChunkConfig(config)
 
-			this.logger.info("Chunking content", {
+			console.info("Chunking content", {
 				contentLength: content.length,
 				chunkSize: config.chunkSize,
 				overlap: config.chunkOverlap,
@@ -99,9 +100,7 @@ export class ChunkingService extends BaseService implements IChunkingService {
 				chunks = this.enrichChunksWithMetadata(chunks, content, contentType)
 			}
 
-			tracker.end(true)
-
-			this.logger.info("Chunking completed", {
+			console.info("Chunking completed", {
 				chunkCount: chunks.length,
 				avgSize:
 					chunks.reduce((sum, c) => sum + c.tokenCount, 0) / chunks.length,
@@ -109,8 +108,7 @@ export class ChunkingService extends BaseService implements IChunkingService {
 
 			return chunks
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "chunk")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -121,8 +119,6 @@ export class ChunkingService extends BaseService implements IChunkingService {
 		content: string,
 		options?: ChunkingOptions,
 	): Promise<Chunk[]> {
-		this.assertInitialized()
-
 		const config = { ...this.defaultOptions, ...options }
 		const chunks: Chunk[] = []
 
@@ -208,14 +204,12 @@ export class ChunkingService extends BaseService implements IChunkingService {
 	validateChunkConfig(options: ChunkingOptions): void {
 		if (options.chunkSize !== undefined) {
 			if (options.chunkSize < MIN_CHUNK_SIZE) {
-				throw this.createError(
-					"INVALID_CHUNK_SIZE",
+				throw new Error(
 					`Chunk size ${options.chunkSize} is below minimum ${MIN_CHUNK_SIZE}`,
 				)
 			}
 			if (options.chunkSize > MAX_CHUNK_SIZE) {
-				throw this.createError(
-					"INVALID_CHUNK_SIZE",
+				throw new Error(
 					`Chunk size ${options.chunkSize} exceeds maximum ${MAX_CHUNK_SIZE}`,
 				)
 			}
@@ -223,13 +217,12 @@ export class ChunkingService extends BaseService implements IChunkingService {
 
 		if (options.chunkOverlap !== undefined && options.chunkSize !== undefined) {
 			if (options.chunkOverlap >= options.chunkSize) {
-				throw this.createError(
-					"INVALID_OVERLAP",
+				throw new Error(
 					`Overlap ${options.chunkOverlap} must be less than chunk size ${options.chunkSize}`,
 				)
 			}
 			if (options.chunkOverlap < 0) {
-				throw this.createError("INVALID_OVERLAP", "Overlap cannot be negative")
+				throw new Error("Overlap cannot be negative")
 			}
 		}
 	}
@@ -499,33 +492,4 @@ export class ChunkingService extends BaseService implements IChunkingService {
 
 		return ""
 	}
-
-	// ========================================================================
-	// Lifecycle Hooks
-	// ========================================================================
-
-	protected async onHealthCheck(): Promise<boolean> {
-		// Test chunking with sample text
-		try {
-			const sampleText =
-				"This is a test. This is only a test. Testing chunking service."
-			const chunks = await this.chunk(sampleText, { chunkSize: 50 })
-			return chunks.length > 0
-		} catch {
-			return false
-		}
-	}
-}
-
-// ============================================================================
-// Factory Function
-// ============================================================================
-
-/**
- * Create chunking service with optional configuration
- */
-export function createChunkingService(
-	options?: Partial<ChunkingOptions>,
-): ChunkingService {
-	return new ChunkingService(options)
 }

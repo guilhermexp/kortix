@@ -11,7 +11,6 @@
  */
 
 import pdfParse from "pdf-parse/lib/pdf-parse.js"
-import { BaseService } from "../base/base-service"
 import { summarizeBinaryWithGemini } from "../gemini-files"
 import type {
 	ExtractionInput,
@@ -30,7 +29,9 @@ import { ReplicateService } from "../replicate"
 /**
  * Extractor for PDF documents
  */
-export class PDFExtractor extends BaseService implements IPDFExtractor {
+export class PDFExtractor implements IPDFExtractor {
+	readonly serviceName = "PDFExtractor"
+	private initialized = false
 	private readonly ocrEnabled: boolean
 	private readonly ocrProvider: "replicate" | "gemini"
 	private readonly replicateService?: ReplicateService
@@ -39,13 +40,25 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 		ocrEnabled?: boolean
 		ocrProvider?: "replicate" | "gemini"
 	}) {
-		super("PDFExtractor")
 		this.ocrEnabled = options?.ocrEnabled ?? true
 		this.ocrProvider = options?.ocrProvider || "replicate"
 
 		if (this.ocrEnabled && this.ocrProvider === "replicate") {
 			this.replicateService = new ReplicateService()
 		}
+	}
+
+	async initialize(): Promise<void> {
+		if (this.initialized) return
+		this.initialized = true
+	}
+
+	async healthCheck(): Promise<boolean> {
+		return true
+	}
+
+	async cleanup(): Promise<void> {
+		// No resources to clean up
 	}
 
 	// ========================================================================
@@ -56,13 +69,8 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 	 * Extract content from the given input
 	 */
 	async extract(input: ExtractionInput): Promise<ExtractionResult> {
-		this.assertInitialized()
-
 		if (!input.fileBuffer) {
-			throw this.createError(
-				"MISSING_FILE",
-				"File buffer is required for PDF extraction",
-			)
+			throw new Error("File buffer is required for PDF extraction")
 		}
 
 		return await this.extractFromPDF(input.fileBuffer, {
@@ -98,20 +106,14 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 	 */
 	async validateInput(input: ExtractionInput): Promise<void> {
 		if (!input.fileBuffer && !input.url) {
-			throw this.createError(
-				"VALIDATION_ERROR",
-				"File buffer or URL is required",
-			)
+			throw new Error("File buffer or URL is required")
 		}
 
 		// Validate file size if buffer provided
 		if (input.fileBuffer) {
 			const maxSize = 50 * 1024 * 1024 // 50MB
 			if (input.fileBuffer.length > maxSize) {
-				throw this.createError(
-					"FILE_TOO_LARGE",
-					"PDF file exceeds maximum size of 50MB",
-				)
+				throw new Error("PDF file exceeds maximum size of 50MB")
 			}
 		}
 	}
@@ -122,43 +124,13 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 
 	/**
 	 * Extract text from PDF using intelligent extraction strategy
-	 *
-	 * Automatically detects if PDF is scanned and chooses the appropriate extraction method:
-	 * - For scanned PDFs: Uses Deepseek OCR (via Replicate) or Gemini Vision
-	 * - For text PDFs: Uses pdf-parse for direct text extraction
-	 *
-	 * @param buffer - PDF file buffer
-	 * @param options - Extraction options including OCR preferences
-	 * @returns Extraction result with text, metadata, and extraction details
-	 *
-	 * @example
-	 * ```typescript
-	 * // Extract with OCR enabled
-	 * const result = await pdfExtractor.extractFromPDF(pdfBuffer, {
-	 *   useOCR: true,
-	 *   ocrProvider: 'replicate'
-	 * });
-	 *
-	 * // Extract with custom options
-	 * const result = await pdfExtractor.extractFromPDF(pdfBuffer, {
-	 *   useOCR: true,
-	 *   ocrProvider: 'gemini'
-	 * });
-	 * ```
 	 */
 	async extractFromPDF(
 		buffer: Buffer,
 		options?: PDFOptions,
 	): Promise<ExtractionResult> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("extractFromPDF")
-
 		try {
-			this.logger.info("Extracting PDF content", {
-				size: buffer.length,
-				useOCR: options?.useOCR,
-			})
+			console.info("Extracting PDF content", `size=${buffer.length}`, `useOCR=${options?.useOCR}`)
 
 			// Extract metadata first
 			const metadata = await this.extractMetadata(buffer)
@@ -177,11 +149,9 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 					})
 					extractionMethod = `ocr-${options?.ocrProvider || this.ocrProvider}`
 				} catch (error) {
-					this.logger.warn(
+					console.warn(
 						"OCR extraction failed, falling back to text extraction",
-						{
-							error: (error as Error).message,
-						},
+						(error as Error).message,
 					)
 				}
 			}
@@ -193,8 +163,6 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 			}
 
 			const cleanedText = this.cleanContent(text)
-
-			tracker.end(true)
 
 			return {
 				text: cleanedText,
@@ -218,40 +186,17 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 				},
 			}
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "extractFromPDF")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
 	/**
 	 * Extract text using OCR (Optical Character Recognition)
-	 *
-	 * Supports two OCR providers:
-	 * - Replicate (Deepseek OCR): High-quality commercial OCR service
-	 * - Gemini Vision: Google's multimodal AI for document understanding
-	 *
-	 * @param buffer - PDF file buffer
-	 * @param options - OCR options including provider selection
-	 * @returns Extracted text from OCR processing
-	 * @throws {ProcessingError} If OCR provider is invalid or extraction fails
-	 *
-	 * @example
-	 * ```typescript
-	 * // Use Replicate OCR (recommended for production)
-	 * const text = await pdfExtractor.extractWithOCR(buffer, {
-	 *   provider: 'replicate'
-	 * });
-	 *
-	 * // Use Gemini Vision (fallback)
-	 * const text = await pdfExtractor.extractWithOCR(buffer, {
-	 *   provider: 'gemini'
-	 * });
-	 * ```
 	 */
 	async extractWithOCR(buffer: Buffer, options?: OCROptions): Promise<string> {
 		const provider = options?.provider || this.ocrProvider
 
-		this.logger.debug("Extracting with OCR", { provider })
+		console.debug("Extracting with OCR", `provider=${provider}`)
 
 		if (provider === "replicate" && this.replicateService) {
 			// Use Deepseek OCR via Replicate
@@ -263,31 +208,11 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 			return await summarizeBinaryWithGemini(buffer, "application/pdf")
 		}
 
-		throw this.createError(
-			"INVALID_OCR_PROVIDER",
-			`Unknown OCR provider: ${provider}`,
-		)
+		throw new Error(`Unknown OCR provider: ${provider}`)
 	}
 
 	/**
 	 * Check if PDF is scanned (needs OCR)
-	 *
-	 * Uses a heuristic approach to determine if a PDF contains primarily images
-	 * rather than extractable text. PDFs with less than 10 characters per KB are
-	 * considered scanned.
-	 *
-	 * @param buffer - PDF file buffer
-	 * @returns True if PDF appears to be scanned, false if it contains text
-	 *
-	 * @example
-	 * ```typescript
-	 * const isScanned = await pdfExtractor.isScannedPDF(pdfBuffer);
-	 * if (isScanned) {
-	 *   console.log('PDF requires OCR processing');
-	 * } else {
-	 *   console.log('PDF contains extractable text');
-	 * }
-	 * ```
 	 */
 	async isScannedPDF(buffer: Buffer): Promise<boolean> {
 		try {
@@ -307,20 +232,6 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 
 	/**
 	 * Extract metadata from PDF
-	 *
-	 * Extracts PDF document properties including title, author, page count,
-	 * creation date, and other metadata embedded in the PDF.
-	 *
-	 * @param buffer - PDF file buffer
-	 * @returns PDF metadata including document properties
-	 *
-	 * @example
-	 * ```typescript
-	 * const metadata = await pdfExtractor.extractMetadata(pdfBuffer);
-	 * console.log(`Title: ${metadata.title}`);
-	 * console.log(`Pages: ${metadata.pageCount}`);
-	 * console.log(`Author: ${metadata.author}`);
-	 * ```
 	 */
 	async extractMetadata(buffer: Buffer): Promise<PDFMetadata> {
 		try {
@@ -340,12 +251,10 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 				pageCount: data.numpages,
 				fileSize: buffer.length,
 				pdfVersion: data.version,
-				isEncrypted: false, // pdf-parse handles encrypted PDFs
+				isEncrypted: false,
 			}
 		} catch (error) {
-			this.logger.warn("Failed to extract PDF metadata", {
-				error: (error as Error).message,
-			})
+			console.warn("Failed to extract PDF metadata", (error as Error).message)
 
 			// Return minimal metadata
 			return {
@@ -368,11 +277,8 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 			const data = await pdfParse(buffer)
 			return data.text
 		} catch (error) {
-			this.logger.error("PDF text extraction failed", error as Error)
-			throw this.createError(
-				"PDF_EXTRACTION_FAILED",
-				"Failed to extract text from PDF",
-			)
+			console.error("PDF text extraction failed", error)
+			throw new Error("Failed to extract text from PDF")
 		}
 	}
 
@@ -380,7 +286,6 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 	 * Extract title from content
 	 */
 	private extractTitleFromContent(content: string): string | null {
-		// Get first line or first 100 characters
 		const firstLine = content.split("\n")[0].trim()
 		if (firstLine.length > 0 && firstLine.length <= 200) {
 			return firstLine
@@ -394,18 +299,10 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 	 * Clean extracted content
 	 */
 	private cleanContent(content: string): string {
-		// Remove null bytes
 		let cleaned = content.replace(/\0/g, "")
-
-		// Normalize whitespace
 		cleaned = cleaned.replace(/\s+/g, " ")
-
-		// Remove excessive line breaks
 		cleaned = cleaned.replace(/\n{3,}/g, "\n\n")
-
-		// Trim
 		cleaned = cleaned.trim()
-
 		return cleaned
 	}
 
@@ -417,33 +314,4 @@ export class PDFExtractor extends BaseService implements IPDFExtractor {
 		if (!normalized) return 0
 		return normalized.split(/\s+/).length
 	}
-
-	// ========================================================================
-	// Lifecycle Hooks
-	// ========================================================================
-
-	protected async onInitialize(): Promise<void> {
-		if (this.replicateService) {
-			// ReplicateService doesn't need initialization
-		}
-	}
-
-	protected async onHealthCheck(): Promise<boolean> {
-		// PDF extractor is always healthy if it can load
-		return true
-	}
-}
-
-// ============================================================================
-// Factory Function
-// ============================================================================
-
-/**
- * Create PDF extractor with OCR options
- */
-export function createPDFExtractor(options?: {
-	ocrEnabled?: boolean
-	ocrProvider?: "replicate" | "gemini"
-}): PDFExtractor {
-	return new PDFExtractor(options)
 }

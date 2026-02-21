@@ -1,15 +1,14 @@
 import { beforeEach, describe, expect, it } from "bun:test"
 import type { ExtractionResult } from "../interfaces"
 import {
-	createMetadataExtractor,
-	type MetadataExtractor,
+	MetadataExtractor,
 } from "./metadata-extractor"
 
 describe("MetadataExtractor", () => {
 	let service: MetadataExtractor
 
 	beforeEach(async () => {
-		service = createMetadataExtractor()
+		service = new MetadataExtractor()
 		await service.initialize()
 	})
 
@@ -357,25 +356,6 @@ describe("MetadataExtractor", () => {
 			await expect(service.extract(extraction)).rejects.toThrow()
 		})
 
-		it("should validate extraction options", () => {
-			expect(() => {
-				service.validateOptions({
-					extractTags: false,
-					extractMentions: false,
-					extractProperties: false,
-					extractComments: false,
-				})
-			}).toThrow("At least one extraction type must be enabled")
-		})
-
-		it("should validate property keys", () => {
-			expect(() => {
-				service.validateOptions({
-					extractProperties: true,
-					propertyKeys: ["valid", ""],
-				})
-			}).toThrow()
-		})
 	})
 
 	describe("Health Check", () => {

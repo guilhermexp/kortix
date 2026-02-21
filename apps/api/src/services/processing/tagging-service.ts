@@ -11,7 +11,6 @@
  * - Domain-specific tagging support
  */
 
-import { BaseService } from "../base/base-service"
 import type {
 	ExtractionResult,
 	TaggingService as ITaggingService,
@@ -84,20 +83,28 @@ const STOP_WORDS = new Set([
 /**
  * Service for automatic tag generation
  */
-export class TaggingService extends BaseService implements ITaggingService {
+export class TaggingService implements ITaggingService {
+	private initialized = false
 	private readonly maxTags: number
 	private readonly locale: "pt-BR" | "en-US"
 	private readonly provider: "openrouter" | "heuristic"
 
 	constructor(options?: TaggingOptions) {
-		super("TaggingService")
-
 		this.maxTags = Math.max(
 			MIN_TAGS,
 			Math.min(options?.maxTags ?? DEFAULT_MAX_TAGS, MAX_TAGS),
 		)
 		this.locale = options?.locale ?? "en-US"
 		this.provider = options?.provider ?? "openrouter"
+	}
+
+	// ========================================================================
+	// Initialization
+	// ========================================================================
+
+	async initialize(): Promise<void> {
+		if (this.initialized) return
+		this.initialized = true
 	}
 
 	// ========================================================================
@@ -111,10 +118,6 @@ export class TaggingService extends BaseService implements ITaggingService {
 		content: string,
 		options?: TaggingOptions,
 	): Promise<TaggingResult> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("generateTags")
-
 		try {
 			const config = {
 				maxTags: options?.maxTags ?? this.maxTags,
@@ -124,7 +127,7 @@ export class TaggingService extends BaseService implements ITaggingService {
 				provider: options?.provider ?? this.provider,
 			}
 
-			this.logger.info("Generating tags", {
+			console.info("Generating tags", {
 				contentLength: content.length,
 				maxTags: config.maxTags,
 				locale: config.locale,
@@ -145,9 +148,7 @@ export class TaggingService extends BaseService implements ITaggingService {
 				? this.categorizeTags(cleanedTags, config.categories)
 				: undefined
 
-			tracker.end(true)
-
-			this.logger.info("Tags generated", {
+			console.info("Tags generated", {
 				tagCount: cleanedTags.length,
 				tags: cleanedTags,
 			})
@@ -163,8 +164,7 @@ export class TaggingService extends BaseService implements ITaggingService {
 				},
 			}
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "generateTags")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -182,36 +182,6 @@ export class TaggingService extends BaseService implements ITaggingService {
 		}
 
 		return await this.generateTags(extraction.text, { context })
-	}
-
-	/**
-	 * Validate tagging options
-	 */
-	validateTaggingOptions(options: TaggingOptions): void {
-		if (options.maxTags !== undefined) {
-			if (options.maxTags < MIN_TAGS) {
-				throw this.createError(
-					"INVALID_MAX_TAGS",
-					`Max tags must be at least ${MIN_TAGS}`,
-				)
-			}
-			if (options.maxTags > MAX_TAGS) {
-				throw this.createError(
-					"INVALID_MAX_TAGS",
-					`Max tags cannot exceed ${MAX_TAGS}`,
-				)
-			}
-		}
-
-		if (options.locale !== undefined) {
-			const validLocales = ["pt-BR", "en-US"]
-			if (!validLocales.includes(options.locale)) {
-				throw this.createError(
-					"INVALID_LOCALE",
-					`Locale must be one of: ${validLocales.join(", ")}`,
-				)
-			}
-		}
 	}
 
 	// ========================================================================
@@ -233,14 +203,14 @@ export class TaggingService extends BaseService implements ITaggingService {
 					return tags
 				}
 			} catch (error) {
-				this.logger.warn("AI tag generation failed", {
+				console.warn("AI tag generation failed", {
 					error: (error as Error).message,
 				})
 			}
 		}
 
 		// Fallback to heuristic extraction
-		this.logger.info("Using heuristic tag extraction")
+		console.info("Using heuristic tag extraction")
 		return this.generateHeuristicTags(content, config)
 	}
 
@@ -457,47 +427,11 @@ export class TaggingService extends BaseService implements ITaggingService {
 	 */
 	private validateInput(content: string): void {
 		if (!content || content.trim().length === 0) {
-			throw this.createError("EMPTY_CONTENT", "Content cannot be empty")
+			throw new Error("Content cannot be empty")
 		}
 
 		if (content.length < 50) {
-			throw this.createError(
-				"CONTENT_TOO_SHORT",
-				"Content must be at least 50 characters",
-			)
+			throw new Error("Content must be at least 50 characters")
 		}
 	}
-
-	// ========================================================================
-	// Lifecycle Hooks
-	// ========================================================================
-
-	protected async onHealthCheck(): Promise<boolean> {
-		// Test tag generation with sample text
-		try {
-			const sampleText = `
-				This is a sample document about artificial intelligence and machine learning.
-				It discusses natural language processing, neural networks, and deep learning algorithms.
-				The content covers various aspects of AI technology and its applications.
-			`
-			const result = await this.generateTags(sampleText, {
-				maxTags: 5,
-				context: { title: "AI and Machine Learning" },
-			})
-			return result.tags.length > 0
-		} catch {
-			return false
-		}
-	}
-}
-
-// ============================================================================
-// Factory Function
-// ============================================================================
-
-/**
- * Create tagging service with optional configuration
- */
-export function createTaggingService(options?: TaggingOptions): TaggingService {
-	return new TaggingService(options)
 }

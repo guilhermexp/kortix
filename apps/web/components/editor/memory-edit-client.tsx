@@ -14,12 +14,11 @@ import {
 	Brain,
 	Calendar,
 	ChevronDown,
+	Download,
 	ExternalLink,
 	FileText,
 	Link as LinkIcon,
-	Loader2,
 	Play,
-	Sparkles,
 	X,
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
@@ -46,7 +45,7 @@ const _LazyMemoryEntriesSidebar = dynamic(
 	},
 )
 
-const LazyRichEditorWrapper = dynamic(
+const _LazyRichEditorWrapper = dynamic(
 	() => import("./rich-editor-wrapper").then((mod) => mod.RichEditorWrapper),
 	{
 		ssr: false,
@@ -250,49 +249,6 @@ const extractDocumentImages = (
 	return { mainImage, relatedImages }
 }
 
-// Type for related links from backend
-type RelatedLink = {
-	title: string
-	url: string
-	image?: string | null
-	favicon?: string | null
-	snippet?: string | null
-	type: "repository" | "tool" | "framework" | "website" | "video" | "article"
-	mentionedAs: string
-	isAlternative?: boolean
-}
-
-const extractRelatedLinks = (document: DocumentWithMemories): RelatedLink[] => {
-	const raw = asRecord((document as any).raw)
-	if (!raw) return []
-
-	const relatedLinks = raw.relatedLinks
-	if (!Array.isArray(relatedLinks)) return []
-
-	return relatedLinks.filter(
-		(link): link is RelatedLink =>
-			link &&
-			typeof link === "object" &&
-			typeof link.title === "string" &&
-			typeof link.url === "string",
-	)
-}
-
-const getTypeBadge = (link: RelatedLink) => {
-	if (link.isAlternative) {
-		return "Alternativa"
-	}
-	const labels: Record<RelatedLink["type"], string> = {
-		repository: "Repo",
-		tool: "Tool",
-		framework: "Framework",
-		website: "Site",
-		video: "Video",
-		article: "Article",
-	}
-	return labels[link.type] || "Link"
-}
-
 interface MemoryEditClientProps {
 	document: DocumentWithMemories
 }
@@ -306,16 +262,6 @@ export function MemoryEditClient({
 	const [activeProjectTag, setActiveProjectTag] = useState<string>(
 		initialDocument.containerTags?.[0] ?? DEFAULT_PROJECT_ID,
 	)
-
-	// Related links state
-	const [isLoadingRelatedLinks, setIsLoadingRelatedLinks] = useState(false)
-	const [relatedLinksError, setRelatedLinksError] = useState<string | null>(
-		null,
-	)
-
-	// Hidden items (local state for deletion)
-	const [hiddenImages, setHiddenImages] = useState<Set<string>>(new Set())
-	const [hiddenLinks, setHiddenLinks] = useState<Set<string>>(new Set())
 
 	useEffect(() => {
 		const projectTag = initialDocument.containerTags?.[0] ?? DEFAULT_PROJECT_ID
@@ -332,44 +278,6 @@ export function MemoryEditClient({
 		}),
 		[initialDocument, activeProjectTag],
 	)
-
-	// Find related links handler
-	const handleFindRelatedLinks = useCallback(async () => {
-		if (isLoadingRelatedLinks) return
-
-		setIsLoadingRelatedLinks(true)
-		setRelatedLinksError(null)
-
-		try {
-			const response = await fetch(
-				`${BACKEND_URL}/v3/documents/${document.id}/related-links`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					credentials: "include",
-				},
-			)
-
-			const result = await response.json()
-
-			if (!result.success) {
-				setRelatedLinksError(result.error || "Erro ao buscar links")
-				return
-			}
-
-			// Refresh the page to show new links
-			if (result.relatedLinks?.length > 0) {
-				router.refresh()
-			} else {
-				setRelatedLinksError("Nenhum link encontrado no conteúdo")
-			}
-		} catch (error) {
-			console.error("Failed to find related links:", error)
-			setRelatedLinksError("Erro de conexão")
-		} finally {
-			setIsLoadingRelatedLinks(false)
-		}
-	}, [document.id, isLoadingRelatedLinks, router])
 
 	useEffect(() => {
 		enqueue([document.id])
@@ -401,14 +309,11 @@ export function MemoryEditClient({
 		return !cleaned || raw.startsWith("data:") ? "Untitled document" : cleaned
 	})()
 
-	// Extract images for Pinterest-style layout
-	const { mainImage, relatedImages } = useMemo(
+	// Extract main image for header
+	const { mainImage } = useMemo(
 		() => extractDocumentImages(document),
 		[document],
 	)
-
-	// Extract related links from document
-	const relatedLinks = useMemo(() => extractRelatedLinks(document), [document])
 
 	const documentSnippet = useMemo(
 		() => getDocumentSnippet(document),
@@ -550,6 +455,23 @@ export function MemoryEditClient({
 		</>
 	)
 
+	const originalContent = document.content || ""
+
+	const handleDownloadMarkdown = useCallback(() => {
+		const slug = (document.title || "content")
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "-")
+			.replace(/(^-|-$)/g, "")
+			.slice(0, 48)
+		const blob = new Blob([originalContent], { type: "text/markdown;charset=utf-8" })
+		const href = URL.createObjectURL(blob)
+		const a = globalThis.document.createElement("a")
+		a.href = href
+		a.download = `${slug}.md`
+		a.click()
+		URL.revokeObjectURL(href)
+	}, [originalContent, document.title])
+
 	// Content for right panel (original content + related docs)
 	const rightPanelContent = (
 		<>
@@ -563,7 +485,7 @@ export function MemoryEditClient({
 						<span className="text-sm font-semibold">Conteúdo original</span>
 						<ChevronDown
 							className={cn(
-								"h-4 w-4 transition-transform duration-200",
+								"h-4 w-4 text-muted-foreground transition-transform duration-200",
 								isContentOpen ? "rotate-180" : "",
 							)}
 						/>
@@ -574,25 +496,59 @@ export function MemoryEditClient({
 						<CollapsibleContent asChild>
 							<motion.div
 								animate={{ opacity: 1, height: "auto" }}
-								className="mt-4 overflow-hidden rounded-2xl border border-border/50 bg-card"
+								className="mt-3 overflow-hidden rounded-2xl border border-border/50 bg-card"
 								exit={{ opacity: 0, height: 0 }}
 								initial={{ opacity: 0, height: 0 }}
 								transition={{ duration: 0.2 }}
 							>
-								<div
-									className={cn(
-										"h-[48vh] min-h-[280px] max-h-[520px] overflow-hidden",
-										"[&_h1]:text-2xl [&_h2]:text-xl [&_h3]:text-lg [&_h4]:text-base",
-										"[&_p]:text-sm [&_li]:text-sm [&_blockquote]:text-sm",
-										"[&_[data-node-type='h1']]:text-2xl [&_[data-node-type='h2']]:text-xl",
-										"[&_[data-node-type='h3']]:text-lg [&_[data-node-type='p']]:text-sm",
+								{/* Toolbar */}
+								<div className="flex items-center justify-end px-4 py-2 border-b border-border/30">
+									<button
+										className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
+										onClick={(e) => {
+											e.stopPropagation()
+											handleDownloadMarkdown()
+										}}
+										title="Download .md"
+										type="button"
+									>
+										<Download className="h-3.5 w-3.5" />
+										<span>.md</span>
+									</button>
+								</div>
+
+								{/* Markdown content */}
+								<div className="h-[48vh] min-h-[280px] max-h-[520px] overflow-y-auto px-4 py-3">
+									{originalContent ? (
+										<div className={cn(
+											"prose prose-xs dark:prose-invert max-w-none",
+											"prose-headings:font-medium prose-headings:tracking-tight",
+											"prose-h1:text-sm prose-h2:text-[13px] prose-h3:text-xs",
+											"prose-p:text-[11px] prose-p:leading-[1.6] prose-p:text-muted-foreground",
+											"prose-li:text-[11px] prose-li:text-muted-foreground prose-li:leading-[1.6]",
+											"prose-blockquote:text-[11px] prose-blockquote:text-muted-foreground/80 prose-blockquote:border-border/40",
+											"prose-code:text-[10px] prose-code:bg-muted/50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded",
+											"prose-pre:bg-muted/30 prose-pre:border prose-pre:border-border/30 prose-pre:rounded-lg prose-pre:text-[10px]",
+											"prose-a:text-primary prose-a:no-underline hover:prose-a:underline",
+											"prose-strong:text-foreground/90",
+											"prose-hr:border-border/30",
+										)}>
+											<ReactMarkdown
+												components={{
+													h1: ({ node, ...props }) => <h1 className="text-sm font-medium tracking-tight mb-2 mt-3 first:mt-0 text-foreground" {...props} />,
+													h2: ({ node, ...props }) => <h2 className="text-[13px] font-medium tracking-tight mb-1.5 mt-2.5 first:mt-0 text-foreground" {...props} />,
+													h3: ({ node, ...props }) => <h3 className="text-xs font-medium mb-1.5 mt-2 first:mt-0 text-foreground" {...props} />,
+												}}
+												remarkPlugins={[remarkGfm]}
+											>
+												{originalContent}
+											</ReactMarkdown>
+										</div>
+									) : (
+										<p className="text-sm text-muted-foreground/60 italic">
+											Sem conteúdo original disponível.
+										</p>
 									)}
-								>
-									<LazyRichEditorWrapper
-										document={document}
-										readOnly={true}
-										showNavigation={false}
-									/>
 								</div>
 							</motion.div>
 						</CollapsibleContent>
@@ -646,169 +602,6 @@ export function MemoryEditClient({
 							{/* Original content + Related documents */}
 							{rightPanelContent}
 
-							{/* Related images gallery */}
-							<div className="rounded-2xl border border-border/50 bg-card/40 overflow-hidden">
-									{/* Header with discover button */}
-									<div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
-										<h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-											Imagens relacionadas
-										</h2>
-										{relatedLinks.length === 0 && (
-											<button
-												className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all disabled:opacity-50"
-												disabled={isLoadingRelatedLinks}
-												onClick={handleFindRelatedLinks}
-												type="button"
-											>
-												{isLoadingRelatedLinks ? (
-													<Loader2 className="w-3 h-3 animate-spin" />
-												) : (
-													<Sparkles className="w-3 h-3" />
-												)}
-												<span>
-													{isLoadingRelatedLinks
-														? "Buscando..."
-														: "Descobrir links"}
-												</span>
-											</button>
-										)}
-									</div>
-									{relatedLinksError && (
-										<p className="text-xs text-red-400 px-4 py-2">
-											{relatedLinksError}
-										</p>
-									)}
-
-									{/* Scrollable gallery */}
-									<div className="p-4">
-										{relatedImages.length > 0 || relatedLinks.length > 0 ? (
-											<div className="columns-2 gap-3">
-									{/* Related images */}
-									{relatedImages
-										.filter((img) => !hiddenImages.has(img))
-										.map((img, index) => (
-											<div
-												className="mb-3 break-inside-avoid rounded-xl overflow-hidden bg-muted group cursor-pointer relative"
-												key={`img-${img}-${index}`}
-											>
-												<img
-													alt={`Imagem relacionada ${index + 1}`}
-													className="w-full object-cover transition-transform duration-300 group-hover:scale-105"
-													loading="lazy"
-													onClick={() => window.open(img, "_blank")}
-													referrerPolicy="no-referrer"
-													src={proxyImageUrl(img) || img}
-													onError={(e) => {
-														const target = e.currentTarget
-														if (target.src !== img) {
-															target.src = img
-														}
-													}}
-												/>
-												{/* Delete button */}
-												<button
-													className="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
-													onClick={(e) => {
-														e.stopPropagation()
-														setHiddenImages((prev) => new Set([...prev, img]))
-													}}
-													type="button"
-												>
-													<X className="w-3 h-3" />
-												</button>
-											</div>
-										))}
-
-									{/* Related links as preview cards */}
-									{relatedLinks
-										.filter((link) => !hiddenLinks.has(link.url))
-										.map((link, index) => (
-											<div
-												className="mb-3 break-inside-avoid rounded-xl overflow-hidden bg-muted group cursor-pointer relative"
-												key={`link-${link.url}-${index}`}
-											>
-												<a
-													className="block"
-													href={link.url}
-													rel="noopener noreferrer"
-													target="_blank"
-												>
-													{/* Preview image */}
-													{link.image ? (
-														<img
-															alt={link.title}
-															className="w-full object-cover transition-transform duration-300 group-hover:scale-105"
-															loading="lazy"
-															referrerPolicy="no-referrer"
-															src={proxyImageUrl(link.image) || link.image}
-															onError={(e) => {
-																const target = e.currentTarget
-																if (target.src !== link.image) {
-																	target.src = link.image!
-																}
-															}}
-														/>
-													) : (
-														<div className="w-full aspect-video flex items-center justify-center bg-gradient-to-br from-muted to-muted/80">
-															{link.favicon ? (
-																<img
-																	alt=""
-																	className="w-10 h-10 rounded-lg opacity-60"
-																	referrerPolicy="no-referrer"
-																	src={
-																		proxyImageUrl(link.favicon) || link.favicon
-																	}
-																/>
-															) : (
-																<LinkIcon className="w-6 h-6 text-muted-foreground/40" />
-															)}
-														</div>
-													)}
-													{/* Overlay with title on hover */}
-													<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 pointer-events-none">
-														<span className="text-white text-xs font-medium line-clamp-2">
-															{link.title}
-														</span>
-														<span className="text-white/60 text-[10px] mt-1">
-															{(() => {
-																try {
-																	return new URL(link.url).hostname
-																} catch {
-																	return link.url
-																}
-															})()}
-														</span>
-													</div>
-												</a>
-												{/* Type badge - always visible */}
-												<div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-medium backdrop-blur-sm bg-black/60 text-white">
-													{getTypeBadge(link)}
-												</div>
-												{/* Delete button */}
-												<button
-													className="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
-													onClick={(e) => {
-														e.stopPropagation()
-														setHiddenLinks(
-															(prev) => new Set([...prev, link.url]),
-														)
-													}}
-													type="button"
-												>
-													<X className="w-3 h-3" />
-												</button>
-											</div>
-										))}
-											</div>
-										) : (
-											<div className="rounded-2xl border border-dashed border-border/50 bg-muted/30 p-8 text-center">
-												<p className="text-sm text-muted-foreground">
-													Nenhuma imagem relacionada encontrada
-												</p>
-											</div>
-										)}
-									</div>
-								</div>
 						</div>
 					</motion.div>
 				</main>

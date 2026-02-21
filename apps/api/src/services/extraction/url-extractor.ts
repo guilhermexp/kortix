@@ -11,7 +11,6 @@
  */
 
 import { safeFetch } from "../../security/url-validator"
-import { BaseService } from "../base/base-service"
 import type {
 	ExtractionInput,
 	ExtractionResult,
@@ -36,7 +35,9 @@ const FIRECRAWL_TIMEOUT_MS = 30000
 /**
  * Extractor for web URLs using Firecrawl API with HTTP fetch fallback
  */
-export class URLExtractor extends BaseService implements IURLExtractor {
+export class URLExtractor implements IURLExtractor {
+	readonly serviceName = "URLExtractor"
+	private initialized = false
 	private rateLimitInfo: ExtractionRateLimitInfo = {
 		remaining: 999999,
 		limit: 999999,
@@ -44,8 +45,19 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		used: 0,
 	}
 
-	constructor() {
-		super("URLExtractor")
+	constructor() {}
+
+	async initialize(): Promise<void> {
+		if (this.initialized) return
+		this.initialized = true
+	}
+
+	async healthCheck(): Promise<boolean> {
+		return await this.checkServiceHealth()
+	}
+
+	async cleanup(): Promise<void> {
+		// No resources to clean up
 	}
 
 	// ========================================================================
@@ -56,13 +68,8 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 * Extract content from the given input
 	 */
 	async extract(input: ExtractionInput): Promise<ExtractionResult> {
-		this.assertInitialized()
-
 		if (!input.url) {
-			throw this.createError(
-				"MISSING_URL",
-				"URL is required for URL extraction",
-			)
+			throw new Error("URL is required for URL extraction")
 		}
 
 		return await this.extractFromUrl(input.url, {
@@ -99,10 +106,14 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 */
 	async validateInput(input: ExtractionInput): Promise<void> {
 		if (!input.url) {
-			throw this.createError("VALIDATION_ERROR", "URL is required")
+			throw new Error("URL is required")
 		}
 
-		this.validateUrl(input.url, "url")
+		try {
+			new URL(input.url)
+		} catch {
+			throw new Error(`Invalid URL: ${input.url}`)
+		}
 	}
 
 	// ========================================================================
@@ -116,18 +127,11 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		url: string,
 		options?: URLExtractorOptions,
 	): Promise<ExtractionResult> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("extractFromUrl")
-
 		try {
 			const result = await this.extractWithFirecrawl(url, options)
-
-			tracker.end(true)
 			return result
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "extractFromUrl")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -136,7 +140,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	 */
 	async checkServiceHealth(): Promise<boolean> {
 		if (!FIRECRAWL_API_URL || !FIRECRAWL_API_KEY) {
-			this.logger.debug("Firecrawl not configured, using HTTP fetch fallback")
+			console.debug("Firecrawl not configured, using HTTP fetch fallback")
 			return true
 		}
 
@@ -146,7 +150,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			})
 			return response.ok || response.status === 404 || response.status === 405
 		} catch {
-			this.logger.warn("Firecrawl health check failed, fallback available")
+			console.warn("Firecrawl health check failed, fallback available")
 			return true
 		}
 	}
@@ -171,12 +175,12 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 	): Promise<ExtractionResult> {
 		// If Firecrawl env vars are missing, go straight to fallback
 		if (!FIRECRAWL_API_URL || !FIRECRAWL_API_KEY) {
-			this.logger.info("Firecrawl not configured, using HTTP fetch fallback", { url })
+			console.info("Firecrawl not configured, using HTTP fetch fallback", url)
 			return this.extractWithHttpFetchFallback(url, options)
 		}
 
 		try {
-			this.logger.info("Extracting URL with Firecrawl", { url })
+			console.info("Extracting URL with Firecrawl", url)
 
 			const response = await fetch(`${FIRECRAWL_API_URL}/v1/scrape`, {
 				method: "POST",
@@ -189,10 +193,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			})
 
 			if (!response.ok) {
-				this.logger.warn("Firecrawl HTTP error, falling back to HTTP fetch", {
-					url,
-					status: response.status,
-				})
+				console.warn("Firecrawl HTTP error, falling back to HTTP fetch", url, response.status)
 				return this.extractWithHttpFetchFallback(url, options)
 			}
 
@@ -212,10 +213,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 			}
 
 			if (!data.success || !data.data?.markdown) {
-				this.logger.warn("Firecrawl returned unsuccessful result, falling back", {
-					url,
-					success: data.success,
-				})
+				console.warn("Firecrawl returned unsuccessful result, falling back", url, data.success)
 				return this.extractWithHttpFetchFallback(url, options)
 			}
 
@@ -235,13 +233,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 				}
 			}
 
-			this.logger.info("Firecrawl extraction completed", {
-				url,
-				chars: markdown.length,
-				imageCount: images.length,
-				htmlImageCount: htmlImages.length,
-				markdownImageCount: markdownImages.length,
-			})
+			console.info("Firecrawl extraction completed", url, `chars=${markdown.length}`, `images=${images.length}`)
 
 			const metaTags: MetaTags = {
 				title: title || undefined,
@@ -265,10 +257,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 				extractionMetadata: { metaTags },
 			}
 		} catch (error) {
-			this.logger.warn("Firecrawl extraction failed, falling back to HTTP fetch", {
-				url,
-				error: error instanceof Error ? error.message : String(error),
-			})
+			console.warn("Firecrawl extraction failed, falling back to HTTP fetch", url, error instanceof Error ? error.message : String(error))
 			return this.extractWithHttpFetchFallback(url, options)
 		}
 	}
@@ -317,7 +306,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		url: string,
 		options?: URLExtractorOptions,
 	): Promise<ExtractionResult> {
-		this.logger.debug("Extracting with HTTP fetch fallback", { url })
+		console.debug("Extracting with HTTP fetch fallback", url)
 
 		const response = await safeFetch(url, {
 			headers: {
@@ -328,8 +317,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		})
 
 		if (!response.ok) {
-			throw this.createError(
-				"FETCH_FAILED",
+			throw new Error(
 				`Failed to fetch URL: ${response.status} ${response.statusText}`,
 			)
 		}
@@ -356,10 +344,7 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		const images = this.extractImagesFromHtml(html, url)
 		const previewImage = metaTags.ogImage || metaTags.twitterImage
 
-		this.logger.debug("HTTP fetch fallback extraction completed", {
-			url,
-			imageCount: images.length,
-		})
+		console.debug("HTTP fetch fallback extraction completed", url, `images=${images.length}`)
 
 		return {
 			text: cleanedContent,
@@ -530,23 +515,4 @@ export class URLExtractor extends BaseService implements IURLExtractor {
 		if (!normalized) return 0
 		return normalized.split(/\s+/).length
 	}
-
-	// ========================================================================
-	// Lifecycle Hooks
-	// ========================================================================
-
-	protected async onHealthCheck(): Promise<boolean> {
-		return await this.checkServiceHealth()
-	}
-}
-
-// ============================================================================
-// Factory Function
-// ============================================================================
-
-/**
- * Create URL extractor (uses Firecrawl with HTTP fetch fallback)
- */
-export function createURLExtractor(): URLExtractor {
-	return new URLExtractor()
 }

@@ -10,7 +10,6 @@
  * - Performance monitoring for detection operations
  */
 
-import { BaseService } from "./base/base-service"
 import { addDocumentJob } from "./queue/document-queue"
 
 // ============================================================================
@@ -134,19 +133,23 @@ const DEFAULT_OPTIONS: Required<Omit<ChangeDetectionOptions, "autoReindex">> = {
  * Service for detecting metadata changes and triggering reindexing
  */
 export class MetadataChangeDetector
-	extends BaseService
 	implements MetadataChangeDetectorService
 {
 	private readonly defaultOptions: Required<
 		Omit<ChangeDetectionOptions, "autoReindex">
 	>
+	private initialized = false
 
 	constructor(options?: Partial<ChangeDetectionOptions>) {
-		super("MetadataChangeDetector")
 		this.defaultOptions = {
 			...DEFAULT_OPTIONS,
 			...options,
 		}
+	}
+
+	async initialize(): Promise<void> {
+		if (this.initialized) return
+		this.initialized = true
 	}
 
 	// ========================================================================
@@ -180,21 +183,14 @@ export class MetadataChangeDetector
 		newSnapshot: MetadataSnapshot,
 		options?: ChangeDetectionOptions,
 	): Promise<ChangeDetectionResult> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("detectChanges")
-
 		try {
-			this.logger.debug("Detecting metadata changes", {
+			console.debug("Detecting metadata changes", {
 				documentId: oldSnapshot.documentId,
 			})
 
 			// Validate snapshots are for same document
 			if (oldSnapshot.documentId !== newSnapshot.documentId) {
-				throw this.createError(
-					"VALIDATION_ERROR",
-					"Snapshots must be for the same document",
-				)
+				throw new Error("Snapshots must be for the same document")
 			}
 
 			const opts = { ...this.defaultOptions, ...options }
@@ -337,18 +333,16 @@ export class MetadataChangeDetector
 				)
 			}
 
-			this.logger.debug("Change detection completed", {
+			console.debug("Change detection completed", {
 				documentId: oldSnapshot.documentId,
 				hasChanges,
 				requiresReindex,
 				severity,
 			})
 
-			tracker.end(true)
 			return result
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "detectChanges")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -368,8 +362,6 @@ export class MetadataChangeDetector
 		newMetadata: Record<string, unknown>,
 		options?: ChangeDetectionOptions,
 	): Promise<ChangeDetectionResult> {
-		this.assertInitialized()
-
 		// Extract snapshots from metadata objects
 		const oldSnapshot = this.extractSnapshot(oldMetadata)
 		const newSnapshot = this.extractSnapshot(newMetadata)
@@ -393,15 +385,15 @@ export class MetadataChangeDetector
 		orgId: string,
 		reason?: string,
 	): Promise<string | null> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("triggerReindex")
-
 		try {
-			this.validateRequired(documentId, "documentId")
-			this.validateRequired(orgId, "orgId")
+			if (!documentId) {
+				throw new Error("documentId is required")
+			}
+			if (!orgId) {
+				throw new Error("orgId is required")
+			}
 
-			this.logger.info("Triggering reindexing job", {
+			console.info("Triggering reindexing job", {
 				documentId,
 				orgId,
 				reason,
@@ -415,23 +407,21 @@ export class MetadataChangeDetector
 			})
 
 			if (jobId) {
-				this.logger.info("Reindexing job queued", {
+				console.info("Reindexing job queued", {
 					jobId,
 					documentId,
 					orgId,
 				})
 			} else {
-				this.logger.warn("Reindexing job not queued - Redis unavailable", {
+				console.warn("Reindexing job not queued - Redis unavailable", {
 					documentId,
 					orgId,
 				})
 			}
 
-			tracker.end(true)
 			return jobId
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "triggerReindex")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -611,6 +601,18 @@ export class MetadataChangeDetector
 
 		// Scalar comparison
 		return false
+	}
+
+	// ========================================================================
+	// Lifecycle
+	// ========================================================================
+
+	async healthCheck(): Promise<boolean> {
+		return true
+	}
+
+	async cleanup(): Promise<void> {
+		// No resources to clean up
 	}
 }
 

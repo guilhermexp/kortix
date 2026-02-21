@@ -6,7 +6,7 @@ import type {
 	FileOptions,
 	ProcessingError,
 } from "../../interfaces"
-import { createFileExtractor, FileExtractor } from "../file-extractor"
+import { FileExtractor } from "../file-extractor"
 
 /**
  * Unit tests for FileExtractor
@@ -957,9 +957,9 @@ describe("FileExtractor", () => {
 		})
 	})
 
-	describe("Factory Function", () => {
+	describe("Constructor", () => {
 		it("should create extractor with default options", () => {
-			const extractor = createFileExtractor()
+			const extractor = new FileExtractor()
 			expect(extractor).toBeDefined()
 			expect(extractor.getSupportedTypes()).toContain("file")
 		})
@@ -970,7 +970,7 @@ describe("FileExtractor", () => {
 				includeTables: false,
 			}
 
-			const extractor = createFileExtractor(customOptions)
+			const extractor = new FileExtractor(customOptions)
 			expect(extractor).toBeDefined()
 		})
 	})

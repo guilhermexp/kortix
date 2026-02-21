@@ -1,24 +1,11 @@
 /**
  * Document Processing Interfaces
  *
- * This file contains interfaces specific to document processing functionality.
- * These interfaces define the contracts for chunking, embedding generation,
+ * Interfaces for chunking, embedding generation,
  * summarization, and tagging services.
- *
- * Processing Services:
- * - ChunkingService: Intelligent text chunking with overlap
- * - EmbeddingService: Vector embedding generation
- * - SummarizationService: AI-powered document summarization
- * - TaggingService: Automatic tag generation
  */
 
-import type {
-	BaseService,
-	Chunk,
-	ExtractionResult,
-	ProcessedDocument,
-	ProcessingOptions,
-} from "./document-processing"
+import type { Chunk, ExtractionResult } from "./document-processing"
 
 // ============================================================================
 // Chunking Service Interfaces
@@ -27,7 +14,7 @@ import type {
 /**
  * Service for chunking text into smaller pieces
  */
-export interface ChunkingService extends BaseService {
+export interface ChunkingService {
 	/**
 	 * Chunk text content
 	 */
@@ -94,20 +81,6 @@ export interface ChunkingStatistics {
 	overlapPercentage: number
 }
 
-/**
- * Chunk boundary detection
- */
-export interface ChunkBoundary {
-	/** Start position */
-	start: number
-	/** End position */
-	end: number
-	/** Boundary type */
-	type: "sentence" | "paragraph" | "section" | "token"
-	/** Confidence score */
-	confidence: number
-}
-
 // ============================================================================
 // Embedding Service Interfaces
 // ============================================================================
@@ -115,7 +88,7 @@ export interface ChunkBoundary {
 /**
  * Service for generating vector embeddings
  */
-export interface EmbeddingService extends BaseService {
+export interface EmbeddingService {
 	/**
 	 * Generate embeddings for chunks
 	 */
@@ -191,40 +164,6 @@ export interface EmbeddingProviderInfo {
 	}
 }
 
-/**
- * Hybrid embedding strategy
- */
-export interface HybridEmbeddingStrategy {
-	/**
-	 * Generate hybrid embedding (AI + deterministic)
-	 */
-	generateHybrid(text: string): Promise<number[]>
-
-	/**
-	 * Combine multiple embeddings
-	 */
-	combineEmbeddings(embeddings: number[][]): number[]
-
-	/**
-	 * Get strategy configuration
-	 */
-	getConfig(): HybridEmbeddingConfig
-}
-
-/**
- * Hybrid embedding configuration
- */
-export interface HybridEmbeddingConfig {
-	/** AI provider */
-	aiProvider: "gemini" | "openai"
-	/** Weight for AI embedding (0-1) */
-	aiWeight: number
-	/** Weight for deterministic embedding (0-1) */
-	deterministicWeight: number
-	/** Fallback to deterministic on AI failure */
-	fallbackToDeterministic: boolean
-}
-
 // ============================================================================
 // Summarization Service Interfaces
 // ============================================================================
@@ -232,7 +171,7 @@ export interface HybridEmbeddingConfig {
 /**
  * Service for generating document summaries
  */
-export interface SummarizationService extends BaseService {
+export interface SummarizationService {
 	/**
 	 * Generate summary for content
 	 */
@@ -323,7 +262,7 @@ export interface SummarizationStatistics {
 /**
  * Service for generating document tags
  */
-export interface TaggingService extends BaseService {
+export interface TaggingService {
 	/**
 	 * Generate tags for content
 	 */
@@ -411,312 +350,4 @@ export interface TagExtractionResult {
 	extractionTime: number
 	/** Provider used */
 	provider: string
-}
-
-// ============================================================================
-// Document Enrichment Interfaces
-// ============================================================================
-
-/**
- * Service for enriching document metadata
- */
-export interface DocumentEnrichmentService extends BaseService {
-	/**
-	 * Enrich document with additional metadata
-	 */
-	enrich(extraction: ExtractionResult): Promise<EnrichedDocument>
-
-	/**
-	 * Extract entities (people, places, organizations)
-	 */
-	extractEntities(content: string): Promise<Entity[]>
-
-	/**
-	 * Detect language
-	 */
-	detectLanguage(content: string): Promise<LanguageDetection>
-
-	/**
-	 * Calculate content quality score
-	 */
-	calculateQualityScore(content: string): Promise<QualityScore>
-}
-
-/**
- * Enriched document
- */
-export interface EnrichedDocument extends ExtractionResult {
-	/** Detected entities */
-	entities?: Entity[]
-	/** Language detection */
-	language?: LanguageDetection
-	/** Quality score */
-	qualityScore?: QualityScore
-	/** Sentiment analysis */
-	sentiment?: Sentiment
-	/** Readability metrics */
-	readability?: ReadabilityMetrics
-}
-
-/**
- * Named entity
- */
-export interface Entity {
-	/** Entity text */
-	text: string
-	/** Entity type */
-	type: "person" | "organization" | "location" | "date" | "other"
-	/** Confidence score */
-	confidence: number
-	/** Position in text */
-	position: {
-		start: number
-		end: number
-	}
-}
-
-/**
- * Language detection result
- */
-export interface LanguageDetection {
-	/** Language code (ISO 639-1) */
-	code: string
-	/** Language name */
-	name: string
-	/** Confidence score (0-1) */
-	confidence: number
-	/** Alternative languages */
-	alternatives?: Array<{
-		code: string
-		name: string
-		confidence: number
-	}>
-}
-
-/**
- * Content quality score
- */
-export interface QualityScore {
-	/** Overall quality (0-1) */
-	overall: number
-	/** Completeness score (0-1) */
-	completeness: number
-	/** Clarity score (0-1) */
-	clarity: number
-	/** Structure score (0-1) */
-	structure: number
-	/** Factors affecting quality */
-	factors: string[]
-}
-
-/**
- * Sentiment analysis
- */
-export interface Sentiment {
-	/** Sentiment label */
-	label: "positive" | "negative" | "neutral"
-	/** Confidence score (0-1) */
-	confidence: number
-	/** Detailed scores */
-	scores: {
-		positive: number
-		negative: number
-		neutral: number
-	}
-}
-
-/**
- * Readability metrics
- */
-export interface ReadabilityMetrics {
-	/** Flesch reading ease (0-100) */
-	fleschReadingEase: number
-	/** Grade level */
-	gradeLevel: number
-	/** Average sentence length */
-	averageSentenceLength: number
-	/** Average word length */
-	averageWordLength: number
-	/** Complexity score (0-1) */
-	complexityScore: number
-}
-
-// ============================================================================
-// Processing Pipeline Interfaces
-// ============================================================================
-
-/**
- * Document processing pipeline
- */
-export interface ProcessingPipeline {
-	/**
-	 * Process document through complete pipeline
-	 */
-	process(
-		extraction: ExtractionResult,
-		options?: ProcessingOptions,
-	): Promise<ProcessedDocument>
-
-	/**
-	 * Add processing stage
-	 */
-	addStage(stage: ProcessingStage): void
-
-	/**
-	 * Remove processing stage
-	 */
-	removeStage(stageName: string): void
-
-	/**
-	 * Get pipeline configuration
-	 */
-	getConfig(): PipelineConfig
-}
-
-/**
- * Processing stage in pipeline
- */
-export interface ProcessingStage {
-	/** Stage name */
-	name: string
-	/** Stage priority (higher = earlier) */
-	priority: number
-	/** Process function */
-	process(data: ProcessingStageData): Promise<ProcessingStageData>
-	/** Skip condition */
-	shouldSkip?(data: ProcessingStageData): boolean
-	/** Error handler */
-	onError?(
-		error: Error,
-		data: ProcessingStageData,
-	): Promise<ProcessingStageData>
-}
-
-/**
- * Data passed between processing stages
- */
-export interface ProcessingStageData {
-	/** Extraction result */
-	extraction: ExtractionResult
-	/** Chunks (if created) */
-	chunks?: Chunk[]
-	/** Summary (if generated) */
-	summary?: string
-	/** Tags (if generated) */
-	tags?: string[]
-	/** Enrichment data */
-	enrichment?: Partial<EnrichedDocument>
-	/** Processing options */
-	options: ProcessingOptions
-	/** Stage metadata */
-	metadata: Map<string, unknown>
-}
-
-/**
- * Pipeline configuration
- */
-export interface PipelineConfig {
-	/** Processing stages */
-	stages: ProcessingStage[]
-	/** Parallel processing */
-	parallel: boolean
-	/** Stop on error */
-	stopOnError: boolean
-	/** Timeout per stage */
-	stageTimeout?: number
-	/** Total timeout */
-	totalTimeout?: number
-}
-
-// ============================================================================
-// Processing Statistics & Monitoring
-// ============================================================================
-
-/**
- * Processing metrics
- */
-export interface ProcessingMetrics {
-	/** Start time */
-	startTime: Date
-	/** End time */
-	endTime: Date
-	/** Duration in milliseconds */
-	duration: number
-	/** Stages completed */
-	stagesCompleted: string[]
-	/** Stages failed */
-	stagesFailed: string[]
-	/** Memory usage (bytes) */
-	memoryUsage: number
-	/** CPU usage (percentage) */
-	cpuUsage?: number
-}
-
-/**
- * Processing event for monitoring
- */
-export interface ProcessingEvent {
-	/** Event type */
-	type:
-		| "started"
-		| "completed"
-		| "failed"
-		| "stage_started"
-		| "stage_completed"
-		| "stage_failed"
-	/** Timestamp */
-	timestamp: Date
-	/** Document ID */
-	documentId?: string
-	/** Stage name (if applicable) */
-	stageName?: string
-	/** Duration (if applicable) */
-	duration?: number
-	/** Error (if applicable) */
-	error?: Error
-	/** Metadata */
-	metadata?: Record<string, unknown>
-}
-
-/**
- * Processing monitor
- */
-export interface ProcessingMonitor {
-	/**
-	 * Record processing event
-	 */
-	recordEvent(event: ProcessingEvent): void
-
-	/**
-	 * Get processing metrics
-	 */
-	getMetrics(documentId: string): ProcessingMetrics | null
-
-	/**
-	 * Get aggregate statistics
-	 */
-	getAggregateStats(): AggregateStatistics
-}
-
-/**
- * Aggregate processing statistics
- */
-export interface AggregateStatistics {
-	/** Total documents processed */
-	totalProcessed: number
-	/** Successful processes */
-	successful: number
-	/** Failed processes */
-	failed: number
-	/** Average processing time */
-	averageProcessingTime: number
-	/** Median processing time */
-	medianProcessingTime: number
-	/** Success rate */
-	successRate: number
-	/** Most common errors */
-	commonErrors: Array<{
-		error: string
-		count: number
-	}>
 }

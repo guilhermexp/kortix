@@ -6,7 +6,7 @@ import type {
 	YouTubeMetadata,
 	YouTubeOptions,
 } from "../../interfaces"
-import { createYouTubeExtractor, YouTubeExtractor } from "../youtube-extractor"
+import { YouTubeExtractor } from "../youtube-extractor"
 
 /**
  * Unit tests for YouTubeExtractor
@@ -820,9 +820,9 @@ describe("YouTubeExtractor", () => {
 		})
 	})
 
-	describe("Factory Function", () => {
+	describe("Constructor", () => {
 		it("should create extractor with default options", () => {
-			const extractor = createYouTubeExtractor()
+			const extractor = new YouTubeExtractor()
 			expect(extractor).toBeDefined()
 			expect(extractor.getSupportedTypes()).toContain("youtube")
 		})
@@ -833,7 +833,7 @@ describe("YouTubeExtractor", () => {
 				preferredLanguage: "es",
 			}
 
-			const extractor = createYouTubeExtractor(customOptions)
+			const extractor = new YouTubeExtractor(customOptions)
 			expect(extractor).toBeDefined()
 		})
 	})

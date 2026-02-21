@@ -1,17 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
 import type { ExtractionResult } from "../../interfaces/document-processing"
 import {
-	createMetadataExtractor,
 	type ExtractedMetadata,
 	type MetadataExtractionOptions,
-	type MetadataExtractor,
+	MetadataExtractor,
 } from "../metadata-extractor"
 
 describe("MetadataExtractor", () => {
 	let service: MetadataExtractor
 
 	beforeEach(async () => {
-		service = createMetadataExtractor()
+		service = new MetadataExtractor()
 		await service.initialize()
 	})
 
@@ -724,77 +723,6 @@ describe("MetadataExtractor", () => {
 			expect(result.tags.length).toBeGreaterThan(0)
 			expect(result.mentions.length).toBeGreaterThan(0)
 			expect(Object.keys(result.properties).length).toBeGreaterThan(0)
-		})
-	})
-
-	describe("Options Validation", () => {
-		it("should throw error when no extraction type is enabled", () => {
-			const options: MetadataExtractionOptions = {
-				extractTags: false,
-				extractMentions: false,
-				extractProperties: false,
-				extractComments: false,
-			}
-
-			expect(() => service.validateOptions(options)).toThrow(
-				"At least one extraction type must be enabled",
-			)
-		})
-
-		it("should throw error when propertyKeys is not an array", () => {
-			const options = {
-				extractProperties: true,
-				propertyKeys: "not-an-array",
-			} as any
-
-			expect(() => service.validateOptions(options)).toThrow(
-				"Property keys must be an array",
-			)
-		})
-
-		it("should throw error when propertyKeys is empty array", () => {
-			const options: MetadataExtractionOptions = {
-				extractProperties: true,
-				propertyKeys: [],
-			}
-
-			expect(() => service.validateOptions(options)).toThrow(
-				"Property keys cannot be empty",
-			)
-		})
-
-		it("should throw error when propertyKeys contains non-string values", () => {
-			const options = {
-				extractProperties: true,
-				propertyKeys: ["valid", 123, "another"],
-			} as any
-
-			expect(() => service.validateOptions(options)).toThrow(
-				"Property keys must be non-empty strings",
-			)
-		})
-
-		it("should throw error when propertyKeys contains empty strings", () => {
-			const options: MetadataExtractionOptions = {
-				extractProperties: true,
-				propertyKeys: ["valid", "", "another"],
-			}
-
-			expect(() => service.validateOptions(options)).toThrow(
-				"Property keys must be non-empty strings",
-			)
-		})
-
-		it("should accept valid options", () => {
-			const options: MetadataExtractionOptions = {
-				extractTags: true,
-				extractMentions: false,
-				extractProperties: true,
-				extractComments: false,
-				propertyKeys: ["status", "priority"],
-			}
-
-			expect(() => service.validateOptions(options)).not.toThrow()
 		})
 	})
 

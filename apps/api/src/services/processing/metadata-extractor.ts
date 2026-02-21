@@ -11,7 +11,6 @@
  * - Validation and normalization
  */
 
-import { BaseService } from "../base/base-service"
 import type { ExtractionResult } from "../interfaces"
 
 // ============================================================================
@@ -120,11 +119,6 @@ export interface MetadataExtractorService {
 		content: string,
 		metadata?: Record<string, unknown>,
 	): Promise<string[]>
-
-	/**
-	 * Validate extraction options
-	 */
-	validateOptions(options: MetadataExtractionOptions): void
 }
 
 // ============================================================================
@@ -134,12 +128,18 @@ export interface MetadataExtractorService {
 /**
  * Service for extracting searchable metadata from documents
  */
-export class MetadataExtractor
-	extends BaseService
-	implements MetadataExtractorService
-{
-	constructor() {
-		super("MetadataExtractor")
+export class MetadataExtractor implements MetadataExtractorService {
+	private initialized = false
+
+	constructor() {}
+
+	// ========================================================================
+	// Initialization
+	// ========================================================================
+
+	async initialize(): Promise<void> {
+		if (this.initialized) return
+		this.initialized = true
 	}
 
 	// ========================================================================
@@ -153,14 +153,10 @@ export class MetadataExtractor
 		extraction: ExtractionResult,
 		options?: MetadataExtractionOptions,
 	): Promise<ExtractedMetadata> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("extract")
-
 		try {
 			const config = this.getConfig(options)
 
-			this.logger.info("Extracting metadata", {
+			console.info("Extracting metadata", {
 				contentLength: extraction.text.length,
 				hasMetadata: !!extraction.raw,
 				options: config,
@@ -215,9 +211,7 @@ export class MetadataExtractor
 				}
 			}
 
-			tracker.end(true)
-
-			this.logger.info("Metadata extracted", {
+			console.info("Metadata extracted", {
 				tagCount: result.statistics.tagCount,
 				mentionCount: result.statistics.mentionCount,
 				propertyCount: result.statistics.propertyCount,
@@ -226,8 +220,7 @@ export class MetadataExtractor
 
 			return result
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "extract")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -259,8 +252,6 @@ export class MetadataExtractor
 		content: string,
 		metadata?: Record<string, unknown>,
 	): Promise<string[]> {
-		const tracker = this.performanceMonitor.startOperation("extractTags")
-
 		try {
 			const tags = new Set<string>()
 
@@ -299,12 +290,9 @@ export class MetadataExtractor
 				}
 			}
 
-			tracker.end(true)
-
 			return Array.from(tags).sort()
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "extractTags")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -312,8 +300,6 @@ export class MetadataExtractor
 	 * Extract @mentions from content
 	 */
 	async extractMentions(content: string): Promise<string[]> {
-		const tracker = this.performanceMonitor.startOperation("extractMentions")
-
 		try {
 			const mentions = new Set<string>()
 			const matches = content.matchAll(MENTION_PATTERN)
@@ -332,12 +318,9 @@ export class MetadataExtractor
 				mentions.add(normalized)
 			}
 
-			tracker.end(true)
-
 			return Array.from(mentions).sort()
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "extractMentions")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -348,8 +331,6 @@ export class MetadataExtractor
 		metadata: Record<string, unknown>,
 		propertyKeys?: string[],
 	): Promise<Record<string, unknown>> {
-		const tracker = this.performanceMonitor.startOperation("extractProperties")
-
 		try {
 			const properties: Record<string, unknown> = {}
 
@@ -404,12 +385,9 @@ export class MetadataExtractor
 				}
 			}
 
-			tracker.end(true)
-
 			return properties
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "extractProperties")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -420,8 +398,6 @@ export class MetadataExtractor
 		content: string,
 		metadata?: Record<string, unknown>,
 	): Promise<string[]> {
-		const tracker = this.performanceMonitor.startOperation("extractComments")
-
 		try {
 			const comments: string[] = []
 
@@ -443,19 +419,16 @@ export class MetadataExtractor
 				comments.push(...notes)
 			}
 
-			tracker.end(true)
-
 			return comments
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "extractComments")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
 	/**
 	 * Validate extraction options
 	 */
-	validateOptions(options: MetadataExtractionOptions): void {
+	private validateOptions(options: MetadataExtractionOptions): void {
 		// At least one extraction type should be enabled
 		const hasAnyEnabled =
 			options.extractTags ||
@@ -464,34 +437,22 @@ export class MetadataExtractor
 			options.extractComments
 
 		if (!hasAnyEnabled) {
-			throw this.createError(
-				"INVALID_OPTIONS",
-				"At least one extraction type must be enabled",
-			)
+			throw new Error("At least one extraction type must be enabled")
 		}
 
 		// Validate property keys if provided
 		if (options.propertyKeys) {
 			if (!Array.isArray(options.propertyKeys)) {
-				throw this.createError(
-					"INVALID_PROPERTY_KEYS",
-					"Property keys must be an array",
-				)
+				throw new Error("Property keys must be an array")
 			}
 
 			if (options.propertyKeys.length === 0) {
-				throw this.createError(
-					"INVALID_PROPERTY_KEYS",
-					"Property keys cannot be empty",
-				)
+				throw new Error("Property keys cannot be empty")
 			}
 
 			for (const key of options.propertyKeys) {
 				if (typeof key !== "string" || key.trim().length === 0) {
-					throw this.createError(
-						"INVALID_PROPERTY_KEY",
-						"Property keys must be non-empty strings",
-					)
+					throw new Error("Property keys must be non-empty strings")
 				}
 			}
 		}
@@ -543,7 +504,7 @@ export class MetadataExtractor
 	 */
 	private validateExtraction(extraction: ExtractionResult): void {
 		if (!extraction.text || extraction.text.trim().length === 0) {
-			throw this.createError("EMPTY_CONTENT", "Content cannot be empty")
+			throw new Error("Content cannot be empty")
 		}
 	}
 
@@ -659,44 +620,4 @@ export class MetadataExtractor
 
 		return null
 	}
-
-	// ========================================================================
-	// Lifecycle Hooks
-	// ========================================================================
-
-	protected async onHealthCheck(): Promise<boolean> {
-		// Test metadata extraction with sample data
-		try {
-			const sampleExtraction: ExtractionResult = {
-				text: "Sample document about @testing with #metadata",
-				title: "Test Document",
-				source: "test",
-				url: null,
-				contentType: "text/plain",
-				raw: {
-					tags: ["test", "sample"],
-					status: "active",
-				},
-				wordCount: 5,
-			}
-
-			const result = await this.extract(sampleExtraction)
-			return (
-				result.statistics.tagCount > 0 || result.statistics.mentionCount > 0
-			)
-		} catch {
-			return false
-		}
-	}
-}
-
-// ============================================================================
-// Factory Function
-// ============================================================================
-
-/**
- * Create metadata extractor service
- */
-export function createMetadataExtractor(): MetadataExtractor {
-	return new MetadataExtractor()
 }

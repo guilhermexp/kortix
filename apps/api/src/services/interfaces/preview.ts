@@ -1,18 +1,11 @@
 /**
  * Preview Generation Interfaces
  *
- * This file contains interfaces specific to document preview generation.
- * These interfaces define the contracts for image extraction, SVG generation,
- * favicon extraction, and preview caching.
- *
- * Preview Services:
- * - ImageExtractor: Extract preview images from documents
- * - SVGGenerator: Generate SVG previews for documents
- * - FaviconExtractor: Extract favicons from URLs
- * - PreviewCache: Cache preview results
+ * Interfaces for document preview generation: image extraction,
+ * SVG generation, and favicon extraction.
  */
 
-import type { BaseService, ExtractionResult } from "./document-processing"
+import type { ExtractionResult } from "./document-processing"
 
 // ============================================================================
 // Core Preview Types
@@ -102,7 +95,7 @@ export interface PreviewMetadata {
 /**
  * Service for extracting preview images from documents
  */
-export interface ImageExtractor extends BaseService {
+export interface ImageExtractor {
 	/**
 	 * Extract image from document
 	 */
@@ -215,7 +208,7 @@ export interface ImageMetadata {
 /**
  * Service for generating SVG previews
  */
-export interface SVGGenerator extends BaseService {
+export interface SVGGenerator {
 	/**
 	 * Generate SVG preview for document
 	 */
@@ -331,7 +324,7 @@ export interface SVGTemplate {
 /**
  * Service for extracting favicons from URLs
  */
-export interface FaviconExtractor extends BaseService {
+export interface FaviconExtractor {
 	/**
 	 * Extract favicon from URL
 	 */
@@ -412,387 +405,8 @@ export interface FaviconMetadata {
 }
 
 // ============================================================================
-// Preview Cache Interfaces
+// Preview Metrics
 // ============================================================================
-
-/**
- * Service for caching preview results
- */
-export interface PreviewCache extends BaseService {
-	/**
-	 * Get cached preview
-	 */
-	get(key: string): Promise<PreviewResult | null>
-
-	/**
-	 * Set preview in cache
-	 */
-	set(key: string, preview: PreviewResult, ttl?: number): Promise<void>
-
-	/**
-	 * Delete preview from cache
-	 */
-	delete(key: string): Promise<void>
-
-	/**
-	 * Check if preview is cached
-	 */
-	has(key: string): Promise<boolean>
-
-	/**
-	 * Get cache key for extraction
-	 */
-	getCacheKey(extraction: ExtractionResult): string
-
-	/**
-	 * Clear cache
-	 */
-	clear(): Promise<void>
-
-	/**
-	 * Get cache statistics
-	 */
-	getStats(): Promise<CacheStatistics>
-}
-
-/**
- * Cache configuration
- */
-export interface CacheConfig {
-	/** Default TTL in seconds */
-	defaultTTL: number
-	/** Maximum cache size in bytes */
-	maxSize?: number
-	/** Maximum number of entries */
-	maxEntries?: number
-	/** Cache strategy */
-	strategy?: "lru" | "lfu" | "fifo"
-	/** Enable cache compression */
-	compress?: boolean
-}
-
-/**
- * Cache statistics
- */
-export interface CacheStatistics {
-	/** Total cache size in bytes */
-	size: number
-	/** Number of entries */
-	entries: number
-	/** Hit rate */
-	hitRate: number
-	/** Miss rate */
-	missRate: number
-	/** Total hits */
-	hits: number
-	/** Total misses */
-	misses: number
-	/** Evictions */
-	evictions: number
-}
-
-// ============================================================================
-// Preview Generation Pipeline
-// ============================================================================
-
-/**
- * Preview generation pipeline with fallbacks
- */
-export interface PreviewGenerationPipeline {
-	/**
-	 * Generate preview with fallback chain
-	 */
-	generate(input: PreviewInput): Promise<PreviewResult>
-
-	/**
-	 * Add generator to pipeline
-	 */
-	addGenerator(generator: PreviewGeneratorStrategy, priority: number): void
-
-	/**
-	 * Remove generator from pipeline
-	 */
-	removeGenerator(name: string): void
-
-	/**
-	 * Get pipeline configuration
-	 */
-	getConfig(): PreviewPipelineConfig
-}
-
-/**
- * Preview generator strategy
- */
-export interface PreviewGeneratorStrategy {
-	/** Strategy name */
-	name: string
-	/** Can handle input */
-	canHandle(input: PreviewInput): boolean
-	/** Generate preview */
-	generate(input: PreviewInput): Promise<PreviewResult>
-	/** Priority (higher = preferred) */
-	priority: number
-}
-
-/**
- * Preview pipeline configuration
- */
-export interface PreviewPipelineConfig {
-	/** Generator strategies */
-	strategies: PreviewGeneratorStrategy[]
-	/** Enable caching */
-	enableCache: boolean
-	/** Cache config */
-	cacheConfig?: CacheConfig
-	/** Fallback chain */
-	fallbackChain: string[]
-	/** Timeout per strategy */
-	strategyTimeout: number
-	/** Total timeout */
-	totalTimeout: number
-}
-
-// ============================================================================
-// Preview Storage Interfaces
-// ============================================================================
-
-/**
- * Service for storing generated previews
- */
-export interface PreviewStorage extends BaseService {
-	/**
-	 * Upload preview to storage
-	 */
-	upload(preview: Buffer, metadata: PreviewMetadata): Promise<string>
-
-	/**
-	 * Download preview from storage
-	 */
-	download(url: string): Promise<Buffer>
-
-	/**
-	 * Delete preview from storage
-	 */
-	delete(url: string): Promise<void>
-
-	/**
-	 * Check if preview exists
-	 */
-	exists(url: string): Promise<boolean>
-
-	/**
-	 * Get preview URL
-	 */
-	getUrl(key: string): string
-
-	/**
-	 * Get storage statistics
-	 */
-	getStats(): Promise<StorageStatistics>
-}
-
-/**
- * Storage configuration
- */
-export interface StorageConfig {
-	/** Storage provider */
-	provider: "supabase" | "s3" | "local"
-	/** Bucket/container name */
-	bucket: string
-	/** Base path */
-	basePath?: string
-	/** Public URL base */
-	publicUrlBase?: string
-	/** Maximum file size */
-	maxFileSize?: number
-}
-
-/**
- * Storage statistics
- */
-export interface StorageStatistics {
-	/** Total storage used in bytes */
-	totalSize: number
-	/** Number of files */
-	fileCount: number
-	/** Average file size */
-	averageFileSize: number
-	/** Storage provider */
-	provider: string
-}
-
-// ============================================================================
-// Preview Optimization Interfaces
-// ============================================================================
-
-/**
- * Service for optimizing preview images
- */
-export interface PreviewOptimizer extends BaseService {
-	/**
-	 * Optimize image
-	 */
-	optimize(image: Buffer, options?: OptimizationOptions): Promise<Buffer>
-
-	/**
-	 * Resize image
-	 */
-	resize(image: Buffer, width: number, height: number): Promise<Buffer>
-
-	/**
-	 * Convert format
-	 */
-	convert(image: Buffer, format: "png" | "jpeg" | "webp"): Promise<Buffer>
-
-	/**
-	 * Compress image
-	 */
-	compress(image: Buffer, quality: number): Promise<Buffer>
-
-	/**
-	 * Get image info
-	 */
-	getInfo(image: Buffer): Promise<ImageInfo>
-}
-
-/**
- * Optimization options
- */
-export interface OptimizationOptions {
-	/** Target format */
-	format?: "png" | "jpeg" | "webp"
-	/** Quality (0-1) */
-	quality?: number
-	/** Target dimensions */
-	dimensions?: {
-		width: number
-		height: number
-	}
-	/** Maintain aspect ratio */
-	maintainAspectRatio?: boolean
-	/** Strip metadata */
-	stripMetadata?: boolean
-	/** Enable progressive encoding */
-	progressive?: boolean
-}
-
-/**
- * Image information
- */
-export interface ImageInfo {
-	/** Width */
-	width: number
-	/** Height */
-	height: number
-	/** Format */
-	format: string
-	/** Size in bytes */
-	size: number
-	/** Color space */
-	colorSpace?: string
-	/** Has alpha channel */
-	hasAlpha: boolean
-	/** Bit depth */
-	bitDepth?: number
-}
-
-// ============================================================================
-// Preview Validation Interfaces
-// ============================================================================
-
-/**
- * Validator for preview generation
- */
-export interface PreviewValidator {
-	/**
-	 * Validate preview input
-	 */
-	validateInput(input: PreviewInput): Promise<void>
-
-	/**
-	 * Validate preview result
-	 */
-	validateResult(result: PreviewResult): boolean
-
-	/**
-	 * Check if URL is a valid image
-	 */
-	isValidImageUrl(url: string): Promise<boolean>
-
-	/**
-	 * Get validation errors
-	 */
-	getValidationErrors(): ValidationError[]
-}
-
-/**
- * Validation error
- */
-export interface ValidationError {
-	/** Error code */
-	code: string
-	/** Error message */
-	message: string
-	/** Field that failed validation */
-	field?: string
-	/** Expected value */
-	expected?: unknown
-	/** Actual value */
-	actual?: unknown
-}
-
-// ============================================================================
-// Preview Event Types
-// ============================================================================
-
-/**
- * Preview generation event
- */
-export interface PreviewGenerationEvent {
-	/** Event type */
-	type:
-		| "started"
-		| "completed"
-		| "failed"
-		| "cached"
-		| "uploaded"
-		| "fallback_used"
-		| "optimized"
-	/** Timestamp */
-	timestamp: Date
-	/** Document ID */
-	documentId?: string
-	/** Preview URL */
-	previewUrl?: string
-	/** Generator used */
-	generator?: string
-	/** Duration in milliseconds */
-	duration?: number
-	/** Error (if applicable) */
-	error?: Error
-	/** Metadata */
-	metadata?: Record<string, unknown>
-}
-
-/**
- * Preview monitor for tracking generation events
- */
-export interface PreviewMonitor {
-	/**
-	 * Record event
-	 */
-	recordEvent(event: PreviewGenerationEvent): void
-
-	/**
-	 * Get metrics for document
-	 */
-	getMetrics(documentId: string): PreviewMetrics | null
-
-	/**
-	 * Get aggregate statistics
-	 */
-	getAggregateStats(): PreviewAggregateStats
-}
 
 /**
  * Preview metrics
@@ -810,22 +424,4 @@ export interface PreviewMetrics {
 	optimizationTime?: number
 	/** Upload time */
 	uploadTime?: number
-}
-
-/**
- * Aggregate preview statistics
- */
-export interface PreviewAggregateStats {
-	/** Total previews generated */
-	totalGenerated: number
-	/** Cache hit rate */
-	cacheHitRate: number
-	/** Average generation time */
-	averageGenerationTime: number
-	/** Success rate */
-	successRate: number
-	/** Most used generator */
-	mostUsedGenerator: string
-	/** Fallback usage rate */
-	fallbackRate: number
 }

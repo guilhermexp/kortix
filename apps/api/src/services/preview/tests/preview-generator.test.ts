@@ -1,9 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
 import type { PreviewGenerationOptions, PreviewResult } from "../../interfaces"
-import {
-	createPreviewGeneratorService,
-	PreviewGeneratorService,
-} from "../preview-generator"
+import { PreviewGeneratorService } from "../preview-generator"
 
 /**
  * Unit tests for PreviewGeneratorService
@@ -486,11 +483,10 @@ describe("PreviewGeneratorService", () => {
 		})
 	})
 
-	describe("Factory Function", () => {
+	describe("Constructor", () => {
 		it("should create service with default options", () => {
-			const service = createPreviewGeneratorService()
+			const service = new PreviewGeneratorService()
 			expect(service).toBeDefined()
-			expect(service.getName()).toBe("PreviewGeneratorService")
 		})
 
 		it("should create service with custom options", () => {
@@ -500,7 +496,7 @@ describe("PreviewGeneratorService", () => {
 				fallbackChain: ["svg"],
 			}
 
-			const service = createPreviewGeneratorService(customOptions)
+			const service = new PreviewGeneratorService(customOptions)
 			expect(service).toBeDefined()
 		})
 	})

@@ -65,7 +65,7 @@ vi.mock("../supabase", () => ({
 }))
 
 vi.mock("../services/processing/metadata-extractor", () => ({
-	createMetadataExtractor: vi.fn(() => mockMetadataExtractor),
+	MetadataExtractor: vi.fn(() => mockMetadataExtractor),
 }))
 
 vi.mock("../services/orchestration", () => ({
@@ -81,7 +81,7 @@ vi.mock("../services/processing", () => ({
 }))
 
 vi.mock("../services/preview/preview-generator", () => ({
-	createPreviewGeneratorService: vi.fn(() => ({})),
+	PreviewGeneratorService: vi.fn(() => ({})),
 }))
 
 vi.mock("../routes/documents", () => ({

@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
 import type { MultiLevelSummary, SummarizationOptions } from "../../interfaces"
 import {
-	createSummarizationService,
 	SummarizationService,
 } from "../summarization-service"
 
@@ -314,7 +313,7 @@ Final thoughts and summary.`
 
 	describe("Factory Function", () => {
 		it("should create service with default options", () => {
-			const service = createSummarizationService()
+			const service = new SummarizationService()
 			expect(service).toBeDefined()
 		})
 
@@ -324,7 +323,7 @@ Final thoughts and summary.`
 				maxSummaryLength: 150,
 			}
 
-			const service = createSummarizationService(customOptions)
+			const service = new SummarizationService(customOptions)
 			expect(service).toBeDefined()
 		})
 	})

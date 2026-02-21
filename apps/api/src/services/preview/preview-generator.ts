@@ -11,21 +11,29 @@
  * - Multiple generation strategies
  */
 
-import { BaseService } from "../base/base-service"
 import type {
 	ExtractionResult,
 	PreviewGeneratorService as IPreviewGeneratorService,
-	PreviewGenerationOptions,
-	PreviewGeneratorConfig,
 	PreviewInput,
 	PreviewMetrics,
+	PreviewOptions,
 	PreviewResult,
 } from "../interfaces"
-import {
-	createFaviconExtractor,
-	type FaviconExtractor,
-} from "./favicon-extractor"
-import { createImageExtractor, type ImageExtractor } from "./image-extractor"
+
+// Implementation-specific config types
+interface PreviewGeneratorConfig {
+	enableImageExtraction: boolean
+	enableSvgGeneration: boolean
+	enableFaviconExtraction: boolean
+	preferHighResolution: boolean
+	timeout: number
+	strategyTimeout: number
+	fallbackChain: string[]
+}
+
+type PreviewGenerationOptions = PreviewOptions
+import { FaviconExtractor } from "./favicon-extractor"
+import { ImageExtractor } from "./image-extractor"
 
 // NOTE: SVG generator is lazily imported to avoid runtime parse issues
 type SVGGenerator = any
@@ -37,13 +45,6 @@ type SVGGenerator = any
 const DEFAULT_TIMEOUT = 15000 // 15 seconds total
 const DEFAULT_STRATEGY_TIMEOUT = 5000 // 5 seconds per strategy
 
-// Fallback chain priorities
-const _STRATEGY_PRIORITIES = {
-	image: 3, // Highest priority
-	svg: 2,
-	favicon: 1, // Lowest priority (fallback)
-} as const
-
 // ============================================================================
 // Preview Generator Service Implementation
 // ============================================================================
@@ -52,7 +53,6 @@ const _STRATEGY_PRIORITIES = {
  * Service for generating preview images with fallback strategies
  */
 export class PreviewGeneratorService
-	extends BaseService
 	implements IPreviewGeneratorService
 {
 	private readonly config: PreviewGeneratorConfig
@@ -61,10 +61,9 @@ export class PreviewGeneratorService
 	private faviconExtractor?: FaviconExtractor
 	private readonly metricsMap: Map<string, PreviewMetrics>
 	private readonly cache: Map<string, any>
+	private initialized = false
 
 	constructor(config?: Partial<PreviewGeneratorConfig>) {
-		super("PreviewGeneratorService")
-
 		this.config = {
 			enableImageExtraction: config?.enableImageExtraction ?? true,
 			enableSvgGeneration: config?.enableSvgGeneration ?? false,
@@ -84,15 +83,18 @@ export class PreviewGeneratorService
 	// Initialization
 	// ========================================================================
 
-	protected async onInitialize(): Promise<void> {
-		this.logger.info("Initializing preview generator service", {
+	async initialize(): Promise<void> {
+		if (this.initialized) return
+
+		console.info("Initializing preview generator service", {
 			config: this.config,
 		})
 
 		// Initialize preview generators
 		await this.initializeGenerators()
 
-		this.logger.info("Preview generator service initialized")
+		this.initialized = true
+		console.info("Preview generator service initialized")
 	}
 
 	/**
@@ -101,32 +103,32 @@ export class PreviewGeneratorService
 	private async initializeGenerators(): Promise<void> {
 		// Image extractor
 		if (this.config.enableImageExtraction) {
-			this.imageExtractor = createImageExtractor({
+			this.imageExtractor = new ImageExtractor({
 				preferOgImage: true,
 				preferTwitterImage: false,
 				timeout: this.config.strategyTimeout,
 			})
 			await this.imageExtractor.initialize()
-			this.logger.debug("Image extractor initialized")
+			console.debug("Image extractor initialized")
 		}
 
 		// SVG generator
 		if (this.config.enableSvgGeneration) {
-			const mod = await import("./svg-generator")
-			this.svgGenerator = mod.createSVGGenerator()
+			const { SVGGenerator } = await import("./svg-generator")
+			this.svgGenerator = new SVGGenerator()
 			await this.svgGenerator.initialize()
-			this.logger.debug("SVG generator initialized")
+			console.debug("SVG generator initialized")
 		}
 
 		// Favicon extractor
 		if (this.config.enableFaviconExtraction) {
-			this.faviconExtractor = createFaviconExtractor({
+			this.faviconExtractor = new FaviconExtractor({
 				preferHighRes: this.config.preferHighResolution,
 				timeout: this.config.strategyTimeout,
 				useExternalService: true,
 			})
 			await this.faviconExtractor.initialize()
-			this.logger.debug("Favicon extractor initialized")
+			console.debug("Favicon extractor initialized")
 		}
 	}
 
@@ -167,16 +169,14 @@ export class PreviewGeneratorService
 		input: ExtractionResult | PreviewInput,
 		options?: PreviewGenerationOptions,
 	): Promise<PreviewResult> {
-		this.assertInitialized()
 		this.assertGeneratorsRegistered()
 
 		const { extraction, mergedOptions } = this.normalizeInput(input, options)
 
-		const tracker = this.performanceMonitor.startOperation("generate")
 		const startTime = Date.now()
 
 		try {
-			this.logger.info("Starting preview generation", {
+			console.info("Starting preview generation", {
 				title: extraction.title,
 				source: extraction.source,
 			})
@@ -184,12 +184,11 @@ export class PreviewGeneratorService
 			// Priority 1: Check if extraction already has a preview URL (e.g., from README)
 			if ((extraction as any).preview) {
 				const previewUrl = (extraction as any).preview
-				this.logger.info("Using preview from extraction result", {
+				console.info("Using preview from extraction result", {
 					previewUrl,
 					source: extraction.source,
 				})
 
-				tracker.end(true)
 				return {
 					url: previewUrl,
 					type: "image" as const,
@@ -216,8 +215,6 @@ export class PreviewGeneratorService
 					)
 
 					if (result) {
-						tracker.end(true)
-
 						// Store metrics
 						const metrics: PreviewMetrics = {
 							totalTime: Date.now() - startTime,
@@ -227,7 +224,7 @@ export class PreviewGeneratorService
 						}
 						this.metricsMap.set(extraction.url || extraction.title, metrics)
 
-						this.logger.info("Preview generated successfully", {
+						console.info("Preview generated successfully", {
 							strategy,
 							url: result.url,
 							generationTime: metrics.totalTime,
@@ -236,7 +233,7 @@ export class PreviewGeneratorService
 						return result
 					}
 				} catch (error) {
-					this.logger.warn(`Strategy ${strategy} failed`, {
+					console.warn(`Strategy ${strategy} failed`, {
 						error: (error as Error).message,
 					})
 					// Continue to next strategy
@@ -244,15 +241,9 @@ export class PreviewGeneratorService
 			}
 
 			// All strategies failed
-			tracker.end(false)
-
-			throw this.createError(
-				"ALL_STRATEGIES_FAILED",
-				"All preview generation strategies failed",
-			)
+			throw new Error("All preview generation strategies failed")
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "generate")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -269,7 +260,6 @@ export class PreviewGeneratorService
 		}
 		error?: { code: string; message: string }
 	}> {
-		this.assertInitialized()
 		const key =
 			documentInput?.id ||
 			documentInput?.url ||
@@ -544,7 +534,12 @@ export class PreviewGeneratorService
 		averageGenerationTime: number
 		cacheHitRate: number
 		successRates: { favicon: number; image: number; svg: number }
-	} {
+	}
+	getMetrics(documentId: string): PreviewMetrics | null
+	getMetrics(documentId?: string): any {
+		if (documentId !== undefined) {
+			return this.metricsMap.get(documentId) || null
+		}
 		const entries = Array.from(this.metricsMap.values())
 		const total = entries.length
 		const avg =
@@ -617,13 +612,6 @@ export class PreviewGeneratorService
 		}
 	}
 
-	/**
-	 * Get metrics for document
-	 */
-	getMetrics(documentId: string): PreviewMetrics | null {
-		return this.metricsMap.get(documentId) || null
-	}
-
 	// ========================================================================
 	// Private Methods - Strategy Execution
 	// ========================================================================
@@ -636,13 +624,10 @@ export class PreviewGeneratorService
 		extraction: ExtractionResult,
 		options?: PreviewGenerationOptions,
 	): Promise<PreviewResult | null> {
-		const tracker = this.performanceMonitor.startOperation(
-			`strategy:${strategy}`,
-		)
 		const startTime = Date.now()
 
 		try {
-			this.logger.debug(`Executing strategy: ${strategy}`, {
+			console.debug(`Executing strategy: ${strategy}`, {
 				title: extraction.title,
 			})
 
@@ -659,20 +644,16 @@ export class PreviewGeneratorService
 					result = await this.executeFaviconExtraction(extraction, options)
 					break
 				default:
-					this.logger.warn(`Unknown strategy: ${strategy}`)
+					console.warn(`Unknown strategy: ${strategy}`)
 					return null
 			}
 
 			if (result) {
 				result.generationTime = Date.now() - startTime
-				tracker.end(true)
-			} else {
-				tracker.end(false)
 			}
 
 			return result
 		} catch (error) {
-			tracker.end(false)
 			throw error
 		}
 	}
@@ -685,7 +666,7 @@ export class PreviewGeneratorService
 		options?: PreviewGenerationOptions,
 	): Promise<PreviewResult | null> {
 		if (!this.imageExtractor) {
-			this.logger.warn("Image extractor not available")
+			console.warn("Image extractor not available")
 			return null
 		}
 
@@ -730,7 +711,7 @@ export class PreviewGeneratorService
 				},
 			}
 		} catch (error) {
-			this.logger.warn("Image extraction failed", {
+			console.warn("Image extraction failed", {
 				error: (error as Error).message,
 			})
 			return null
@@ -745,7 +726,7 @@ export class PreviewGeneratorService
 		options?: PreviewGenerationOptions,
 	): Promise<PreviewResult | null> {
 		if (!this.svgGenerator) {
-			this.logger.warn("SVG generator not available")
+			console.warn("SVG generator not available")
 			return null
 		}
 
@@ -771,7 +752,7 @@ export class PreviewGeneratorService
 				},
 			}
 		} catch (error) {
-			this.logger.warn("SVG generation failed", {
+			console.warn("SVG generation failed", {
 				error: (error as Error).message,
 			})
 			return null
@@ -786,13 +767,13 @@ export class PreviewGeneratorService
 		options?: PreviewGenerationOptions,
 	): Promise<PreviewResult | null> {
 		if (!this.faviconExtractor) {
-			this.logger.warn("Favicon extractor not available")
+			console.warn("Favicon extractor not available")
 			return null
 		}
 
 		// Only works for web URLs
 		if (!extraction.url) {
-			this.logger.debug("No URL available for favicon extraction")
+			console.debug("No URL available for favicon extraction")
 			return null
 		}
 
@@ -820,7 +801,7 @@ export class PreviewGeneratorService
 				},
 			}
 		} catch (error) {
-			this.logger.warn("Favicon extraction failed", {
+			console.warn("Favicon extraction failed", {
 				error: (error as Error).message,
 			})
 			return null
@@ -846,18 +827,33 @@ export class PreviewGeneratorService
 			!!this.imageExtractor || !!this.svgGenerator || !!this.faviconExtractor
 
 		if (!hasAnyGenerator) {
-			throw this.createError(
-				"NO_GENERATORS_AVAILABLE",
-				"No preview generators are available",
-			)
+			throw new Error("No preview generators are available")
 		}
 	}
 
 	// ========================================================================
-	// Lifecycle Hooks
+	// Lifecycle - Cleanup
 	// ========================================================================
 
-	protected async onHealthCheck(): Promise<boolean> {
+	async cleanup(): Promise<void> {
+		console.info("Cleaning up preview generator service")
+
+		// Cleanup generators
+		if (this.imageExtractor) {
+			await this.imageExtractor.cleanup()
+		}
+		if (this.svgGenerator) {
+			await this.svgGenerator.cleanup()
+		}
+		if (this.faviconExtractor) {
+			await this.faviconExtractor.cleanup()
+		}
+
+		// Clear metrics
+		this.metricsMap.clear()
+	}
+
+	async healthCheck(): Promise<boolean> {
 		// Check if at least one generator is healthy
 		let healthyCount = 0
 		let totalCount = 0
@@ -886,7 +882,7 @@ export class PreviewGeneratorService
 		// At least one generator must be healthy
 		const isHealthy = healthyCount > 0
 
-		this.logger.debug("Preview generator health check", {
+		console.debug("Preview generator health check", {
 			healthy: isHealthy,
 			healthyGenerators: healthyCount,
 			totalGenerators: totalCount,
@@ -894,35 +890,5 @@ export class PreviewGeneratorService
 
 		return isHealthy
 	}
-
-	protected async onCleanup(): Promise<void> {
-		this.logger.info("Cleaning up preview generator service")
-
-		// Cleanup generators
-		if (this.imageExtractor) {
-			await this.imageExtractor.cleanup()
-		}
-		if (this.svgGenerator) {
-			await this.svgGenerator.cleanup()
-		}
-		if (this.faviconExtractor) {
-			await this.faviconExtractor.cleanup()
-		}
-
-		// Clear metrics
-		this.metricsMap.clear()
-	}
 }
 
-// ============================================================================
-// Factory Function
-// ============================================================================
-
-/**
- * Create preview generator service with configuration
- */
-export function createPreviewGeneratorService(
-	config?: Partial<PreviewGeneratorConfig>,
-): PreviewGeneratorService {
-	return new PreviewGeneratorService(config)
-}

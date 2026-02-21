@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
 import type { TaggingOptions, TagWithMetadata } from "../../interfaces"
-import { createTaggingService, TaggingService } from "../tagging-service"
+import { TaggingService } from "../tagging-service"
 
 describe("TaggingService", () => {
 	let service: TaggingService
@@ -474,7 +474,7 @@ describe("TaggingService", () => {
 
 	describe("Factory Function", () => {
 		it("should create service with default options", () => {
-			const service = createTaggingService()
+			const service = new TaggingService()
 			expect(service).toBeDefined()
 		})
 
@@ -485,7 +485,7 @@ describe("TaggingService", () => {
 				minConfidence: 0.6,
 			}
 
-			const service = createTaggingService(customOptions)
+			const service = new TaggingService(customOptions)
 			expect(service).toBeDefined()
 		})
 	})

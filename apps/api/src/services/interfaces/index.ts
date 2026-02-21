@@ -3,16 +3,6 @@
  *
  * This file provides a central location for importing all document processing
  * interfaces. Import from this file instead of individual interface files.
- *
- * Usage:
- * ```typescript
- * import {
- *   DocumentExtractorService,
- *   ExtractionInput,
- *   ProcessedDocument,
- *   // ... other interfaces
- * } from './services/interfaces'
- * ```
  */
 
 // ============================================================================
@@ -72,55 +62,11 @@ export type {
 	YouTubeMetadata,
 	YouTubeOptions,
 } from "./extraction"
-// ============================================================================
-// Orchestration Interfaces
-// ============================================================================
-export type {
-	BackoffOptions,
-	CircuitBreaker,
-	CircuitBreakerEvent,
-	CircuitBreakerMetrics,
-	CircuitBreakerOptions,
-	EventFilter,
-	ExtendedRetryOptions,
-	Job,
-	JobEvent,
-	JobOptions,
-	JobQueue,
-	JobStatus,
-	OrchestrationEvent,
-	OrchestrationMetrics,
-	OrchestrationMonitor,
-	QueueStatistics,
-	RateLimitConfig,
-	RateLimiter,
-	RateLimitInfo,
-	RateLimitResult,
-	RetryAttempt,
-	RetryExecutionContext,
-	RetryHandler,
-	RetryStatistics,
-	StateChange,
-	Transaction,
-	TransactionManager,
-	Workflow,
-	WorkflowCheckpoint,
-	WorkflowContext,
-	WorkflowMetrics,
-	WorkflowOptions,
-	WorkflowOrchestrator,
-	WorkflowResult,
-	WorkflowStatus,
-	WorkflowStep,
-	WorkflowStepResult,
-} from "./orchestration"
 
 // ============================================================================
 // Preview Generation Interfaces
 // ============================================================================
 export type {
-	CacheConfig,
-	CacheStatistics,
 	FaviconCollection,
 	FaviconExtractionOptions,
 	FaviconExtractor,
@@ -129,61 +75,29 @@ export type {
 	ImageExtractionOptions,
 	ImageExtractionResult,
 	ImageExtractor,
-	ImageInfo,
 	ImageMetadata,
-	OptimizationOptions,
-	PreviewAggregateStats,
-	PreviewCache,
-	PreviewGenerationEvent,
-	PreviewGenerationPipeline,
-	PreviewGeneratorStrategy,
 	PreviewInput,
 	PreviewMetadata,
 	PreviewMetrics,
-	PreviewMonitor,
-	PreviewOptimizer,
 	PreviewOptions,
-	PreviewPipelineConfig,
 	PreviewResult,
-	PreviewStorage,
-	PreviewValidator,
-	StorageConfig,
-	StorageStatistics,
 	SVGGenerationOptions,
 	SVGGenerator,
 	SVGTemplate,
 	TextSVGOptions,
-	ValidationError,
 } from "./preview"
+
 // ============================================================================
 // Processing Interfaces
 // ============================================================================
 export type {
-	AggregateStatistics,
-	ChunkBoundary,
 	ChunkingOptions,
 	ChunkingService,
 	ChunkingStatistics,
-	DocumentEnrichmentService,
 	EmbeddingOptions,
 	EmbeddingProviderInfo,
 	EmbeddingService,
-	EnrichedDocument,
-	Entity,
-	HybridEmbeddingConfig,
-	HybridEmbeddingStrategy,
-	LanguageDetection,
 	MultiLevelSummary,
-	PipelineConfig,
-	ProcessingEvent,
-	ProcessingMetrics,
-	ProcessingMonitor,
-	ProcessingPipeline,
-	ProcessingStage,
-	ProcessingStageData,
-	QualityScore,
-	ReadabilityMetrics,
-	Sentiment,
 	SummarizationOptions,
 	SummarizationService,
 	SummarizationStatistics,

@@ -13,7 +13,6 @@
  */
 
 import type {
-	BaseService,
 	ExtractionInput,
 	ExtractionResult,
 	ProcessingError,
@@ -27,7 +26,7 @@ import type {
 /**
  * Base interface for all document extractors
  */
-export interface DocumentExtractor extends BaseService {
+export interface DocumentExtractor {
 	/**
 	 * Extract content from the given input
 	 */

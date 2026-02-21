@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
 import type { Chunk, EmbeddingOptions } from "../../interfaces"
-import { createEmbeddingService, EmbeddingService } from "../embedding-service"
+import { EmbeddingService } from "../embedding-service"
 
 /**
  * Unit tests for EmbeddingService
@@ -688,7 +688,7 @@ describe("EmbeddingService", () => {
 
 	describe("Factory Function", () => {
 		it("should create service with default options", () => {
-			const service = createEmbeddingService()
+			const service = new EmbeddingService()
 			expect(service).toBeDefined()
 			expect(service.getName()).toBe("EmbeddingService")
 		})
@@ -700,7 +700,7 @@ describe("EmbeddingService", () => {
 				enableHybridStrategy: false,
 			}
 
-			const service = createEmbeddingService(customOptions)
+			const service = new EmbeddingService(customOptions)
 			expect(service).toBeDefined()
 		})
 	})

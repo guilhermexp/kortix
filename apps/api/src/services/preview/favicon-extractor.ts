@@ -11,7 +11,6 @@
  * - Caching for improved performance
  */
 
-import { BaseService } from "../base/base-service"
 import type {
 	FaviconCollection,
 	FaviconExtractionOptions,
@@ -49,13 +48,12 @@ const EXTERNAL_SERVICES = [
 /**
  * Service for extracting favicons from URLs
  */
-export class FaviconExtractor extends BaseService implements IFaviconExtractor {
+export class FaviconExtractor implements IFaviconExtractor {
 	private readonly defaultOptions: Required<FaviconExtractionOptions>
 	private readonly cache: Map<string, FaviconCollection>
+	private initialized = false
 
 	constructor(options?: Partial<FaviconExtractionOptions>) {
-		super("FaviconExtractor")
-
 		this.defaultOptions = {
 			preferHighRes: options?.preferHighRes ?? true,
 			minSize: options?.minSize ?? DEFAULT_MIN_SIZE,
@@ -65,6 +63,11 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 		}
 
 		this.cache = new Map()
+	}
+
+	async initialize(): Promise<void> {
+		if (this.initialized) return
+		this.initialized = true
 	}
 
 	// ========================================================================
@@ -78,23 +81,20 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 		url: string,
 		options?: FaviconExtractionOptions,
 	): Promise<string | null> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("extract")
 		const _config = { ...this.defaultOptions, ...options }
 
 		try {
-			this.logger.info("Extracting favicon", { url })
+			console.info("Extracting favicon", { url })
 
 			// Validate URL
 			if (!this.isValidUrl(url)) {
-				throw this.createError("INVALID_URL", `Invalid URL: ${url}`)
+				throw new Error(`Invalid URL: ${url}`)
 			}
 
 			// Try to get from cache
 			const cached = this.cache.get(url)
 			if (cached) {
-				this.logger.debug("Favicon found in cache", { url })
+				console.debug("Favicon found in cache", { url })
 				return cached.primary
 			}
 
@@ -104,12 +104,9 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 			// Cache result
 			this.cache.set(url, collection)
 
-			tracker.end(true)
-
 			return collection.primary
 		} catch (error) {
-			tracker.end(false)
-			this.logger.error("Failed to extract favicon", {
+			console.error("Failed to extract favicon", {
 				error: (error as Error).message,
 				url,
 			})
@@ -173,12 +170,8 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	 * Get all available favicon URLs
 	 */
 	async getAllFavicons(url: string): Promise<FaviconCollection> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("getAllFavicons")
-
 		try {
-			this.logger.debug("Getting all favicons", { url })
+			console.debug("Getting all favicons", { url })
 
 			const baseUrl = this.getBaseUrl(url)
 			const collection: FaviconCollection = {
@@ -197,7 +190,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 					await this.addToCollection(collection, icon)
 				}
 			} catch (error) {
-				this.logger.warn("Failed to parse HTML for favicons", {
+				console.warn("Failed to parse HTML for favicons", {
 					error: (error as Error).message,
 					url,
 				})
@@ -231,9 +224,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 			// Select best favicon as primary
 			collection.primary = await this.getBestFavicon(url)
 
-			tracker.end(true)
-
-			this.logger.debug("Favicons collected", {
+			console.debug("Favicons collected", {
 				primary: !!collection.primary,
 				highRes: collection.highRes.length,
 				standard: collection.standard.length,
@@ -241,8 +232,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 
 			return collection
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "getAllFavicons")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -250,8 +240,6 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	 * Get best quality favicon
 	 */
 	async getBestFavicon(url: string): Promise<string | null> {
-		this.assertInitialized()
-
 		try {
 			const collection = this.cache.get(url) || (await this.getAllFavicons(url))
 
@@ -270,7 +258,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 
 			return null
 		} catch (error) {
-			this.logger.error("Failed to get best favicon", {
+			console.error("Failed to get best favicon", {
 				error: (error as Error).message,
 				url,
 			})
@@ -282,8 +270,6 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	 * Check if favicon exists
 	 */
 	async exists(url: string): Promise<boolean> {
-		this.assertInitialized()
-
 		try {
 			const response = await fetch(url, {
 				method: "HEAD",
@@ -315,12 +301,8 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	 * Get favicon metadata
 	 */
 	async getMetadata(url: string): Promise<FaviconMetadata> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("getMetadata")
-
 		try {
-			this.logger.debug("Getting favicon metadata", { url })
+			console.debug("Getting favicon metadata", { url })
 
 			const response = await fetch(url, {
 				method: "HEAD",
@@ -328,10 +310,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 			})
 
 			if (!response.ok) {
-				throw this.createError(
-					"FAVICON_NOT_ACCESSIBLE",
-					`Favicon not accessible: ${response.status}`,
-				)
+				throw new Error(`Favicon not accessible: ${response.status}`)
 			}
 
 			const contentType = response.headers.get("content-type") || "image/x-icon"
@@ -351,12 +330,9 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 				rel: this.determineRel(url),
 			}
 
-			tracker.end(true)
-
 			return metadata
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "getMetadata")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -413,7 +389,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 				collection.standard.push(iconUrl)
 			}
 		} catch (error) {
-			this.logger.debug("Failed to get metadata for icon", {
+			console.debug("Failed to get metadata for icon", {
 				error: (error as Error).message,
 				iconUrl,
 			})
@@ -483,10 +459,7 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 		})
 
 		if (!response.ok) {
-			throw this.createError(
-				"FETCH_FAILED",
-				`Failed to fetch URL: ${response.status}`,
-			)
+			throw new Error(`Failed to fetch URL: ${response.status}`)
 		}
 
 		return await response.text()
@@ -561,10 +534,10 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 	}
 
 	// ========================================================================
-	// Lifecycle Hooks
+	// Lifecycle
 	// ========================================================================
 
-	protected async onHealthCheck(): Promise<boolean> {
+	async healthCheck(): Promise<boolean> {
 		// Test favicon extraction with a reliable URL
 		try {
 			const testUrl = "https://www.github.com"
@@ -577,24 +550,11 @@ export class FaviconExtractor extends BaseService implements IFaviconExtractor {
 		}
 	}
 
-	protected async onCleanup(): Promise<void> {
+	async cleanup(): Promise<void> {
 		// Clear cache
 		this.cache.clear()
-		this.logger.info("Favicon cache cleared")
+		console.info("Favicon cache cleared")
 	}
-}
-
-// ============================================================================
-// Factory Function
-// ============================================================================
-
-/**
- * Create favicon extractor service with optional configuration
- */
-export function createFaviconExtractor(
-	options?: Partial<FaviconExtractionOptions>,
-): FaviconExtractor {
-	return new FaviconExtractor(options)
 }
 
 export interface FaviconOptions {

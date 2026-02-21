@@ -11,7 +11,6 @@
  * - Comprehensive error handling and retry logic
  */
 
-import { BaseService } from "../base/base-service"
 import {
 	ensureVectorSize,
 	generateDeterministicEmbedding,
@@ -30,7 +29,6 @@ import type {
 // ============================================================================
 
 const DEFAULT_BATCH_SIZE = 10
-const _DEFAULT_TIMEOUT = 30000 // 30 seconds
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 1000
 const MAX_TEXT_LENGTH = 30000 // bytes (Gemini limit)
@@ -52,15 +50,14 @@ interface CacheEntry {
 /**
  * Service for generating vector embeddings
  */
-export class EmbeddingService extends BaseService implements IEmbeddingService {
+export class EmbeddingService implements IEmbeddingService {
+	private initialized = false
 	private readonly provider: "gemini" | "openai" | "hybrid" | "deterministic"
 	private readonly batchSize: number
 	private readonly useCache: boolean
 	private readonly embeddingCache: Map<string, CacheEntry> = new Map()
 
 	constructor(options?: EmbeddingOptions) {
-		super("EmbeddingService")
-
 		this.provider = options?.provider ?? "hybrid"
 		this.batchSize = options?.batchSize ?? DEFAULT_BATCH_SIZE
 		this.useCache = options?.useCache ?? true
@@ -72,6 +69,15 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 	}
 
 	// ========================================================================
+	// Initialization
+	// ========================================================================
+
+	async initialize(): Promise<void> {
+		if (this.initialized) return
+		this.initialized = true
+	}
+
+	// ========================================================================
 	// Public API
 	// ========================================================================
 
@@ -79,12 +85,8 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 	 * Generate embeddings for chunks
 	 */
 	async generateEmbeddings(chunks: Chunk[]): Promise<Chunk[]> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("generateEmbeddings")
-
 		try {
-			this.logger.info("Generating embeddings for chunks", {
+			console.info("Generating embeddings for chunks", {
 				chunkCount: chunks.length,
 				batchSize: this.batchSize,
 				provider: this.provider,
@@ -97,7 +99,7 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 				const batch = chunks.slice(i, i + this.batchSize)
 				const batchTexts = batch.map((c) => c.text)
 
-				this.logger.debug("Processing batch", {
+				console.debug("Processing batch", {
 					batchIndex: Math.floor(i / this.batchSize),
 					batchSize: batch.length,
 				})
@@ -119,16 +121,13 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 				}
 			}
 
-			tracker.end(true)
-
-			this.logger.info("Embeddings generated successfully", {
+			console.info("Embeddings generated successfully", {
 				totalChunks: result.length,
 			})
 
 			return result
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "generateEmbeddings")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -136,17 +135,12 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 	 * Generate single embedding
 	 */
 	async generateEmbedding(text: string): Promise<number[]> {
-		this.assertInitialized()
-
-		const tracker = this.performanceMonitor.startOperation("generateEmbedding")
-
 		try {
 			// Check cache first
 			if (this.useCache) {
 				const cached = await this.getCachedEmbedding(text)
 				if (cached) {
-					this.logger.debug("Using cached embedding")
-					tracker.end(true)
+					console.debug("Using cached embedding")
 					return cached
 				}
 			}
@@ -167,7 +161,7 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 					try {
 						embedding = await this.generateWithGemini(text)
 					} catch (error) {
-						this.logger.warn("Gemini failed, using deterministic fallback", {
+						console.warn("Gemini failed, using deterministic fallback", {
 							error: (error as Error).message,
 						})
 						embedding = this.generateDeterministic(text)
@@ -180,11 +174,9 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 				await this.cacheEmbedding(text, embedding)
 			}
 
-			tracker.end(true)
 			return embedding
 		} catch (error) {
-			tracker.end(false)
-			throw this.handleError(error, "generateEmbedding")
+			throw error instanceof Error ? error : new Error(String(error))
 		}
 	}
 
@@ -192,8 +184,6 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 	 * Generate embeddings in batch
 	 */
 	async generateBatchEmbeddings(texts: string[]): Promise<number[][]> {
-		this.assertInitialized()
-
 		const embeddings: number[][] = []
 
 		// Process each text individually (Gemini doesn't have batch API)
@@ -305,7 +295,7 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 		const truncateAt = Math.floor(text.length * ratio)
 		const truncated = text.slice(0, truncateAt)
 
-		this.logger.warn("Text truncated for embedding", {
+		console.warn("Text truncated for embedding", {
 			originalBytes: textBytes,
 			truncatedBytes: Buffer.byteLength(truncated, "utf8"),
 			ratio,
@@ -352,7 +342,7 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 		}
 
 		if (removed > 0) {
-			this.logger.debug("Cache cleanup completed", {
+			console.debug("Cache cleanup completed", {
 				removed,
 				remaining: this.embeddingCache.size,
 			})
@@ -388,7 +378,7 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 				if (isRateLimit && attempt < maxRetries - 1) {
 					// Exponential backoff
 					const delayMs = RETRY_DELAY_MS * 2 ** attempt
-					this.logger.warn("Rate limit hit, retrying", {
+					console.warn("Rate limit hit, retrying", {
 						attempt: attempt + 1,
 						maxRetries,
 						delayMs,
@@ -416,37 +406,4 @@ export class EmbeddingService extends BaseService implements IEmbeddingService {
 	private async delay(ms: number): Promise<void> {
 		return new Promise((resolve) => setTimeout(resolve, ms))
 	}
-
-	// ========================================================================
-	// Lifecycle Hooks
-	// ========================================================================
-
-	protected async onHealthCheck(): Promise<boolean> {
-		// Test embedding generation
-		try {
-			const testText = "This is a health check test."
-			const embedding = await this.generateEmbedding(testText)
-			return embedding.length === VECTOR_SIZE
-		} catch {
-			return false
-		}
-	}
-
-	protected async onCleanup(): Promise<void> {
-		// Clear cache
-		this.embeddingCache.clear()
-	}
-}
-
-// ============================================================================
-// Factory Function
-// ============================================================================
-
-/**
- * Create embedding service with optional configuration
- */
-export function createEmbeddingService(
-	options?: EmbeddingOptions,
-): EmbeddingService {
-	return new EmbeddingService(options)
 }
