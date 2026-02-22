@@ -71,8 +71,14 @@ export const DOMAINS = {
  * Container Tags
  */
 export const CONTAINER_TAGS = {
-	TWITTER_BOOKMARKS: "sm_project_twitter_bookmarks",
 	DEFAULT_PROJECT: "sm_project_default",
+	YOUTUBE: "sm_project_youtube",
+	TWITTER_BOOKMARKS: "sm_project_twitter_bookmarks",
+	SKILLS: "sm_project_skills",
+	RICH_MARKDOWN: "sm_project_rich_markdown",
+	GITHUB: "sm_project_github",
+	PDF: "sm_project_pdf",
+	AUDIO: "sm_project_audio",
 } as const
 
 /**

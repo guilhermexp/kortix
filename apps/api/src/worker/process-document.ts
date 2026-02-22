@@ -19,6 +19,7 @@ import {
 } from "../services/ingestion/pipeline"
 import { documentCache, documentListCache } from "../services/query-cache"
 import { getDefaultUserId, supabaseAdmin } from "../supabase"
+import { persistPreviewImage } from "../utils/storage"
 
 // ============================================================================
 // Initialization
@@ -151,13 +152,17 @@ export async function processAndSaveDocument(
 			const rawTweet = JSON.parse(
 				(document.metadata as Record<string, unknown>).raw_tweet as string,
 			)
-			const tweetPreview =
+			let tweetPreview =
 				rawTweet?.photos?.[0]?.url ||
 				rawTweet?.user?.profile_image_url_https?.replace(
 					"_normal",
 					"_400x400",
 				) ||
 				null
+			if (tweetPreview) {
+				const stored = await persistPreviewImage(documentId, tweetPreview)
+				if (stored) tweetPreview = stored
+			}
 			await supabaseAdmin
 				.from("documents")
 				.update({
@@ -184,6 +189,8 @@ export async function processAndSaveDocument(
 			const videoId = extractYouTubeId(document.url)
 			if (videoId) {
 				previewUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+				const stored = await persistPreviewImage(documentId, previewUrl)
+				if (stored) previewUrl = stored
 			}
 		}
 
@@ -197,7 +204,11 @@ export async function processAndSaveDocument(
 				contentType: document.type || "text",
 				metadata: (document.metadata as Record<string, unknown>) || {},
 			})
-			previewUrl = previewResult?.url || null
+			const rawPreviewUrl = previewResult?.url || null
+			if (rawPreviewUrl) {
+				const stored = await persistPreviewImage(documentId, rawPreviewUrl)
+				previewUrl = stored ?? rawPreviewUrl
+			}
 		}
 
 		if (previewUrl) {
@@ -261,7 +272,8 @@ export async function processAndSaveDocument(
 	if (previewUrl) finalUpdate.preview_image = previewUrl
 	// Fallback: use Firecrawl OG image as preview
 	if (!finalUpdate.preview_image && metaTags.ogImage) {
-		finalUpdate.preview_image = metaTags.ogImage
+		const stored = await persistPreviewImage(documentId, metaTags.ogImage)
+		finalUpdate.preview_image = stored ?? metaTags.ogImage
 	}
 	if (extraction.wordCount) finalUpdate.word_count = extraction.wordCount
 	if (processed.tags?.length) finalUpdate.tags = processed.tags

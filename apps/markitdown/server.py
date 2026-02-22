@@ -171,7 +171,6 @@ def index():
             'Audio (with transcription)',
             'HTML', 'CSV', 'JSON', 'XML',
             'EPUB', 'ZIP',
-            'YouTube URLs'
         ]
     }), 200
 

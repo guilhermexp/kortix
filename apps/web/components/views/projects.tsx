@@ -317,38 +317,40 @@ export function ProjectsView() {
 												<div className="w-2 h-2 bg-green-400 rounded-full" />
 											</motion.div>
 										)}
-										<DropdownMenu>
-											<DropdownMenuTrigger
-												className="inline-flex h-9 w-9 items-center justify-center rounded-md text-foreground dark:text-white/50 hover:text-foreground dark:text-white hover:bg-accent dark:hover:bg-accent/50"
-												onClick={(e) => e.stopPropagation()}
-											>
-												<MoreVertical className="h-4 w-4" />
-											</DropdownMenuTrigger>
-											<DropdownMenuContent
-												align="end"
-												className="bg-black/90 border-white/10"
-											>
-												<DropdownMenuItem
-													className="text-red-400 hover:text-red-300 cursor-pointer"
-													onClick={(e) => {
-														e.stopPropagation()
-														setDeleteDialog({
-															open: true,
-															project: {
-																id: project.id,
-																name: project.name ?? "Untitled",
-																containerTag: project.containerTag ?? "",
-															},
-															action: "move",
-															targetProjectId: "",
-														})
-													}}
+										{!project.isFixed && (
+											<DropdownMenu>
+												<DropdownMenuTrigger
+													className="inline-flex h-9 w-9 items-center justify-center rounded-md text-foreground dark:text-white/50 hover:text-foreground dark:text-white hover:bg-accent dark:hover:bg-accent/50"
+													onClick={(e) => e.stopPropagation()}
 												>
-													<Trash2 className="h-4 w-4 mr-2" />
-													Delete Project
-												</DropdownMenuItem>
-											</DropdownMenuContent>
-										</DropdownMenu>
+													<MoreVertical className="h-4 w-4" />
+												</DropdownMenuTrigger>
+												<DropdownMenuContent
+													align="end"
+													className="bg-black/90 border-white/10"
+												>
+													<DropdownMenuItem
+														className="text-red-400 hover:text-red-300 cursor-pointer"
+														onClick={(e) => {
+															e.stopPropagation()
+															setDeleteDialog({
+																open: true,
+																project: {
+																	id: project.id,
+																	name: project.name ?? "Untitled",
+																	containerTag: project.containerTag ?? "",
+																},
+																action: "move",
+																targetProjectId: "",
+															})
+														}}
+													>
+														<Trash2 className="h-4 w-4 mr-2" />
+														Delete Project
+													</DropdownMenuItem>
+												</DropdownMenuContent>
+											</DropdownMenu>
+										)}
 									</div>
 								</motion.div>
 							))}

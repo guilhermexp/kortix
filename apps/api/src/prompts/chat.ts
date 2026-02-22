@@ -29,7 +29,10 @@ You have access to the "searchDatabase" tool that searches through the user's sa
 
 **How to use search results:**
 The searchDatabase tool returns JSON with:
-- count: total number of results found
+- query: original search query
+- total: total number of results found
+- returned: number of results returned in this response
+- timing: search execution time in milliseconds
 - results: array of documents with title, content, summary, type, url, score, chunks, metadata
 
 When presenting results:
@@ -47,7 +50,7 @@ When presenting results:
 - **SEMPRE responda em Português (Brasil)** - Todas as suas respostas devem ser em português, independentemente do idioma usado pelo usuário
 - Be concise but comprehensive - combine multiple sources when helpful
 - When showing lists, present them in a clear, organized format
-`
+`;
 
 export const CONDENSE_SYSTEM_PROMPT = `You are a query rewriting assistant. Given a conversation between a user and an assistant and the user's latest follow-up question, rewrite the follow-up into a standalone query that:
 
@@ -56,109 +59,109 @@ export const CONDENSE_SYSTEM_PROMPT = `You are a query rewriting assistant. Give
 3. Includes relevant specifications or constraints mentioned previously
 4. Removes conversational fillers or acknowledgements
 
-Return ONLY the rewritten query without any punctuation or commentary.`
+Return ONLY the rewritten query without any punctuation or commentary.`;
 
-export const FALLBACK_PROMPT = `You are a helpful assistant with access to the user's personal knowledge base.`
+export const FALLBACK_PROMPT = `You are a helpful assistant with access to the user's personal knowledge base.`;
 
 export function formatSearchResultsForSystemMessage(
-	results: Array<{
-		documentId: string
-		title: string | null
-		summary: string | null
-		score: number
-		chunks?: Array<{ content: string; score: number }>
-		metadata?: Record<string, unknown> | null
-	}>,
-	options: {
-		maxResults?: number
-		includeScore?: boolean
-		includeSummary?: boolean
-		includeChunks?: boolean
-		maxChunkLength?: number
-	} = {},
+  results: Array<{
+    documentId: string;
+    title: string | null;
+    summary: string | null;
+    score: number;
+    chunks?: Array<{ content: string; score: number }>;
+    metadata?: Record<string, unknown> | null;
+  }>,
+  options: {
+    maxResults?: number;
+    includeScore?: boolean;
+    includeSummary?: boolean;
+    includeChunks?: boolean;
+    maxChunkLength?: number;
+  } = {},
 ) {
-	const {
-		maxResults = 5,
-		includeScore = true,
-		includeSummary = true,
-		includeChunks = true,
-		maxChunkLength = 300,
-	} = options
+  const {
+    maxResults = 5,
+    includeScore = true,
+    includeSummary = true,
+    includeChunks = true,
+    maxChunkLength = 300,
+  } = options;
 
-	if (!Array.isArray(results) || results.length === 0) {
-		return ""
-	}
+  if (!Array.isArray(results) || results.length === 0) {
+    return "";
+  }
 
-	const topResults = results.slice(0, maxResults)
-	const formatted = topResults.map((result, index) => {
-		const lines: string[] = []
+  const topResults = results.slice(0, maxResults);
+  const formatted = topResults.map((result, index) => {
+    const lines: string[] = [];
 
-		// Document title and score
-		const title = result.title || `Document ${result.documentId}`
-		const scorePart =
-			includeScore && Number.isFinite(result.score)
-				? ` (relevance: ${(result.score * 100).toFixed(1)}%)`
-				: ""
-		lines.push(`[${index + 1}] ${title}${scorePart}`)
+    // Document title and score
+    const title = result.title || `Document ${result.documentId}`;
+    const scorePart =
+      includeScore && Number.isFinite(result.score)
+        ? ` (relevance: ${(result.score * 100).toFixed(1)}%)`
+        : "";
+    lines.push(`[${index + 1}] ${title}${scorePart}`);
 
-		// Source label if available
-		const metadata = result.metadata ?? null
-		const sourceValue = metadata?.source
-		const sourceLabel =
-			typeof sourceValue === "string" ? (sourceValue as string) : undefined
-		if (sourceLabel) {
-			lines.push(`    Source: ${sourceLabel}`)
-		}
+    // Source label if available
+    const metadata = result.metadata ?? null;
+    const sourceValue = metadata?.source;
+    const sourceLabel =
+      typeof sourceValue === "string" ? (sourceValue as string) : undefined;
+    if (sourceLabel) {
+      lines.push(`    Source: ${sourceLabel}`);
+    }
 
-		// URL if available
-		const urlCandidate = metadata?.url ?? metadata?.source_url
-		const url =
-			typeof urlCandidate === "string" ? (urlCandidate as string) : undefined
-		if (url) {
-			lines.push(`    URL: ${url}`)
-		}
+    // URL if available
+    const urlCandidate = metadata?.url ?? metadata?.source_url;
+    const url =
+      typeof urlCandidate === "string" ? (urlCandidate as string) : undefined;
+    if (url) {
+      lines.push(`    URL: ${url}`);
+    }
 
-		// Summary if available and requested
-		if (includeSummary && result.summary) {
-			const summary =
-				result.summary.length > 200
-					? `${result.summary.slice(0, 197)}...`
-					: result.summary
-			lines.push(`    Summary: ${summary}`)
-		}
+    // Summary if available and requested
+    if (includeSummary && result.summary) {
+      const summary =
+        result.summary.length > 200
+          ? `${result.summary.slice(0, 197)}...`
+          : result.summary;
+      lines.push(`    Summary: ${summary}`);
+    }
 
-		// Relevant chunks if requested
-		if (includeChunks && result.chunks?.length > 0) {
-			const relevantChunks = result.chunks
-				.filter((chunk) => chunk.score > 0.3) // Only include relevant chunks
-				.slice(0, 2) // Limit to top 2 chunks
+    // Relevant chunks if requested
+    if (includeChunks && result.chunks?.length > 0) {
+      const relevantChunks = result.chunks
+        .filter((chunk) => chunk.score > 0.3) // Only include relevant chunks
+        .slice(0, 2); // Limit to top 2 chunks
 
-			if (relevantChunks.length > 0) {
-				lines.push("    Relevant excerpts:")
-				for (const chunk of relevantChunks) {
-					const content = chunk.content?.replace(/\s+/g, " ").trim()
-					if (!content) continue
-					const excerpt =
-						content.length > maxChunkLength
-							? `${content.slice(0, maxChunkLength - 3)}...`
-							: content
-					lines.push(`      • ${excerpt}`)
-				}
-			}
-		}
+      if (relevantChunks.length > 0) {
+        lines.push("    Relevant excerpts:");
+        for (const chunk of relevantChunks) {
+          const content = chunk.content?.replace(/\s+/g, " ").trim();
+          if (!content) continue;
+          const excerpt =
+            content.length > maxChunkLength
+              ? `${content.slice(0, maxChunkLength - 3)}...`
+              : content;
+          lines.push(`      • ${excerpt}`);
+        }
+      }
+    }
 
-		return lines.join("\n")
-	})
+    return lines.join("\n");
+  });
 
-	const contextMessage = `## Retrieved Context from Your Knowledge Base:
+  const contextMessage = `## Retrieved Context from Your Knowledge Base:
 ${formatted.join("\n\n")}
 
 Total documents found: ${results.length}
 Showing top ${topResults.length} most relevant results.
 
-Use this context to provide accurate, personalized responses based on the user's saved information.`
+Use this context to provide accurate, personalized responses based on the user's saved information.`;
 
-	return contextMessage
+  return contextMessage;
 }
 
 export const QUERY_GENERATION_PROMPT = `Given the user's question, generate 3-5 alternative search queries that could help find relevant information in their knowledge base.
@@ -174,7 +177,7 @@ Return queries as a JSON array of strings.
 User's question: {{QUESTION}}
 
 Example output:
-["machine learning basics", "ML fundamentals", "artificial intelligence introduction", "neural networks explained"]`
+["machine learning basics", "ML fundamentals", "artificial intelligence introduction", "neural networks explained"]`;
 
 export const ANSWER_SYNTHESIS_PROMPT = `You are synthesizing information from multiple sources to answer the user's question.
 
@@ -191,4 +194,4 @@ export const ANSWER_SYNTHESIS_PROMPT = `You are synthesizing information from mu
 4. If the available information doesn't fully answer the question, mention what's missing
 5. Suggest follow-up questions or related topics from the knowledge base
 
-Remember to be accurate, helpful, and make connections between different pieces of information when relevant.`
+Remember to be accurate, helpful, and make connections between different pieces of information when relevant.`;

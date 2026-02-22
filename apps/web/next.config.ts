@@ -64,6 +64,10 @@ const nextConfig: NextConfig = {
 				protocol: "https",
 				hostname: "img.youtube.com",
 			},
+			{
+				protocol: "https",
+				hostname: "**.supabase.co",
+			},
 		],
 		// Cache images for 60 days to prevent rate limiting
 		minimumCacheTTL: 60 * 60 * 24 * 60,

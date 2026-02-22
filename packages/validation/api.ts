@@ -44,6 +44,7 @@ export const ProjectSchema = z.object({
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
 	isExperimental: z.boolean().default(false),
+	isFixed: z.boolean().default(false),
 	documentCount: z.number().optional(),
 })
 export const CreateProjectSchema = z.object({

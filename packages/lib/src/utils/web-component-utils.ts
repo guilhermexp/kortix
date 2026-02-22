@@ -239,6 +239,8 @@ const SAFE_DOMAINS = [
 	"cdnjs.cloudflare.com",
 	"unpkg.com",
 	"jsdelivr.net",
+	// Supabase Storage (persisted preview images)
+	"supabase.co",
 ]
 
 /**

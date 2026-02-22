@@ -1,317 +1,285 @@
-import { createHash } from "node:crypto"
-import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk"
-import { CanvasCreateViewInputSchema } from "@repo/validation/api"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import { z } from "zod"
-import { env } from "../env"
-import { searchDocuments } from "../routes/search"
-import { getCacheService } from "./cache"
+import { createHash } from "node:crypto";
+import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
+import { CanvasCreateViewInputSchema } from "@repo/validation/api";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import { env } from "../env";
+import { getCacheService } from "./cache";
 import {
-	applyCanvasCreateView,
-	CANVAS_READ_ME_TEXT,
-	resolveCanvasToolTarget,
-} from "./canvas-agent-service"
+  applyCanvasCreateView,
+  CANVAS_READ_ME_TEXT,
+  resolveCanvasToolTarget,
+} from "./canvas-agent-service";
+import { executeStructuredSearch } from "./search-tool";
 
 type ToolContext = {
-	containerTags?: string[]
-	scopedDocumentIds?: string[]
-	canvasId?: string
-	userId?: string
-}
+  containerTags?: string[];
+  scopedDocumentIds?: string[];
+  canvasId?: string;
+  userId?: string;
+};
 
 function safeString(value: unknown) {
-	return typeof value === "string" ? value : undefined
+  return typeof value === "string" ? value : undefined;
 }
 
 export function createKortixTools(
-	client: SupabaseClient,
-	orgId: string,
-	context: ToolContext = {},
+  client: SupabaseClient,
+  orgId: string,
+  context: ToolContext = {},
 ) {
-	const baseContainerTags = Array.isArray(context.containerTags)
-		? context.containerTags
-		: undefined
-	const baseScopedIds = Array.isArray(context.scopedDocumentIds)
-		? context.scopedDocumentIds
-		: undefined
-	const contextCanvasId = safeString(context.canvasId)
-	const contextUserId = safeString(context.userId)
-	const canvasToolsEnabled = env.CANVAS_AGENT_TOOLS_ENABLED === "true"
+  const baseContainerTags = Array.isArray(context.containerTags)
+    ? context.containerTags
+    : undefined;
+  const baseScopedIds = Array.isArray(context.scopedDocumentIds)
+    ? context.scopedDocumentIds
+    : undefined;
+  const contextCanvasId = safeString(context.canvasId);
+  const contextUserId = safeString(context.userId);
+  const canvasToolsEnabled = env.CANVAS_AGENT_TOOLS_ENABLED === "true";
 
-	const cache = getCacheService()
-	const CACHE_TTL = 3600 // 1 hour
+  const cache = getCacheService();
+  const CACHE_TTL = 3600; // 1 hour
 
-	// Helper function to generate cache key
-	function generateCacheKey(params: Record<string, unknown>): string {
-		const normalized = JSON.stringify(params, Object.keys(params).sort())
-		const hash = createHash("sha256").update(normalized).digest("hex")
-		return `search:${orgId}:${hash}`
-	}
+  // Helper function to generate cache key
+  function generateCacheKey(params: Record<string, unknown>): string {
+    const normalized = JSON.stringify(params, Object.keys(params).sort());
+    const hash = createHash("sha256").update(normalized).digest("hex");
+    return `search:${orgId}:${hash}`;
+  }
 
-	return createSdkMcpServer({
-		name: "kortix-tools",
-		version: "1.0.0",
-		tools: [
-			tool(
-				"searchDatabase",
-				"Search documents and memories in the user's knowledge base. Returns document titles, summaries, URLs, and relevant excerpts. Use this tool whenever the user asks about their saved content, documents, or memories.",
-				{
-					query: z
-						.string()
-						.min(1)
-						.describe(
-							"Search query text - can be keywords, questions, or topics",
-						),
-					limit: z
-						.number()
-						.min(1)
-						.max(50)
-						.default(20)
-						.describe("Maximum number of results to return"),
-					includeSummary: z
-						.boolean()
-						.default(true)
-						.describe("Include document summaries in results"),
-					includeFullDocs: z
-						.boolean()
-						.default(false)
-						.describe(
-							"Include full document content (use only when specifically needed, as it increases response size)",
-						),
-					containerTags: z
-						.array(z.string())
-						.optional()
-						.describe("Filter by project/container tags"),
-					scopedDocumentIds: z
-						.array(z.string())
-						.optional()
-						.describe("Limit search to specific document IDs"),
-				},
-				async ({
-					query,
-					limit,
-					includeSummary,
-					includeFullDocs,
-					containerTags,
-					scopedDocumentIds,
-				}) => {
-					const startTime = Date.now()
+  return createSdkMcpServer({
+    name: "kortix-tools",
+    version: "1.0.0",
+    tools: [
+      tool(
+        "searchDatabase",
+        "Search documents and memories in the user's knowledge base. Returns document titles, summaries, URLs, and relevant excerpts. Use this tool whenever the user asks about their saved content, documents, or memories.",
+        {
+          query: z
+            .string()
+            .min(1)
+            .describe(
+              "Search query text - can be keywords, questions, or topics",
+            ),
+          limit: z
+            .number()
+            .min(1)
+            .max(50)
+            .default(20)
+            .describe("Maximum number of results to return"),
+          includeSummary: z
+            .boolean()
+            .default(true)
+            .describe("Include document summaries in results"),
+          includeFullDocs: z
+            .boolean()
+            .default(false)
+            .describe(
+              "Include full document content (use only when specifically needed, as it increases response size)",
+            ),
+          containerTags: z
+            .array(z.string())
+            .optional()
+            .describe("Filter by project/container tags"),
+          scopedDocumentIds: z
+            .array(z.string())
+            .optional()
+            .describe("Limit search to specific document IDs"),
+        },
+        async ({
+          query,
+          limit,
+          includeSummary,
+          includeFullDocs,
+          containerTags,
+          scopedDocumentIds,
+        }) => {
+          const startTime = Date.now();
 
-					// Generate cache key from search parameters
-					const cacheKey = generateCacheKey({
-						query,
-						limit,
-						includeSummary,
-						includeFullDocs,
-						containerTags: containerTags || baseContainerTags,
-						scopedDocumentIds: scopedDocumentIds || baseScopedIds,
-					})
+          // Generate cache key from search parameters
+          const cacheKey = generateCacheKey({
+            query,
+            limit,
+            includeSummary,
+            includeFullDocs,
+            containerTags: containerTags || baseContainerTags,
+            scopedDocumentIds: scopedDocumentIds || baseScopedIds,
+          });
 
-					// Try to get from cache
-					const cached = await cache.get<unknown>(cacheKey)
-					if (cached) {
-						const duration = Date.now() - startTime
-						console.log(
-							`[searchDatabase] Cache hit for query "${query}" (${duration}ms)`,
-						)
-						return {
-							content: [
-								{
-									type: "text",
-									text: JSON.stringify(cached, null, 2),
-								},
-							],
-						}
-					}
+          // Try to get from cache
+          const cached = await cache.get<unknown>(cacheKey);
+          if (cached) {
+            const duration = Date.now() - startTime;
+            console.log(
+              `[searchDatabase] Cache hit for query "${query}" (${duration}ms)`,
+            );
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(cached, null, 2),
+                },
+              ],
+            };
+          }
 
-					console.log(`[searchDatabase] Cache miss for query "${query}"`)
-					try {
-						const response = await searchDocuments(client, orgId, {
-							q: query,
-							limit,
-							includeSummary,
-							includeFullDocs,
-							chunkThreshold: 0.0, // Accept all chunks, let ranking decide
-							documentThreshold: 0.0, // Accept all documents, let ranking decide
-							onlyMatchingChunks: false,
-							containerTags:
-								containerTags && containerTags.length > 0
-									? containerTags
-									: baseContainerTags,
-							scopedDocumentIds:
-								scopedDocumentIds && scopedDocumentIds.length > 0
-									? scopedDocumentIds
-									: baseScopedIds,
-						})
-						const duration = Date.now() - startTime
-						console.log(
-							`[searchDatabase] Found ${response.total} results (${duration}ms)`,
-						)
+          console.log(`[searchDatabase] Cache miss for query "${query}"`);
+          try {
+            const result = await executeStructuredSearch(client, orgId, {
+              query,
+              limit,
+              includeSummary,
+              includeFullDocs,
+              chunkThreshold: 0,
+              documentThreshold: 0,
+              onlyMatchingChunks: false,
+              containerTags:
+                containerTags && containerTags.length > 0
+                  ? containerTags
+                  : baseContainerTags,
+              scopedDocumentIds:
+                scopedDocumentIds && scopedDocumentIds.length > 0
+                  ? scopedDocumentIds
+                  : baseScopedIds,
+            });
+            const duration = Date.now() - startTime;
+            console.log(
+              `[searchDatabase] Found ${result.total} results (${duration}ms)`,
+            );
 
-						const result = {
-							count: response.total,
-							results: response.results.map((item) => ({
-								documentId: safeString(item.documentId),
-								title: safeString(item.title),
-								type: safeString(item.type),
-								score: item.score ?? undefined,
-								url: safeString(
-									item.metadata && typeof item.metadata === "object"
-										? (item.metadata as Record<string, unknown>).url
-										: undefined,
-								),
-								createdAt: safeString(item.createdAt),
-								updatedAt: safeString(item.updatedAt),
-								summary: safeString(item.summary),
-								content:
-									includeFullDocs && typeof item.content === "string"
-										? item.content
-										: undefined,
-								metadata:
-									item.metadata && typeof item.metadata === "object"
-										? (item.metadata as Record<string, unknown>)
-										: undefined,
-								chunks: Array.isArray(item.chunks)
-									? item.chunks.map((chunk) => ({
-											content: chunk.content,
-											score: chunk.score,
-										}))
-									: undefined,
-							})),
-						}
+            // Store in cache (fire and forget)
+            await cache.set(cacheKey, result, { ttl: CACHE_TTL });
 
-						// Store in cache (fire and forget)
-						await cache.set(cacheKey, result, { ttl: CACHE_TTL })
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Unknown error";
+            console.error("[searchDatabase] Tool error:", error);
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `searchDatabase failed: ${message}`,
+                },
+              ],
+              isError: true as const,
+            };
+          }
+        },
+      ),
+      ...(canvasToolsEnabled
+        ? [
+            tool(
+              "canvas_read_me",
+              "Read the canvas manipulation cheat sheet with element format, pseudo-elements (cameraUpdate, restoreCheckpoint, delete), and best practices.",
+              {},
+              async () => {
+                return {
+                  content: [
+                    {
+                      type: "text",
+                      text: CANVAS_READ_ME_TEXT,
+                    },
+                  ],
+                };
+              },
+            ),
+            tool(
+              "canvas_create_view",
+              "Create or update Excalidraw canvas content from a JSON array string. Supports regular elements and pseudo-elements cameraUpdate, restoreCheckpoint, and delete.",
+              {
+                canvasId: CanvasCreateViewInputSchema.shape.canvasId.describe(
+                  "Canvas ID. Optional in Canvas page context where active canvas is already known.",
+                ),
+                input: CanvasCreateViewInputSchema.shape.input.describe(
+                  "JSON array string containing Excalidraw elements and pseudo-elements.",
+                ),
+                checkpointId:
+                  CanvasCreateViewInputSchema.shape.checkpointId.describe(
+                    "Optional checkpoint id to restore before applying operations.",
+                  ),
+                mode: CanvasCreateViewInputSchema.shape.mode.describe(
+                  "append (default) or replace",
+                ),
+                baseVersion:
+                  CanvasCreateViewInputSchema.shape.baseVersion.describe(
+                    "Optional optimistic concurrency base version.",
+                  ),
+              },
+              async ({ canvasId, input, checkpointId, mode, baseVersion }) => {
+                if (!contextUserId) {
+                  return {
+                    content: [
+                      {
+                        type: "text",
+                        text: "canvas_create_view failed: missing authenticated user context",
+                      },
+                    ],
+                    isError: true as const,
+                  };
+                }
 
-						return {
-							content: [
-								{
-									type: "text",
-									text: JSON.stringify(result, null, 2),
-								},
-							],
-						}
-					} catch (error) {
-						const message =
-							error instanceof Error ? error.message : "Unknown error"
-						console.error("[searchDatabase] Tool error:", error)
-						return {
-							content: [
-								{
-									type: "text",
-									text: `searchDatabase failed: ${message}`,
-								},
-							],
-							isError: true as const,
-						}
-					}
-				},
-			),
-			...(canvasToolsEnabled
-				? [
-						tool(
-							"canvas_read_me",
-							"Read the canvas manipulation cheat sheet with element format, pseudo-elements (cameraUpdate, restoreCheckpoint, delete), and best practices.",
-							{},
-							async () => {
-								return {
-									content: [
-										{
-											type: "text",
-											text: CANVAS_READ_ME_TEXT,
-										},
-									],
-								}
-							},
-						),
-						tool(
-							"canvas_create_view",
-							"Create or update Excalidraw canvas content from a JSON array string. Supports regular elements and pseudo-elements cameraUpdate, restoreCheckpoint, and delete.",
-							{
-								canvasId: CanvasCreateViewInputSchema.shape.canvasId.describe(
-									"Canvas ID. Optional in Canvas page context where active canvas is already known.",
-								),
-								input: CanvasCreateViewInputSchema.shape.input.describe(
-									"JSON array string containing Excalidraw elements and pseudo-elements.",
-								),
-								checkpointId:
-									CanvasCreateViewInputSchema.shape.checkpointId.describe(
-										"Optional checkpoint id to restore before applying operations.",
-									),
-								mode: CanvasCreateViewInputSchema.shape.mode.describe(
-									"append (default) or replace",
-								),
-								baseVersion:
-									CanvasCreateViewInputSchema.shape.baseVersion.describe(
-										"Optional optimistic concurrency base version.",
-									),
-							},
-							async ({ canvasId, input, checkpointId, mode, baseVersion }) => {
-								if (!contextUserId) {
-									return {
-										content: [
-											{
-												type: "text",
-												text: "canvas_create_view failed: missing authenticated user context",
-											},
-										],
-										isError: true as const,
-									}
-								}
+                const resolvedCanvasId = resolveCanvasToolTarget({
+                  requestedCanvasId: safeString(canvasId),
+                  contextCanvasId,
+                });
+                if (!resolvedCanvasId) {
+                  return {
+                    content: [
+                      {
+                        type: "text",
+                        text: "canvas_create_view requires canvasId. No active canvas context found.",
+                      },
+                    ],
+                    isError: true as const,
+                  };
+                }
 
-								const resolvedCanvasId = resolveCanvasToolTarget({
-									requestedCanvasId: safeString(canvasId),
-									contextCanvasId,
-								})
-								if (!resolvedCanvasId) {
-									return {
-										content: [
-											{
-												type: "text",
-												text: "canvas_create_view requires canvasId. No active canvas context found.",
-											},
-										],
-										isError: true as const,
-									}
-								}
-
-								try {
-									const result = await applyCanvasCreateView({
-										client,
-										userId: contextUserId,
-										canvasId: resolvedCanvasId,
-										input,
-										checkpointId,
-										mode,
-										baseVersion,
-										source: "agent",
-									})
-									return {
-										content: [
-											{
-												type: "text",
-												text: JSON.stringify(result, null, 2),
-											},
-										],
-									}
-								} catch (error) {
-									const message =
-										error instanceof Error ? error.message : "Unknown error"
-									console.error("[canvas_create_view] Tool error:", error)
-									return {
-										content: [
-											{
-												type: "text",
-												text: `canvas_create_view failed: ${message}`,
-											},
-										],
-										isError: true as const,
-									}
-								}
-							},
-						),
-					]
-				: []),
-		],
-	})
+                try {
+                  const result = await applyCanvasCreateView({
+                    client,
+                    userId: contextUserId,
+                    canvasId: resolvedCanvasId,
+                    input,
+                    checkpointId,
+                    mode,
+                    baseVersion,
+                    source: "agent",
+                  });
+                  return {
+                    content: [
+                      {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                      },
+                    ],
+                  };
+                } catch (error) {
+                  const message =
+                    error instanceof Error ? error.message : "Unknown error";
+                  console.error("[canvas_create_view] Tool error:", error);
+                  return {
+                    content: [
+                      {
+                        type: "text",
+                        text: `canvas_create_view failed: ${message}`,
+                      },
+                    ],
+                    isError: true as const,
+                  };
+                }
+              },
+            ),
+          ]
+        : []),
+    ],
+  });
 }

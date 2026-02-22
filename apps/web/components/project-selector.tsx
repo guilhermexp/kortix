@@ -222,26 +222,28 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 															Rename
 														</DropdownMenuItem>
 														{/* Experimental toggle removed */}
-														<DropdownMenuItem
-															className="text-red-400 hover:text-red-300 cursor-pointer text-xs"
-															onClick={(e) => {
-																e.stopPropagation()
-																setDeleteDialog({
-																	open: true,
-																	project: {
-																		id: project.id,
-																		name: projectName,
-																		containerTag,
-																	},
-																	action: "move",
-																	targetProjectId: "",
-																})
-																setIsOpen(false)
-															}}
-														>
-															<Trash2 className="h-3 w-3 mr-2" />
-															Delete Project
-														</DropdownMenuItem>
+														{!project.isFixed && (
+															<DropdownMenuItem
+																className="text-red-400 hover:text-red-300 cursor-pointer text-xs"
+																onClick={(e) => {
+																	e.stopPropagation()
+																	setDeleteDialog({
+																		open: true,
+																		project: {
+																			id: project.id,
+																			name: projectName,
+																			containerTag,
+																		},
+																		action: "move",
+																		targetProjectId: "",
+																	})
+																	setIsOpen(false)
+																}}
+															>
+																<Trash2 className="h-3 w-3 mr-2" />
+																Delete Project
+															</DropdownMenuItem>
+														)}
 													</DropdownMenuContent>
 												</DropdownMenu>
 											</div>

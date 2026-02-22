@@ -121,6 +121,8 @@ const SAFE_DOMAINS = [
 	"cdnjs.cloudflare.com",
 	"unpkg.com",
 	"jsdelivr.net",
+	// Supabase Storage (persisted preview images)
+	"supabase.co",
 ]
 
 const proxyImageUrl = (url: string | undefined | null): string | undefined => {
