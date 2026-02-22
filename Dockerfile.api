@@ -1,25 +1,35 @@
+# Dockerfile for Kortix API service
 FROM oven/bun:1
 
+# Install Python and pip for MarkItDown support
 RUN apt-get update && apt-get install -y \
     python3 python3-pip python3-venv gcc \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+# Copy package files for better caching
 COPY package.json bun.lock ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/ packages/
 
+# Install Node dependencies
 RUN bun install
 
+# Copy all application code
 COPY . .
 
+# Install MarkItDown Python dependencies
 RUN bash apps/api/install-markitdown.sh || true
 
+# Set environment variables
+ENV NODE_ENV=production
 ENV MARKITDOWN_PYTHON_PATH=python3
 ENV PORT=4000
 
+# Expose port
 EXPOSE 4000
 
+# Start the API server
 CMD ["bun", "run", "--cwd", "apps/api", "start"]

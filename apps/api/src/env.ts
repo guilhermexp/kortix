@@ -10,7 +10,6 @@ const envSchema = z.object({
 	ANTHROPIC_BASE_URL: z.string().url().optional(),
 	COHERE_API_KEY: z.string().min(1).optional(),
 	EXA_API_KEY: z.string().min(1).optional(),
-	REPLICATE_API_TOKEN: z.string().min(1).optional(),
 	ENABLE_AGENTIC_MODE: z
 		.string()
 		.optional()
@@ -19,8 +18,7 @@ const envSchema = z.object({
 		.string()
 		.optional()
 		.transform((value) => value !== "false"),
-	EMBEDDING_MODEL: z.string().default("text-embedding-004"),
-	EMBEDDING_DIMENSION: z.coerce.number().default(1536),
+	EMBEDDING_DIMENSION: z.coerce.number().default(1024),
 	CHAT_MODEL: z.string().default("claude-3-5-sonnet-20241022"),
 	SUMMARY_MODEL: z.string().optional(),
 	ENABLE_RECENCY_BOOST: z
@@ -53,7 +51,7 @@ const envSchema = z.object({
 	// Voyage AI (embeddings provider)
 	VOYAGE_API_KEY: z.string().min(1).optional(),
 	// Kimi AI provider key
-	KIMI_API_KEY: z.string().min(1),
+	KIMI_API_KEY: z.string().min(1).optional(),
 	OPENROUTER_TEMPERATURE: z
 		.string()
 		.optional()
@@ -101,10 +99,8 @@ const parsed = envSchema.safeParse({
 	ANTHROPIC_BASE_URL: process.env.ANTHROPIC_BASE_URL,
 	COHERE_API_KEY: process.env.COHERE_API_KEY,
 	EXA_API_KEY: process.env.EXA_API_KEY,
-	REPLICATE_API_TOKEN: process.env.REPLICATE_API_TOKEN,
 	ENABLE_AGENTIC_MODE: process.env.ENABLE_AGENTIC_MODE,
 	ENABLE_RERANKING: process.env.ENABLE_RERANKING,
-	EMBEDDING_MODEL: process.env.EMBEDDING_MODEL,
 	EMBEDDING_DIMENSION: process.env.EMBEDDING_DIMENSION,
 	CHAT_MODEL: process.env.CHAT_MODEL,
 	SUMMARY_MODEL: process.env.SUMMARY_MODEL,
