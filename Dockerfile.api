@@ -11,6 +11,7 @@ WORKDIR /app
 # Copy package files for better caching
 COPY package.json bun.lock ./
 COPY apps/api/package.json apps/api/
+COPY apps/api/install-markitdown.sh apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/ packages/
 
