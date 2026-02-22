@@ -1,0 +1,15 @@
+node_modules
+.git
+.next
+.turbo
+dist
+*.log
+.env*
+.DS_Store
+.claude
+.playwright-cli
+docs
+apps/browser-extension
+apps/markitdown
+supabase
+migration
