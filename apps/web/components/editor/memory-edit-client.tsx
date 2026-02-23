@@ -447,8 +447,9 @@ export function MemoryEditClient({
 	useEffect(() => {
 		if (!isPlayingVideo || !videoContainerRef.current) return
 		const observer = new IntersectionObserver(
-			([entry]) => {
-				setIsVideoOutOfView(!entry.isIntersecting)
+			(entries) => {
+				const entry = entries[0]
+				if (entry) setIsVideoOutOfView(!entry.isIntersecting)
 			},
 			{ threshold: 0.3 },
 		)

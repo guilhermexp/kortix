@@ -15,6 +15,8 @@ const contentSecurityPolicy =
 	`default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://opengraph.githubassets.com https://*.githubusercontent.com https://i.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:${devLocalImageSources}; font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com https://unpkg.com https://r2cdn.perplexity.ai https://esm.sh; connect-src 'self' data: blob:${devLocalConnectSources} https://* wss://*; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; frame-src https://www.youtube.com https://youtube.com https://*.figma.com https://*.google.com https://*.excalidraw.com;`
 
 const nextConfig: NextConfig = {
+	// Standalone output for Docker deployments
+	output: "standalone",
 	// Force new build ID to bust all caches
 	generateBuildId: async () => {
 		return `build-${Date.now()}`

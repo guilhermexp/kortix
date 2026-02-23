@@ -141,7 +141,7 @@ export function CanvasEditor({
 				})
 
 				if (response.error) {
-					if (response.error.type === "version_conflict") {
+					if ((response.error as any).type === "version_conflict") {
 						const latest = await $fetch("@get/canvas/:id", {
 							params: { id: canvasId },
 						})
