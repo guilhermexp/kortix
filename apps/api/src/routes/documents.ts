@@ -978,40 +978,7 @@ export async function addDocument({
     jobId = existingJob.id;
   }
 
-  // Try to add to Redis queue first (if available)
-  // Falls back to inline processing if Redis unavailable
-  if (isRedisEnabled()) {
-    try {
-      await addDocumentJob(docId, organizationId, userId, {
-        containerTags: parsed.containerTags ?? [containerTag],
-        content: rawContent,
-        metadata,
-        url: inferredUrl,
-        type: inferredType,
-        source: inferredSource,
-      });
-      console.log("[addDocument] Job added to Redis queue", {
-        documentId: docId,
-      });
-      invalidateDocumentCaches();
-      return MemoryResponseSchema.parse({ id: docId, status: "queued" });
-    } catch (queueError) {
-      console.warn(
-        "[addDocument] Failed to add to Redis queue, falling back to inline processing",
-        {
-          documentId: docId,
-          error:
-            queueError instanceof Error
-              ? queueError.message
-              : String(queueError),
-        },
-      );
-      // Fall through to inline processing
-    }
-  }
-
-  // Process document inline (async - doesn't block response)
-  // Used when Redis unavailable or queue add fails
+  // Always process document inline (doesn't block response)
   if (jobId) {
     // Update document status to "processing" in DB so frontend polling sees it immediately
     await client
