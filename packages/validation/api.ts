@@ -5,6 +5,7 @@ import {
 	DocumentSchema,
 	MemoryEntrySchema,
 	OrganizationSettingsSchema,
+	ProcessingMetadataSchema,
 } from "./schemas"
 
 export * from "./canvas"
@@ -360,6 +361,24 @@ export const BundleChildSchema = z.object({
 export const DocumentsWithMemoriesResponseSchema = z.object({
 	documents: z.array(
 		MemorySchema.extend({
+			// Fields from DocumentSchema not present in MemorySchema
+			orgId: z.string().optional(),
+			userId: z.string().optional(),
+			processingMetadata: ProcessingMetadataSchema.nullable().optional(),
+			raw: z.any().nullable().optional(),
+			ogImage: z.string().nullable().optional(),
+			tags: z.array(z.string()).nullable().optional(),
+			previewImage: z.string().nullable().optional(),
+			error: z.string().nullable().optional(),
+			tokenCount: z.number().nullable().optional(),
+			wordCount: z.number().nullable().optional(),
+			averageChunkSize: z.number().nullable().optional(),
+			summaryEmbedding: z
+				.union([z.array(z.number()), z.string()])
+				.nullable()
+				.optional(),
+			summaryEmbeddingModel: z.string().nullable().optional(),
+			// Memory entries
 			memoryEntries: z.array(
 				z.object({
 					id: z.string(),

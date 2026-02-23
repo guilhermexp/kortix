@@ -196,7 +196,7 @@ WITH (lists = 100);
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION search_documents_vector(
-  query_embedding vector(1536),
+  query_embedding vector(1024),
   org_id_param uuid,
   limit_param int DEFAULT 50,
   similarity_threshold float DEFAULT 0.0
@@ -241,7 +241,7 @@ $$ LANGUAGE plpgsql STABLE;
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION search_chunks_vector(
-  query_embedding vector(1536),
+  query_embedding vector(1024),
   org_id_param uuid,
   limit_param int DEFAULT 100,
   similarity_threshold float DEFAULT 0.0
