@@ -37,6 +37,18 @@ Diagramas completos usando C4 Model e análise de dependências:
 - ✅ **Risk Analysis**: Mapa de riscos
 - ✅ **Quality Metrics**: Métricas de qualidade
 
+### 3. [SEARCH_AND_AGENT_TOOLS.md](./SEARCH_AND_AGENT_TOOLS.md)
+**Contrato Atual de Busca e Ferramentas de Agente**
+
+Guia prático do comportamento mais recente de busca:
+
+- ✅ Serviço unificado `executeStructuredSearch`
+- ✅ Contrato MCP (`searchKortix`) com `responseFormat` e `limit`
+- ✅ Contrato do agente interno (`searchDatabase`)
+- ✅ Busca em documentos com `title + summary + content`
+- ✅ Fallback sem acentos (diacríticos)
+- ✅ Correções de UX: limpeza imediata da busca e normalização de projeto legado
+
 ## 🎯 Como Usar Esta Documentação
 
 ### Para Desenvolvedores
@@ -209,5 +221,5 @@ Para dúvidas sobre a arquitetura, entre em contato com a equipe de engenharia.
 
 ---
 
-**Última atualização**: 16 de Janeiro de 2026
+**Última atualização**: 22 de Fevereiro de 2026
 **Mantido por**: Equipe Kortix + Senior Architect (Claude Sonnet 4.5)

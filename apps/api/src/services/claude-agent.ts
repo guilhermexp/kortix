@@ -314,6 +314,7 @@ export async function executeClaudeAgent(
 
     const queryOptions: Record<string, unknown> = {
       model: resolvedModel,
+      thinking: { type: "adaptive" },
       mcpServers,
       disallowedTools: [
         "Bash",

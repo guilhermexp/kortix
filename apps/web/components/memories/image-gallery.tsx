@@ -35,6 +35,31 @@ const pickFirstUrl = (
 	return undefined
 }
 
+/** Returns true if the URL looks like a favicon or small icon */
+const isIconUrl = (url: string): boolean => {
+	try {
+		const { pathname } = new URL(url)
+		const lower = pathname.toLowerCase()
+		// Common favicon / icon patterns
+		if (lower.includes("favicon")) return true
+		if (lower.includes("apple-touch-icon")) return true
+		if (lower.endsWith(".ico")) return true
+		// Paths like /icon-192x192.png or /icons/...
+		if (/\/(icons?)[/.-]/i.test(lower)) return true
+		// Small dimension markers like 16x16, 32x32, 48x48, 64x64, 96x96, 128x128, 192x192
+		if (/\d{2,3}x\d{2,3}/.test(lower)) {
+			const match = lower.match(/(\d{2,3})x(\d{2,3})/)
+			if (match) {
+				const dim = Math.max(Number(match[1]), Number(match[2]))
+				if (dim <= 192) return true
+			}
+		}
+		return false
+	} catch {
+		return false
+	}
+}
+
 interface ImageData {
 	src: string
 	alt: string
@@ -106,7 +131,7 @@ const extractImagesFromDocument = (
 			for (const img of source) {
 				if (typeof img === "string") {
 					const imgUrl = safeHttpUrl(img)
-					if (imgUrl && !images.some((existing) => existing.src === imgUrl)) {
+					if (imgUrl && !isIconUrl(imgUrl) && !images.some((existing) => existing.src === imgUrl)) {
 						images.push({
 							src: imgUrl,
 							alt: document.title || "Additional image",
@@ -117,7 +142,7 @@ const extractImagesFromDocument = (
 					const imgRecord = asRecord(img)
 					if (imgRecord) {
 						const imgUrl = safeHttpUrl(imgRecord.url || imgRecord.src)
-						if (imgUrl && !images.some((existing) => existing.src === imgUrl)) {
+						if (imgUrl && !isIconUrl(imgUrl) && !images.some((existing) => existing.src === imgUrl)) {
 							images.push({
 								src: imgUrl,
 								alt:
@@ -134,8 +159,28 @@ const extractImagesFromDocument = (
 		}
 	}
 
-	// Limit to 4 images for a clean 2x2 grid layout
-	return images.slice(0, 4)
+	// Extract images from markdown content (![alt](url) and <img src="url">)
+	const content = (document as any).content
+	if (typeof content === "string") {
+		const mdImageRegex = /!\[[^\]]*\]\(([^)]+)\)/g
+		const htmlImgRegex = /<img[^>]+src=["']([^"']+)["']/gi
+		for (const regex of [mdImageRegex, htmlImgRegex]) {
+			let match: RegExpExecArray | null
+			while ((match = regex.exec(content)) !== null) {
+				const imgUrl = safeHttpUrl(match[1])
+				if (imgUrl && !isIconUrl(imgUrl) && !images.some((existing) => existing.src === imgUrl)) {
+					images.push({
+						src: imgUrl,
+						alt: document.title || "Content image",
+						title: "Content Image",
+					})
+				}
+			}
+		}
+	}
+
+	// Limit to 8 images
+	return images.slice(0, 8)
 }
 
 const ImageGalleryImpl = ({ document }: ImageGalleryProps) => {
@@ -170,7 +215,7 @@ const ImageGalleryImpl = ({ document }: ImageGalleryProps) => {
 				Images ({validImages.length})
 			</div>
 
-			<div className="grid grid-cols-2 gap-3">
+			<div className={`grid gap-3 ${validImages.length <= 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"}`}>
 				{validImages.map((image, index) => (
 					<div
 						className="relative group cursor-pointer rounded-lg overflow-hidden border transition-all hover:scale-[1.02]"

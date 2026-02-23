@@ -1,0 +1,17 @@
+[ 1000361ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3001/v3/conversations/4a26766f-78ab-4fe7-9b9d-af0dc565afe9/history:0
+[ 1343380ms] [ERROR] Failed to fetch related documents: TypeError: Failed to fetch
+    at betterFetch (http://localhost:3001/_next/static/chunks/node_modules_0acca313._.js:631:26)
+    at async $fetch (http://localhost:3001/_next/static/chunks/node_modules_0acca313._.js:540:16)
+    at async listDocumentConnections (http://localhost:3001/_next/static/chunks/_181ecab2._.js:2183:22)
+    at async fetchRelatedDocs (http://localhost:3001/_next/static/chunks/_181ecab2._.js?id=%255Bproject%255D%252Fapps%252Fweb%252Fcomponents%252Fmemories%252Frelated-documents-panel.tsx+%255Bapp-client%255D+%2528ecmascript%2529:131:38) @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3132
+[ 1357209ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3001/v3/conversations/06be2c70-ee80-425b-bf94-77aedd0b401c/history:0
+[ 2208058ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=9KUwX5eTQb86VJqtZPZvj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10875
+[ 2209061ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=9KUwX5eTQb86VJqtZPZvj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10875
+[ 2210064ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=9KUwX5eTQb86VJqtZPZvj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10875
+[ 2211067ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=9KUwX5eTQb86VJqtZPZvj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10875
+[ 2212072ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=9KUwX5eTQb86VJqtZPZvj' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10875
+[ 2242950ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3001/v3/conversations/6d522d1c-2ad4-42d0-85cc-2140e89c6f05/history:0
+[ 2966345ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3001/v3/conversations/35e37c7f-5df6-4aff-b908-d0455ffd8e06/history:0
+[ 3023435ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3001/v3/conversations/61b0a988-c978-46e6-8612-db65a25a6369/history:0
+[ 3840744ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:3001/chat/v2:0
+[ 3840937ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:3001/v3/conversations/92cfb3b6-cd0f-4eda-b834-e9c6a99db9eb/history:0

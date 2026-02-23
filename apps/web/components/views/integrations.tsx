@@ -54,6 +54,7 @@ const CONNECTORS = {
 } as const
 
 type ConnectorProvider = keyof typeof CONNECTORS
+type ShortcutType = "add" | "search" | "screenshot-auto"
 
 const ChromeIcon = ({ className }: { className?: string }) => (
 	<svg
@@ -95,9 +96,8 @@ export function IntegrationsView() {
 	const [apiKey, setApiKey] = useState<string>("")
 	const [copied, setCopied] = useState(false)
 	const [isProUser, setIsProUser] = useState(false)
-	const [selectedShortcutType, setSelectedShortcutType] = useState<
-		"add" | "search" | null
-	>(null)
+	const [selectedShortcutType, setSelectedShortcutType] =
+		useState<ShortcutType | null>(null)
 	const apiKeyId = useId()
 
 	const appOrigin = APP_URL.replace(/\/$/, "")
@@ -223,21 +223,25 @@ export function IntegrationsView() {
 
 	const createApiKeyMutation = useMutation({
 		mutationFn: async () => {
+			if (!org?.id) {
+				throw new Error("Organization is not available yet. Please try again.")
+			}
+
 			const res = await authClient.apiKey.create({
 				metadata: {
-					organizationId: org?.id,
+					organizationId: org.id,
 					type: "ios-shortcut",
 				},
 				name: `ios-${generateId().slice(0, 8)}`,
-				prefix: `sm_${org?.id}_`,
+				prefix: `sm_${org.id}_`,
 			})
 			return res.key
 		},
-		onSuccess: (apiKey) => {
-			setApiKey(apiKey)
+		onSuccess: (newApiKey) => {
+			setApiKey(newApiKey)
 			setShowApiKeyModal(true)
 			setCopied(false)
-			handleCopyApiKey()
+			handleCopyApiKey(newApiKey)
 		},
 		onError: (error) => {
 			toast.error("Failed to create API key", {
@@ -246,14 +250,20 @@ export function IntegrationsView() {
 		},
 	})
 
-	const handleShortcutClick = (shortcutType: "add" | "search") => {
+	const handleShortcutClick = (shortcutType: ShortcutType) => {
 		setSelectedShortcutType(shortcutType)
 		createApiKeyMutation.mutate()
 	}
 
-	const handleCopyApiKey = async () => {
+	const handleCopyApiKey = async (value?: string) => {
+		const keyToCopy = value ?? apiKey
+		if (!keyToCopy) {
+			toast.error("No API key available to copy yet")
+			return
+		}
+
 		try {
-			await navigator.clipboard.writeText(apiKey)
+			await navigator.clipboard.writeText(keyToCopy)
 			setCopied(true)
 			toast.success("API key copied to clipboard!")
 			setTimeout(() => setCopied(false), 2000)
@@ -272,8 +282,34 @@ export function IntegrationsView() {
 			window.open(ADD_MEMORY_SHORTCUT_URL, "_blank")
 		} else if (selectedShortcutType === "search") {
 			window.open(SEARCH_MEMORY_SHORTCUT_URL, "_blank")
+		} else if (selectedShortcutType === "screenshot-auto") {
+			// Auto screenshot automation uses the same base "Add Memory" shortcut.
+			window.open(ADD_MEMORY_SHORTCUT_URL, "_blank")
 		}
 	}
+
+	const shortcutTitle =
+		selectedShortcutType === "add"
+			? "Add Memory"
+			: selectedShortcutType === "search"
+				? "Search Memory"
+				: selectedShortcutType === "screenshot-auto"
+					? "Auto Screenshot Sync"
+					: "iOS"
+
+	const shortcutSteps =
+		selectedShortcutType === "screenshot-auto"
+			? [
+					'Click "Add to Shortcuts" below and install the base shortcut',
+					"Open Shortcuts > Automation > Create Personal Automation > Screenshot",
+					"Set action to run the installed Kortix shortcut automatically",
+					"Every new screenshot will sync to Kortix and be processed",
+				]
+			: [
+					'Click "Add to Shortcuts" below to open the shortcut',
+					"Paste your API key when prompted",
+					"Start using your shortcut!",
+				]
 
 	const handleDialogClose = (open: boolean) => {
 		setShowApiKeyModal(open)
@@ -341,6 +377,22 @@ export function IntegrationsView() {
 							{createApiKeyMutation.isPending
 								? "Creating..."
 								: "Search Memory Shortcut"}
+						</Button>
+						<Button
+							className="flex-1 text-foreground hover:bg-blue-500/10 bg-[#171F59]/75 dark:text-foreground dark:text-foreground dark:text-white"
+							disabled={createApiKeyMutation.isPending}
+							onClick={() => handleShortcutClick("screenshot-auto")}
+							variant="ghost"
+						>
+							<Image
+								alt="iOS Shortcuts"
+								height={20}
+								src="/images/ios-shortcuts.png"
+								width={20}
+							/>
+							{createApiKeyMutation.isPending
+								? "Creating..."
+								: "Auto Screenshot Sync"}
 						</Button>
 					</div>
 				</div>
@@ -668,13 +720,7 @@ export function IntegrationsView() {
 					<DialogContent className="bg-background border-white/10 text-foreground dark:text-foreground dark:text-white md:max-w-md z-[100]">
 						<DialogHeader>
 							<DialogTitle className="text-foreground dark:text-foreground dark:text-white text-lg font-semibold">
-								Setup{" "}
-								{selectedShortcutType === "add"
-									? "Add Memory"
-									: selectedShortcutType === "search"
-										? "Search Memory"
-										: "iOS"}{" "}
-								Shortcut
+								Setup {shortcutTitle} Shortcut
 							</DialogTitle>
 							<DialogDescription className="text-foreground dark:text-foreground dark:text-white/60">
 								Follow these steps to set up your iOS shortcut with your API key
@@ -700,7 +746,7 @@ export function IntegrationsView() {
 									/>
 									<Button
 										className="text-foreground dark:text-foreground dark:text-white/70 hover:text-foreground dark:text-foreground dark:text-white hover:bg-white/10"
-										onClick={handleCopyApiKey}
+										onClick={() => handleCopyApiKey()}
 										size="sm"
 										variant="ghost"
 									>
@@ -719,30 +765,16 @@ export function IntegrationsView() {
 									Follow these steps:
 								</h4>
 								<div className="space-y-2">
-									<div className="flex items-start gap-3">
-										<div className="flex-shrink-0 w-6 h-6 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-medium">
-											1
+									{shortcutSteps.map((step, index) => (
+										<div className="flex items-start gap-3" key={step}>
+											<div className="flex-shrink-0 w-6 h-6 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-medium">
+												{index + 1}
+											</div>
+											<p className="text-sm text-foreground dark:text-foreground dark:text-white/70">
+												{step}
+											</p>
 										</div>
-										<p className="text-sm text-foreground dark:text-foreground dark:text-white/70">
-											Click "Add to Shortcuts" below to open the shortcut
-										</p>
-									</div>
-									<div className="flex items-start gap-3">
-										<div className="flex-shrink-0 w-6 h-6 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-medium">
-											2
-										</div>
-										<p className="text-sm text-foreground dark:text-foreground dark:text-white/70">
-											Paste your API key when prompted
-										</p>
-									</div>
-									<div className="flex items-start gap-3">
-										<div className="flex-shrink-0 w-6 h-6 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-medium">
-											3
-										</div>
-										<p className="text-sm text-foreground dark:text-foreground dark:text-white/70">
-											Start using your shortcut!
-										</p>
-									</div>
+									))}
 								</div>
 							</div>
 

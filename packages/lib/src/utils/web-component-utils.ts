@@ -58,61 +58,23 @@ export const safeHttpUrl = (
 }
 
 /**
- * Picks the first valid URL from a list of object keys
+ * Validates a URL for use as a document preview image.
+ * Rejects: empty strings, SVG data URLs, non-http(s) URLs.
+ * Accepts: http/https URLs, data:image/* (except SVG).
+ * Does NOT filter by keywords — the backend already handles quality.
  */
-export const pickFirstUrl = (
-	record: BaseRecord | null,
-	keys: string[],
-	baseUrl?: string,
-): string | undefined => {
-	if (!record) return undefined
-	for (const key of keys) {
-		const candidate = record[key]
-		const url = safeHttpUrl(candidate, baseUrl)
-		if (url) return url
-	}
-	return undefined
-}
-
-/**
- * Checks if a URL is from the same host or a trusted CDN
- */
-export const sameHostOrTrustedCdn = (
-	candidate?: string,
-	baseUrl?: string,
-): boolean => {
-	if (!candidate) return false
-	if (candidate.startsWith("data:image/")) return true
-	if (!baseUrl) return true
-	try {
-		const c = new URL(candidate)
-		const b = new URL(baseUrl)
-		if (c.hostname === b.hostname) return true
-		if (
-			/(^|\.)github\.com$/i.test(b.hostname) &&
-			/((^|\.)githubassets\.com$)/i.test(c.hostname)
-		) {
-			return true
-		}
-	} catch {}
+export const isValidPreviewUrl = (url?: string | null): url is string => {
+	if (typeof url !== "string") return false
+	const trimmed = url.trim()
+	if (!trimmed) return false
+	// Reject inline SVG data URLs (often tiny icons/badges)
+	if (trimmed.toLowerCase().startsWith("data:image/svg+xml")) return false
+	// Accept other image data URLs
+	if (trimmed.startsWith("data:image/")) return true
+	// Accept http/https
+	if (trimmed.startsWith("http://") || trimmed.startsWith("https://"))
+		return true
 	return false
-}
-
-/**
- * Picks the first URL from the same host or trusted CDN
- */
-export const pickFirstUrlSameHost = (
-	record: BaseRecord | null,
-	keys: string[],
-	baseUrl?: string,
-): string | undefined => {
-	if (!record) return undefined
-	for (const key of keys) {
-		const candidate = record[key]
-		const url = safeHttpUrl(candidate, baseUrl)
-		if (url && sameHostOrTrustedCdn(url, baseUrl)) return url
-	}
-	return undefined
 }
 
 /**
@@ -171,29 +133,6 @@ export const getYouTubeThumbnail = (value?: string): string | undefined => {
 	const videoId = getYouTubeId(value)
 	if (!videoId) return undefined
 	return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
-}
-
-/**
- * Checks if an image URL is low resolution
- */
-export const isLowResolutionImage = (url?: string): boolean => {
-	if (!url) return false
-	try {
-		const lower = url.toLowerCase()
-		if (lower.endsWith(".ico") || lower.includes("favicon")) return true
-		if (/(apple-touch-icon|android-chrome)/.test(lower)) return true
-		const sizeMatch = lower.match(/(\d{1,3})x(\d{1,3})/)
-		if (sizeMatch) {
-			const width = Number(sizeMatch[1])
-			const height = Number(sizeMatch[2])
-			if (Number.isFinite(width) && Number.isFinite(height)) {
-				if (Math.max(width, height) <= 160) return true
-			}
-		}
-	} catch {
-		// ignore parsing errors
-	}
-	return false
 }
 
 /**
@@ -276,65 +215,4 @@ export const proxyImageUrl = (
 	} catch {
 		return url
 	}
-}
-
-/**
- * Extracts images from document gallery for use as fallback previews
- * Applies same quality filters as getDocumentPreview()
- */
-export const extractGalleryImages = (
-	document: any,
-	options?: { limit?: number; skipFilters?: boolean },
-): Array<{ src: string; alt: string }> => {
-	const images: Array<{ src: string; alt: string }> = []
-	const limit = options?.limit ?? 10
-	const skipFilters = options?.skipFilters ?? false
-
-	// Buscar em todas as localizações onde imagens podem estar armazenadas
-	const sources = [
-		document?.images, // Direto no document
-		document?.metadata?.images,
-		document?.raw?.images, // Direto no raw
-		document?.raw?.extraction?.images,
-		document?.raw?.extraction?.metadata?.images,
-		document?.raw?.firecrawl?.images,
-		document?.raw?.firecrawl?.metadata?.images,
-		document?.raw?.firecrawl?.screenshot, // Screenshot do Firecrawl (pode ser array ou string)
-		document?.raw?.geminiFile,
-		// Adicionar memoryEntries como última opção
-		...(document?.memoryEntries
-			? document.memoryEntries
-					.map((m: any) => m.metadata?.images)
-					.filter(Boolean)
-			: []),
-	]
-
-	for (const source of sources) {
-		if (!source) continue
-
-		// Converter string única em array para processamento uniforme
-		const items = Array.isArray(source) ? source : [source]
-
-		for (const item of items) {
-			const src = typeof item === "string" ? item : item?.src || item?.url
-			if (!src || typeof src !== "string") continue
-
-			// Aplicar filtros de qualidade (menos restritivo que getDocumentPreview)
-			if (!skipFilters) {
-				if (isInlineSvgDataUrl(src)) continue
-				if (src.includes("shields.io")) continue
-				// REMOVIDO: filtro de logo|icon|sprite - muito restritivo para documentos
-				// REMOVIDO: filtro isLowResolutionImage - thumbnails de PDF podem ser pequenas mas válidas
-			}
-
-			const alt = typeof item === "object" ? item?.alt || item?.title || "" : ""
-			images.push({ src, alt })
-
-			if (images.length >= limit) break
-		}
-
-		if (images.length >= limit) break
-	}
-
-	return images
 }

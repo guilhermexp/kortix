@@ -1,0 +1,127 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - link "Voltar" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img
+      - combobox [ref=e6] [cursor=pointer]:
+        - generic [ref=e7]:
+          - img
+          - generic [ref=e8]: Youtube
+        - img
+    - main [ref=e9]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - heading "Greeting" [level=3] [ref=e13]
+          - generic [ref=e14]:
+            - button [ref=e15] [cursor=pointer]:
+              - img [ref=e16]
+            - button [ref=e20] [cursor=pointer]:
+              - img
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - generic [ref=e23]:
+              - generic [ref=e24]:
+                - generic [ref=e25]:
+                  - img "Nobody Is Talking About Openclaw’s Best Feature" [ref=e26]
+                  - link [ref=e28] [cursor=pointer]:
+                    - /url: https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s
+                    - img [ref=e29]
+                - generic [ref=e31]:
+                  - generic [ref=e32]:
+                    - generic [ref=e33]:
+                      - img [ref=e34]
+                      - text: Feb 22nd
+                    - generic [ref=e36]:
+                      - img [ref=e37]
+                      - text: webpage
+                  - link "https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s" [ref=e40] [cursor=pointer]:
+                    - /url: https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s
+                    - img [ref=e41]
+                    - generic [ref=e44]: https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s
+                    - img [ref=e45]
+                  - paragraph [ref=e51]: "O vídeo destaca o OpenClaw como uma ferramenta poderosa para automação em fluxos de desenvolvedores, atuando como assistente autônomo que monitora tarefas, corrige dependências e gera relatórios sem supervisão constante. Testado em Mac Minis por semanas, revela capacidades em gerenciamento de repositórios, alertas de custos em nuvem e construção de apps completos. Sua relevância está em reduzir erros manuais e otimizar workflows profissionais, justificando o interesse da OpenAI pelo criador. Pontos-Chave OpenClaw é um agente autônomo open-source para automação de tarefas longas; seu diferencial é executar cron jobs independentes sem input humano, ideal para monitoramento contínuo; usado para gerenciar dependências em apps React, atualizando lock files a cada 12 horas e reportando via Discord. Monitoramento de sites hospedados em Vercel via heartbeat checks; verifica uptime, logs de servidor e vulnerabilidades como XSS/SQL injection; envia relatórios de saúde com passos de hardening, como adicionar headers de segurança. Automação de dependências em repositórios GitHub; detecta vulnerabilidades em bibliotecas React e testa atualizações seguras; notifica issues como linting que precisam de aprovação humana antes do push. Pesquisa diária de notícias tech via cron job; compila relatórios com ângulos de vídeo, links e recursos para canais YouTube; integra com workflows de desenvolvimento em Mac Minis. API Cost Watchdog para provedores como AWS e Google Cloud; usa CLI para checar orçamentos e alertar spikes via Discord/WhatsApp; fornece passos acionáveis para evitar bills elevados. Construção autônoma de apps a partir de PRD; coordena Claude para código e Gemini para imagens via skill Nano Banana Pro; deploy automático no Vercel com commits progressivos no GitHub. Geração de cold emails via scraping do GitHub Trending; cria drafts personalizados no Gmail usando Google Workspace CLI; roda diariamente às 9h, salvando leads em pastas para revisão manual. Filtro de emails importantes com heartbeat; prioriza itens acionáveis ignorando newsletters; integra com Apple Reminders, Gemini e GitHub para assistente pessoal remoto. Ponte entre Claude Code (agente de código forte) e Gemini (melhor em imagens); usa skills para combinar forças, quebrando tarefas em subtasks; requer pre-aprovação de permissões para evitar timeouts. Recursos extras em AIABS Pro, comunidade com templates prontos; suporta múltiplos modelos e skills pré-configurados para plataformas como Discord e WhatsApp. Casos de Uso Manutenção automática de dependências em projetos React: Configurar cron job para checar vulnerabilidades, atualizar lock files e notificar via Discord, reduzindo riscos de segurança sem intervenção manual. Monitoramento de custos em nuvem AWS/Google Cloud: Implantar skill para alertas de spikes em uso de API, com passos imediatos para otimizar VMs e evitar faturas inesperadas. Geração de conteúdo para canais YouTube: Automatizar pesquisa diária de releases tech, compilando relatórios com ângulos de vídeo e links para briefings matinais da equipe. Construção e deploy de apps completos: Fornecer PRD ao OpenClaw para"
+              - generic [ref=e149]:
+                - paragraph [ref=e152]: quais sao todas as coisas que ele solicitou e enviou para o openclaw fazer? e como?
+                - generic [ref=e153]:
+                  - generic [ref=e154]: Documentos mencionados
+                  - link "@Nobody Is Talking About Openclaw’s Best Feature" [ref=e156] [cursor=pointer]:
+                    - /url: https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s
+                    - generic [ref=e157]: "@Nobody Is Talking About Openclaw’s Best Feature"
+              - generic [ref=e158]:
+                - generic [ref=e159]:
+                  - generic [ref=e160]:
+                    - generic [ref=e161] [cursor=pointer]:
+                      - generic [ref=e162]:
+                        - img [ref=e163]
+                        - generic [ref=e166]: 1 step
+                      - img [ref=e167]
+                    - generic [ref=e171]:
+                      - generic [ref=e173]: "Running command: searchMemories"
+                      - generic [ref=e176]:
+                        - img [ref=e177]
+                        - text: Procurando memórias relevantes...
+                  - generic [ref=e179]:
+                    - generic [ref=e181]: Response
+                    - paragraph [ref=e185]: Vou buscar mais informações sobre o documento mencionado para dar uma resposta completa.
+                - generic [ref=e186]:
+                  - button [ref=e187] [cursor=pointer]:
+                    - img
+                  - button [ref=e188] [cursor=pointer]:
+                    - img
+            - button "Scroll to bottom"
+          - generic [ref=e53]:
+            - generic [ref=e189]:
+              - generic [ref=e190]: Generating..
+              - button "Stop ^C" [ref=e191] [cursor=pointer]:
+                - generic [ref=e192]: Stop
+                - generic [ref=e193]: ^C
+            - generic [ref=e61]:
+              - textbox "Add to the queue" [active] [ref=e194]
+              - generic [ref=e63]:
+                - generic [ref=e64]:
+                  - button "Agent" [ref=e65] [cursor=pointer]:
+                    - img [ref=e66]
+                    - generic [ref=e68]: Agent
+                    - img [ref=e69]
+                  - button "K2.5" [ref=e71] [cursor=pointer]:
+                    - img [ref=e72]
+                    - generic [ref=e75]: K2.5
+                    - img [ref=e76]
+                - generic [ref=e78]:
+                  - button [ref=e79] [cursor=pointer]:
+                    - img [ref=e80]
+                  - button [ref=e82] [cursor=pointer]:
+                    - img [ref=e83]
+                  - button [ref=e85] [cursor=pointer]:
+                    - img [ref=e195]
+      - generic [ref=e89]:
+        - generic [ref=e90]:
+          - button "Markdown do agente" [ref=e92] [cursor=pointer]:
+            - generic [ref=e93]: Markdown do agente
+            - img [ref=e94]
+          - button "Conteúdo original" [ref=e97] [cursor=pointer]:
+            - generic [ref=e98]: Conteúdo original
+            - img [ref=e99]
+        - generic [ref=e102]:
+          - generic [ref=e103]:
+            - img [ref=e104]
+            - text: Documentos Relacionados (0)
+          - button "Add Connection" [ref=e122] [cursor=pointer]:
+            - img
+            - generic [ref=e123]: Add Connection
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - img [ref=e126]
+            - text: Images (1)
+          - generic [ref=e132] [cursor=pointer]:
+            - img "Nobody Is Talking About Openclaw’s Best Feature" [ref=e134]
+            - button [ref=e137]:
+              - img [ref=e138]
+            - generic [ref=e142]:
+              - img [ref=e143]
+              - generic [ref=e147]: Main Preview
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e116] [cursor=pointer]:
+    - img [ref=e117]
+  - alert [ref=e120]

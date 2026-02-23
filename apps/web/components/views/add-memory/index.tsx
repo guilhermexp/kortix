@@ -29,9 +29,10 @@ import {
 	FileIcon,
 	Link as LinkIcon,
 	Loader2,
+	NotebookPen,
 	PlugIcon,
 	Plus,
-	Sparkles,
+	Trash2,
 	UploadIcon,
 } from "lucide-react"
 import { motion } from "motion/react"
@@ -323,6 +324,37 @@ export function AddMemoryView({
 	const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false)
 	const [newProjectName, setNewProjectName] = useState("")
 
+	// Bundle (multi-item) state for the Link tab
+	type BundleItem = {
+		id: string
+		type: "link" | "note"
+		content: string
+	}
+	const [bundleItems, setBundleItems] = useState<BundleItem[]>([
+		{ id: crypto.randomUUID(), type: "link", content: "" },
+	])
+
+	const addBundleItem = (type: "link" | "note") => {
+		if (bundleItems.length >= 20) return
+		setBundleItems((prev) => [
+			...prev,
+			{ id: crypto.randomUUID(), type, content: "" },
+		])
+	}
+
+	const removeBundleItem = (id: string) => {
+		setBundleItems((prev) => {
+			if (prev.length <= 1) return prev
+			return prev.filter((item) => item.id !== id)
+		})
+	}
+
+	const updateBundleItem = (id: string, content: string) => {
+		setBundleItems((prev) =>
+			prev.map((item) => (item.id === id ? { ...item, content } : item)),
+		)
+	}
+
 	// Duplicate content modal state
 	const [duplicateModal, setDuplicateModal] = useState<{
 		open: boolean
@@ -536,324 +568,6 @@ export function AddMemoryView({
 		}
 	}, [activeTab])
 
-	// Deep Agent state
-	const [_deepSummary, setDeepSummary] = useState<string>("")
-	const [_deepUrl, _setDeepUrl] = useState<string>("")
-	// Per-user preference: use Agent on Add (Link tab)
-	const [useAgentForLink, setUseAgentForLink] = useState<boolean>(false)
-	useEffect(() => {
-		try {
-			const raw = localStorage.getItem("useAgentForLink")
-			if (raw != null) setUseAgentForLink(raw === "true")
-		} catch {}
-	}, [])
-	useEffect(() => {
-		try {
-			localStorage.setItem("useAgentForLink", String(useAgentForLink))
-		} catch {}
-	}, [useAgentForLink])
-	const _deepAnalyzeMutation = useMutation({
-		mutationFn: async ({ url, title }: { url: string; title?: string }) => {
-			const res = await $fetch("@post/deep-agent/analyze", {
-				body: { url, title, mode: "auto" },
-			})
-			if (res.error) {
-				throw new Error(res.error.message || "Deep analysis failed")
-			}
-			return res.data
-		},
-		onSuccess: (data) => {
-			setDeepSummary(data.summary || "")
-			// Store the complete analysis data including preview metadata
-			setDeepAnalysisData(data)
-			toast.success("Deep analysis complete")
-		},
-		onError: (err) => {
-			toast.error("Deep analysis failed", {
-				description: err instanceof Error ? err.message : "Unknown error",
-			})
-		},
-	})
-
-	// State to store the complete analysis data
-	const [_deepAnalysisData, setDeepAnalysisData] = useState<any>(null)
-
-	const _deepSaveMutation = useMutation({
-		mutationFn: async ({
-			project,
-			content,
-			url,
-			previewMetadata,
-		}: {
-			project: string
-			content: string
-			url?: string
-			previewMetadata?: any
-		}) => {
-			// Close modal immediately like addContentMutation does
-			onClose?.()
-
-			const processingPromise = (async () => {
-				// Prepare metadata with preview information
-				const metadata: any = {
-					sm_source: "consumer",
-					deep_agent: true,
-					source_url: url,
-				}
-
-				// Add preview metadata if available
-				if (previewMetadata) {
-					if (previewMetadata.ogImage) {
-						metadata.ogImage = previewMetadata.ogImage
-					}
-					if (previewMetadata.twitterImage) {
-						metadata.twitterImage = previewMetadata.twitterImage
-					}
-					if (previewMetadata.title) {
-						metadata.title = previewMetadata.title
-					}
-					if (previewMetadata.description) {
-						metadata.description = previewMetadata.description
-					}
-					if (previewMetadata.favicon) {
-						metadata.favicon = previewMetadata.favicon
-					}
-					if (previewMetadata.siteName) {
-						metadata.siteName = previewMetadata.siteName
-					}
-				}
-
-				const res = await $fetch("@post/documents", {
-					body: {
-						content,
-						containerTags: [project],
-						metadata,
-					},
-				})
-				if (res.error) {
-					throw new Error(res.error.message || "Failed to save memory")
-				}
-
-				const memoryId = res.data.id
-				const initialStatus = res.data.status ?? "queued"
-
-				// Immediately update cache to remove optimistic flag and show real status
-				queryClient.setQueriesData<DocumentsQueryData | undefined>(
-					{ queryKey: ["documents-with-memories", project], exact: false },
-					(current) =>
-						updateOptimisticByContentOrUrl(current, content, {
-							id: memoryId,
-							status: initialStatus,
-						}),
-				)
-
-				// Polling function to check status with real-time updates
-				const pollForCompletion = async (): Promise<MemoryStatusResponse> => {
-					let attempts = 0
-					const maxAttempts = 60 // Maximum 5 minutes
-
-					while (attempts < maxAttempts) {
-						try {
-							const memory = await $fetch<MemoryStatusResponse>(
-								`@get/documents/${memoryId}`,
-							)
-
-							if (memory.error) {
-								throw new Error(
-									memory.error?.message || "Failed to fetch memory status",
-								)
-							}
-
-							const docStatus = String(memory.data?.status ?? "").toLowerCase()
-
-							// Update cache with current status for real-time feedback
-							queryClient.setQueriesData<DocumentsQueryData | undefined>(
-								{
-									queryKey: ["documents-with-memories", project],
-									exact: false,
-								},
-								(current) =>
-									promoteOptimisticMemory(current, memoryId, {
-										id: memoryId,
-										status: memory.data?.status ?? docStatus,
-									}),
-							)
-
-							// Check if processing is complete
-							if (docStatus === "done" || docStatus === "failed") {
-								return memory
-							}
-
-							// Wait before next attempt
-							await new Promise((resolve) => setTimeout(resolve, 3000)) // 3 seconds
-							attempts++
-						} catch (error) {
-							console.error("Error polling memory status:", error)
-							throw error
-						}
-					}
-
-					throw new Error("Processing timeout - please refresh to check status")
-				}
-
-				// Start polling
-				const finalMemory = await pollForCompletion()
-				return finalMemory.data
-			})()
-
-			return processingPromise
-		},
-		onMutate: async ({ project, url }) => {
-			// Cancel any outgoing refetches (partial match to include queries with search param)
-			await queryClient.cancelQueries({
-				queryKey: ["documents-with-memories", project],
-				exact: false,
-			})
-
-			// Snapshot all matching queries for potential rollback
-			const matchingQueries = queryClient.getQueriesData<DocumentsQueryData>({
-				queryKey: ["documents-with-memories", project],
-				exact: false,
-			})
-			const previousMemories =
-				matchingQueries.length > 0 ? matchingQueries[0]?.[1] : undefined
-
-			// Create optimistic memory
-			const getLinkHostname = (linkUrl: string) => {
-				try {
-					return new URL(linkUrl).hostname.replace("www.", "")
-				} catch {
-					return linkUrl.substring(0, 50)
-				}
-			}
-			const optimisticMemory: DocumentListItem = {
-				id: `temp-${Date.now()}`,
-				content: "",
-				url: url || null,
-				title: url ? getLinkHostname(url) : "Processing...",
-				description: url || "Analyzing and extracting content...",
-				containerTags: [project],
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				status: "queued",
-				type: "link",
-				metadata: {
-					processingStage: "queued",
-					processingMessage: "Deep Agent is analyzing this link",
-					deep_agent: true,
-				},
-				memoryEntries: [],
-				isOptimistic: true,
-			}
-
-			// Optimistically update ALL matching queries (partial match)
-				queryClient.setQueriesData<DocumentsQueryData | undefined>(
-					{ queryKey: ["documents-with-memories", project], exact: false },
-					(oldData) => mergeOptimisticMemory(oldData, optimisticMemory),
-				)
-
-				return {
-					previousMemories,
-					optimisticId: optimisticMemory.id,
-					matchingQueries,
-				}
-			},
-		onError: (_error, _variables, context) => {
-			// Restore all matching queries to their previous state
-			if (context?.matchingQueries) {
-				for (const [queryKey, data] of context.matchingQueries) {
-					if (data) {
-						queryClient.setQueryData(queryKey, data)
-					}
-				}
-			}
-			toast.error("Falha ao salvar memória", {
-				description: _error instanceof Error ? _error.message : "Unknown error",
-			})
-		},
-		onSuccess: (_data, variables, context) => {
-			const payload =
-				typeof _data === "object" && _data !== null && "data" in (_data as any)
-					? (_data as any).data
-					: _data
-			const dedup =
-				Boolean((payload as any)?.alreadyExists) ||
-				Boolean((payload as any)?.data?.alreadyExists)
-			const addedToProject =
-				Boolean((payload as any)?.addedToProject) ||
-				Boolean((payload as any)?.data?.addedToProject)
-			const documentId =
-				(payload as any)?.id ?? (payload as any)?.data?.id ?? null
-			const status =
-				(payload as any)?.status ?? (payload as any)?.data?.status ?? "queued"
-
-			let successDescription: string | undefined
-
-			if (dedup) {
-				// Restore all matching queries for duplicate handling
-				if (context?.matchingQueries) {
-					for (const [queryKey, data] of context.matchingQueries) {
-						if (data) {
-							queryClient.setQueryData(queryKey, data)
-						}
-					}
-				}
-				// Show duplicate modal instead of toast
-				setDuplicateModal({
-					open: true,
-					documentId,
-					contentType: "link",
-					addedToProject,
-					url: variables.content,
-				})
-			} else {
-				// Update optimistic entry with ALL data from completed document
-				// This ensures the card renders immediately with full content
-				if (context?.optimisticId && documentId) {
-					queryClient.setQueriesData<DocumentsQueryData | undefined>(
-						{
-							queryKey: ["documents-with-memories", variables.project],
-							exact: false,
-						},
-						(current) =>
-							promoteOptimisticMemory(current, context.optimisticId!, {
-								id: documentId,
-								status: status || "done",
-								title: (payload as any)?.title,
-								content: (payload as any)?.content,
-								url: (payload as any)?.url ?? variables.url,
-								type: (payload as any)?.type,
-								previewImage:
-									(payload as any)?.previewImage ??
-									(payload as any)?.preview_image,
-								memoryEntries: (payload as any)?.memoryEntries ?? [],
-								metadata: (payload as any)?.metadata,
-								raw: (payload as any)?.raw,
-								description:
-									(payload as any)?.description ?? (payload as any)?.summary,
-							}),
-					)
-				}
-				// Deep Agent is only used for links
-				successDescription = "Extraindo conteúdo..."
-			}
-			if (!dedup) {
-				analytics.memoryAdded({
-					type: "link",
-					project_id: variables.project,
-					content_length: variables.content.length,
-				})
-			}
-
-			// No additional invalidations needed - the polling effect in page.tsx will handle it
-			setShowAddDialog(false)
-			if (!dedup) {
-				toast.success("Memória salva com Deep Agent", {
-					description: successDescription,
-				})
-			}
-		},
-	})
 
 	// Form for file upload metadata
 	const fileUploadForm = useForm({
@@ -913,42 +627,14 @@ export function AddMemoryView({
 
 			const processingPromise = (async () => {
 				// First, create the memory
-				const response = await (async () => {
-					// Single-step link flow: enrich with Deep Agent preview (no extra clicks)
-					let metadata: any = { sm_source: "consumer" }
-					const isUrl = /^https?:\/\//i.test(content)
-					if (contentType === "link" && isUrl && useAgentForLink) {
-						try {
-							const deep = await $fetch("@post/deep-agent/analyze", {
-								body: { url: content, mode: "auto" },
-							})
-							const deepData = deep.data as { summary?: string; mode?: string; title?: string | null; previewMetadata?: Record<string, unknown> } | undefined
-							if (!deep.error && deepData) {
-								const pm = deepData.previewMetadata || {}
-								metadata = {
-									...metadata,
-									deep_agent: true,
-									source_url: content,
-									...(pm.ogImage ? { ogImage: pm.ogImage } : {}),
-									...(pm.twitterImage ? { twitterImage: pm.twitterImage } : {}),
-									...(pm.title ? { title: pm.title } : {}),
-									...(pm.description ? { description: pm.description } : {}),
-									...(pm.favicon ? { favicon: pm.favicon } : {}),
-									...(pm.siteName ? { siteName: pm.siteName } : {}),
-								}
-							}
-						} catch {
-							// If deep analysis fails, proceed without it
-						}
-					}
-					return $fetch("@post/documents", {
-						body: {
-							content,
-							containerTags: [project],
-							metadata,
-						},
-					})
-				})()
+				const metadata: any = { sm_source: "consumer" }
+				const response = await $fetch("@post/documents", {
+					body: {
+						content,
+						containerTags: [project],
+						metadata,
+					},
+				})
 
 				if (response.error) {
 					throw new Error(
@@ -1187,6 +873,149 @@ export function AddMemoryView({
 		onError: () => {
 			// Reset mutation ref on error
 			isMutatingRef.current = false
+		},
+	})
+
+	// Bundle mutation (2+ items → POST /documents/bundle)
+	const addBundleMutation = useMutation({
+		mutationFn: async ({
+			items,
+			project,
+		}: {
+			items: BundleItem[]
+			project: string
+		}) => {
+			setShowAddDialog(false)
+
+			const response = await $fetch("@post/documents/bundle", {
+				body: {
+					items: items.map((it) => ({
+						content: it.content,
+						type: it.type,
+					})),
+					containerTags: [project],
+				},
+			})
+
+			if (response.error) {
+				throw new Error(
+					response.error?.message || "Failed to create bundle",
+				)
+			}
+
+			const bundleId = (response.data as any)?.id as string | undefined
+			if (!bundleId) return response.data
+
+			// Poll parent until done
+			let attempts = 0
+			const maxAttempts = 90
+			while (attempts < maxAttempts) {
+				const status = await $fetch(`@get/documents/${bundleId}`)
+				const statusData = status.data as any
+				const docStatus = String(statusData?.status ?? "").toLowerCase()
+
+				queryClient.setQueriesData<DocumentsQueryData | undefined>(
+					{ queryKey: ["documents-with-memories", project], exact: false },
+					(current) =>
+						promoteOptimisticMemory(current, bundleId, {
+							id: bundleId,
+							status: statusData?.status ?? docStatus,
+							title: statusData?.title,
+							previewImage: statusData?.previewImage,
+							summary: statusData?.summary,
+						}),
+				)
+
+				if (docStatus === "done" || docStatus === "failed") {
+					return status.data
+				}
+
+				const delay = attempts < 3 ? 1000 : 3000
+				await new Promise((resolve) => setTimeout(resolve, delay))
+				attempts++
+			}
+
+			return response.data
+		},
+		onMutate: async ({ items, project }) => {
+			await queryClient.cancelQueries({
+				queryKey: ["documents-with-memories", project],
+				exact: false,
+			})
+
+			const matchingQueries = queryClient.getQueriesData<DocumentsQueryData>({
+				queryKey: ["documents-with-memories", project],
+				exact: false,
+			})
+
+			const optimisticMemory: DocumentListItem = {
+				id: `temp-bundle-${Date.now()}`,
+				content: null,
+				url: null,
+				title: `Bundle (${items.length} items)`,
+				description: `${items.length} items being processed...`,
+				containerTags: [project],
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				status: "queued",
+				type: "bundle",
+				metadata: { childCount: items.length },
+				memoryEntries: [],
+				isOptimistic: true,
+			}
+
+			queryClient.setQueriesData<DocumentsQueryData | undefined>(
+				{ queryKey: ["documents-with-memories", project], exact: false },
+				(oldData) => mergeOptimisticMemory(oldData, optimisticMemory),
+			)
+
+			return { optimisticId: optimisticMemory.id, matchingQueries }
+		},
+		onSuccess: (_data, variables, context) => {
+			const payload =
+				typeof _data === "object" && _data !== null && "data" in (_data as any)
+					? (_data as any).data
+					: _data
+			const documentId = (payload as any)?.id ?? null
+
+			if (context?.optimisticId && documentId) {
+				queryClient.setQueriesData<DocumentsQueryData | undefined>(
+					{
+						queryKey: ["documents-with-memories", variables.project],
+						exact: false,
+					},
+					(current) =>
+						promoteOptimisticMemory(current, context.optimisticId!, {
+							id: documentId,
+							status: (payload as any)?.status ?? "done",
+							title: (payload as any)?.title,
+							previewImage: (payload as any)?.previewImage,
+							type: "bundle",
+						}),
+				)
+			}
+
+			analytics.memoryAdded({
+				type: "bundle",
+				project_id: variables.project,
+				content_length: variables.items.reduce((acc, it) => acc + it.content.length, 0),
+			})
+
+			setBundleItems([{ id: crypto.randomUUID(), type: "link", content: "" }])
+			onClose?.()
+			toast.success("Bundle criado com sucesso", {
+				description: `${variables.items.length} items sendo processados...`,
+			})
+		},
+		onError: (error, _variables, context) => {
+			if (context?.matchingQueries) {
+				for (const [queryKey, data] of context.matchingQueries) {
+					if (data) queryClient.setQueryData(queryKey, data)
+				}
+			}
+			toast.error("Falha ao criar bundle", {
+				description: error instanceof Error ? error.message : "Unknown error",
+			})
 		},
 	})
 
@@ -1617,177 +1446,160 @@ export function AddMemoryView({
 							onSubmit={(e) => {
 								e.preventDefault()
 								e.stopPropagation()
-								addContentForm.handleSubmit()
+
+								const filledItems = bundleItems.filter(
+									(it) => it.content.trim().length > 0,
+								)
+								if (filledItems.length === 0) return
+
+								const project = addContentForm.getFieldValue("project")
+
+								if (filledItems.length === 1) {
+									const item = filledItems[0]!
+									// Single item — use existing addContentMutation
+									addContentForm.setFieldValue("content", item.content)
+									addContentMutation.mutate({
+										content: item.content,
+										project,
+										contentType: item.type,
+									})
+								} else {
+									// Multiple items — bundle
+									addBundleMutation.mutate({
+										items: filledItems,
+										project,
+									})
+								}
 							}}
 						>
-							<div className="grid gap-4">
-								{/* Link Input */}
-								<motion.div
-									animate={{ opacity: 1, y: 0 }}
-									className="flex flex-col gap-2"
-									initial={{ opacity: 0, y: 10 }}
-									transition={{ delay: 0.1 }}
-								>
-									<label
-										className="text-sm font-medium"
-										htmlFor="link-content"
+							<div className="grid gap-3">
+								{/* Dynamic item list */}
+								{bundleItems.map((item, index) => (
+									<motion.div
+										key={item.id}
+										animate={{ opacity: 1, y: 0 }}
+										className="flex gap-2 items-start"
+										initial={{ opacity: 0, y: 10 }}
+										transition={{ delay: index * 0.05 }}
 									>
-										Link
-									</label>
-									<addContentForm.Field
-										name="content"
-										validators={{
-											onChange: ({ value }) => {
-												if (!value || value.trim() === "") {
-													return "Link is required"
-												}
-												try {
-													new URL(value)
-													return undefined
-												} catch {
-													return "Please enter a valid link"
-												}
-											},
-										}}
-									>
-										{({ state, handleChange, handleBlur }) => (
-											<>
-												<div className="relative">
-													<Input
-														className={`bg-background border-white/20 text-foreground dark:text-white ${
-															addContentMutation.isPending
-																? "opacity-50"
-																: ""
-														} ${
-															urlDuplicateCheck.isDuplicate
-																? "border-amber-500/50 focus-visible:ring-amber-500/30"
-																: ""
-														}`}
-														disabled={addContentMutation.isPending}
-														id="link-content"
-														onBlur={handleBlur}
-														onChange={(e) => {
-															handleChange(e.target.value)
-															// Trigger duplicate check
-															if (activeTab === "link") {
-																checkUrlDuplicate(e.target.value)
-															}
-														}}
-														placeholder="https://example.com/article"
-														value={state.value}
-													/>
-													{urlDuplicateCheck.checking && (
-														<div className="absolute right-3 top-1/2 -translate-y-1/2">
-															<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-														</div>
-													)}
-												</div>
-												{state.meta.errors.length > 0 && (
-													<motion.p
-														animate={{ opacity: 1, height: "auto" }}
-														className="text-sm text-red-400 mt-1"
-														exit={{ opacity: 0, height: 0 }}
-														initial={{ opacity: 0, height: 0 }}
-													>
-														{state.meta.errors
-															.map((error) =>
-																typeof error === "string"
-																	? error
-																	: (error?.message ??
-																		`Error: ${JSON.stringify(error)}`),
-															)
-															.join(", ")}
-													</motion.p>
-												)}
-												{urlDuplicateCheck.isDuplicate && (
-													<motion.div
-														animate={{ opacity: 1, height: "auto" }}
-														className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 overflow-hidden"
-														exit={{ opacity: 0, height: 0 }}
-														initial={{ opacity: 0, height: 0 }}
-													>
-														<div className="flex items-start sm:items-center gap-2 flex-1 min-w-0">
-															<AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5 sm:mt-0" />
-															<div className="flex-1 min-w-0 overflow-hidden">
-																<p className="text-sm text-amber-500">
-																	Este link já existe na sua biblioteca
-																</p>
-																{urlDuplicateCheck.documentTitle && (
-																	<p className="text-xs text-amber-500/70 break-words line-clamp-2">
-																		{urlDuplicateCheck.documentTitle}
-																	</p>
-																)}
-															</div>
-														</div>
-														{urlDuplicateCheck.documentId && (
-															<button
-																className="text-xs text-amber-500 hover:text-amber-400 underline flex-shrink-0 self-start sm:self-center"
-																onClick={() => {
-																	window.open(
-																		`/memory/${urlDuplicateCheck.documentId}/edit`,
-																		"_blank",
-																	)
-																}}
-																type="button"
-															>
-																Ver documento
-															</button>
-														)}
-													</motion.div>
-												)}
-											</>
+										<div className="flex-1">
+											{item.type === "link" ? (
+												<Input
+													className={`bg-background border-white/20 text-foreground dark:text-white ${
+														addContentMutation.isPending || addBundleMutation.isPending
+															? "opacity-50"
+															: ""
+													}`}
+													disabled={addContentMutation.isPending || addBundleMutation.isPending}
+													onChange={(e) => {
+														updateBundleItem(item.id, e.target.value)
+														// Trigger duplicate check for first link item
+														if (index === 0 && bundleItems.length === 1) {
+															checkUrlDuplicate(e.target.value)
+														}
+													}}
+													placeholder={`https://example.com/article${bundleItems.length > 1 ? ` ${index + 1}` : ""}`}
+													value={item.content}
+												/>
+											) : (
+												<Textarea
+													className="bg-background border-white/20 text-foreground dark:text-white min-h-16 max-h-24 resize-none"
+													disabled={addContentMutation.isPending || addBundleMutation.isPending}
+													onChange={(e) => updateBundleItem(item.id, e.target.value)}
+													placeholder="Write a note..."
+													value={item.content}
+												/>
+											)}
+										</div>
+										{bundleItems.length > 1 && (
+											<button
+												className="p-2 text-foreground/40 hover:text-red-400 transition-colors mt-1"
+												onClick={() => removeBundleItem(item.id)}
+												type="button"
+											>
+												<Trash2 className="h-4 w-4" />
+											</button>
 										)}
-									</addContentForm.Field>
-								</motion.div>
+									</motion.div>
+								))}
 
-								{/* Processing Mode Toggle + Project Selection */}
+								{/* Duplicate check for single link */}
+								{bundleItems.length === 1 && urlDuplicateCheck.isDuplicate && (
+									<motion.div
+										animate={{ opacity: 1, height: "auto" }}
+										className="flex flex-col sm:flex-row sm:items-center gap-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 overflow-hidden"
+										exit={{ opacity: 0, height: 0 }}
+										initial={{ opacity: 0, height: 0 }}
+									>
+										<div className="flex items-start sm:items-center gap-2 flex-1 min-w-0">
+											<AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5 sm:mt-0" />
+											<div className="flex-1 min-w-0 overflow-hidden">
+												<p className="text-sm text-amber-500">
+													Este link já existe na sua biblioteca
+												</p>
+												{urlDuplicateCheck.documentTitle && (
+													<p className="text-xs text-amber-500/70 break-words line-clamp-2">
+														{urlDuplicateCheck.documentTitle}
+													</p>
+												)}
+											</div>
+										</div>
+										{urlDuplicateCheck.documentId && (
+											<button
+												className="text-xs text-amber-500 hover:text-amber-400 underline flex-shrink-0"
+												onClick={() => {
+													window.open(
+														`/memory/${urlDuplicateCheck.documentId}/edit`,
+														"_blank",
+													)
+												}}
+												type="button"
+											>
+												Ver documento
+											</button>
+										)}
+									</motion.div>
+								)}
+
+								{/* Add more items buttons */}
+								<div className="flex items-center gap-2">
+									<button
+										className="text-xs px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-foreground/70 dark:text-white/60 hover:bg-white/10 transition-all flex items-center gap-1.5"
+										disabled={bundleItems.length >= 20}
+										onClick={() => addBundleItem("link")}
+										type="button"
+									>
+										<Plus className="h-3 w-3" />
+										Add Link
+									</button>
+									<button
+										className="text-xs px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-foreground/70 dark:text-white/60 hover:bg-white/10 transition-all flex items-center gap-1.5"
+										disabled={bundleItems.length >= 20}
+										onClick={() => addBundleItem("note")}
+										type="button"
+									>
+										<NotebookPen className="h-3 w-3" />
+										Add Note
+									</button>
+									{bundleItems.length > 1 && (
+										<span className="text-xs text-foreground/40 dark:text-white/30 ml-auto">
+											{bundleItems.filter((it) => it.content.trim().length > 0).length} / {bundleItems.length} items
+										</span>
+									)}
+								</div>
+
+								{/* Project Selection */}
 								<motion.div
 									animate={{ opacity: 1, y: 0 }}
-									className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+									className="flex items-center justify-end"
 									initial={{ opacity: 0, y: 10 }}
 									transition={{ delay: 0.15 }}
 								>
-									<div className="flex items-center gap-2 flex-wrap">
-										<button
-											className={`text-xs px-3 py-1.5 rounded-md border transition-all ${
-												useAgentForLink
-													? "bg-white/15 border-white/30 text-foreground dark:text-white font-medium"
-													: "bg-white/5 border-white/10 text-foreground/70 dark:text-white/60 hover:bg-white/10"
-											}`}
-											onClick={() => {
-												setUseAgentForLink(true)
-											}}
-											type="button"
-										>
-											<span className="flex items-center gap-1.5">
-												<Sparkles className="h-3 w-3" />
-												Deep Agent
-											</span>
-										</button>
-										<button
-											className={`text-xs px-3 py-1.5 rounded-md border transition-all ${
-												!useAgentForLink
-													? "bg-white/15 border-white/30 text-foreground dark:text-white font-medium"
-													: "bg-white/5 border-white/10 text-foreground/70 dark:text-white/60 hover:bg-white/10"
-											}`}
-											onClick={() => {
-												setUseAgentForLink(false)
-											}}
-											type="button"
-										>
-											Standard
-										</button>
-										<span className="text-xs text-foreground/50 dark:text-white/40 hidden sm:inline">
-											{useAgentForLink
-												? "AI-enhanced"
-												: "Basic"}
-										</span>
-									</div>
-									<div className={addContentMutation.isPending ? "opacity-50" : ""}>
+									<div className={addContentMutation.isPending || addBundleMutation.isPending ? "opacity-50" : ""}>
 										<addContentForm.Field name="project">
 											{({ state, handleChange }) => (
 												<ProjectSelection
-													disabled={addContentMutation.isPending}
+													disabled={addContentMutation.isPending || addBundleMutation.isPending}
 													id="link-project-2"
 													isLoading={isLoadingProjects}
 													onCreateProject={() =>
@@ -1808,15 +1620,16 @@ export function AddMemoryView({
 								<ActionButtons
 									hideCancel={inline}
 									isSubmitDisabled={
-										!addContentForm.state.canSubmit ||
-										urlDuplicateCheck.isDuplicate ||
-										urlDuplicateCheck.checking
+										bundleItems.every((it) => it.content.trim().length === 0) ||
+										(bundleItems.length === 1 && urlDuplicateCheck.isDuplicate) ||
+										(bundleItems.length === 1 && urlDuplicateCheck.checking)
 									}
-									isSubmitting={addContentMutation.isPending}
+									isSubmitting={addContentMutation.isPending || addBundleMutation.isPending}
 									onCancel={() => {
 										setShowAddDialog(false)
 										onClose?.()
 										addContentForm.reset()
+										setBundleItems([{ id: crypto.randomUUID(), type: "link", content: "" }])
 										setUrlDuplicateCheck({
 											checking: false,
 											isDuplicate: false,
@@ -1825,7 +1638,10 @@ export function AddMemoryView({
 										})
 									}}
 									submitIcon={Plus}
-									submitText="Add Link"
+									submitText={bundleItems.filter((it) => it.content.trim().length > 0).length > 1
+										? `Add ${bundleItems.filter((it) => it.content.trim().length > 0).length} Items`
+										: "Add Link"
+									}
 								/>
 							</div>
 						</form>

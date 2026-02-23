@@ -3,13 +3,13 @@
 import {
 	asRecord,
 	cn,
-	formatPreviewLabel,
 	getYouTubeId,
 	getYouTubeThumbnail,
 	isInlineSvgDataUrl,
-	pickFirstUrlSameHost,
+	isValidPreviewUrl,
 	safeHttpUrl,
 } from "@lib/utils"
+import { getDocumentPreview } from "@/components/memory-list-view"
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api"
 import { AlertCircle, Loader2, Play, Plus, Save, Trash2, X } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -252,12 +252,6 @@ export function MemoryEntriesSidebar({
 		return autoSummaryMemory ? [autoSummaryMemory] : []
 	}, [autoSummaryMemory, memories])
 
-	const buildYouTubeEmbedUrl = (value?: string): string | undefined => {
-		const id = getYouTubeId(value)
-		if (!id) return undefined
-		return `https://www.youtube.com/embed/${id}`
-	}
-
 	type DocumentPreviewData =
 		| {
 				kind: "video"
@@ -279,25 +273,6 @@ export function MemoryEntriesSidebar({
 				thumbnail?: string
 		  }
 
-	const previewsEqual = (
-		a: DocumentPreviewData | null,
-		b: DocumentPreviewData | null,
-	): boolean => {
-		if (a === b) return true
-		if (!a || !b) return false
-		if (a.kind !== b.kind) return false
-		if (a.label !== b.label) return false
-		const thumbA = "thumbnail" in a ? (a.thumbnail ?? "") : ""
-		const thumbB = "thumbnail" in b ? (b.thumbnail ?? "") : ""
-		if (thumbA !== thumbB) return false
-		const urlA = "url" in a ? (a.url ?? "") : ""
-		const urlB = "url" in b ? (b.url ?? "") : ""
-		if (urlA !== urlB) return false
-		const embedA = "kind" in a && a.kind === "video" ? (a.embedUrl ?? "") : ""
-		const embedB = "kind" in b && b.kind === "video" ? (b.embedUrl ?? "") : ""
-		return embedA === embedB
-	}
-
 	const PROCESSING_STATUSES = new Set([
 		"queued",
 		"fetching",
@@ -309,245 +284,49 @@ export function MemoryEntriesSidebar({
 		"indexing",
 	])
 
+	// Adapt shared getDocumentPreview() result to sidebar's DocumentPreviewData type
 	const documentPreview = useMemo<DocumentPreviewData | null>(() => {
 		if (!document) return null
-
-		const metadata = asRecord(document.metadata)
-		const raw = asRecord((document as any).raw)
-		const extraction = asRecord(raw?.extraction)
-		const youtube = asRecord(extraction?.youtube)
-		const firecrawl =
-			asRecord(raw?.firecrawl) || asRecord(extraction?.firecrawl)
-		const firecrawlMetadata = asRecord(firecrawl?.metadata) || firecrawl
-		const rawGemini = asRecord(raw?.geminiFile)
-
-		const imageKeys = [
-			"ogImage",
-			"og_image",
-			"twitterImage",
-			"twitter_image",
-			"previewImage",
-			"preview_image",
-			"image",
-			"thumbnail",
-			"thumbnailUrl",
-			"thumbnail_url",
-			"favicon",
-		]
-
-		const originalUrl =
-			safeHttpUrl(metadata?.originalUrl) ??
-			safeHttpUrl((metadata as any)?.source_url) ??
-			safeHttpUrl((metadata as any)?.sourceUrl) ??
-			safeHttpUrl(document.url) ??
-			safeHttpUrl(youtube?.url)
-
-		const documentPreviewImage = (() => {
-			const rawPreview =
-				(document as any)?.previewImage ?? (document as any)?.preview_image
-			if (typeof rawPreview !== "string") return undefined
-			const trimmed = rawPreview.trim()
-			if (!trimmed) return undefined
-			if (isInlineSvgDataUrl(trimmed)) return undefined
-			if (trimmed.startsWith("data:image/")) return trimmed
-			const resolved = safeHttpUrl(trimmed, originalUrl)
-			if (!resolved) return undefined
-			if (resolved.toLowerCase().endsWith(".svg")) return undefined
-			return resolved
-		})()
-
-		// No special-casing by domain for main thumbnail
-
-		const metadataImage = pickFirstUrlSameHost(metadata, imageKeys, originalUrl)
-		const rawDirectImage = pickFirstUrlSameHost(raw, imageKeys, originalUrl)
-		const rawImage =
-			pickFirstUrlSameHost(extraction, imageKeys, originalUrl) ??
-			pickFirstUrlSameHost(firecrawl, imageKeys, originalUrl) ??
-			pickFirstUrlSameHost(firecrawlMetadata, imageKeys, originalUrl) ??
-			pickFirstUrlSameHost(rawGemini, imageKeys, originalUrl)
-
-		const firecrawlOgImage =
-			safeHttpUrl(firecrawlMetadata?.ogImage, originalUrl) ??
-			safeHttpUrl(firecrawl?.ogImage, originalUrl)
-
-		// Prefer page-extracted images over generic opengraph banners
-		const isLikelyGeneric = (v?: string) => {
-			if (!v) return true
-			const s = v.toLowerCase()
-			return (
-				s.endsWith(".svg") ||
-				s.includes("favicon") ||
-				s.includes("sprite") ||
-				s.includes("logo") ||
-				s.includes("opengraph.githubassets.com")
-			)
-		}
-
-		const extractedImages: string[] = (() => {
-			const arr =
-				(Array.isArray((extraction as any)?.images) &&
-					((extraction as any).images as unknown[])) ||
-				(Array.isArray((raw as any)?.images) &&
-					((raw as any).images as unknown[])) ||
-				[]
-			const out: string[] = []
-			for (const u of arr) {
-				const s = safeHttpUrl(u as string | undefined, originalUrl)
-				if (!s) continue
-				if (s.toLowerCase().startsWith("data:image/svg+xml")) continue
-				if (!out.includes(s)) out.push(s)
+		const preview = getDocumentPreview(document)
+		if (!preview) {
+			// Still return a link if we have a URL
+			const originalUrl =
+				safeHttpUrl((document.metadata as any)?.originalUrl) ??
+				safeHttpUrl(document.url)
+			if (originalUrl) {
+				return { kind: "link", label: "Link", url: originalUrl }
 			}
-			return out
-		})()
-
-		const _preferredFromExtracted =
-			extractedImages.find((u) => !isLikelyGeneric(u)) || extractedImages[0]
-
-		const youtubeFallback = (() => {
-			const youtubeUrl = youtube?.url as string | undefined
-			const id = getYouTubeId(youtubeUrl ?? originalUrl)
-			return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : undefined
-		})()
-
-		// Heuristics: avoid badges/svg; prefer GitHub social preview when available
-		const isSvgOrBadge = (u?: string) => {
-			if (!u) return true
-			const s = u.toLowerCase()
-			return (
-				s.startsWith("data:image/svg+xml") ||
-				s.endsWith(".svg") ||
-				s.includes("badge") ||
-				s.includes("shields") ||
-				s.includes("sprite") ||
-				s.includes("logo") ||
-				s.includes("icon") ||
-				s.includes("topics")
-			)
-		}
-		const isDisallowedBadgeDomain = (u?: string) => {
-			if (!u) return false
-			try {
-				const h = new URL(u).hostname.toLowerCase()
-				return h === "img.shields.io" || h.endsWith(".shields.io")
-			} catch {
-				return false
-			}
-		}
-		const isGitHubHost = (u?: string) => {
-			if (!u) return false
-			try {
-				return new URL(u).hostname.toLowerCase().includes("github.com")
-			} catch {
-				return false
-			}
-		}
-		const isGitHubAssets = (u?: string) => {
-			if (!u) return false
-			try {
-				return new URL(u).hostname.toLowerCase().endsWith("githubassets.com")
-			} catch {
-				return false
-			}
-		}
-		const isGitHubOpenGraph = (u?: string) => {
-			if (!u) return false
-			try {
-				return isGitHubAssets(u) && new URL(u).pathname.includes("/opengraph/")
-			} catch {
-				return false
-			}
+			return null
 		}
 
-		const preferredGitHubOg = isGitHubHost(originalUrl)
-			? [
-					documentPreviewImage,
-					firecrawlOgImage,
-					metadataImage,
-					rawImage,
-					rawDirectImage,
-				].find(isGitHubOpenGraph)
-			: undefined
-
-		// Build ordered list: prioritize documentPreviewImage, then other sources, then extracted images
-		// Include all extracted images (not just preferred) to ensure we have fallbacks when preview_image is SVG
-		const seen = new Set<string>()
-		const ordered: string[] = []
-
-		const addIfNotSeen = (url: string | undefined) => {
-			if (!url || seen.has(url)) return
-			seen.add(url)
-			ordered.push(url)
-		}
-
-		// Priority order: document preview, then metadata sources, then extracted images
-		addIfNotSeen(documentPreviewImage)
-		addIfNotSeen(rawImage)
-		addIfNotSeen(firecrawlOgImage)
-		addIfNotSeen(rawDirectImage)
-		addIfNotSeen(metadataImage)
-
-		// Add extracted images: prefer non-generic ones first
-		for (const img of extractedImages) {
-			if (!isLikelyGeneric(img)) {
-				addIfNotSeen(img)
-			}
-		}
-		// Then add generic extracted images as fallback
-		for (const img of extractedImages) {
-			if (isLikelyGeneric(img)) {
-				addIfNotSeen(img)
-			}
-		}
-
-		addIfNotSeen(youtubeFallback)
-
-		const filtered = ordered.filter(
-			(u) => !isSvgOrBadge(u) && !isDisallowedBadgeDomain(u),
-		)
-		const finalThumbnail =
-			preferredGitHubOg ||
-			filtered[0] ||
-			ordered.find(isGitHubOpenGraph) ||
-			metadataImage ||
-			youtubeFallback
-
-		const youtubeUrl =
-			safeHttpUrl(youtube?.url) ??
-			safeHttpUrl(youtube?.embedUrl) ??
-			(originalUrl && getYouTubeId(originalUrl) ? originalUrl : undefined)
-		const youtubeEmbed = buildYouTubeEmbedUrl(youtubeUrl ?? originalUrl)
-
-		const label = formatPreviewLabel(document.type)
-
-		if (youtubeEmbed) {
+		if (preview.kind === "video") {
+			const youtubeId = getYouTubeId(preview.href)
 			return {
 				kind: "video",
-				label: label || "YouTube",
-				thumbnail: finalThumbnail ?? youtubeFallback,
-				url: youtubeUrl ?? originalUrl ?? undefined,
-				embedUrl: youtubeEmbed,
+				label: preview.label,
+				thumbnail: preview.src,
+				url: preview.href,
+				embedUrl: youtubeId ? `https://www.youtube.com/embed/${youtubeId}` : undefined,
 			}
 		}
 
-		if (finalThumbnail) {
+		if (preview.kind === "image") {
 			return {
 				kind: "image",
-				label: label || "Preview",
-				thumbnail: finalThumbnail,
-				url: originalUrl ?? undefined,
+				label: preview.label,
+				thumbnail: preview.src,
+				url: preview.href,
 			}
 		}
 
-		if (originalUrl) {
-			return {
-				kind: "link",
-				label: label || "Link",
-				url: originalUrl,
-			}
+		// kind === "link"
+		return {
+			kind: "link",
+			label: preview.label,
+			url: preview.href,
+			thumbnail: preview.src,
 		}
-
-		return null
-	}, [document, buildYouTubeEmbedUrl])
+	}, [document])
 
 	const sanitizedDocumentPreview = useMemo<DocumentPreviewData | null>(() => {
 		if (!documentPreview) return null
@@ -593,12 +372,8 @@ export function MemoryEntriesSidebar({
 			return
 		}
 		if (!sanitizedDocumentPreview) return
-		setStickyPreview((current) =>
-			previewsEqual(current, sanitizedDocumentPreview)
-				? current
-				: sanitizedDocumentPreview,
-		)
-	}, [isProcessing, sanitizedDocumentPreview, previewsEqual])
+		setStickyPreview(sanitizedDocumentPreview)
+	}, [isProcessing, sanitizedDocumentPreview])
 
 	const previewToRender = isProcessing
 		? (stickyPreview ?? sanitizedDocumentPreview)
@@ -614,45 +389,22 @@ export function MemoryEntriesSidebar({
 	const additionalImages = useMemo(() => {
 		if (!document) return [] as string[]
 		const raw = asRecord((document as any).raw)
-		const extraction = asRecord(raw?.extraction) || asRecord(raw)
+		const extraction = asRecord(raw?.extraction) ?? asRecord(raw)
 		const baseUrl =
-			document.url && typeof document.url === "string"
-				? document.url
-				: undefined
+			document.url && typeof document.url === "string" ? document.url : undefined
 
 		const list: string[] = []
-		const isDisallowedBadgeDomain = (u?: string) => {
-			if (!u) return true
-			try {
-				const h = new URL(u).hostname.toLowerCase()
-				return h === "img.shields.io" || h.endsWith(".shields.io")
-			} catch {
-				return true
-			}
-		}
-
 		const push = (u?: unknown) => {
 			const s = safeHttpUrl(u as string | undefined, baseUrl)
-			if (!s) return
-			if (s.toLowerCase().endsWith(".svg")) return
-			if (s.toLowerCase().startsWith("data:image/svg+xml")) return
-			if (
-				s.toLowerCase().includes("badge") ||
-				s.toLowerCase().includes("shields")
-			)
-				return
-			if (isDisallowedBadgeDomain(s)) return
+			if (!isValidPreviewUrl(s)) return
 			if (!list.includes(s)) list.push(s)
 		}
 
-		// Prefer images array produced by extractor
-		const images =
-			extraction && Array.isArray((extraction as any).images)
-				? ((extraction as any).images as unknown[])
-				: []
+		const images = extraction && Array.isArray((extraction as any).images)
+			? ((extraction as any).images as unknown[])
+			: []
 		for (const u of images) push(u as string)
 
-		// Fallbacks: consider metaTags images if present
 		const metaTags = asRecord((extraction as any)?.metaTags)
 		if (metaTags) {
 			push(metaTags.ogImage)
@@ -664,10 +416,7 @@ export function MemoryEntriesSidebar({
 			previewToRender && "thumbnail" in previewToRender
 				? previewToRender.thumbnail
 				: undefined
-		const filtered = list.filter((u) => u !== mainThumb)
-
-		// Cap to 4 thumbnails
-		return filtered.slice(0, 4)
+		return list.filter((u) => u !== mainThumb).slice(0, 4)
 	}, [document, previewToRender])
 
 	// Get status badge

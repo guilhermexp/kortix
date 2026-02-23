@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
@@ -226,11 +226,16 @@ export const usePersistentChatStore = create<ConversationsStoreState>()(
 // Always scoped to the current project via useProject
 import { useProject } from "."
 
-export function usePersistentChat() {
+export function usePersistentChat(options?: { scopeKey?: string }) {
 	const { selectedProject } = useProject()
 	const projectId = selectedProject
+	const scopeKey = options?.scopeKey?.trim() || "home"
+	const storageScopeId = useMemo(
+		() => `${projectId}::${scopeKey}`,
+		[projectId, scopeKey],
+	)
 
-	const projectState = usePersistentChatStore((s) => s.byProject[projectId])
+	const projectState = usePersistentChatStore((s) => s.byProject[storageScopeId])
 	const setCurrentChatIdRaw = usePersistentChatStore((s) => s.setCurrentChatId)
 	const setConversationRaw = usePersistentChatStore((s) => s.setConversation)
 	const deleteConversationRaw = usePersistentChatStore(
@@ -255,30 +260,30 @@ export function usePersistentChat() {
 
 	const setCurrentChatId = useCallback(
 		(chatId: string | null): void => {
-			setCurrentChatIdRaw(projectId, chatId)
+			setCurrentChatIdRaw(storageScopeId, chatId)
 		},
-		[projectId, setCurrentChatIdRaw],
+		[setCurrentChatIdRaw, storageScopeId],
 	)
 
 	const setConversation = useCallback(
 		(chatId: string, messages: PersistedMessage[]): void => {
-			setConversationRaw(projectId, chatId, messages)
+			setConversationRaw(storageScopeId, chatId, messages)
 		},
-		[projectId, setConversationRaw],
+		[setConversationRaw, storageScopeId],
 	)
 
 	const deleteConversation = useCallback(
 		(chatId: string): void => {
-			deleteConversationRaw(projectId, chatId)
+			deleteConversationRaw(storageScopeId, chatId)
 		},
-		[projectId, deleteConversationRaw],
+		[deleteConversationRaw, storageScopeId],
 	)
 
 	const setConversationTitle = useCallback(
 		(chatId: string, title: string | undefined): void => {
-			setConversationTitleRaw(projectId, chatId, title)
+			setConversationTitleRaw(storageScopeId, chatId, title)
 		},
-		[projectId, setConversationTitleRaw],
+		[setConversationTitleRaw, storageScopeId],
 	)
 
 	const getCurrentConversation = useCallback((): PersistedMessage[] | undefined => {
@@ -303,9 +308,9 @@ export function usePersistentChat() {
 
 	const setSdkSessionId = useCallback(
 		(chatId: string, sdkSessionId: string | null): void => {
-			setSdkSessionIdRaw(projectId, chatId, sdkSessionId)
+			setSdkSessionIdRaw(storageScopeId, chatId, sdkSessionId)
 		},
-		[projectId, setSdkSessionIdRaw],
+		[setSdkSessionIdRaw, storageScopeId],
 	)
 
 	const getSdkSessionId = useCallback(

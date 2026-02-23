@@ -36,7 +36,7 @@ export function ChatModeSelector({
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
 				align="start"
-				className="border-white/10 bg-[#0b0d12] text-zinc-100 z-[140]"
+				className="border-white/10 bg-[#0e0f10] text-zinc-100 z-[140]"
 				side="top"
 			>
 				<DropdownMenuItem

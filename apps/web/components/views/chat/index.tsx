@@ -23,6 +23,8 @@ export function ChatRewrite({
 	embedded = false,
 	showCloseButton,
 	documentContext,
+	documentId,
+	contextDocumentData,
 	className,
 	headerClassName,
 	compact = false,
@@ -32,12 +34,19 @@ export function ChatRewrite({
 	embedded?: boolean
 	showCloseButton?: boolean
 	documentContext?: ReactNode
+	documentId?: string
+	contextDocumentData?: { id: string; title: string | null; content: string | null }
 	className?: string
 	headerClassName?: string
 	compact?: boolean
 	onSwitchToCouncil?: () => void
 	canvasId?: string
 }) {
+	const chatScopeKey = useMemo(() => {
+		if (canvasId && canvasId.trim().length > 0) return `canvas:${canvasId}`
+		if (documentId && documentId.trim().length > 0) return `document:${documentId}`
+		return "home"
+	}, [canvasId, documentId])
 	const { setIsOpen } = useChatOpen()
 	const { selectedProject } = useProject()
 	const {
@@ -46,7 +55,7 @@ export function ChatRewrite({
 		setCurrentChatId,
 		deleteConversation,
 		getCurrentChat,
-	} = usePersistentChat()
+	} = usePersistentChat({ scopeKey: chatScopeKey })
 
 	const [isDialogOpen, setIsDialogOpen] = useState(false)
 
@@ -202,8 +211,11 @@ export function ChatRewrite({
 				</div>
 				<ChatMessages
 					canvasId={canvasId}
+					chatScopeKey={chatScopeKey}
 					compact={compact}
+					contextDocumentData={contextDocumentData}
 					documentContext={documentContext}
+					documentId={documentId}
 					embedded={embedded}
 					onSwitchToCouncil={onSwitchToCouncil}
 				/>

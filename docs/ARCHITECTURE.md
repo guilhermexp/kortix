@@ -1,7 +1,7 @@
 # Arquitetura do Kortix
 
 > 📊 Análise completa da arquitetura do sistema Kortix
-> 🗓️ Última atualização: 16 de Janeiro de 2026
+> 🗓️ Última atualização: 22 de Fevereiro de 2026
 > 👤 Revisado por: Senior Architect (Claude Sonnet 4.5)
 
 ## 📋 Índice
@@ -11,12 +11,13 @@
 3. [Estrutura do Monorepo](#estrutura-do-monorepo)
 4. [Frontend (Next.js 16)](#frontend-nextjs-16)
 5. [Backend (Hono)](#backend-hono)
-6. [Camada de Dados](#camada-de-dados)
-7. [Integrações e Serviços](#integrações-e-serviços)
-8. [Fluxos Principais](#fluxos-principais)
-9. [Segurança e Autenticação](#segurança-e-autenticação)
-10. [Performance e Escalabilidade](#performance-e-escalabilidade)
-11. [Recomendações](#recomendações)
+6. [Atualizações Recentes (2026-02-22)](#atualizações-recentes-2026-02-22)
+7. [Camada de Dados](#camada-de-dados)
+8. [Integrações e Serviços](#integrações-e-serviços)
+9. [Fluxos Principais](#fluxos-principais)
+10. [Segurança e Autenticação](#segurança-e-autenticação)
+11. [Performance e Escalabilidade](#performance-e-escalabilidade)
+12. [Recomendações](#recomendações)
 
 ---
 
@@ -475,6 +476,34 @@ apps/api/
 - Error handler centralizado
 - Logging estruturado
 - Response padronizados
+
+### Atualizações de Busca e Agentes (2026-02-22)
+
+- Busca estruturada unificada no backend via `services/search-tool.ts`.
+- MCP (`routes/mcp.ts`) e agente interno (`claude-agent-tools.ts` e `claude-direct.ts`) compartilham o mesmo contrato de retorno.
+- Ferramenta MCP `searchKortix` aceita:
+  - `informationToGet` (obrigatório)
+  - `limit` (`1..50`, default `8`)
+  - `responseFormat` (`json|human`, default `json`)
+- Busca de documentos na listagem cobre `title`, `summary` e `content`, com fallback sem acentos para aumentar recall.
+- Frontend corrige dois pontos de UX de busca:
+  - limpar input remove filtro imediatamente (sem aguardar debounce)
+  - valor legado de projeto `"default"` é normalizado para `DEFAULT_PROJECT_ID`
+- Referência de contrato: `docs/SEARCH_AND_AGENT_TOOLS.md`.
+
+---
+
+## 🔄 Atualizações Recentes (2026-02-22)
+
+Resumo operacional das mudanças de fevereiro de 2026:
+
+- Serviço único para busca de ferramentas de agentes (MCP e interno), com payload estruturado.
+- Contrato explícito para respostas orientadas a máquina (`json`) e legíveis (`human`) no MCP.
+- Melhoria de relevância de busca em documentos pela inclusão de `content`.
+- Fallback de busca com normalização de diacríticos para consultas sem acento.
+- Correções de estado de busca/projeto para evitar filtros "presos" no frontend.
+
+Detalhes completos em: `docs/SEARCH_AND_AGENT_TOOLS.md`.
 
 ---
 

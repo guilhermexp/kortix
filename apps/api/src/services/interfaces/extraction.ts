@@ -192,10 +192,7 @@ export interface PDFExtractor extends DocumentExtractor {
 	/**
 	 * Extract text using OCR
 	 */
-	extractWithOCR(
-		buffer: Buffer,
-		options?: OCROptions,
-	): Promise<ExtractionResult>
+	extractWithOCR(buffer: Buffer): Promise<string>
 
 	/**
 	 * Check if PDF is scanned (needs OCR)
@@ -212,10 +209,6 @@ export interface PDFExtractor extends DocumentExtractor {
  * PDF extraction options
  */
 export interface PDFOptions {
-	/** Use OCR for text extraction */
-	useOCR?: boolean
-	/** OCR provider */
-	ocrProvider?: "replicate" | "gemini"
 	/** Extract images */
 	extractImages?: boolean
 	/** Maximum pages to process */
@@ -226,21 +219,6 @@ export interface PDFOptions {
 	timeout?: number
 }
 
-/**
- * OCR extraction options
- */
-export interface OCROptions {
-	/** OCR provider */
-	provider: "replicate" | "gemini"
-	/** Language hint */
-	language?: string
-	/** Image preprocessing */
-	preprocess?: boolean
-	/** Confidence threshold (0-1) */
-	confidenceThreshold?: number
-	/** Timeout in milliseconds */
-	timeout?: number
-}
 
 /**
  * PDF metadata

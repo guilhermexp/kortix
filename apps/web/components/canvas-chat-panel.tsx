@@ -2,7 +2,7 @@
 
 import { cn } from "@lib/utils"
 import { Button } from "@ui/components/button"
-import { MessageSquare } from "lucide-react"
+import { GripHorizontal, MessageSquare } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { MouseEvent as ReactMouseEvent } from "react"
 import { ChatRewrite } from "@/components/views/chat"
@@ -39,6 +39,27 @@ export function CanvasChatPanel({ canvasId }: { canvasId?: string }) {
 	const startHeightRef = useRef(DEFAULT_HEIGHT)
 	const startLeftRef = useRef(16)
 	const startTopRef = useRef(16)
+	const pendingSizeRef = useRef<null | { width: number; height: number }>(null)
+	const pendingPositionRef = useRef<null | { x: number; y: number }>(null)
+	const frameRef = useRef<number | null>(null)
+	const [isInteracting, setIsInteracting] = useState(false)
+
+	const flushFrame = useCallback(() => {
+		frameRef.current = null
+		if (pendingSizeRef.current) {
+			setPanelSize(pendingSizeRef.current)
+			pendingSizeRef.current = null
+		}
+		if (pendingPositionRef.current) {
+			setPanelPosition(pendingPositionRef.current)
+			pendingPositionRef.current = null
+		}
+	}, [])
+
+	const scheduleFrame = useCallback(() => {
+		if (frameRef.current !== null) return
+		frameRef.current = window.requestAnimationFrame(flushFrame)
+	}, [flushFrame])
 
 	const clampSize = useCallback((width: number, height: number) => {
 		const maxWidthFromViewport = Math.max(
@@ -141,6 +162,7 @@ export function CanvasChatPanel({ canvasId }: { canvasId?: string }) {
 		(mode: ResizeMode, event: ReactMouseEvent) => {
 			if (isMobile) return
 			event.preventDefault()
+			setIsInteracting(true)
 			resizeModeRef.current = mode
 			startXRef.current = event.clientX
 			startYRef.current = event.clientY
@@ -160,6 +182,7 @@ export function CanvasChatPanel({ canvasId }: { canvasId?: string }) {
 	const startDrag = useCallback((event: ReactMouseEvent) => {
 		if (isMobile) return
 		event.preventDefault()
+		setIsInteracting(true)
 		isDraggingRef.current = true
 		startXRef.current = event.clientX
 		startYRef.current = event.clientY
@@ -183,20 +206,20 @@ export function CanvasChatPanel({ canvasId }: { canvasId?: string }) {
 					mode === "width"
 						? startHeightRef.current
 						: startHeightRef.current + deltaY
-				setPanelSize(clampSize(width, height))
+				pendingSizeRef.current = clampSize(width, height)
+				scheduleFrame()
 				return
 			}
 			if (!isDraggingRef.current) return
 			const deltaX = event.clientX - startXRef.current
 			const deltaY = event.clientY - startYRef.current
-			setPanelPosition(
-				clampPosition(
-					startLeftRef.current + deltaX,
-					startTopRef.current + deltaY,
-					panelSizeRef.current.width,
-					panelSizeRef.current.height,
-				),
+			pendingPositionRef.current = clampPosition(
+				startLeftRef.current + deltaX,
+				startTopRef.current + deltaY,
+				panelSizeRef.current.width,
+				panelSizeRef.current.height,
 			)
+			scheduleFrame()
 		}
 
 		const onMouseUp = () => {
@@ -205,6 +228,7 @@ export function CanvasChatPanel({ canvasId }: { canvasId?: string }) {
 			if (!wasResizing && !wasDragging) return
 			resizeModeRef.current = null
 			isDraggingRef.current = false
+			setIsInteracting(false)
 			document.body.style.userSelect = ""
 			document.body.style.cursor = ""
 			try {
@@ -224,15 +248,19 @@ export function CanvasChatPanel({ canvasId }: { canvasId?: string }) {
 		return () => {
 			window.removeEventListener("mousemove", onMouseMove)
 			window.removeEventListener("mouseup", onMouseUp)
+			if (frameRef.current !== null) {
+				window.cancelAnimationFrame(frameRef.current)
+				frameRef.current = null
+			}
 			document.body.style.userSelect = ""
 			document.body.style.cursor = ""
 		}
-	}, [clampSize, clampPosition])
+	}, [clampSize, clampPosition, scheduleFrame])
 
 	return (
 		<>
 			{!isOpen && (
-				<div className="fixed bottom-5 right-5 z-[80]">
+				<div className="fixed bottom-4 right-20 z-[80]">
 					<Button
 						className="h-11 w-11 rounded-full bg-zinc-900 text-zinc-100 border border-zinc-700/70 shadow-none hover:bg-zinc-800"
 						onClick={() => setIsOpen(true)}
@@ -246,7 +274,8 @@ export function CanvasChatPanel({ canvasId }: { canvasId?: string }) {
 
 			<div
 				className={cn(
-					"canvas-chat-shell fixed z-[90] transition-all duration-200 ease-out",
+					"canvas-chat-shell fixed z-[90]",
+					isInteracting ? "transition-none" : "transition-all duration-200 ease-out",
 					isMobile
 						? "inset-0"
 						: "",
@@ -265,19 +294,25 @@ export function CanvasChatPanel({ canvasId }: { canvasId?: string }) {
 							}
 				}
 			>
-				<div className="h-full flex flex-col overflow-hidden rounded-[14px] border border-[rgba(255,255,255,0.05)] bg-[#08090a] shadow-none">
+				<div className="h-full flex flex-col overflow-hidden rounded-[14px] border border-[rgba(255,255,255,0.08)] bg-[#0e0f10] shadow-lg shadow-black/20">
 					{!isMobile && (
 						<button
-							aria-label="Move chat panel"
-							className="absolute left-0 right-20 top-0 h-10 cursor-grab z-20"
+							aria-label="Drag chat panel"
+							className={cn(
+								"absolute left-1/2 top-2 z-30 -translate-x-1/2 inline-flex h-5 items-center gap-1 rounded-full border border-[rgba(255,255,255,0.14)] bg-[rgba(0,0,0,0.35)] px-2 text-[10px] text-zinc-300 backdrop-blur-sm",
+								isInteracting ? "cursor-grabbing" : "cursor-grab",
+							)}
 							onMouseDown={startDrag}
 							type="button"
-						/>
+						>
+							<GripHorizontal className="h-3 w-3 opacity-80" />
+							<span className="leading-none">Mover</span>
+						</button>
 					)}
 					{!isMobile && (
 						<button
 							aria-label="Resize chat panel width"
-							className="absolute right-0 top-0 h-full w-2 cursor-ew-resize z-20"
+							className="absolute right-0 top-0 h-full w-3 cursor-ew-resize z-20"
 							onMouseDown={(event) => startResize("width", event)}
 							type="button"
 						/>
@@ -285,7 +320,7 @@ export function CanvasChatPanel({ canvasId }: { canvasId?: string }) {
 					{!isMobile && (
 						<button
 							aria-label="Resize chat panel height"
-							className="absolute bottom-0 left-0 h-2 w-full cursor-ns-resize z-20"
+							className="absolute bottom-0 left-0 h-3 w-full cursor-ns-resize z-20"
 							onMouseDown={(event) => startResize("height", event)}
 							type="button"
 						/>
@@ -300,10 +335,10 @@ export function CanvasChatPanel({ canvasId }: { canvasId?: string }) {
 						) : (
 							<ChatRewrite
 								canvasId={canvasId}
-								className="h-full bg-[#08090a]"
+								className="h-full bg-[#0e0f10]"
 								compact
 								embedded
-								headerClassName="px-4 py-3 bg-[#0b0b0c] backdrop-blur-none border-b border-[rgba(255,255,255,0.05)]"
+								headerClassName="px-4 py-3 bg-[#131416] backdrop-blur-none border-b border-[rgba(255,255,255,0.06)]"
 								onSwitchToCouncil={() => setMode("council")}
 								showCloseButton
 							/>
@@ -311,7 +346,7 @@ export function CanvasChatPanel({ canvasId }: { canvasId?: string }) {
 					{!isMobile && (
 						<button
 							aria-label="Resize chat panel"
-							className="absolute right-2 bottom-2 z-30 h-4 w-4 cursor-nwse-resize rounded-sm border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)]"
+							className="absolute right-1.5 bottom-1.5 z-30 h-5 w-5 cursor-nwse-resize rounded-sm border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)]"
 							onMouseDown={(event) => startResize("both", event)}
 							type="button"
 						/>

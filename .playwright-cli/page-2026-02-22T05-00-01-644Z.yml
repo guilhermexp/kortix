@@ -1,0 +1,289 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic [ref=e7]:
+              - img
+              - textbox [ref=e286]:
+                - /placeholder: Search...
+            - generic [ref=e9]:
+              - button [ref=e287] [cursor=pointer]:
+                - img [ref=e13]
+                - generic [ref=e15]: All Projects
+                - img [ref=e17]
+              - button [ref=e288] [cursor=pointer]:
+                - img
+                - generic [ref=e20]: Atualizar
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - img
+                - generic:
+                  - heading [level=3]: "GitHub - anthropics/claude-plugins-official: Official, Anthropic-managed directory of high quality Claude Code Plugins."
+                  - paragraph: O repositório anthropics/claude-plugins-official é o diretório oficial gerenciado pela Anthropic para plugins de alta qualidade do Claude Code. Ele organiza plugins internos desenvolvidos pela equipe
+                  - generic:
+                    - generic:
+                      - generic:
+                        - combobox:
+                          - generic:
+                            - img
+                            - generic: Github
+                          - img
+                    - button:
+                      - img
+              - generic:
+                - generic:
+                  - img
+                - generic:
+                  - heading [level=3]: "GitHub - ryoppippi/ccusage: A CLI tool for analyzing Claude Code/Codex CLI usage from local JSONL files."
+                  - paragraph: O ccusage é uma ferramenta CLI leve e poderosa para analisar o uso de tokens e custos do Claude Code e Codex CLI a partir de arquivos JSONL locais. Com mais de 10.9k estrelas no GitHub, destaca-se pel
+                  - generic:
+                    - generic:
+                      - generic:
+                        - combobox:
+                          - generic:
+                            - img
+                            - generic: Github
+                          - img
+                    - button:
+                      - img
+              - generic:
+                - generic:
+                  - img
+                  - generic:
+                    - generic:
+                      - img
+                - generic:
+                  - heading [level=3]: Como não fracassar com seu SaaS
+                  - paragraph: O vídeo discute erros comuns que levam ao fracasso em empresas de SaaS, com foco em bootstrapping lucrativo sem investidores. David, empreendedor experiente desde 2009, compartilha lições práticas bas
+                  - generic:
+                    - generic:
+                      - generic:
+                        - combobox:
+                          - generic:
+                            - img
+                            - generic: Youtube
+                          - img
+                    - button:
+                      - img
+              - generic:
+                - generic:
+                  - img
+                  - generic:
+                    - generic:
+                      - img
+                - generic:
+                  - heading [level=3]: "Trending Open-Source GitHub Projects : PentAGI, WebLLM, FreeMoCap, Zvec, MemU & React-Doctor 233"
+                  - paragraph: O vídeo apresenta uma seleção de 20 projetos open-source em alta no GitHub, focados em ferramentas de IA, automação de agentes autônomos, segurança cibernética, desenvolvimento de jogos e análise de p
+                  - generic:
+                    - generic:
+                      - generic:
+                        - combobox:
+                          - generic:
+                            - img
+                            - generic: OpenSource
+                          - img
+                    - button:
+                      - img
+              - generic:
+                - generic:
+                  - img
+                - generic:
+                  - heading [level=3]: "GitHub - guilhermexp/DirectorMarketing: AI video agents framework for next-gen video interactions and workflows."
+                  - paragraph: O DirectorMarketing é um framework de agentes de vídeo baseados em IA, forked do projeto original Director, projetado para interações e fluxos de trabalho avançados com vídeos. Ele permite raciocínio
+                  - generic:
+                    - generic:
+                      - generic:
+                        - combobox:
+                          - generic:
+                            - img
+                            - generic: Marketing
+                          - img
+                    - button:
+                      - img
+              - generic:
+                - generic:
+                  - img
+                  - generic:
+                    - generic:
+                      - img
+                - generic:
+                  - heading [level=3]: Antigravity + Every Image & Video AI is a Cheat Code for Creators (NEW Skill)
+                  - paragraph: O vídeo apresenta uma nova habilidade para plataformas agenticas como Claude Code e Antigravity, que integra modelos de IA generativa de imagens e vídeos (como NanoBanana Pro, GPT Image 1.5, Kling, Ve
+                  - generic:
+                    - generic:
+                      - generic:
+                        - combobox:
+                          - generic:
+                            - img
+                            - generic: Default
+                          - img
+                    - button:
+                      - img
+              - generic:
+                - generic:
+                  - img
+                  - generic:
+                    - generic:
+                      - img
+                - generic:
+                  - heading [level=3]: Antigravity + Flutter + Stitch builds Insane Mobile Apps (NEW Skill)
+                  - paragraph: O vídeo tutorial demonstra como usar as ferramentas do Google — Stitch, Anti-Gravity e Flutter — para criar aplicativos móveis completos sem codificação, transformando ideias em apps instaláveis via I
+                  - generic:
+                    - generic:
+                      - generic:
+                        - combobox:
+                          - generic:
+                            - img
+                            - generic: Marketing
+                          - img
+                    - button:
+                      - img
+              - generic:
+                - generic:
+                  - img
+                - generic:
+                  - heading [level=3]: "GitHub - HKUDS/nanobot: \"🐈 nanobot: The Ultra-Lightweight OpenClaw"
+                  - paragraph: O nanobot é um assistente de IA pessoal ultra-leve, inspirado no OpenClaw, com apenas cerca de 4.000 linhas de código, representando 99% menos que alternativas como o Clawdbot. Ele oferece funcionalid
+                  - generic:
+                    - generic:
+                      - generic:
+                        - combobox:
+                          - generic:
+                            - img
+                            - generic: Clawdbot
+                          - img
+                    - button:
+                      - img
+              - generic:
+                - generic:
+                  - img
+                  - generic:
+                    - generic:
+                      - img
+                - generic:
+                  - heading [level=3]: OpenClaw vs PicoClaw vs NullClaw vs ZeroClaw vs NanoBot vs TinyClaw — The Comparison
+                  - paragraph: O vídeo compara variantes open-source do OpenClaw, um assistente pessoal de IA que integra canais como WhatsApp, Telegram e Discord, destacando diferenças em desempenho, segurança e filosofia. Ferrame
+                  - generic:
+                    - generic:
+                      - generic:
+                        - combobox:
+                          - generic:
+                            - img
+                            - generic: Clawdbot
+                          - img
+                    - button:
+                      - img
+              - generic:
+                - generic:
+                  - img
+                  - generic:
+                    - generic:
+                      - img
+                - generic:
+                  - heading [level=3]: "OpenClaw: Build and Automate ANYTHING!"
+                  - paragraph: O OpenClaw é uma plataforma de gerenciamento de dispositivos e gateways que recebeu sua maior atualização de segurança, com mais de 40 correções em uma única versão (2026.2.19), fortalecendo a proteçã
+                  - generic:
+                    - generic:
+                      - generic:
+                        - combobox:
+                          - generic:
+                            - img
+                            - generic: Clawdbot
+                          - img
+                    - button:
+                      - img
+              - generic:
+                - generic:
+                  - img
+                  - generic:
+                    - generic:
+                      - img
+                - generic:
+                  - heading [level=3]: Sonnet 4.6 just made OpenClaw illegally good
+                  - paragraph: O vídeo demonstra a configuração otimizada do OpenClaw, uma ferramenta de IA agentic, usando VPS da Hostinger com deployment one-click e o modelo Claude Sonnet 4.6 da Anthropic, que oferece alto desem
+                  - generic:
+                    - generic:
+                      - generic:
+                        - combobox:
+                          - generic:
+                            - img
+                            - generic: Clawdbot
+                          - img
+                    - button:
+                      - img
+      - generic:
+        - button:
+          - img
+      - generic:
+        - generic:
+          - button:
+            - img
+            - generic: Toggle theme
+    - navigation [ref=e251]:
+      - generic [ref=e252]:
+        - button [ref=e289] [cursor=pointer]:
+          - img [ref=e254]
+        - button [ref=e290] [cursor=pointer]:
+          - img [ref=e257]
+        - button [ref=e291] [cursor=pointer]:
+          - img [ref=e260]
+        - button [ref=e292] [cursor=pointer]:
+          - img [ref=e262]
+        - button [ref=e293] [cursor=pointer]:
+          - img [ref=e266]
+        - button [ref=e294] [cursor=pointer]:
+          - img [ref=e269]
+        - button [ref=e295] [cursor=pointer]:
+          - img [ref=e273]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e281] [cursor=pointer]:
+    - img [ref=e282]
+  - alert
+  - dialog "Add to Memory" [ref=e297]:
+    - generic [ref=e298]:
+      - generic [ref=e300]:
+        - generic [ref=e301]:
+          - heading "Add to Memory" [level=2] [ref=e302]
+          - paragraph [ref=e303]: Save any webpage, article, or file to your memory
+        - generic [ref=e305]:
+          - button "Note" [active] [ref=e306] [cursor=pointer]:
+            - img [ref=e307]
+            - text: Note
+          - button "Link" [ref=e315] [cursor=pointer]:
+            - img [ref=e316]
+            - text: Link
+          - button "File" [ref=e319] [cursor=pointer]:
+            - img [ref=e320]
+            - text: File
+          - button "Connect" [ref=e323] [cursor=pointer]:
+            - img [ref=e324]
+            - text: Connect
+      - generic [ref=e328]:
+        - generic [ref=e329]:
+          - textbox "https://example.com/article" [ref=e332]
+          - generic [ref=e333]:
+            - button "Add Link" [ref=e334] [cursor=pointer]:
+              - img [ref=e335]
+              - text: Add Link
+            - button "Add Note" [ref=e336] [cursor=pointer]:
+              - img [ref=e337]
+              - text: Add Note
+          - generic [ref=e342]:
+            - generic [ref=e343]: Project
+            - combobox "Project" [ref=e344] [cursor=pointer]:
+              - generic [ref=e345]:
+                - img
+              - img
+            - combobox [ref=e346]
+        - generic [ref=e348]:
+          - button "Cancel" [ref=e349] [cursor=pointer]
+          - generic [ref=e350]:
+            - button "Add Link" [disabled]:
+              - img
+              - text: Add Link

@@ -21,4 +21,18 @@ if [ -n "${EXISTING_PID}" ]; then
   fi
 fi
 
-exec bun run --hot src/index.ts
+# Start API server + ingestion worker together
+bun run --hot src/index.ts &
+API_PID=$!
+
+bun run src/worker/ingestion-worker.ts &
+WORKER_PID=$!
+
+# Handle cleanup on exit
+cleanup() {
+  kill "$API_PID" "$WORKER_PID" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+echo "[dev:server] API (PID $API_PID) + ingestion-worker (PID $WORKER_PID) started"
+wait $API_PID $WORKER_PID

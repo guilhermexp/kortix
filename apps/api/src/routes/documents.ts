@@ -9,6 +9,8 @@
  */
 
 import {
+  BundleCreateSchema,
+  BundleResponseSchema,
   DocumentsWithMemoriesQuerySchema,
   DocumentsWithMemoriesResponseSchema,
   ListMemoriesQuerySchema,
@@ -172,6 +174,7 @@ const ALLOWED_DOCUMENT_TYPES = new Set([
   "onedrive",
   "url", // URL-based content (legacy type from database)
   "document-summary", // AI-generated document summaries
+  "bundle", // Multi-link/note bundles
 ]);
 
 const invalidateDocumentCaches = () => {
@@ -321,7 +324,7 @@ export async function getDocument(
   const { data: document, error } = await client
     .from("documents")
     .select(
-      "id, status, content, summary, metadata, created_at, updated_at, space_id, spaces(container_tag), title, url, type, preview_image, raw",
+      "id, status, content, summary, metadata, created_at, updated_at, space_id, spaces(container_tag), title, url, type, preview_image, raw, parent_id",
     )
     .eq("org_id", organizationId)
     .eq("id", documentId)
@@ -341,6 +344,26 @@ export async function getDocument(
 
   if (memoriesError) throw memoriesError;
 
+  // If this is a bundle, fetch children
+  const isBundle = (document as any).type === "bundle";
+  let children: Array<{
+    id: string;
+    title: string | null;
+    previewImage: string | null;
+    summary: string | null;
+    status: string;
+    url: string | null;
+    type: string;
+    content: string | null;
+    childOrder: number;
+  }> | undefined;
+  let childCount: number | undefined;
+
+  if (isBundle) {
+    children = await getDocumentChildren(client, organizationId, documentId);
+    childCount = children.length;
+  }
+
   return {
     id: document.id,
     status: document.status ?? "unknown",
@@ -356,6 +379,10 @@ export async function getDocument(
     type: (document as any).type ?? null,
     previewImage: (document as any).preview_image ?? null,
     raw: (document as any).raw ?? null,
+    parentId: (document as any).parent_id ?? null,
+    // Bundle fields
+    ...(childCount !== undefined ? { childCount } : {}),
+    ...(children ? { children } : {}),
     // Transform memory entries: database 'content' → API 'memory'
     memoryEntries: (memories ?? []).map((row) => ({
       id: row.id,
@@ -986,6 +1013,12 @@ export async function addDocument({
   // Process document inline (async - doesn't block response)
   // Used when Redis unavailable or queue add fails
   if (jobId) {
+    // Update document status to "processing" in DB so frontend polling sees it immediately
+    await client
+      .from("documents")
+      .update({ status: "processing" })
+      .eq("id", docId);
+
     // Fire and forget - process in background
     processDocumentInline({
       documentId: docId,
@@ -1037,6 +1070,7 @@ export async function listDocuments(
       { count: "exact" },
     )
     .eq("org_id", organizationId)
+    .is("parent_id", null)
     .order(sortColumn, { ascending: (query.order ?? "desc") === "asc" })
     .range(offset, offset + limit - 1);
 
@@ -1152,6 +1186,7 @@ export async function listDocumentsWithMemories(
       .from("documents")
       .select(fallbackSearchSelectFields, { count: "planned" })
       .eq("org_id", organizationId)
+      .is("parent_id", null)
       .order(sortColumn, { ascending: (query.order ?? "desc") === "asc" })
       .limit(fallbackWindow);
 
@@ -1214,6 +1249,7 @@ export async function listDocumentsWithMemories(
       .from("documents")
       .select("id")
       .eq("org_id", organizationId)
+      .is("parent_id", null)
       .in("space_id", spaceIds);
 
     if (spaceDocsErr && !isPermissionDenied(spaceDocsErr)) throw spaceDocsErr;
@@ -1239,6 +1275,7 @@ export async function listDocumentsWithMemories(
       .from("documents")
       .select(selectFields, { count: "planned" })
       .eq("org_id", organizationId)
+      .is("parent_id", null)
       .in("id", docIds);
 
     queryBuilder = applyTextSearch(queryBuilder);
@@ -1265,7 +1302,8 @@ export async function listDocumentsWithMemories(
     let queryBuilder = client
       .from("documents")
       .select(selectFields, { count: "planned" })
-      .eq("org_id", organizationId);
+      .eq("org_id", organizationId)
+      .is("parent_id", null);
 
     queryBuilder = applyTextSearch(queryBuilder);
 
@@ -1501,7 +1539,7 @@ export async function listDocumentsWithMemoriesByIds(
   const { data, error } = await client
     .from("documents")
     .select(
-      "id, org_id, user_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, created_at, updated_at, space_id, spaces(container_tag)",
+      "id, org_id, user_id, title, content, summary, url, source, type, status, metadata, processing_metadata, raw, tags, preview_image, error, token_count, word_count, chunk_count, average_chunk_size, created_at, updated_at, space_id, parent_id, spaces(container_tag)",
     )
     .eq("org_id", organizationId)
     .in(column, query.ids);
@@ -1661,8 +1699,22 @@ export async function listDocumentsWithMemoriesByIds(
       createdAt: doc.created_at,
       updatedAt: doc.updated_at,
       memoryEntries,
+      parentId: (doc as any).parent_id ?? null,
     };
   });
+
+  // Enrich bundle documents with children
+  for (const doc of documents) {
+    if (doc.type === "bundle") {
+      try {
+        const children = await getDocumentChildren(client, organizationId, doc.id);
+        (doc as any).childCount = children.length;
+        (doc as any).children = children;
+      } catch (err) {
+        console.error(`[by-ids] Failed to fetch children for bundle ${doc.id}`, err);
+      }
+    }
+  }
 
   return DocumentsWithMemoriesResponseSchema.parse({
     documents,
@@ -1791,6 +1843,16 @@ export async function deleteDocument(
     return;
   }
 
+  // Check if this document is a child of a bundle
+  const { data: doc } = await client
+    .from("documents")
+    .select("parent_id")
+    .eq("id", documentId)
+    .eq("org_id", organizationId)
+    .maybeSingle();
+
+  const parentId = doc?.parent_id ?? null;
+
   const { error } = await client
     .from("documents")
     .delete()
@@ -1798,6 +1860,25 @@ export async function deleteDocument(
     .eq("org_id", organizationId);
 
   if (error) throw error;
+
+  // If this was a child, check if parent bundle is now empty and delete it
+  if (parentId) {
+    const { data: siblings } = await client
+      .from("documents")
+      .select("id")
+      .eq("parent_id", parentId)
+      .eq("org_id", organizationId)
+      .limit(1);
+
+    if (!siblings || siblings.length === 0) {
+      // No more children — delete the empty parent bundle
+      await client
+        .from("documents")
+        .delete()
+        .eq("id", parentId)
+        .eq("org_id", organizationId);
+    }
+  }
 
   invalidateDocumentCaches();
 }
@@ -1980,4 +2061,298 @@ export async function findDocumentRelatedLinks(
 
   console.log("[findDocumentRelatedLinks] Successfully saved related links");
   return { success: true, relatedLinks };
+}
+
+// ============================================================================
+// Bundle operations
+// ============================================================================
+
+export type BundleCreateInput = z.infer<typeof BundleCreateSchema>;
+
+export async function createBundle({
+  organizationId,
+  userId,
+  payload,
+  client,
+}: {
+  organizationId: string;
+  userId: string;
+  payload: BundleCreateInput;
+  client: SupabaseClient;
+}) {
+  const parsed = BundleCreateSchema.parse(payload);
+
+  // If only 1 item, delegate to the standard addDocument flow
+  if (parsed.items.length === 1) {
+    const item = parsed.items[0];
+    return addDocument({
+      organizationId,
+      userId,
+      payload: {
+        content: item.content,
+        containerTags: parsed.containerTags,
+        metadata: item.metadata ?? parsed.metadata ?? undefined,
+      },
+      client,
+    });
+  }
+
+  // --- Multi-item bundle ---
+
+  // Resolve container tag: respect user choice, otherwise auto-route from first link
+  let containerTag =
+    parsed.containerTags && parsed.containerTags.length > 0
+      ? parsed.containerTags[0]
+      : defaultContainerTag;
+
+  // Try to infer project from first link item
+  const firstLink = parsed.items.find((it) => it.type === "link");
+  if (containerTag === defaultContainerTag && firstLink) {
+    const isUrl = /^https?:\/\//i.test(firstLink.content);
+    containerTag = resolveDefaultProject({
+      type: isUrl ? "url" : "text",
+      source: isUrl ? "web" : "manual",
+      url: isUrl ? firstLink.content : null,
+    });
+  }
+
+  const spaceId = await ensureSpace(client, organizationId, containerTag);
+
+  // Create the parent bundle document
+  const bundleTitle =
+    parsed.title ??
+    `Bundle (${parsed.items.length} items)`;
+
+  const { data: parentDoc, error: parentError } = await client
+    .from("documents")
+    .insert({
+      org_id: organizationId,
+      user_id: userId,
+      space_id: spaceId,
+      title: bundleTitle,
+      content: null,
+      url: null,
+      source: "bundle",
+      status: "processing",
+      type: "bundle",
+      metadata: parsed.metadata ?? null,
+      chunk_count: 0,
+    })
+    .select("id, status")
+    .single();
+
+  if (parentError) {
+    console.error("[createBundle] Failed to insert parent", parentError);
+    throw parentError;
+  }
+
+  const parentId = parentDoc.id;
+
+  // Insert children + create ingestion jobs
+  const children: Array<{ id: string; status: string; url: string | null; type: string }> = [];
+
+  for (let i = 0; i < parsed.items.length; i++) {
+    const item = parsed.items[i];
+    const isUrl = /^https?:\/\//i.test(item.content);
+    const inferredType = item.type === "note" ? "text" : isUrl ? "url" : "text";
+    const inferredSource = item.type === "note" ? "manual" : isUrl ? "web" : "manual";
+    const inferredUrl = isUrl ? item.content : null;
+    const initialTitle = isUrl
+      ? null
+      : sanitizeString(item.content.slice(0, 80));
+    const initialContent = isUrl ? null : sanitizeString(item.content);
+
+    const childMetadata: Record<string, unknown> = {
+      ...(item.metadata ?? {}),
+      ...(isUrl ? { originalUrl: item.content } : {}),
+    };
+
+    const { data: childDoc, error: childError } = await client
+      .from("documents")
+      .insert({
+        org_id: organizationId,
+        user_id: userId,
+        space_id: spaceId,
+        parent_id: parentId,
+        child_order: i,
+        title: initialTitle,
+        content: initialContent,
+        url: inferredUrl,
+        source: inferredSource,
+        status: "queued",
+        type: inferredType,
+        metadata: Object.keys(childMetadata).length > 0 ? childMetadata : null,
+        chunk_count: 0,
+      })
+      .select("id, status")
+      .single();
+
+    if (childError) {
+      console.error("[createBundle] Failed to insert child", childError);
+      continue;
+    }
+
+    children.push({
+      id: childDoc.id,
+      status: childDoc.status ?? "queued",
+      url: inferredUrl,
+      type: item.type,
+    });
+
+    // Quick OG image extraction for URL children (non-blocking)
+    if (isUrl && inferredUrl) {
+      extractOgImageQuick(inferredUrl)
+        .then(async (ogImage) => {
+          if (ogImage) {
+            await client
+              .from("documents")
+              .update({ preview_image: ogImage })
+              .eq("id", childDoc.id)
+              .eq("org_id", organizationId);
+          }
+        })
+        .catch(() => {});
+    }
+
+    // Create ingestion job for child
+    const { data: jobRecord } = await client
+      .from("ingestion_jobs")
+      .insert({
+        document_id: childDoc.id,
+        org_id: organizationId,
+        status: "queued",
+        payload: {
+          containerTags: [containerTag],
+          content: item.content,
+          metadata: childMetadata,
+          url: inferredUrl,
+          type: inferredType,
+          source: inferredSource,
+        },
+      })
+      .select("id")
+      .single();
+
+    // Process inline (async)
+    if (jobRecord) {
+      processDocumentInline({
+        documentId: childDoc.id,
+        jobId: jobRecord.id,
+        orgId: organizationId,
+        payload: {
+          containerTags: [containerTag],
+          content: item.content,
+          metadata: childMetadata,
+          url: inferredUrl,
+          type: inferredType,
+          source: inferredSource,
+        },
+      }).catch((err) => {
+        console.error("[createBundle] Child processing failed", {
+          childId: childDoc.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+    }
+  }
+
+  invalidateDocumentCaches();
+
+  return BundleResponseSchema.parse({
+    id: parentId,
+    status: "processing",
+    children,
+  });
+}
+
+/**
+ * Get children of a bundle document, ordered by child_order
+ */
+export async function getDocumentChildren(
+  client: SupabaseClient,
+  organizationId: string,
+  parentId: string,
+) {
+  const { data, error } = await client
+    .from("documents")
+    .select(
+      "id, title, summary, status, url, type, content, preview_image, child_order, created_at, updated_at",
+    )
+    .eq("org_id", organizationId)
+    .eq("parent_id", parentId)
+    .order("child_order", { ascending: true });
+
+  if (error) throw error;
+
+  return (data ?? []).map((child) => ({
+    id: child.id,
+    title: child.title ?? null,
+    previewImage: child.preview_image ?? null,
+    summary: child.summary ?? null,
+    status: child.status ?? "unknown",
+    url: child.url ?? null,
+    type: child.type ?? "text",
+    content: child.content ?? null,
+    childOrder: child.child_order ?? 0,
+  }));
+}
+
+/**
+ * Update the parent bundle status based on children statuses.
+ * Called after a child finishes processing.
+ */
+export async function updateBundleParentStatus(
+  client: SupabaseClient,
+  parentId: string,
+  organizationId: string,
+) {
+  const { data: children, error } = await client
+    .from("documents")
+    .select("id, status, preview_image, summary")
+    .eq("parent_id", parentId)
+    .eq("org_id", organizationId);
+
+  if (error) {
+    console.error("[updateBundleParentStatus] Failed to fetch children", error);
+    return;
+  }
+
+  if (!children || children.length === 0) return;
+
+  const statuses = children.map((c) => String(c.status ?? "unknown").toLowerCase());
+  const allDone = statuses.every((s) => s === "done" || s === "failed");
+  const anyProcessing = statuses.some(
+    (s) => !["done", "failed"].includes(s),
+  );
+
+  const updates: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (allDone) {
+    updates.status = "done";
+
+    // Set preview image from first child that has one
+    const firstPreview = children.find((c) => c.preview_image);
+    if (firstPreview) {
+      updates.preview_image = firstPreview.preview_image;
+    }
+
+    // Combine summaries
+    const summaries = children
+      .filter((c) => c.summary)
+      .map((c, i) => `**${i + 1}.** ${c.summary}`)
+      .join("\n\n");
+    if (summaries) {
+      updates.summary = summaries;
+    }
+  } else if (anyProcessing) {
+    updates.status = "processing";
+  }
+
+  await client
+    .from("documents")
+    .update(updates)
+    .eq("id", parentId)
+    .eq("org_id", organizationId);
 }

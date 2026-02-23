@@ -1,0 +1,98 @@
+- generic [active] [ref=e11]:
+  - generic [ref=e13]:
+    - banner [ref=e14]:
+      - link "Voltar" [ref=e15] [cursor=pointer]:
+        - /url: /
+        - img
+      - combobox [ref=e16] [cursor=pointer]:
+        - generic [ref=e17]:
+          - img
+          - generic [ref=e18]: Youtube
+        - img
+    - main [ref=e19]:
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - heading "Greeting" [level=3] [ref=e23]
+          - generic [ref=e24]:
+            - button [ref=e25] [cursor=pointer]:
+              - img [ref=e26]
+            - button [ref=e30] [cursor=pointer]:
+              - img
+        - generic [ref=e31]:
+          - generic [ref=e32]:
+            - generic [ref=e34]:
+              - generic [ref=e35]:
+                - img "Nobody Is Talking About Openclaw’s Best Feature" [ref=e36]
+                - link [ref=e38] [cursor=pointer]:
+                  - /url: https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s
+                  - img [ref=e39]
+              - generic [ref=e41]:
+                - generic [ref=e42]:
+                  - generic [ref=e43]:
+                    - img [ref=e44]
+                    - text: Feb 22nd
+                  - generic [ref=e46]:
+                    - img [ref=e47]
+                    - text: webpage
+                - link "https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s" [ref=e50] [cursor=pointer]:
+                  - /url: https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s
+                  - img [ref=e51]
+                  - generic [ref=e54]: https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s
+                  - img [ref=e55]
+                - button "Resumo do conteúdo" [ref=e60] [cursor=pointer]:
+                  - generic [ref=e61]: Resumo do conteúdo
+                  - img [ref=e62]
+            - button "Scroll to bottom"
+          - generic [ref=e65]:
+            - button "@Nobody Is Talking About Openclaw’s Best Feature" [ref=e67] [cursor=pointer]:
+              - generic [ref=e68]: "@Nobody Is Talking About Openclaw’s Best Feature"
+              - img [ref=e69]
+            - generic [ref=e72]:
+              - textbox "Plan, @ for context, / for commands" [ref=e73]
+              - generic [ref=e74]:
+                - generic [ref=e75]:
+                  - button "Agent" [ref=e76] [cursor=pointer]:
+                    - img [ref=e77]
+                    - generic [ref=e79]: Agent
+                    - img [ref=e80]
+                  - button "K2.5" [ref=e82] [cursor=pointer]:
+                    - img [ref=e83]
+                    - generic [ref=e86]: K2.5
+                    - img [ref=e87]
+                - generic [ref=e89]:
+                  - button [ref=e90] [cursor=pointer]:
+                    - img [ref=e91]
+                  - button [ref=e93] [cursor=pointer]:
+                    - img [ref=e94]
+                  - button [ref=e96] [cursor=pointer]:
+                    - img [ref=e97]
+      - generic [ref=e100]:
+        - generic [ref=e101]:
+          - button "Markdown do agente" [ref=e103] [cursor=pointer]:
+            - generic [ref=e104]: Markdown do agente
+            - img [ref=e105]
+          - button "Conteúdo original" [ref=e108] [cursor=pointer]:
+            - generic [ref=e109]: Conteúdo original
+            - img [ref=e110]
+        - generic [ref=e113]:
+          - generic [ref=e114]:
+            - img [ref=e115]
+            - text: Documentos Relacionados (0)
+          - button "Add Connection" [ref=e118] [cursor=pointer]:
+            - img
+            - generic [ref=e119]: Add Connection
+        - generic [ref=e120]:
+          - generic [ref=e121]:
+            - img [ref=e122]
+            - text: Images (1)
+          - generic [ref=e128] [cursor=pointer]:
+            - img "Nobody Is Talking About Openclaw’s Best Feature" [ref=e130]
+            - button [ref=e133]:
+              - img [ref=e134]
+            - generic [ref=e138]:
+              - img [ref=e139]
+              - generic [ref=e143]: Main Preview
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e6] [cursor=pointer]:
+    - img [ref=e7]
+  - alert [ref=e10]

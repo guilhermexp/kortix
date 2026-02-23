@@ -71,7 +71,7 @@ export async function executeClaudeDirect({
   model,
   provider,
   context,
-  maxTurns = 10,
+  maxTurns = 100,
 }: ClaudeDirectOptions): Promise<{ text: string; toolCalls: number }> {
   // Get provider configuration
   const providerId = provider || getDefaultProvider();

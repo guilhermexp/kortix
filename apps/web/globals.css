@@ -371,7 +371,7 @@ small,
 	--color-surface-low: #090a0c;
 	--color-surface-mid: #0d0f12;
 	--color-surface-high: #121419;
-	--default-bg-color: #0b0b0c;
+	--default-bg-color: #111111;
 	--island-bg-color: #0d0f12;
 	--popup-bg-color: #0d0f12;
 	--default-border-color: rgba(255, 255, 255, 0.1);
@@ -382,6 +382,12 @@ small,
 	--button-hover-bg: #14171b;
 	--button-active-border: #252a31;
 	--button-special-active-bg-color: #15181d;
+	background-color: #0b0b0c !important;
+}
+
+/* Force dark background on the Excalidraw outer container (not affected by invert filter) */
+.kortix-canvas .excalidraw.theme--dark .excalidraw-container {
+	background-color: #111111 !important;
 }
 
 .kortix-canvas .excalidraw.theme--light {

@@ -1,28 +1,24 @@
 import Redis from "ioredis"
 
-// Upstash Redis connection
-// Uses UPSTASH_REDIS_URL format: redis://default:PASSWORD@HOSTNAME:PORT
-const redisUrl = process.env.UPSTASH_REDIS_URL
+// Redis connection for BullMQ queues
+// Reads REDIS_URL (primary) with UPSTASH_REDIS_URL as legacy fallback
+const redisUrl = process.env.REDIS_URL || process.env.UPSTASH_REDIS_URL
 
 if (!redisUrl) {
-	console.warn("⚠️ UPSTASH_REDIS_URL not set. Queue features will be disabled.")
+	console.warn("⚠️ REDIS_URL not set. Queue features will be disabled.")
 }
 
-export const redis = redisUrl
-	? new Redis(redisUrl, {
-			maxRetriesPerRequest: null, // Required for BullMQ
-			enableReadyCheck: false, // Faster connection for Upstash
-			tls: redisUrl.includes("upstash.io") ? {} : undefined, // Enable TLS for Upstash
-		})
-	: null
+const redisOptions = {
+	maxRetriesPerRequest: null, // Required for BullMQ
+	enableReadyCheck: false,
+	tls: redisUrl?.includes("upstash.io") ? {} : undefined, // TLS only for Upstash
+}
+
+export const redis = redisUrl ? new Redis(redisUrl, redisOptions) : null
 
 // Duplicate connection for BullMQ (subscriber)
 export const redisSubscriber = redisUrl
-	? new Redis(redisUrl, {
-			maxRetriesPerRequest: null,
-			enableReadyCheck: false,
-			tls: redisUrl.includes("upstash.io") ? {} : undefined,
-		})
+	? new Redis(redisUrl, redisOptions)
 	: null
 
 export const isRedisEnabled = (): boolean => {

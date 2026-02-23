@@ -1,0 +1,96 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - link "Voltar" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img
+      - combobox [ref=e6] [cursor=pointer]:
+        - generic [ref=e7]:
+          - img
+          - generic [ref=e8]: Youtube
+        - img
+    - main [ref=e9]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - heading "Greeting" [level=3] [ref=e13]
+          - generic [ref=e14]:
+            - button [ref=e15] [cursor=pointer]:
+              - img [ref=e16]
+            - button [ref=e20] [cursor=pointer]:
+              - img
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - generic [ref=e24]:
+              - generic [ref=e25]:
+                - img "Nobody Is Talking About Openclaw’s Best Feature" [ref=e26]
+                - link [ref=e28] [cursor=pointer]:
+                  - /url: https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s
+                  - img [ref=e29]
+              - generic [ref=e31]:
+                - generic [ref=e32]:
+                  - generic [ref=e33]:
+                    - img [ref=e34]
+                    - text: Feb 22nd
+                  - generic [ref=e36]:
+                    - img [ref=e37]
+                    - text: webpage
+                - link "https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s" [ref=e40] [cursor=pointer]:
+                  - /url: https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s
+                  - img [ref=e41]
+                  - generic [ref=e44]: https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s
+                  - img [ref=e45]
+                - paragraph [ref=e51]: "O vídeo destaca o OpenClaw como uma ferramenta poderosa para automação em fluxos de desenvolvedores, atuando como assistente autônomo que monitora tarefas, corrige dependências e gera relatórios sem supervisão constante. Testado em Mac Minis por semanas, revela capacidades em gerenciamento de repositórios, alertas de custos em nuvem e construção de apps completos. Sua relevância está em reduzir erros manuais e otimizar workflows profissionais, justificando o interesse da OpenAI pelo criador. Pontos-Chave OpenClaw é um agente autônomo open-source para automação de tarefas longas; seu diferencial é executar cron jobs independentes sem input humano, ideal para monitoramento contínuo; usado para gerenciar dependências em apps React, atualizando lock files a cada 12 horas e reportando via Discord. Monitoramento de sites hospedados em Vercel via heartbeat checks; verifica uptime, logs de servidor e vulnerabilidades como XSS/SQL injection; envia relatórios de saúde com passos de hardening, como adicionar headers de segurança. Automação de dependências em repositórios GitHub; detecta vulnerabilidades em bibliotecas React e testa atualizações seguras; notifica issues como linting que precisam de aprovação humana antes do push. Pesquisa diária de notícias tech via cron job; compila relatórios com ângulos de vídeo, links e recursos para canais YouTube; integra com workflows de desenvolvimento em Mac Minis. API Cost Watchdog para provedores como AWS e Google Cloud; usa CLI para checar orçamentos e alertar spikes via Discord/WhatsApp; fornece passos acionáveis para evitar bills elevados. Construção autônoma de apps a partir de PRD; coordena Claude para código e Gemini para imagens via skill Nano Banana Pro; deploy automático no Vercel com commits progressivos no GitHub. Geração de cold emails via scraping do GitHub Trending; cria drafts personalizados no Gmail usando Google Workspace CLI; roda diariamente às 9h, salvando leads em pastas para revisão manual. Filtro de emails importantes com heartbeat; prioriza itens acionáveis ignorando newsletters; integra com Apple Reminders, Gemini e GitHub para assistente pessoal remoto. Ponte entre Claude Code (agente de código forte) e Gemini (melhor em imagens); usa skills para combinar forças, quebrando tarefas em subtasks; requer pre-aprovação de permissões para evitar timeouts. Recursos extras em AIABS Pro, comunidade com templates prontos; suporta múltiplos modelos e skills pré-configurados para plataformas como Discord e WhatsApp. Casos de Uso Manutenção automática de dependências em projetos React: Configurar cron job para checar vulnerabilidades, atualizar lock files e notificar via Discord, reduzindo riscos de segurança sem intervenção manual. Monitoramento de custos em nuvem AWS/Google Cloud: Implantar skill para alertas de spikes em uso de API, com passos imediatos para otimizar VMs e evitar faturas inesperadas. Geração de conteúdo para canais YouTube: Automatizar pesquisa diária de releases tech, compilando relatórios com ângulos de vídeo e links para briefings matinais da equipe. Construção e deploy de apps completos: Fornecer PRD ao OpenClaw para"
+            - button "Scroll to bottom"
+          - generic [ref=e53]:
+            - button "@Nobody Is Talking About Openclaw’s Best Feature" [ref=e55] [cursor=pointer]:
+              - generic [ref=e56]: "@Nobody Is Talking About Openclaw’s Best Feature"
+              - img [ref=e57]
+            - generic [ref=e60]:
+              - textbox "Plan, @ for context, / for commands" [active] [ref=e61]: quais sao todas as coisas que ele solicitou e enviou para o openclaw fazer? e como?
+              - generic [ref=e62]:
+                - generic [ref=e63]:
+                  - button "Agent" [ref=e64] [cursor=pointer]:
+                    - img [ref=e65]
+                    - generic [ref=e67]: Agent
+                    - img [ref=e68]
+                  - button "K2.5" [ref=e70] [cursor=pointer]:
+                    - img [ref=e71]
+                    - generic [ref=e74]: K2.5
+                    - img [ref=e75]
+                - generic [ref=e77]:
+                  - button [ref=e78] [cursor=pointer]:
+                    - img [ref=e79]
+                  - button [ref=e81] [cursor=pointer]:
+                    - img [ref=e82]
+                  - button [ref=e84] [cursor=pointer]:
+                    - img [ref=e85]
+      - generic [ref=e88]:
+        - generic [ref=e89]:
+          - button "Markdown do agente" [ref=e91] [cursor=pointer]:
+            - generic [ref=e92]: Markdown do agente
+            - img [ref=e93]
+          - button "Conteúdo original" [ref=e96] [cursor=pointer]:
+            - generic [ref=e97]: Conteúdo original
+            - img [ref=e98]
+        - generic [ref=e101]:
+          - generic [ref=e102]:
+            - img [ref=e103]
+            - text: Documentos Relacionados (0)
+          - button "Add Connection" [ref=e106] [cursor=pointer]:
+            - img
+            - generic [ref=e107]: Add Connection
+        - generic [ref=e108]:
+          - generic [ref=e109]:
+            - img [ref=e110]
+            - text: Images (1)
+          - generic [ref=e116] [cursor=pointer]:
+            - img "Nobody Is Talking About Openclaw’s Best Feature" [ref=e118]
+            - button [ref=e121]:
+              - img [ref=e122]
+            - generic [ref=e126]:
+              - img [ref=e127]
+              - generic [ref=e131]: Main Preview
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e137] [cursor=pointer]:
+    - img [ref=e138]
+  - alert [ref=e141]

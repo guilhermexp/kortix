@@ -10,7 +10,7 @@
  * - document-processor-inline.ts (inline/sync)
  */
 
-import { ensureSpace } from "../routes/documents"
+import { ensureSpace, updateBundleParentStatus } from "../routes/documents"
 import {
 	extractDocument,
 	generatePreview,
@@ -128,7 +128,7 @@ export async function processAndSaveDocument(
 	const { data: document, error: docError } = await supabaseAdmin
 		.from("documents")
 		.select(
-			"content, metadata, user_id, title, url, source, type, raw, processing_metadata",
+			"content, metadata, user_id, title, url, source, type, raw, processing_metadata, parent_id",
 		)
 		.eq("id", documentId)
 		.maybeSingle()
@@ -275,6 +275,14 @@ export async function processAndSaveDocument(
 		const stored = await persistPreviewImage(documentId, metaTags.ogImage)
 		finalUpdate.preview_image = stored ?? metaTags.ogImage
 	}
+	// Fallback: use first extracted content image as preview
+	if (!finalUpdate.preview_image && extraction.images?.length) {
+		const firstImg = extraction.images[0]
+		if (firstImg) {
+			const stored = await persistPreviewImage(documentId, firstImg)
+			finalUpdate.preview_image = stored ?? firstImg
+		}
+	}
 	if (extraction.wordCount) finalUpdate.word_count = extraction.wordCount
 	if (processed.tags?.length) finalUpdate.tags = processed.tags
 
@@ -294,6 +302,8 @@ export async function processAndSaveDocument(
 		favicon:
 			metaTags.favicon ?? (extraction.extractionMetadata as any)?.favicon,
 		...(processed.tags ? { tags: processed.tags } : {}),
+		// Persist first content image so the listing endpoint can use it
+		...(extraction.images?.length ? { firstContentImage: extraction.images[0] } : {}),
 	}
 
 	if (extraction.raw || extraction.images || metaTags.ogImage) {
@@ -330,7 +340,7 @@ export async function processAndSaveDocument(
 				chunk_index: chunk.position ?? (chunk as any).index ?? index,
 				token_count:
 					(chunk as any).tokenCount ?? Math.ceil(chunkContent.length / 4),
-				embedding_model: "voyage-3-lite",
+				embedding_model: "voyage-3-large",
 				metadata: chunk.metadata ?? {},
 				created_at: new Date().toISOString(),
 			}
@@ -364,6 +374,24 @@ export async function processAndSaveDocument(
 	// 12. Clear caches
 	documentListCache.clear()
 	documentCache.delete(documentId)
+
+	// 13. Update parent bundle status if this is a child document
+	if (document.parent_id) {
+		try {
+			await updateBundleParentStatus(supabaseAdmin, document.parent_id, orgId)
+			console.info(`${logPrefix} Updated parent bundle status`, {
+				parentId: document.parent_id,
+			})
+		} catch (parentError) {
+			console.warn(`${logPrefix} Failed to update parent bundle status`, {
+				parentId: document.parent_id,
+				error:
+					parentError instanceof Error
+						? parentError.message
+						: String(parentError),
+			})
+		}
+	}
 
 	console.info(`${logPrefix} Done`, {
 		documentId,

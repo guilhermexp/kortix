@@ -14,12 +14,10 @@ import { ensureVectorSize, VECTOR_SIZE } from "./embedding"
 // Constants
 // ============================================================================
 
-const VOYAGE_API_URL = "https://api.voyageai.com/v1/embeddings"
-const VOYAGE_MODEL = "voyage-3.5-lite" // Fastest, most cost-effective
-const _VOYAGE_DIMENSION = 1024 // Default dimension for voyage-3.5-lite
+const VOYAGE_API_URL = "https://api.302.ai/v1/embeddings"
+const VOYAGE_MODEL = "voyage-3-large"
+const _VOYAGE_DIMENSION = 1024 // Native dimension for voyage-3-large
 const MAX_BATCH_SIZE = 128 // Maximum texts per request
-const MAX_RETRIES = 3
-const RETRY_DELAY_BASE = 1000 // 1 second base delay
 
 // ============================================================================
 // Types
@@ -156,7 +154,7 @@ export async function generateVoyageEmbeddingsBatch(
 		return results.flat()
 	}
 
-	const normalizedTexts = texts.map((t) => t.trim()).filter((t) => t.length > 0)
+	const normalizedTexts = texts.map((t) => (t ?? "").trim()).filter((t) => t.length > 0)
 
 	if (normalizedTexts.length === 0) {
 		return texts.map(() => new Array<number>(VECTOR_SIZE).fill(0))
@@ -210,52 +208,6 @@ export async function generateVoyageEmbeddingsBatch(
 		}
 		throw error
 	}
-}
-
-/**
- * Generate embedding with retry logic for rate limiting
- */
-export async function generateVoyageEmbeddingWithRetry(
-	text: string,
-	options?: {
-		inputType?: "query" | "document"
-		truncation?: boolean
-		maxRetries?: number
-	},
-): Promise<number[]> {
-	const maxRetries = options?.maxRetries ?? MAX_RETRIES
-	let lastError: Error | null = null
-
-	for (let attempt = 0; attempt < maxRetries; attempt++) {
-		try {
-			return await generateVoyageEmbedding(text, options)
-		} catch (error) {
-			lastError = error as Error
-			const isRateLimit =
-				error instanceof Error &&
-				(error.message.includes("rate") ||
-					error.message.includes("quota") ||
-					error.message.includes("429"))
-
-			if (isRateLimit && attempt < maxRetries - 1) {
-				// Exponential backoff: 1s, 2s, 4s
-				const delayMs = RETRY_DELAY_BASE * 2 ** attempt
-				console.warn(
-					`[voyage] Rate limit hit, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`,
-				)
-				await new Promise((resolve) => setTimeout(resolve, delayMs))
-				continue
-			}
-
-			// Not a rate limit error or final attempt
-			if (attempt === maxRetries - 1) {
-				break
-			}
-		}
-	}
-
-	// All retries failed
-	throw lastError || new Error("Failed to generate Voyage embedding")
 }
 
 /**

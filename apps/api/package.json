@@ -10,7 +10,7 @@
 		"dev:with-worker": "bash -c 'bun run dev:server & SERVER_PID=$!; bun run dev:worker & WORKER_PID=$!; wait $SERVER_PID $WORKER_PID'",
 		"dev:queue": "bun run src/worker/queue-worker.ts",
 		"dev:all": "bash -c 'bun run dev:server & bun run dev:worker & bun run dev:queue & wait'",
-		"start": "bun --expose-gc run src/index.ts",
+		"start": "bash -c 'bun --expose-gc run src/index.ts & bun run src/worker/ingestion-worker.ts & wait'",
 		"test": "bun test src/routes/**/*.test.ts",
 		"ingest:worker": "bun run src/worker/ingestion-worker.ts",
 		"queue:worker": "bun run src/worker/queue-worker.ts",

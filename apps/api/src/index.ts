@@ -74,7 +74,7 @@ import { connectionsRouter } from "./routes/connections.router"
 import { conversationsRouter } from "./routes/conversations.router"
 import { councilRouter } from "./routes/council.router"
 import { documentConnectionsRouter } from "./routes/document-connections.router"
-import { deepAgentRouter, documentsRouter } from "./routes/documents.router"
+import { documentsRouter } from "./routes/documents.router"
 import { featureFlagsRouter } from "./routes/feature-flags.router"
 import { healthHandler } from "./routes/health"
 import { registerMcpRoutes } from "./routes/mcp"
@@ -88,6 +88,7 @@ import {
 import { projectsRouter } from "./routes/projects.router"
 import { searchRouter } from "./routes/search.router"
 import { settingsRouter } from "./routes/settings.router"
+import { skillsRouter } from "./routes/skills.router"
 import { getWaitlistStatus } from "./routes/waitlist"
 
 // Services
@@ -357,12 +358,12 @@ app.use("/chat/*", requireAuth)
 // Mount modular routers
 app.route("/v3/projects", projectsRouter)
 app.route("/v3/documents", documentsRouter)
-app.route("/v3/deep-agent", deepAgentRouter)
 app.route("/v3/search", searchRouter)
 app.route("/v3/connections", connectionsRouter)
 app.route("/v3/document-connections", documentConnectionsRouter)
 app.route("/v3/feature-flags", featureFlagsRouter)
 app.route("/v3/settings", settingsRouter)
+app.route("/v3/skills", skillsRouter)
 app.route("/v3/conversations", conversationsRouter)
 app.route("/v3/council", councilRouter)
 app.route("/v3/canvas", canvasRouter)

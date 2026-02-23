@@ -14,6 +14,8 @@ import type {
 	ProcessedDocument,
 	ProcessingOptions,
 } from "../interfaces/document-processing"
+import { VECTOR_SIZE } from "../embedding"
+import { generateEmbeddingsBatch } from "../embedding-provider"
 import { withRetry } from "../utils/retry"
 
 // Lazy-loaded service instances
@@ -23,7 +25,6 @@ import { URLExtractor } from "../extraction/url-extractor"
 import { YouTubeExtractor } from "../extraction/youtube-extractor"
 import { PreviewGeneratorService } from "../preview/preview-generator"
 import { ChunkingService } from "../processing/chunking-service"
-import { EmbeddingService } from "../processing/embedding-service"
 import { MetadataExtractor } from "../processing/metadata-extractor"
 import { SummarizationService } from "../processing/summarization-service"
 import { TaggingService } from "../processing/tagging-service"
@@ -41,7 +42,6 @@ let _extractors: {
 
 let _processors: {
 	chunking: ChunkingService
-	embedding: EmbeddingService
 	summarization: SummarizationService
 	tagging: TaggingService
 	metadata: MetadataExtractor
@@ -53,7 +53,7 @@ async function getExtractors() {
 	if (!_extractors) {
 		const url = new URLExtractor()
 		const youtube = new YouTubeExtractor(["en", "en-US", "pt", "pt-BR"])
-		const pdf = new PDFExtractor({ ocrEnabled: true, ocrProvider: "replicate" })
+		const pdf = new PDFExtractor()
 		const file = new FileExtractor(true)
 
 		await Promise.all([
@@ -76,11 +76,6 @@ async function getProcessors() {
 			respectSentences: true,
 			respectParagraphs: true,
 		})
-		const embedding = new EmbeddingService({
-			provider: "hybrid",
-			batchSize: 10,
-			useCache: true,
-		})
 		const summarization = new SummarizationService({
 			provider: "openrouter",
 			maxWords: 500,
@@ -94,13 +89,12 @@ async function getProcessors() {
 
 		await Promise.all([
 			chunking.initialize(),
-			embedding.initialize(),
 			summarization.initialize(),
 			tagging.initialize(),
 			metadata.initialize(),
 		])
 
-		_processors = { chunking, embedding, summarization, tagging, metadata }
+		_processors = { chunking, summarization, tagging, metadata }
 	}
 	return _processors
 }
@@ -139,6 +133,35 @@ export async function initializePipeline(): Promise<void> {
 export async function extractDocument(
 	input: ExtractionInput,
 ): Promise<ExtractionResult> {
+	// Plain text passthrough: if we have content but no URL/file, skip extractors
+	const hasContent = input.originalContent && input.originalContent.trim().length > 0
+	const hasUrl = !!input.url
+	const hasFile = !!input.fileBuffer
+	if (hasContent && !hasUrl && !hasFile) {
+		const text = input.originalContent!.trim()
+		const words = text.split(/\s+/).filter(Boolean)
+		// Try to derive a title from the first line
+		const firstLine = text.split(/\n/)[0]?.trim() ?? ""
+		const title = firstLine.length > 0 && firstLine.length <= 200
+			? firstLine.replace(/^#+\s*/, "")
+			: null
+
+		return {
+			text,
+			title,
+			source: "text-input",
+			url: null,
+			contentType: "text",
+			raw: null,
+			wordCount: words.length,
+			extractorUsed: "passthrough",
+			extractionMetadata: {
+				method: "passthrough",
+				originalLength: text.length,
+			},
+		}
+	}
+
 	const extractors = await getExtractors()
 
 	// Build ordered list of extractors that can handle this input
@@ -208,7 +231,12 @@ export async function processExtraction(
 	})
 
 	// Step 2: Generate embeddings
-	const chunksWithEmbeddings = await procs.embedding.generateEmbeddings(chunks)
+	const texts = chunks.map((c) => c.content ?? "")
+	const embeddings = await generateEmbeddingsBatch(texts)
+	const chunksWithEmbeddings = chunks.map((chunk, i) => ({
+		...chunk,
+		embedding: embeddings[i],
+	}))
 
 	// Step 3: Generate summary (non-critical)
 	let summary: string | undefined
@@ -267,7 +295,7 @@ export async function processExtraction(
 			processingDate: new Date(),
 			processingTime: 0,
 			chunkCount: chunksWithEmbeddings.length,
-			embeddingDimensions: procs.embedding.getEmbeddingDimensions?.() || 0,
+			embeddingDimensions: VECTOR_SIZE,
 			extracted: extractedMetadata,
 		},
 	}
@@ -291,6 +319,7 @@ export async function generatePreview(input: {
 }): Promise<{ url: string; source: string; type: string } | null> {
 	try {
 		const svc = getPreviewService()
+		await svc.initialize()
 		const result = await svc.generate(input as any)
 		return result
 	} catch (error) {

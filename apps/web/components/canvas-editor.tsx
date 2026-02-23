@@ -36,6 +36,7 @@ interface CanvasEditorProps {
 	}
 	canvasId: string
 	title: string
+	initialVersion?: number
 	forceDarkMode?: boolean
 }
 
@@ -59,19 +60,27 @@ interface Collaborator {
 	cursor?: { x: number; y: number }
 }
 
-const CANVAS_DARK_BACKGROUND = "#0b0b0c"
+// Excalidraw dark mode applies CSS `invert(93%) hue-rotate(180deg)` to the
+// <canvas> element. This means the drawn viewBackgroundColor is visually
+// inverted. To get a near-black result we pass a near-white source color:
+//   #ffffff → invert(93%) → #111111  (visually very dark)
+// The outer container uses the target dark color directly (no filter applies).
+const CANVAS_DARK_BG_SOURCE = "#ffffff"
+const CANVAS_DARK_BG_VISUAL = "#111111"
 const CANVAS_LIGHT_BACKGROUND = "#f5f6f8"
 
 export function CanvasEditor({
 	initialData,
 	canvasId,
 	title: initialTitle,
+	initialVersion = 1,
 	forceDarkMode = true,
 }: CanvasEditorProps) {
 	const { resolvedTheme } = useTheme()
 	const isDark = forceDarkMode || resolvedTheme === "dark"
+	// Source color for Excalidraw's viewBackgroundColor (will be visually inverted in dark mode)
 	const enforcedBackgroundColor = isDark
-		? CANVAS_DARK_BACKGROUND
+		? CANVAS_DARK_BG_SOURCE
 		: CANVAS_LIGHT_BACKGROUND
 	const { user } = useAuth()
 	const [excalidrawAPI, setExcalidrawAPI] =
@@ -79,13 +88,20 @@ export function CanvasEditor({
 	const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null)
 	const [title, setTitle] = useState(initialTitle)
 	const [isSaving, setIsSaving] = useState(false)
-	const [lastSaved, setLastSaved] = useState<Date | null>(null)
 	const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 	const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 	const socketRef = useRef<Socket | null>(null)
+	const applyingRemoteElementsRef = useRef(false)
+	const suppressOnChangeCountRef = useRef(0)
+	const socketMountedRef = useRef(false)
 	const [collaborators, setCollaborators] = useState<Map<string, Collaborator>>(new Map())
 	const isBootstrapping = useRef(true)
+	const canvasVersionRef = useRef(
+		typeof initialVersion === "number" && Number.isFinite(initialVersion)
+			? initialVersion
+			: 1,
+	)
 
 	// Keep ref in sync with state so effects can access latest API without re-triggering
 	useEffect(() => {
@@ -107,7 +123,7 @@ export function CanvasEditor({
 					elements,
 					appState: {
 						viewBackgroundColor: forceDarkMode
-							? CANVAS_DARK_BACKGROUND
+							? CANVAS_DARK_BG_SOURCE
 							: appState.viewBackgroundColor,
 						currentItemFontFamily: appState.currentItemFontFamily,
 						theme: isDark ? "dark" : "light",
@@ -120,15 +136,53 @@ export function CanvasEditor({
 					body: {
 						content,
 						name: title,
+						baseVersion: canvasVersionRef.current,
 					},
 				})
 
 				if (response.error) {
+					if (response.error.type === "version_conflict") {
+						const latest = await $fetch("@get/canvas/:id", {
+							params: { id: canvasId },
+						})
+						if (!latest.error && latest.data) {
+							let parsed: any = null
+							if (typeof latest.data.content === "string") {
+								try {
+									parsed = JSON.parse(latest.data.content)
+								} catch {
+									parsed = null
+								}
+							} else {
+								parsed = latest.data.content
+							}
+							if (parsed && excalidrawAPIRef.current) {
+								suppressOnChangeCountRef.current = 3
+								applyingRemoteElementsRef.current = true
+								excalidrawAPIRef.current.updateScene({
+									elements: Array.isArray(parsed.elements) ? parsed.elements : [],
+									appState: parsed.appState,
+								})
+							}
+							if (
+								typeof latest.data.version === "number" &&
+								Number.isFinite(latest.data.version)
+							) {
+								canvasVersionRef.current = latest.data.version
+							}
+						}
+					}
 					console.error("Failed to save canvas", response.error)
 					return
 				}
+				if (
+					response.data &&
+					typeof response.data.version === "number" &&
+					Number.isFinite(response.data.version)
+				) {
+					canvasVersionRef.current = response.data.version
+				}
 
-				setLastSaved(new Date())
 			} catch (error) {
 				console.error("Failed to save canvas", error)
 			} finally {
@@ -140,6 +194,29 @@ export function CanvasEditor({
 
 	// Track scene version for auto-save triggering
 	const sceneVersionRef = useRef(0)
+
+	const enforceDarkCanvasVisualMode = useCallback(() => {
+		if (!forceDarkMode) return false
+		const api = excalidrawAPIRef.current
+		if (!api) return false
+		const appState = api.getAppState()
+		if (
+			appState.theme === "dark" &&
+			appState.viewBackgroundColor === CANVAS_DARK_BG_SOURCE
+		) {
+			return false
+		}
+		suppressOnChangeCountRef.current = Math.max(suppressOnChangeCountRef.current, 3)
+		applyingRemoteElementsRef.current = true
+		api.updateScene({
+			appState: {
+				...appState,
+				theme: "dark",
+				viewBackgroundColor: CANVAS_DARK_BG_SOURCE,
+			},
+		})
+		return true
+	}, [forceDarkMode])
 
 	// Debounced auto-save
 	useEffect(() => {
@@ -270,6 +347,7 @@ export function CanvasEditor({
 	// Setup Socket.IO connection for collaboration
 	useEffect(() => {
 		if (!canvasId || !user) return
+		socketMountedRef.current = true
 
 		const socketBaseUrl = BACKEND_URL || window.location.origin
 		const newSocket = io(socketBaseUrl, {
@@ -293,6 +371,22 @@ export function CanvasEditor({
 			})
 		})
 
+		// In React StrictMode (dev), effects mount/unmount twice. The first
+		// cleanup may close the socket before the websocket handshake finishes,
+		// which is harmless but noisy in console.
+		newSocket.on("connect_error", (error) => {
+			if (!socketMountedRef.current) return
+			const message =
+				error instanceof Error ? error.message : String(error ?? "socket error")
+			if (
+				process.env.NODE_ENV !== "production" &&
+				/message\s+before\s+the\s+connection\s+is\s+established/i.test(message)
+			) {
+				return
+			}
+			console.warn("[CanvasEditor] Socket connect_error:", message)
+		})
+
 		newSocket.on("room-users", (users: Collaborator[]) => {
 			const newCollaborators = new Map()
 			users.forEach((u) => {
@@ -313,15 +407,34 @@ export function CanvasEditor({
 			})
 		})
 
-		newSocket.on("elements-changed", (elements: any[]) => {
+		newSocket.on(
+			"elements-changed",
+			(payload: any[] | { elements: any[]; version?: number }) => {
 			if (!isBootstrapping.current && excalidrawAPIRef.current) {
+				const elements = Array.isArray(payload)
+					? payload
+					: Array.isArray(payload?.elements)
+						? payload.elements
+						: null
+				if (!elements) return
+				if (
+					!Array.isArray(payload) &&
+					typeof payload?.version === "number" &&
+					Number.isFinite(payload.version)
+				) {
+					canvasVersionRef.current = payload.version
+				}
+				suppressOnChangeCountRef.current = 3
+				applyingRemoteElementsRef.current = true
 				excalidrawAPIRef.current.updateScene({ elements })
 			}
-		})
+			},
+		)
 
 		socketRef.current = newSocket
 
 		return () => {
+			socketMountedRef.current = false
 			newSocket.emit("leave-canvas", { canvasId, userId: user.id })
 			newSocket.close()
 			socketRef.current = null
@@ -330,7 +443,26 @@ export function CanvasEditor({
 
 	// Broadcast element changes to other users
 	const handleChange = useCallback(
-		(elements: readonly any[]) => {
+		(elements: readonly any[], appState?: any) => {
+			if (
+				forceDarkMode &&
+				appState &&
+				(appState.theme !== "dark" ||
+					appState.viewBackgroundColor !== CANVAS_DARK_BG_SOURCE)
+			) {
+				enforceDarkCanvasVisualMode()
+			}
+
+			if (suppressOnChangeCountRef.current > 0) {
+				suppressOnChangeCountRef.current -= 1
+				return
+			}
+
+			if (applyingRemoteElementsRef.current) {
+				applyingRemoteElementsRef.current = false
+				return
+			}
+
 			if (isBootstrapping.current) {
 				isBootstrapping.current = false
 				return
@@ -346,7 +478,7 @@ export function CanvasEditor({
 				})
 			}
 		},
-		[canvasId],
+		[canvasId, enforceDarkCanvasVisualMode, forceDarkMode],
 	)
 
 	// Force canvas visual mode after hydration so Excalidraw/local state
@@ -369,26 +501,42 @@ export function CanvasEditor({
 		})
 	}, [excalidrawAPI, isDark, enforcedBackgroundColor])
 
+	// Excalidraw may restore appState from local cache after mount/navigation.
+	// Re-assert forced dark canvas and persist it so next open stays dark.
+	// Multiple delays to catch various Excalidraw internal resets.
+	useEffect(() => {
+		if (!forceDarkMode || !excalidrawAPI) return
+		const delays = [0, 100, 500, 1500]
+		const timers = delays.map((delay) =>
+			setTimeout(() => {
+				enforceDarkCanvasVisualMode()
+			}, delay),
+		)
+		return () => {
+			for (const timer of timers) clearTimeout(timer)
+		}
+	}, [excalidrawAPI, forceDarkMode, enforceDarkCanvasVisualMode])
+
 	return (
 		<div className="flex flex-col h-full w-full">
 			{/* Toolbar */}
-			<div className="h-14 border-b border-border bg-background flex items-center justify-between px-4 z-10">
-				<div className="flex items-center gap-4">
+			<div className="h-11 border-b border-border bg-background flex items-center justify-between px-3 z-10">
+				<div className="flex items-center gap-3">
 					<Link
 						href="/canvas"
-						className="p-2 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors"
+						className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors"
 					>
-						<ArrowLeft className="w-5 h-5" />
+						<ArrowLeft className="w-4 h-4" />
 					</Link>
 					<Input
 						value={title}
 						onChange={handleTitleChange}
-						className="h-9 w-64 bg-transparent border-transparent hover:border-input focus:border-input transition-all font-medium text-lg px-2"
+						className="h-8 w-60 bg-transparent border-transparent hover:border-input focus:border-input transition-all font-medium text-base px-2"
 						placeholder="Untitled Canvas"
 					/>
 				</div>
 
-				<div className="flex items-center gap-4">
+				<div className="flex items-center gap-2">
 					{/* Collaborators indicator */}
 					{collaborators.size > 0 && (
 						<div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -413,40 +561,34 @@ export function CanvasEditor({
 							</div>
 						</div>
 					)}
-					<div className="text-xs text-muted-foreground">
-						{isSaving ? (
-							"Saving..."
-						) : lastSaved ? (
-							`Saved ${lastSaved.toLocaleTimeString()}`
-						) : (
-							<span className="opacity-0">Saved</span>
-						)}
-					</div>
 					<Button
 						size="sm"
 						variant="ghost"
+						className="h-8 px-2.5"
 						onClick={() => fileInputRef.current?.click()}
 						title="Import .excalidraw file"
 					>
-						<Upload className="w-4 h-4 mr-2" />
+						<Upload className="w-3.5 h-3.5 mr-1.5" />
 						Import
 					</Button>
 					<Button
 						size="sm"
 						variant="ghost"
+						className="h-8 px-2.5"
 						onClick={exportCanvas}
 						title="Export as .excalidraw file"
 					>
-						<Download className="w-4 h-4 mr-2" />
+						<Download className="w-3.5 h-3.5 mr-1.5" />
 						Export
 					</Button>
 					<Button
 						size="sm"
 						variant="secondary"
+						className="h-8 px-2.5"
 						onClick={() => saveCanvas(true)}
 						disabled={isSaving}
 					>
-						<Save className="w-4 h-4 mr-2" />
+						<Save className="w-3.5 h-3.5 mr-1.5" />
 						Save
 					</Button>
 				</div>
@@ -462,7 +604,7 @@ export function CanvasEditor({
 			/>
 
 			{/* Excalidraw Container */}
-			<div className="flex-1 w-full h-full relative kortix-canvas">
+			<div className="flex-1 w-full h-full relative kortix-canvas" style={{ backgroundColor: isDark ? CANVAS_DARK_BG_VISUAL : CANVAS_LIGHT_BACKGROUND }}>
 				<Excalidraw
 					initialData={{
 						elements: initialData?.elements || [],

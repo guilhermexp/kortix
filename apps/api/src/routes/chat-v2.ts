@@ -3,6 +3,10 @@ import { z } from "zod"
 import { env } from "../env"
 import { ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
 import {
+	buildChatSessionKey,
+	chatSessionManager,
+} from "../services/chat-session-manager"
+import {
 	executeClaudeAgent,
 	type ToolResultBlock,
 	type ToolUseBlock,
@@ -12,10 +16,6 @@ import {
 	ConversationStorageUnavailableError,
 	EventStorageService,
 } from "../services/event-storage"
-import {
-	buildChatSessionKey,
-	chatSessionManager,
-} from "../services/chat-session-manager"
 
 // New schema (SDK session-based)
 const chatRequestSchema = z.object({
@@ -55,6 +55,7 @@ const legacyChatRequestSchema = z.object({
 type MetadataPayload = {
 	projectId?: string
 	canvasId?: string
+	documentId?: string
 	expandContext?: boolean
 	forceRawDocs?: boolean
 	preferredTone?: string
@@ -65,6 +66,9 @@ type MetadataPayload = {
 		content: string | null
 	}
 }
+
+// Agent markdown persistence removed — documents should only be
+// created/edited via explicit user-requested tool calls.
 
 function normalizeModel(
 	requested: string | undefined,
@@ -444,11 +448,13 @@ function convertLegacyRequest(
 export async function handleChatV2({
 	orgId,
 	userId,
+	authUserId,
 	client,
 	body,
 }: {
 	orgId: string
 	userId?: string
+	authUserId?: string
 	client: SupabaseClient
 	body: unknown
 }) {
@@ -496,7 +502,10 @@ export async function handleChatV2({
 	if (conversationId) {
 		// Non-UUID IDs are local-only artifacts (e.g. "claude-1234567890") —
 		// silently discard them and start a fresh conversation.
-		const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conversationId)
+		const isUUID =
+			/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+				conversationId,
+			)
 		if (!isUUID) {
 			console.warn(
 				`[Chat V2] Non-UUID conversation ID "${conversationId}" — starting a new conversation.`,
@@ -552,11 +561,19 @@ export async function handleChatV2({
 			? metadata.projectId.trim()
 			: undefined
 	const expandContext = Boolean(metadata.expandContext)
-	const canvasId =
-		typeof metadata.canvasId === "string" &&
-		metadata.canvasId.trim().length > 0
-			? metadata.canvasId.trim()
-			: undefined
+	const canvasId = (() => {
+		const fallbackCanvasId = (metadata as Record<string, unknown>).canvas_id
+		const rawId =
+			typeof metadata.canvasId === "string"
+				? metadata.canvasId
+				: typeof fallbackCanvasId === "string"
+					? fallbackCanvasId
+					: undefined
+		if (rawId && rawId.trim().length > 0) {
+			return rawId.trim()
+		}
+		return undefined
+	})()
 	const preferredTone =
 		typeof metadata.preferredTone === "string"
 			? metadata.preferredTone.trim()
@@ -567,6 +584,14 @@ export async function handleChatV2({
 			)
 		: []
 	const contextDocument = metadata.contextDocument
+	const targetDocumentId =
+		typeof metadata.documentId === "string" &&
+		metadata.documentId.trim().length > 0
+			? metadata.documentId.trim()
+			: typeof contextDocument?.id === "string" &&
+					contextDocument.id.trim().length > 0
+				? contextDocument.id.trim()
+				: undefined
 
 	const scopedDocumentIds = Array.isArray(payload.scopedDocumentIds)
 		? payload.scopedDocumentIds.filter(
@@ -628,7 +653,7 @@ export async function handleChatV2({
 			projectId && projectId !== "__ALL__" ? [projectId] : undefined,
 		scopedDocumentIds: effectiveScopedIds,
 		canvasId,
-		userId,
+		userId: authUserId ?? userId,
 	}
 
 	let messageForAgent = payload.message
@@ -694,8 +719,8 @@ export async function handleChatV2({
 		}
 	}
 
-	// Fixed maxTurns - Claude Agent SDK decides when to use tools based on system prompt
-	const maxTurns = 10
+	// No maxTurns limit - let the agent run until it naturally completes
+	const maxTurns = undefined
 
 	try {
 		// Store user message if conversationId exists
@@ -942,8 +967,7 @@ export async function handleChatV2({
 					requestedSdkSessionId: payload.sdkSessionId ?? null,
 				})
 
-				let streamResultStatus: "completed" | "failed" | "aborted" =
-					"completed"
+				let streamResultStatus: "completed" | "failed" | "aborted" = "completed"
 				try {
 					const {
 						events,
@@ -1025,6 +1049,9 @@ export async function handleChatV2({
 						}
 					}
 
+					// Agent markdown is no longer auto-persisted.
+					// Document creation/editing should be done via explicit tool calls.
+
 					// Update SDK session ID if returned and conversation exists
 					if (conversationId && returnedSessionId) {
 						if (activeSessionId) {
@@ -1082,9 +1109,7 @@ export async function handleChatV2({
 					})
 				} catch (error) {
 					const aborted = Boolean(activeSessionAbortController?.signal.aborted)
-					streamResultStatus = aborted
-						? "aborted"
-						: "failed"
+					streamResultStatus = aborted ? "aborted" : "failed"
 					const message =
 						error instanceof Error ? error.message : "Internal chat failure"
 					console.error("[Chat V2] Streaming error:", error)
@@ -1140,7 +1165,10 @@ export async function handleChatV2({
 					)
 					activeSessionId = null
 				}
-				if (activeSessionAbortController && !activeSessionAbortController.signal.aborted) {
+				if (
+					activeSessionAbortController &&
+					!activeSessionAbortController.signal.aborted
+				) {
 					activeSessionAbortController.abort("Client disconnected")
 				}
 				streamClosed = true

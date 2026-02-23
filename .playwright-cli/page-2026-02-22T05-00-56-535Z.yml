@@ -1,0 +1,212 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - img
+          - textbox "Search..." [ref=e352]
+        - generic [ref=e9]:
+          - button "All Projects" [ref=e353] [cursor=pointer]:
+            - img [ref=e13]
+            - generic [ref=e15]: All Projects
+            - img [ref=e17]
+          - button "Atualizar" [ref=e354] [cursor=pointer]:
+            - img
+            - generic [ref=e20]: Atualizar
+      - generic [ref=e24]:
+        - generic [ref=e380] [cursor=pointer]:
+          - heading "summarize — CLI + Chrome Side Panel for fast summaries" [level=3] [ref=e381]
+          - paragraph [ref=e382]: O Summarize é uma ferramenta open-source que oferece resumos rápidos de links, arquivos e mídias via CLI para automação ou extensão Chrome com Side Panel para uso interativo. Suporta modelos locais, p
+          - generic [ref=e383]:
+            - combobox [ref=e386]:
+              - generic [ref=e387]:
+                - img
+                - generic [ref=e388]: Default
+              - img
+            - button [ref=e389]:
+              - img [ref=e390]
+        - generic [ref=e25] [cursor=pointer]:
+          - 'img "GitHub - anthropics/claude-plugins-official: Official, Anthropic-managed directory of high quality Claude Code Plugins." [ref=e27]'
+          - generic [ref=e29]:
+            - 'heading "GitHub - anthropics/claude-plugins-official: Official, Anthropic-managed directory of high quality Claude Code Plugins." [level=3] [ref=e30]'
+            - paragraph [ref=e31]: O repositório anthropics/claude-plugins-official é o diretório oficial gerenciado pela Anthropic para plugins de alta qualidade do Claude Code. Ele organiza plugins internos desenvolvidos pela equipe
+            - generic [ref=e32]:
+              - combobox [ref=e35]:
+                - generic [ref=e36]:
+                  - img
+                  - generic [ref=e37]: Github
+                - img
+              - button [ref=e38]:
+                - img [ref=e39]
+        - generic [ref=e42] [cursor=pointer]:
+          - 'img "GitHub - ryoppippi/ccusage: A CLI tool for analyzing Claude Code/Codex CLI usage from local JSONL files." [ref=e44]'
+          - generic [ref=e46]:
+            - 'heading "GitHub - ryoppippi/ccusage: A CLI tool for analyzing Claude Code/Codex CLI usage from local JSONL files." [level=3] [ref=e47]'
+            - paragraph [ref=e48]: O ccusage é uma ferramenta CLI leve e poderosa para analisar o uso de tokens e custos do Claude Code e Codex CLI a partir de arquivos JSONL locais. Com mais de 10.9k estrelas no GitHub, destaca-se pel
+            - generic [ref=e49]:
+              - combobox [ref=e52]:
+                - generic [ref=e53]:
+                  - img
+                  - generic [ref=e54]: Github
+                - img
+              - button [ref=e55]:
+                - img [ref=e56]
+        - generic [ref=e59] [cursor=pointer]:
+          - generic [ref=e60]:
+            - img "Como não fracassar com seu SaaS" [ref=e61]
+            - img [ref=e64]
+          - generic [ref=e67]:
+            - heading "Como não fracassar com seu SaaS" [level=3] [ref=e68]
+            - paragraph [ref=e69]: O vídeo discute erros comuns que levam ao fracasso em empresas de SaaS, com foco em bootstrapping lucrativo sem investidores. David, empreendedor experiente desde 2009, compartilha lições práticas bas
+            - generic [ref=e70]:
+              - combobox [ref=e73]:
+                - generic [ref=e74]:
+                  - img
+                  - generic [ref=e75]: Youtube
+                - img
+              - button [ref=e76]:
+                - img [ref=e77]
+        - generic [ref=e80] [cursor=pointer]:
+          - generic [ref=e81]:
+            - 'img "Trending Open-Source GitHub Projects : PentAGI, WebLLM, FreeMoCap, Zvec, MemU & React-Doctor 233" [ref=e82]'
+            - img [ref=e85]
+          - generic [ref=e88]:
+            - 'heading "Trending Open-Source GitHub Projects : PentAGI, WebLLM, FreeMoCap, Zvec, MemU & React-Doctor 233" [level=3] [ref=e89]'
+            - paragraph [ref=e90]: O vídeo apresenta uma seleção de 20 projetos open-source em alta no GitHub, focados em ferramentas de IA, automação de agentes autônomos, segurança cibernética, desenvolvimento de jogos e análise de p
+            - generic [ref=e91]:
+              - combobox [ref=e94]:
+                - generic [ref=e95]:
+                  - img
+                  - generic [ref=e96]: OpenSource
+                - img
+              - button [ref=e97]:
+                - img [ref=e98]
+        - generic [ref=e101] [cursor=pointer]:
+          - 'img "GitHub - guilhermexp/DirectorMarketing: AI video agents framework for next-gen video interactions and workflows." [ref=e103]'
+          - generic [ref=e105]:
+            - 'heading "GitHub - guilhermexp/DirectorMarketing: AI video agents framework for next-gen video interactions and workflows." [level=3] [ref=e106]'
+            - paragraph [ref=e107]: O DirectorMarketing é um framework de agentes de vídeo baseados em IA, forked do projeto original Director, projetado para interações e fluxos de trabalho avançados com vídeos. Ele permite raciocínio
+            - generic [ref=e108]:
+              - combobox [ref=e111]:
+                - generic [ref=e112]:
+                  - img
+                  - generic [ref=e113]: Marketing
+                - img
+              - button [ref=e114]:
+                - img [ref=e115]
+        - generic [ref=e118] [cursor=pointer]:
+          - generic [ref=e119]:
+            - img "Antigravity + Every Image & Video AI is a Cheat Code for Creators (NEW Skill)" [ref=e120]
+            - img [ref=e123]
+          - generic [ref=e126]:
+            - heading "Antigravity + Every Image & Video AI is a Cheat Code for Creators (NEW Skill)" [level=3] [ref=e127]
+            - paragraph [ref=e128]: O vídeo apresenta uma nova habilidade para plataformas agenticas como Claude Code e Antigravity, que integra modelos de IA generativa de imagens e vídeos (como NanoBanana Pro, GPT Image 1.5, Kling, Ve
+            - generic [ref=e129]:
+              - combobox [ref=e132]:
+                - generic [ref=e133]:
+                  - img
+                  - generic [ref=e134]: Default
+                - img
+              - button [ref=e135]:
+                - img [ref=e136]
+        - generic [ref=e139] [cursor=pointer]:
+          - generic [ref=e140]:
+            - img "Antigravity + Flutter + Stitch builds Insane Mobile Apps (NEW Skill)" [ref=e141]
+            - img [ref=e144]
+          - generic [ref=e147]:
+            - heading "Antigravity + Flutter + Stitch builds Insane Mobile Apps (NEW Skill)" [level=3] [ref=e148]
+            - paragraph [ref=e149]: O vídeo tutorial demonstra como usar as ferramentas do Google — Stitch, Anti-Gravity e Flutter — para criar aplicativos móveis completos sem codificação, transformando ideias em apps instaláveis via I
+            - generic [ref=e150]:
+              - combobox [ref=e153]:
+                - generic [ref=e154]:
+                  - img
+                  - generic [ref=e155]: Marketing
+                - img
+              - button [ref=e156]:
+                - img [ref=e157]
+        - generic [ref=e160] [cursor=pointer]:
+          - 'img "GitHub - HKUDS/nanobot: \"🐈 nanobot: The Ultra-Lightweight OpenClaw" [ref=e162]'
+          - generic [ref=e164]:
+            - 'heading "GitHub - HKUDS/nanobot: \"🐈 nanobot: The Ultra-Lightweight OpenClaw" [level=3] [ref=e165]'
+            - paragraph [ref=e166]: O nanobot é um assistente de IA pessoal ultra-leve, inspirado no OpenClaw, com apenas cerca de 4.000 linhas de código, representando 99% menos que alternativas como o Clawdbot. Ele oferece funcionalid
+            - generic [ref=e167]:
+              - combobox [ref=e170]:
+                - generic [ref=e171]:
+                  - img
+                  - generic [ref=e172]: Clawdbot
+                - img
+              - button [ref=e173]:
+                - img [ref=e174]
+        - generic [ref=e177] [cursor=pointer]:
+          - generic [ref=e178]:
+            - img "OpenClaw vs PicoClaw vs NullClaw vs ZeroClaw vs NanoBot vs TinyClaw — The Comparison" [ref=e179]
+            - img [ref=e182]
+          - generic [ref=e185]:
+            - heading "OpenClaw vs PicoClaw vs NullClaw vs ZeroClaw vs NanoBot vs TinyClaw — The Comparison" [level=3] [ref=e186]
+            - paragraph [ref=e187]: O vídeo compara variantes open-source do OpenClaw, um assistente pessoal de IA que integra canais como WhatsApp, Telegram e Discord, destacando diferenças em desempenho, segurança e filosofia. Ferrame
+            - generic [ref=e188]:
+              - combobox [ref=e191]:
+                - generic [ref=e192]:
+                  - img
+                  - generic [ref=e193]: Clawdbot
+                - img
+              - button [ref=e194]:
+                - img [ref=e195]
+        - generic [ref=e198] [cursor=pointer]:
+          - generic [ref=e199]:
+            - 'img "OpenClaw: Build and Automate ANYTHING!" [ref=e200]'
+            - img [ref=e203]
+          - generic [ref=e206]:
+            - 'heading "OpenClaw: Build and Automate ANYTHING!" [level=3] [ref=e207]'
+            - paragraph [ref=e208]: O OpenClaw é uma plataforma de gerenciamento de dispositivos e gateways que recebeu sua maior atualização de segurança, com mais de 40 correções em uma única versão (2026.2.19), fortalecendo a proteçã
+            - generic [ref=e209]:
+              - combobox [ref=e212]:
+                - generic [ref=e213]:
+                  - img
+                  - generic [ref=e214]: Clawdbot
+                - img
+              - button [ref=e215]:
+                - img [ref=e216]
+        - generic [ref=e219] [cursor=pointer]:
+          - generic [ref=e220]:
+            - img "Sonnet 4.6 just made OpenClaw illegally good" [ref=e221]
+            - img [ref=e224]
+          - generic [ref=e227]:
+            - heading "Sonnet 4.6 just made OpenClaw illegally good" [level=3] [ref=e228]
+            - paragraph [ref=e229]: O vídeo demonstra a configuração otimizada do OpenClaw, uma ferramenta de IA agentic, usando VPS da Hostinger com deployment one-click e o modelo Claude Sonnet 4.6 da Anthropic, que oferece alto desem
+            - generic [ref=e230]:
+              - combobox [ref=e233]:
+                - generic [ref=e234]:
+                  - img
+                  - generic [ref=e235]: Clawdbot
+                - img
+              - button [ref=e236]:
+                - img [ref=e237]
+      - button [ref=e242] [cursor=pointer]:
+        - img
+      - button "Toggle theme" [ref=e248] [cursor=pointer]:
+        - img
+        - generic [ref=e249]: Toggle theme
+    - navigation [ref=e251]:
+      - generic [ref=e252]:
+        - button "Add Memory" [ref=e373] [cursor=pointer]:
+          - img [ref=e254]
+        - button "Chat" [ref=e374] [cursor=pointer]:
+          - img [ref=e257]
+        - button "List" [ref=e375] [cursor=pointer]:
+          - img [ref=e260]
+        - button "Canvas" [ref=e376] [cursor=pointer]:
+          - img [ref=e262]
+        - button "Connections" [ref=e377] [cursor=pointer]:
+          - img [ref=e266]
+        - button "Skills" [ref=e378] [cursor=pointer]:
+          - img [ref=e269]
+        - button "Profile" [ref=e379] [cursor=pointer]:
+          - img [ref=e273]
+    - generic:
+      - generic:
+        - generic "Drag to resize"
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e281] [cursor=pointer]:
+    - img [ref=e282]
+  - alert [ref=e285]

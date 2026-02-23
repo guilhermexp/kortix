@@ -1,17 +1,17 @@
 "use client"
 
-import { CANVAS_AGENT_UI_ENABLED } from "@lib/env"
 import { cn } from "@lib/utils"
-import { DEFAULT_PROJECT_ID } from "@repo/lib/constants"
 import { Button } from "@ui/components/button"
 // Select components removed - no longer needed with Claude Agent SDK
 import {
 	ArrowUp,
 	Circle,
 	Check,
+	ChevronLeft,
 	ChevronDown,
 	ChevronRight,
 	Copy,
+	Folder,
 	ListTree,
 	Paperclip,
 	RotateCcw,
@@ -27,12 +27,7 @@ import {
 	CodeBlockCopyButton,
 } from "@/components/ai-elements/code-block"
 import { Response } from "@/components/ai-elements/response"
-import {
-	InputGroup,
-	InputGroupAddon,
-	InputGroupButton,
-	InputGroupTextarea,
-} from "@/components/ui/input-group"
+import { TextShimmer } from "@/components/text-shimmer"
 import {
 	useChatMentionQueue,
 	useChatOpen,
@@ -55,6 +50,53 @@ interface MemoryResult {
 interface ExpandableMemoriesProps {
 	foundCount: number
 	results: MemoryResult[]
+}
+
+type SlashCommand = {
+	id: string
+	label: string
+	description: string
+	type: "builtin" | "skill"
+	skillName?: string
+}
+
+const BUILTIN_SLASH_COMMANDS: SlashCommand[] = [
+	{
+		id: "/new",
+		label: "/new",
+		description: "Inicia uma nova conversa",
+		type: "builtin",
+	},
+	{
+		id: "/clear",
+		label: "/clear",
+		description: "Limpa a conversa atual",
+		type: "builtin",
+	},
+	{
+		id: "/skills",
+		label: "/skills",
+		description: "Abre Settings de Skills",
+		type: "builtin",
+	},
+	{
+		id: "/ask",
+		label: "/ask <pergunta>",
+		description: "Mostra card de Ask Question para coletar resposta",
+		type: "builtin",
+	},
+	{
+		id: "/help",
+		label: "/help",
+		description: "Mostra comandos disponíveis",
+		type: "builtin",
+	},
+]
+
+type ProjectSkill = {
+	id: string
+	name: string
+	description?: string
 }
 
 type ToolState =
@@ -116,6 +158,15 @@ type ThinkingPart = {
 	state: ToolState
 	text?: string
 	durationMs?: number
+}
+
+type AskQuestionPart = {
+	type: "tool-askQuestion"
+	state: ToolState
+	question: string
+	options?: string[]
+	answer?: string
+	error?: string
 }
 
 const debugLog = (..._args: unknown[]) => {}
@@ -188,6 +239,15 @@ function isThinkingPart(part: unknown): part is ThinkingPart {
 		isObject(part) &&
 		part.type === "tool-thinking" &&
 		isToolState((part as ThinkingPart).state)
+	)
+}
+
+function isAskQuestionPart(part: unknown): part is AskQuestionPart {
+	return (
+		isObject(part) &&
+		part.type === "tool-askQuestion" &&
+		isToolState((part as AskQuestionPart).state) &&
+		typeof (part as AskQuestionPart).question === "string"
 	)
 }
 
@@ -281,7 +341,7 @@ function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
 						if (isClickable) {
 							return (
 								<a
-									className="block p-3 bg-[#0c0d10] rounded-md border border-white/10 hover:bg-[#101217] hover:border-white/15 transition-colors cursor-pointer"
+									className="block p-3 bg-[#141516] rounded-md border border-white/10 hover:bg-[#1a1b1c] hover:border-white/15 transition-colors cursor-pointer"
 									href={result.url}
 									key={result.documentId || index}
 									rel="noopener noreferrer"
@@ -294,7 +354,7 @@ function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
 
 						return (
 							<div
-								className="p-3 bg-[#0c0d10] rounded-md border border-white/10"
+								className="p-3 bg-[#141516] rounded-md border border-white/10"
 								key={result.documentId || index}
 							>
 								{content}
@@ -444,7 +504,7 @@ function ToolCard({
 	const shouldRenderContent = hasContent || isError
 
 	return (
-		<div className="rounded-xl border border-white/10 bg-[#08090b] overflow-hidden">
+		<div className="rounded-xl border border-white/10 bg-[#0a0a0a] overflow-hidden">
 			<div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
 				<span className="text-xs text-zinc-400 truncate">
 					{isLoading ? "Running" : "Ran"} command: {toolLabel}
@@ -460,7 +520,7 @@ function ToolCard({
 							{errorMessage ?? "Falha ao executar a ferramenta"}
 						</div>
 					) : (
-						<div className="rounded-md border border-white/10 bg-[#050608] px-3 py-2 text-zinc-200">
+						<div className="rounded-md border border-white/10 bg-[#0e0f10] px-3 py-2 text-zinc-200">
 							{outputNode}
 						</div>
 					)}
@@ -477,31 +537,130 @@ function ThinkingStep({
 	part: ThinkingPart
 	defaultExpanded: boolean
 }) {
-	const [expanded, setExpanded] = useState(defaultExpanded)
+	const isStreaming =
+		part.state === "input-streaming" || part.state === "input-available"
+	const [expanded, setExpanded] = useState(
+		isStreaming ? true : defaultExpanded,
+	)
 	const thinkingText = part.text?.trim() ?? ""
-	const preview = thinkingText.replace(/\s+/g, " ").trim()
+	const preview = thinkingText.slice(0, 80).replace(/\s+/g, " ").trim()
+
+	useEffect(() => {
+		if (!isStreaming) {
+			setExpanded(false)
+		}
+	}, [isStreaming])
 
 	return (
-		<div className="space-y-1">
+		<div className="space-y-1" data-collapsible-steps="true">
 			<button
-				className="w-full flex items-center justify-between rounded-md px-2 py-1 text-xs text-zinc-400 hover:bg-white/5 transition-colors"
+				className="group w-full flex items-center justify-between rounded-md px-2 py-0.5 text-xs hover:bg-muted/50 transition-colors"
 				onClick={() => setExpanded((v) => !v)}
 				type="button"
 			>
-				<span className="inline-flex items-center gap-2">
-					<span className="font-semibold text-zinc-300">Thought</span>
+				<span className="inline-flex items-center gap-1.5 min-w-0">
+					<span className="font-semibold text-zinc-300 whitespace-nowrap">
+						{isStreaming ? (
+							<TextShimmer as="span" className="inline-flex text-xs" duration={1.2}>
+								Thinking
+							</TextShimmer>
+						) : (
+							"Thought"
+						)}
+					</span>
 					{!expanded && preview.length > 0 ? (
-						<span className="truncate max-w-[480px] text-zinc-500">{preview}</span>
+						<span className="truncate max-w-[560px] text-zinc-500">{preview}</span>
 					) : null}
 				</span>
-				{expanded ? (
-					<ChevronDown className="size-3.5" />
-				) : (
-					<ChevronRight className="size-3.5" />
-				)}
+				<ChevronRight
+					className={cn(
+						"size-3.5 text-zinc-500 transition-transform duration-200",
+						expanded ? "rotate-90" : "rotate-0",
+					)}
+				/>
 			</button>
 			{expanded && thinkingText.length > 0 ? (
 				<div className="px-2 text-sm text-zinc-400 whitespace-pre-wrap">{thinkingText}</div>
+			) : null}
+		</div>
+	)
+}
+
+function CollapsibleSteps({
+	stepsCount,
+	children,
+	defaultExpanded = true,
+}: {
+	stepsCount: number
+	children: ReactNode
+	defaultExpanded?: boolean
+}) {
+	const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+
+	useEffect(() => {
+		setIsExpanded(defaultExpanded)
+	}, [defaultExpanded])
+
+	if (stepsCount === 0) return null
+
+	return (
+		<div className="mb-2" data-collapsible-steps="true">
+			<div
+				className="flex items-center justify-between rounded-md py-0.5 px-2 cursor-pointer hover:bg-muted/50 transition-colors"
+				onClick={() => setIsExpanded((prev) => !prev)}
+			>
+				<div className="flex items-center gap-1.5 text-xs text-zinc-400">
+					<ListTree className="w-3.5 h-3.5 flex-shrink-0" />
+					<span className="font-medium whitespace-nowrap">
+						{stepsCount} {stepsCount === 1 ? "step" : "steps"}
+					</span>
+				</div>
+				<ChevronRight
+					className={cn(
+						"w-4 h-4 text-zinc-500 transition-transform duration-200",
+						isExpanded ? "rotate-90" : "rotate-0",
+					)}
+				/>
+			</div>
+			{isExpanded ? <div className="mt-1 space-y-1.5">{children}</div> : null}
+		</div>
+	)
+}
+
+function AskQuestionCard({
+	part,
+	onAnswer,
+}: {
+	part: AskQuestionPart
+	onAnswer: (answer: string) => void
+}) {
+	const options = Array.isArray(part.options)
+		? part.options.filter((item) => typeof item === "string" && item.length > 0)
+		: []
+
+	return (
+		<div className="rounded-lg border border-white/10 bg-[#0e0f10] px-3 py-3 space-y-2">
+			<div className="text-xs uppercase tracking-wide text-zinc-400">askQuestion</div>
+			<div className="text-sm text-zinc-100">{part.question}</div>
+			{part.state === "output-available" && part.answer ? (
+				<div className="text-xs text-emerald-300">Resposta: {part.answer}</div>
+			) : null}
+			{part.state === "output-error" && part.error ? (
+				<div className="text-xs text-red-300">{part.error}</div>
+			) : null}
+			{part.state !== "output-available" && options.length > 0 ? (
+				<div className="flex flex-wrap gap-1.5">
+					{options.map((option) => (
+						<button
+							className="rounded-md border border-white/15 bg-white/5 px-2 py-1 text-xs text-zinc-200 hover:bg-white/10"
+							key={option}
+							onClick={() => onAnswer(option)}
+							type="button"
+						>
+							{option}
+						</button>
+					))}
+				</div>
 			) : null}
 		</div>
 	)
@@ -894,7 +1053,9 @@ function useClaudeChat({
 	}, [cancelEndpoint, setMessages])
 
 	const checkBackendSessionIsActive = useCallback(async () => {
-		if (status === "ready") return
+		// Avoid racing against the initial request lifecycle:
+		// while status is "submitted" the backend session may not be registered yet.
+		if (status !== "streaming") return
 		const activeConversationId = conversationRef.current
 		const activeSdkSessionId = sdkSessionIdRef.current
 		if (!activeConversationId && !activeSdkSessionId) return
@@ -1229,6 +1390,7 @@ function useClaudeChat({
 							toolName ?? (toolUseId ? toolUseId : "tool")
 						const isSearchTool =
 							resolvedToolName === "mcp__kortix-tools__searchDatabase"
+						const isAskQuestionTool = /ask.?question/i.test(resolvedToolName)
 
 						if (isSearchTool) {
 							const existingIndex = existingParts.findIndex(
@@ -1286,6 +1448,52 @@ function useClaudeChat({
 							} else {
 								delete (basePart as Record<string, unknown>).output
 								basePart.error = undefined
+							}
+							if (existingIndex >= 0) {
+								existingParts[existingIndex] = basePart
+							} else {
+								existingParts.push(basePart)
+							}
+						} else if (isAskQuestionTool) {
+							const existingIndex = existingParts.findIndex(
+								(part) =>
+									isAskQuestionPart(part) &&
+									(toolUseId
+										? (part as AskQuestionPart).state !== "output-available"
+										: true),
+							)
+							const question =
+								outputPayload && typeof outputPayload.question === "string"
+									? outputPayload.question
+									: outputText && outputText.length > 0
+										? outputText
+										: "Preciso de uma confirmação para continuar."
+							const options =
+								outputPayload && Array.isArray(outputPayload.options)
+									? outputPayload.options.filter(
+											(item): item is string =>
+												typeof item === "string" && item.length > 0,
+										)
+									: undefined
+
+							const basePart: AskQuestionPart =
+								existingIndex >= 0 && isAskQuestionPart(existingParts[existingIndex])
+									? { ...existingParts[existingIndex] }
+									: {
+											type: "tool-askQuestion",
+											state: toolState,
+											question,
+											options,
+										}
+							basePart.state = toolState
+							basePart.question = question
+							basePart.options = options
+							if (toolState === "output-error") {
+								basePart.error =
+									errorText ??
+									(outputText && outputText.length > 0
+										? outputText
+										: "Falha ao processar pergunta")
 							}
 							if (existingIndex >= 0) {
 								existingParts[existingIndex] = basePart
@@ -1814,31 +2022,39 @@ function useClaudeChat({
 export function ChatMessages({
 	embedded = false,
 	documentContext,
+	documentId,
+	contextDocumentData,
 	compact = false,
 	onSwitchToCouncil,
 	canvasId,
+	chatScopeKey,
 }: {
 	embedded?: boolean
 	documentContext?: React.ReactNode
+	documentId?: string
+	contextDocumentData?: { id: string; title: string | null; content: string | null }
 	compact?: boolean
 	onSwitchToCouncil?: () => void
 	canvasId?: string
+	chatScopeKey?: string
 }) {
 	const { selectedProject } = useProject()
 	const {
 		currentChatId,
 		setCurrentChatId,
 		setConversation,
+		deleteConversation,
 		getCurrentConversation,
 		setConversationTitle,
 		setSdkSessionId,
 		getSdkSessionId,
 		getCurrentChat,
-	} = usePersistentChat()
+	} = usePersistentChat({ scopeKey: chatScopeKey })
 
 	const activeChatIdRef = useRef<string | null>(null)
 	const shouldGenerateTitleRef = useRef<boolean>(false)
 	const skipHydrationRef = useRef(false)
+	const localOnlyConversationIdsRef = useRef<Set<string>>(new Set())
 	const missingConversationIdsRef = useRef<Set<string>>(
 		(() => {
 			try {
@@ -1863,7 +2079,19 @@ export function ChatMessages({
 				JSON.stringify([...set]),
 			)
 		} catch { /* quota exceeded – ignore */ }
-	}, [])
+
+		// Remove stale local record so reopening the chat does not retry a
+		// conversationId that is already gone on the server.
+		deleteConversation(id)
+
+		// If the active conversation no longer exists on server, drop it so
+		// the next message starts a fresh server conversation instead of
+		// repeatedly sending with a stale conversationId.
+		if (activeChatIdRef.current === id) {
+			activeChatIdRef.current = null
+			setCurrentChatId(null)
+		}
+	}, [deleteConversation, setCurrentChatId])
 	// Track previous chat ID to prevent persisting stale messages when switching chats
 	const prevPersistChatIdRef = useRef<string | null | undefined>(undefined)
 
@@ -1878,10 +2106,12 @@ export function ChatMessages({
 	)
 	// Expanded context toggle (increases search result limits)
 	const [expandContext, _setExpandContext] = useState<boolean>(false)
-	const [_projects, setProjects] = useState<
+	const [projects, setProjects] = useState<
 		Array<{ id: string; name: string; containerTag: string }>
 	>([])
-	const [_loadingProjects, setLoadingProjects] = useState(false)
+	const [loadingProjects, setLoadingProjects] = useState(false)
+	const { isOpen } = useChatOpen()
+	const effectiveOpen = embedded || isOpen
 
 	useEffect(() => {
 		if (!effectiveOpen) return
@@ -1914,7 +2144,7 @@ export function ChatMessages({
 		return () => {
 			ignore = true
 		}
-	}, [])
+	}, [effectiveOpen])
 
 	// Keep chat project in sync with global project selection in real-time
 	useEffect(() => {
@@ -2007,12 +2237,19 @@ export function ChatMessages({
 				metadata.forceRawDocs = true
 				metadata.mentionedDocIds = currentMentionedIds
 			}
-			if (
-				CANVAS_AGENT_UI_ENABLED &&
-				canvasId &&
-				canvasId.trim().length > 0
-			) {
+			if (canvasId && canvasId.trim().length > 0) {
 				metadata.canvasId = canvasId.trim()
+			}
+			if (documentId && documentId.trim().length > 0) {
+				metadata.documentId = documentId.trim()
+			}
+			// Send full document content so the agent can answer without searching
+			if (contextDocumentData?.content) {
+				metadata.contextDocument = {
+					id: contextDocumentData.id,
+					title: contextDocumentData.title,
+					content: contextDocumentData.content,
+				}
 			}
 
 			// Clear the pending ref after using it
@@ -2029,7 +2266,7 @@ export function ChatMessages({
 				provider, // Include provider selection
 			}
 		},
-		[project, expandContext, provider, canvasId],
+		[project, expandContext, provider, canvasId, documentId, contextDocumentData],
 	)
 
 	const handleAssistantComplete = useCallback(
@@ -2077,6 +2314,7 @@ export function ChatMessages({
 			if (nextId === activeChatIdRef.current && nextId === currentChatId) {
 				return
 			}
+			localOnlyConversationIdsRef.current.delete(nextId)
 			activeChatIdRef.current = nextId
 			shouldGenerateTitleRef.current = true
 			skipHydrationRef.current = true
@@ -2102,10 +2340,30 @@ export function ChatMessages({
 	const [input, setInput] = useState("")
 	const [mentionOpen, setMentionOpen] = useState(false)
 	const [mentionQuery, setMentionQuery] = useState("")
-	const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({})
+	const [mentionView, setMentionView] = useState<"projects" | "documents">(
+		"projects",
+	)
+	const [mentionProjectTag, setMentionProjectTag] = useState<string | null>(null)
+	const [slashOpen, setSlashOpen] = useState(false)
+	const [slashQuery, setSlashQuery] = useState("")
+	const [slashActiveIndex, setSlashActiveIndex] = useState(0)
+	const [projectSkills, setProjectSkills] = useState<ProjectSkill[]>([])
+	const [selectedSkillNames, setSelectedSkillNames] = useState<string[]>([])
 	const [hydrationOrigin, setHydrationOrigin] = useState<
 		"server" | "cache" | null
 	>(null)
+	const getCurrentConversationRef = useRef(getCurrentConversation)
+	const setConversationRef = useRef(setConversation)
+	const setSdkSessionIdRef = useRef(setSdkSessionId)
+	useEffect(() => {
+		getCurrentConversationRef.current = getCurrentConversation
+	}, [getCurrentConversation])
+	useEffect(() => {
+		setConversationRef.current = setConversation
+	}, [setConversation])
+	useEffect(() => {
+		setSdkSessionIdRef.current = setSdkSessionId
+	}, [setSdkSessionId])
 	const mentionInputRef = useRef<HTMLInputElement | null>(null)
 	useEffect(() => {
 		if (!mentionOpen) return
@@ -2131,10 +2389,9 @@ export function ChatMessages({
 		type?: string | null
 		url?: string | null
 		preview?: string | null
+		containerTag?: string | null
 	}
 	const [canvasDocs, setCanvasDocs] = useState<CanvasDoc[]>([])
-	const { isOpen } = useChatOpen()
-	const effectiveOpen = isOpen
 	const prevIsOpenRef = useRef(false)
 	const lastClosedTimeRef = useRef<number>(0)
 	const canvasDocMap = useMemo(() => {
@@ -2148,17 +2405,12 @@ export function ChatMessages({
 		let ignore = false
 		async function load() {
 			try {
-				const containerTags =
-					selectedProject && selectedProject !== DEFAULT_PROJECT_ID
-						? [selectedProject]
-						: undefined
 				const res = await fetch(`/v3/documents/documents`, {
 					method: "POST",
 					credentials: "include",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
-						containerTags,
-						limit: 50,
+						limit: 200,
 						page: 1,
 						sort: "updatedAt",
 						order: "desc",
@@ -2181,6 +2433,12 @@ export function ChatMessages({
 									d.metadata.previewImage)) ||
 							d.ogImage ||
 							null,
+						containerTag:
+							typeof d.containerTag === "string"
+								? d.containerTag
+								: typeof d.container?.tag === "string"
+									? d.container.tag
+									: null,
 					})),
 				)
 			} catch {}
@@ -2189,23 +2447,329 @@ export function ChatMessages({
 		return () => {
 			ignore = true
 		}
-	}, [effectiveOpen, selectedProject])
+	}, [effectiveOpen])
 
-	const filteredMention = useMemo(() => {
+	const mentionDocs = useMemo(() => {
 		const q = mentionQuery.trim().toLowerCase()
-		const base = canvasDocs.filter((d) => !mentionedDocIds.includes(d.id))
+		const base = canvasDocs.filter(
+			(d) =>
+				!mentionedDocIds.includes(d.id) &&
+				(!mentionProjectTag || d.containerTag === mentionProjectTag),
+		)
 		if (!q) return base
 		return base.filter((d) => (d.title || d.id).toLowerCase().includes(q))
-	}, [canvasDocs, mentionQuery, mentionedDocIds])
+	}, [canvasDocs, mentionProjectTag, mentionQuery, mentionedDocIds])
 
-	const sendUserMessage = (text: string) => {
+	const mentionProjects = useMemo(() => {
+		const q = mentionQuery.trim().toLowerCase()
+		const counts = new Map<string, number>()
+		let total = 0
+		for (const doc of canvasDocs) {
+			if (mentionedDocIds.includes(doc.id)) continue
+			total += 1
+			if (doc.containerTag) {
+				counts.set(doc.containerTag, (counts.get(doc.containerTag) ?? 0) + 1)
+			}
+		}
+		const base = [
+			{ id: "__ALL__", name: "All Projects", containerTag: null, count: total },
+			...projects.map((projectItem) => ({
+				id: projectItem.id,
+				name: projectItem.name,
+				containerTag: projectItem.containerTag,
+				count: counts.get(projectItem.containerTag) ?? 0,
+			})),
+		]
+		if (!q) return base
+		return base.filter((item) => item.name.toLowerCase().includes(q))
+	}, [canvasDocs, mentionedDocIds, mentionQuery, projects])
+
+	useEffect(() => {
+		if (!effectiveOpen) return
+		let ignore = false
+		const loadProjectSkills = async () => {
+			try {
+				const res = await fetch("/v3/skills?scope=project", {
+					credentials: "include",
+				})
+				if (!res.ok) return
+				const payload = (await res.json()) as {
+					skills?: Array<{ id?: string; name?: string; description?: string }>
+				}
+				if (ignore) return
+				const next = Array.isArray(payload.skills)
+					? payload.skills
+							.map((skill): ProjectSkill | null => {
+								if (!skill || typeof skill !== "object") return null
+								const id =
+									typeof skill.id === "string" ? skill.id : crypto.randomUUID()
+								const name = typeof skill.name === "string" ? skill.name : ""
+								if (!name.trim()) return null
+								return {
+									id,
+									name: name.trim(),
+									description:
+										typeof skill.description === "string"
+											? skill.description
+											: undefined,
+								}
+							})
+							.filter((skill): skill is ProjectSkill => skill !== null)
+					: []
+				setProjectSkills(next)
+			} catch {
+				// ignore
+			}
+		}
+		void loadProjectSkills()
+		return () => {
+			ignore = true
+		}
+	}, [effectiveOpen])
+
+	const allSlashCommands = useMemo(() => {
+		const skillCommands: SlashCommand[] = projectSkills.map((skill) => ({
+			id: `/${skill.name}`,
+			label: `/${skill.name}`,
+			description:
+				skill.description?.trim() && skill.description.trim().length > 0
+					? `Usa skill: ${skill.description.trim()}`
+					: `Usa skill ${skill.name}`,
+			type: "skill",
+			skillName: skill.name,
+		}))
+		return [...BUILTIN_SLASH_COMMANDS, ...skillCommands]
+	}, [projectSkills])
+
+	const filteredSkillCommands = useMemo(() => {
+		const q = slashQuery.trim().toLowerCase()
+		const onlySkills = allSlashCommands.filter((command) => command.type === "skill")
+		if (!q) return onlySkills
+		return onlySkills.filter(
+			(command) =>
+				command.id.toLowerCase().includes(q) ||
+				command.label.toLowerCase().includes(q) ||
+				command.description.toLowerCase().includes(q),
+		)
+	}, [allSlashCommands, slashQuery])
+
+	const filteredBuiltinCommands = useMemo(() => {
+		const q = slashQuery.trim().toLowerCase()
+		const builtins = BUILTIN_SLASH_COMMANDS
+		if (!q) return builtins
+		return builtins.filter(
+			(command) =>
+				command.id.toLowerCase().includes(q) ||
+				command.label.toLowerCase().includes(q) ||
+				command.description.toLowerCase().includes(q),
+		)
+	}, [slashQuery])
+
+	const visibleSlashCommands = useMemo(() => {
+		const merged = [...filteredBuiltinCommands, ...filteredSkillCommands]
+		const unique = new Map<string, SlashCommand>()
+		for (const command of merged) {
+			unique.set(command.id, command)
+		}
+		return Array.from(unique.values())
+	}, [filteredBuiltinCommands, filteredSkillCommands])
+
+	useEffect(() => {
+		setSlashActiveIndex(0)
+	}, [slashQuery, slashOpen, visibleSlashCommands.length])
+
+	const selectedSkillNamesRef = useRef<string[]>([])
+	useEffect(() => {
+		selectedSkillNamesRef.current = selectedSkillNames
+	}, [selectedSkillNames])
+
+	const addSelectedSkill = useCallback((skillName: string) => {
+		const trimmed = skillName.trim()
+		if (!trimmed) return
+		setSelectedSkillNames((prev) => {
+			if (prev.some((item) => item.toLowerCase() === trimmed.toLowerCase())) {
+				return prev
+			}
+			return [...prev, trimmed]
+		})
+	}, [])
+
+	const removeSelectedSkill = useCallback((skillName: string) => {
+		setSelectedSkillNames((prev) =>
+			prev.filter((item) => item.toLowerCase() !== skillName.toLowerCase()),
+		)
+	}, [])
+
+	const clearSelectedSkills = useCallback(() => {
+		setSelectedSkillNames([])
+	}, [])
+
+	const sendUserMessage = (
+		text: string,
+		options?: { includeSkillNames?: string[]; keepSelectedSkills?: boolean },
+	) => {
 		const ids = [...mentionedDocIdsRef.current]
+		const activeId = activeChatIdRef.current || currentChatId
+		if (activeId) {
+			localOnlyConversationIdsRef.current.delete(activeId)
+		}
+		const includeSkillNames = options?.includeSkillNames ?? []
+		const allSkills = [
+			...selectedSkillNamesRef.current,
+			...includeSkillNames,
+		].filter((name, index, arr) => {
+			const normalized = name.trim().toLowerCase()
+			return normalized.length > 0 && arr.findIndex((it) => it.trim().toLowerCase() === normalized) === index
+		})
+		const skillPrefix =
+			allSkills.length > 0 ? `${allSkills.map((name) => `$${name}`).join(" ")}\n\n` : ""
+		const finalText = `${skillPrefix}${text}`.trim()
 		// Store in ref so composeRequestBody can access it synchronously
 		pendingMentionedDocIdsRef.current = ids
-		sendMessage({ text, mentionedDocIds: ids })
+		sendMessage({ text: finalText, mentionedDocIds: ids })
 		// Clear mentioned docs after capturing them
 		if (ids.length > 0) clearMentionedDocIds()
+		if (!options?.keepSelectedSkills) {
+			clearSelectedSkills()
+		}
 	}
+
+	const appendAssistantLocalMessage = useCallback(
+		(
+			parts: Array<TextPart | AskQuestionPart>,
+			targetChatId?: string | null,
+		) => {
+			const assistant = createTextMessage("assistant", "")
+			assistant.parts = parts
+			let nextSnapshot: ClaudeChatMessage[] | null = null
+			setMessages((prev) => {
+				nextSnapshot = [...prev, assistant]
+				return nextSnapshot
+			})
+			if (targetChatId && nextSnapshot) {
+				queueMicrotask(() => {
+					setConversation(targetChatId, nextSnapshot as ClaudeChatMessage[])
+				})
+			}
+		},
+		[setConversation, setMessages],
+	)
+
+	const applySlashCommand = useCallback(
+		(rawInput: string) => {
+			const trimmed = rawInput.trim()
+			if (!trimmed.startsWith("/")) return false
+			const [first, ...rest] = trimmed.split(/\s+/)
+			const command = first ?? ""
+			const args = rest.join(" ").trim()
+			const normalized = command.toLowerCase()
+			const matchedSkill = allSlashCommands.find(
+				(item) => item.type === "skill" && item.id.toLowerCase() === normalized,
+			)
+			const ensureConversationForLocalCommand = () => {
+				if (currentChatId) {
+					localOnlyConversationIdsRef.current.add(currentChatId)
+					const existing = getCurrentConversation()
+					if (existing === undefined) {
+						setConversation(currentChatId, [])
+					}
+					return currentChatId
+				}
+				const localChatId = crypto.randomUUID()
+				skipHydrationRef.current = true
+				setCurrentChatId(localChatId)
+				localOnlyConversationIdsRef.current.add(localChatId)
+				setConversation(localChatId, [])
+				return localChatId
+			}
+
+			if (matchedSkill?.skillName) {
+				if (args.length > 0) {
+					sendUserMessage(args, {
+						includeSkillNames: [matchedSkill.skillName],
+					})
+					setInput("")
+				} else {
+					addSelectedSkill(matchedSkill.skillName)
+					setInput("")
+				}
+				setSlashOpen(false)
+				return true
+			}
+
+			if (normalized === "/new") {
+				const newChatId = crypto.randomUUID()
+				skipHydrationRef.current = true
+				setCurrentChatId(newChatId)
+				localOnlyConversationIdsRef.current.add(newChatId)
+				setConversation(newChatId, [])
+				setMessages([])
+				setHydrationOrigin(null)
+				setInput("")
+				setSlashOpen(false)
+				return true
+			}
+
+			if (normalized === "/clear") {
+				setMessages([])
+				setInput("")
+				setSlashOpen(false)
+				return true
+			}
+
+			if (normalized === "/skills") {
+				window.location.href = "/settings/skills"
+				return true
+			}
+
+			if (normalized === "/ask" || normalized === "/askquestion") {
+				const targetChatId = ensureConversationForLocalCommand()
+			appendAssistantLocalMessage([
+					{ type: "text", text: "" },
+					{
+						type: "tool-askQuestion",
+						state: "input-available",
+						question:
+							args.length > 0
+								? args
+								: "Preciso de mais contexto para continuar. Qual opção você prefere?",
+						options: ["Continuar", "Detalhar mais", "Pular"],
+					},
+				], targetChatId)
+				setInput("")
+				setSlashOpen(false)
+				return true
+			}
+
+			if (normalized === "/help") {
+				const targetChatId = ensureConversationForLocalCommand()
+				appendAssistantLocalMessage([
+					{
+						type: "text",
+						text: allSlashCommands.map(
+							(command) => `${command.label}: ${command.description}`,
+						).join("\n"),
+					},
+				], targetChatId)
+				setInput("")
+				setSlashOpen(false)
+				return true
+			}
+
+			return false
+		},
+		[
+			addSelectedSkill,
+			allSlashCommands,
+			appendAssistantLocalMessage,
+			currentChatId,
+			getCurrentConversation,
+			setConversation,
+			setCurrentChatId,
+			setMessages,
+			sendUserMessage,
+		],
+	)
 
 	const getPreviewUrl = (doc: CanvasDoc): string | null => {
 		if (doc.preview && typeof doc.preview === "string") return doc.preview
@@ -2248,6 +2812,8 @@ export function ChatMessages({
 				const newChatId = crypto.randomUUID()
 				skipHydrationRef.current = true // Prevent 404 fetch for new chats
 				setCurrentChatId(newChatId)
+				localOnlyConversationIdsRef.current.add(newChatId)
+				setConversation(newChatId, [])
 				setMessages([])
 				shouldGenerateTitleRef.current = false
 				setHydrationOrigin(null)
@@ -2260,7 +2826,7 @@ export function ChatMessages({
 		}
 
 		prevIsOpenRef.current = effectiveOpen
-	}, [currentChatId, effectiveOpen, setCurrentChatId, setMessages])
+	}, [currentChatId, effectiveOpen, setConversation, setCurrentChatId, setMessages])
 
 	useEffect(() => {
 		activeChatIdRef.current = currentChatId ?? id ?? null
@@ -2285,6 +2851,31 @@ export function ChatMessages({
 				shouldGenerateTitleRef.current = false
 				return
 			}
+			if (status === "submitted" || status === "streaming") {
+				const localMessages = getCurrentConversationRef.current()
+				if (cancelled) return
+				if (Array.isArray(localMessages) && localMessages.length > 0) {
+					const normalized = normalizeStoredMessages(localMessages, rawActiveId)
+					setMessages(normalized)
+					setHydrationOrigin("cache")
+				}
+				setInput("")
+				return
+			}
+			if (localOnlyConversationIdsRef.current.has(rawActiveId)) {
+				const localMessages = getCurrentConversationRef.current()
+				if (cancelled) return
+				if (Array.isArray(localMessages) && localMessages.length > 0) {
+					const normalized = normalizeStoredMessages(localMessages, rawActiveId)
+					setMessages(normalized)
+					setHydrationOrigin("cache")
+				} else {
+					setMessages([])
+					setHydrationOrigin(null)
+				}
+				setInput("")
+				return
+			}
 			// Skip server fetch for non-UUID IDs (e.g. "claude-1234567890" local-only IDs)
 			const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawActiveId)
 			if (!isUUID) {
@@ -2292,7 +2883,7 @@ export function ChatMessages({
 			}
 
 			if (missingConversationIdsRef.current.has(rawActiveId)) {
-				const localMessages = getCurrentConversation()
+				const localMessages = getCurrentConversationRef.current()
 				if (cancelled) return
 				if (Array.isArray(localMessages) && localMessages.length > 0) {
 					const normalized = normalizeStoredMessages(localMessages, rawActiveId)
@@ -2309,7 +2900,7 @@ export function ChatMessages({
 			// Skip server fetch for brand-new chats with no local record.
 			// getCurrentConversation() returns undefined when no record exists in the store (brand new),
 			// vs [] (empty array) for an existing record with no messages.
-			const localRecord = getCurrentConversation()
+			const localRecord = getCurrentConversationRef.current()
 			if (localRecord === undefined) {
 				setMessages([])
 				setInput("")
@@ -2337,7 +2928,7 @@ export function ChatMessages({
 
 					if (cancelled) return
 					setMessages(normalized)
-					setConversation(rawActiveId, normalized)
+					setConversationRef.current(rawActiveId, normalized)
 					setHydrationOrigin("server")
 
 					const conversationResponse = await fetch(
@@ -2358,7 +2949,7 @@ export function ChatMessages({
 								: typeof conversation?.sdkSessionId === "string"
 									? conversation.sdkSessionId
 									: null
-						setSdkSessionId(rawActiveId, remoteSdkSessionId)
+						setSdkSessionIdRef.current(rawActiveId, remoteSdkSessionId)
 					} else if (conversationResponse.status === 404) {
 						markConversationMissing(rawActiveId)
 					}
@@ -2373,7 +2964,7 @@ export function ChatMessages({
 				debugLog("[Chat Hydration] Server history fetch failed, using local cache", error)
 			}
 
-			const localMessages = getCurrentConversation()
+			const localMessages = getCurrentConversationRef.current()
 			if (cancelled) return
 			if (Array.isArray(localMessages) && localMessages.length > 0) {
 				const normalized = normalizeStoredMessages(localMessages, rawActiveId)
@@ -2392,12 +2983,10 @@ export function ChatMessages({
 		}
 	}, [
 		currentChatId,
-		getCurrentConversation,
 		id,
-		setConversation,
 		setMessages,
-		setSdkSessionId,
 		setHydrationOrigin,
+		status,
 	])
 
 	useEffect(() => {
@@ -2485,19 +3074,19 @@ export function ChatMessages({
 	}, [messages])
 
 	return (
-		<div className="flex flex-col h-full">
-			<div className="relative flex-1 bg-black overflow-hidden">
+		<div className="flex flex-col h-full bg-[#0e0f10]">
+			<div className="relative flex-1 overflow-hidden">
 				<div
 					className={cn(
 						"flex flex-col absolute inset-0 overflow-y-auto",
-						compact ? "gap-2 px-3 pt-3 pb-4" : "gap-3 px-6 pt-3 pb-6",
+						compact ? "gap-2 px-2 pt-2 pb-4" : "gap-3 px-2 pt-3 pb-6",
 					)}
 					onScroll={onScroll}
 					ref={scrollContainerRef}
 				>
 					{hydrationOrigin && (
 						<div className="mb-1 px-1">
-							<span className="inline-flex items-center rounded-md border border-white/10 bg-[#0e1118] px-2 py-1 text-[11px] text-zinc-400">
+							<span className="inline-flex items-center rounded-md border border-white/10 bg-[#111111] px-2 py-1 text-[11px] text-zinc-400">
 								{hydrationOrigin === "server"
 									? "History loaded from server"
 									: "History loaded from local cache"}
@@ -2511,7 +3100,7 @@ export function ChatMessages({
 					{messages.map((message, messageIndex) => (
 						<div
 							className={cn(
-								"flex flex-col gap-1",
+								"w-full max-w-3xl mx-auto flex flex-col gap-1",
 								message.role === "user" ? "items-end" : "items-start",
 							)}
 							key={message.id ?? `message-${messageIndex}-${message.role}`}
@@ -2521,10 +3110,10 @@ export function ChatMessages({
 									"flex flex-col gap-2 w-full",
 									message.role === "user"
 										? cn(
-											"border text-foreground",
+											"border text-foreground shadow-sm",
 											compact
-												? "border-white/10 py-2.5 px-4 rounded-2xl bg-[#0b0c10]"
-												: "border-white/10 py-3 px-4 rounded-2xl bg-[#0b0c10]",
+												? "border-white/10 py-2.5 px-4 rounded-2xl bg-[#111111]"
+												: "border-white/10 py-3 px-4 rounded-2xl bg-[#111111]",
 										)
 										: "py-1 px-0 text-zinc-100",
 								)}
@@ -2540,7 +3129,8 @@ export function ChatMessages({
 											isSearchMemoriesPart(part) ||
 											isAddMemoryPart(part) ||
 											isGenericToolPart(part) ||
-											isThinkingPart(part)
+											isThinkingPart(part) ||
+											isAskQuestionPart(part)
 										) {
 											toolParts.push({ part, index })
 										} else if (isTextPart(part)) {
@@ -2637,8 +3227,42 @@ export function ChatMessages({
 										if (isThinkingPart(part)) {
 											return [
 												<ThinkingStep
-													defaultExpanded={status === "streaming"}
+													defaultExpanded={true}
 													key={`${partKey}-thinking`}
+													part={part}
+												/>,
+											]
+										}
+
+										if (isAskQuestionPart(part)) {
+											return [
+												<AskQuestionCard
+													key={`${partKey}-ask-question`}
+													onAnswer={(answer) => {
+														setMessages((prev) => {
+															const next = [...prev]
+															const messageIndex = next.findIndex(
+																(candidate) => candidate.id === message.id,
+															)
+															if (messageIndex < 0) return prev
+															const target = next[messageIndex]
+															if (!target) return prev
+															const nextParts = Array.isArray(target.parts)
+																? [...target.parts]
+																: []
+															nextParts[index] = {
+																...part,
+																state: "output-available",
+																answer,
+															}
+															next[messageIndex] = {
+																...target,
+																parts: nextParts,
+															}
+															return next
+														})
+														sendUserMessage(answer)
+													}}
 													part={part}
 												/>,
 											]
@@ -2752,7 +3376,7 @@ export function ChatMessages({
 																				src={preview}
 																			/>
 																		) : (
-																			<span className="w-5 h-5 rounded-sm bg-[#121419] inline-block" />
+																			<span className="w-5 h-5 rounded-sm bg-[#141414] inline-block" />
 																		)}
 																		<span className="truncate max-w-[160px]">
 																			@{label}
@@ -2761,7 +3385,7 @@ export function ChatMessages({
 																)
 																return href ? (
 																	<a
-																		className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-white/10 bg-[#0f1116] text-foreground hover:bg-[#141823] transition"
+																		className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-white/10 bg-[#111111] text-foreground hover:bg-[#1a1a1a] transition"
 																		href={href}
 																		key={id}
 																		rel="noreferrer"
@@ -2771,7 +3395,7 @@ export function ChatMessages({
 																	</a>
 																) : (
 																	<div
-																		className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-white/10 bg-[#0f1116] text-foreground"
+																		className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-white/10 bg-[#111111] text-foreground"
 																		key={id}
 																	>
 																		{content}
@@ -2794,44 +3418,20 @@ export function ChatMessages({
 											? isSubAgentToolName(part.toolName)
 											: false,
 									).length
-									const areStepsExpanded =
-										expandedSteps[message.id] ?? status === "streaming"
-
 									const stepBlock = shouldShowSteps ? (
-										<div className="space-y-2">
-											<button
-												className="w-full flex items-center justify-between rounded-md px-2 py-1 text-xs text-zinc-400 hover:bg-white/5 transition-colors"
-												onClick={() =>
-													setExpandedSteps((prev) => ({
-														...prev,
-														[message.id]: !areStepsExpanded,
-													}))
-												}
-												type="button"
-											>
-												<span className="inline-flex items-center gap-1.5">
-													<ListTree className="size-3.5" />
-													{toolElements.length} steps
-													{subAgentCount > 0 ? (
-														<span className="text-zinc-500">
-															• {subAgentCount} sub-agents
-														</span>
-													) : null}
-												</span>
-												{areStepsExpanded ? (
-													<ChevronDown className="size-3.5" />
-												) : (
-													<ChevronRight className="size-3.5" />
-												)}
-											</button>
-											{areStepsExpanded ? (
-												<div className="space-y-2">{toolElements}</div>
-											) : (
-												<div className="space-y-2">
-													{toolElements[toolElements.length - 1] ?? null}
-												</div>
-											)}
-										</div>
+										<CollapsibleSteps
+											defaultExpanded={false}
+											stepsCount={toolElements.length}
+										>
+											<div className="space-y-2">
+												{subAgentCount > 0 ? (
+													<div className="px-2 text-[11px] text-zinc-500">
+														{subAgentCount} sub-agents
+													</div>
+												) : null}
+												{toolElements}
+											</div>
+										</CollapsibleSteps>
 									) : null
 
 									const responseBlock =
@@ -2894,11 +3494,14 @@ export function ChatMessages({
 					{isThinking && !hasActiveTools && (
 						<div
 							className={cn(
-								"flex text-muted-foreground justify-start gap-1.5 items-center w-full",
+								"flex text-muted-foreground justify-start gap-1.5 items-center w-full max-w-3xl mx-auto",
 								compact ? "px-3 py-2" : "px-4 py-3",
 							)}
 						>
-							<Spinner className="size-3" /> Pensando...
+							<Spinner className="size-3" />
+							<TextShimmer as="span" className="text-xs" duration={1.1}>
+								Thinking
+							</TextShimmer>
 						</div>
 					)}
 					<div ref={bottomRef} />
@@ -2925,8 +3528,8 @@ export function ChatMessages({
 			</div>
 			<form
 				className={cn(
-					"relative bg-black",
-					compact ? "px-2.5 pb-2.5 pt-1" : "px-6 pb-3 pt-1",
+					"relative px-2 pb-2",
+					compact ? "pt-1" : "pt-2",
 				)}
 				onSubmit={(e) => {
 					e.preventDefault()
@@ -2942,6 +3545,7 @@ export function ChatMessages({
 					}
 				}}
 			>
+				<div className="w-full max-w-3xl mx-auto relative">
 				{/* Mentioned docs chips */}
 				{mentionedDocIds.length > 0 && (
 					<div className="px-1 pb-1.5 flex flex-wrap gap-1">
@@ -2950,7 +3554,7 @@ export function ChatMessages({
 							const preview = doc ? getPreviewUrl(doc) : null
 							return (
 								<button
-									className="text-[10px] pl-1 pr-1.5 py-0.5 rounded bg-[#101319] text-muted-foreground hover:text-foreground hover:bg-[#151922] inline-flex items-center gap-1 transition-colors"
+									className="text-[10px] pl-1 pr-1.5 py-0.5 rounded bg-[#111111] text-muted-foreground hover:text-foreground hover:bg-[#1a1a1a] inline-flex items-center gap-1 transition-colors"
 									key={id}
 									onClick={() => removeMentionedDocId(id)}
 									title={doc?.title || id}
@@ -2964,7 +3568,7 @@ export function ChatMessages({
 											src={preview}
 										/>
 									) : (
-										<span className="w-3 h-3 rounded-sm bg-[#1a1f2b] inline-block" />
+										<span className="w-3 h-3 rounded-sm bg-[#1a1a1a] inline-block" />
 									)}
 									<span>
 										@{doc?.title || id}
@@ -2975,8 +3579,24 @@ export function ChatMessages({
 						})}
 					</div>
 				)}
+				{selectedSkillNames.length > 0 && (
+					<div className="px-1 pb-1.5 flex flex-wrap gap-1">
+						{selectedSkillNames.map((skillName) => (
+							<button
+								className="text-[11px] pl-2 pr-2 py-0.5 rounded-full bg-violet-500/20 text-violet-200 hover:bg-violet-500/30 inline-flex items-center gap-1 transition-colors"
+								key={skillName}
+								onClick={() => removeSelectedSkill(skillName)}
+								title={`Skill ativa: ${skillName}`}
+								type="button"
+							>
+								<span>{skillName}</span>
+								<X className="size-3 opacity-70" />
+							</button>
+						))}
+					</div>
+				)}
 				{(status === "streaming" || status === "submitted") && (
-					<div className="mb-1.5 flex items-center justify-between rounded-3xl border border-white/10 bg-[#080a0f] px-5 py-3">
+					<div className="mb-2 flex items-center justify-between rounded-xl border border-white/10 bg-[#0c0c0c] px-4 py-2.5">
 						<span className="text-[16px] leading-none font-medium text-zinc-400">
 							Generating..
 						</span>
@@ -2990,57 +3610,116 @@ export function ChatMessages({
 						</button>
 					</div>
 				)}
-				<InputGroup
+				<div
 					className={cn(
-						"focus-within:ring-0 focus-within:ring-offset-0 transition-colors shadow-[0_0_0_1px_rgba(31,86,216,0.35)]",
-						compact
-							? "rounded-3xl border border-[#1f56d8] bg-[#07090d] focus-within:border-[#2f67f2]"
-							: "rounded-3xl border border-[#1f56d8] bg-[#07090d] focus-within:border-[#2f67f2]",
+						"rounded-xl border border-white/10 bg-[#0e0f10] p-2 transition-[border-color,box-shadow]",
+						embedded
+							? "focus-within:ring-0"
+							: "focus-within:ring-2 focus-within:ring-primary/30",
 					)}
 				>
-					<InputGroupTextarea
+					<textarea
 						className={cn(
-							"text-zinc-100 placeholder-zinc-500",
+							"w-full resize-none bg-transparent text-zinc-100 placeholder-zinc-500 focus:outline-none",
 							compact
-								? "min-h-[96px] px-4 pt-3 pb-10 text-[13px]"
-								: "min-h-[96px] px-4 pt-3 pb-10 text-sm",
+								? "min-h-[56px] px-2 py-1.5 text-[13px]"
+								: "min-h-[56px] px-2 py-1.5 text-sm",
 						)}
 						onChange={(e) => {
 							debugLog("[Chat Input] onChange:", e.target.value)
-							setInput(e.target.value)
+							const nextValue = e.target.value
+							setInput(nextValue)
+							const hasMentionTrigger = nextValue.includes("@")
+							if (!hasMentionTrigger && mentionOpen) {
+								setMentionOpen(false)
+								setMentionView("projects")
+								setMentionProjectTag(null)
+								setMentionQuery("")
+							}
+							const trimmed = nextValue.trimStart()
+							if (trimmed.startsWith("/")) {
+								const commandToken = trimmed.slice(1).split(/\s+/)[0] ?? ""
+								setSlashQuery(commandToken)
+								setSlashOpen(true)
+							} else {
+								setSlashOpen(false)
+								setSlashQuery("")
+							}
 						}}
 						onKeyDown={(e) => {
-							// Open mentions on '@'
 							if (e.key === "@") {
-								const target = e.currentTarget
-								const caret = target.selectionStart ?? target.value.length
-								e.preventDefault()
 								setMentionOpen(true)
+								setMentionView("projects")
+								setMentionProjectTag(null)
 								setMentionQuery("")
-								requestAnimationFrame(() => {
-									target.selectionStart = caret
-									target.selectionEnd = caret
-								})
-								return
 							}
-							// Close mentions with Escape
+							if (e.key === "/" && !input.trim()) {
+								setSlashOpen(true)
+								setSlashQuery("")
+							}
 							if (e.key === "Escape" && mentionOpen) {
 								setMentionOpen(false)
 								return
 							}
+							if (e.key === "Escape" && slashOpen) {
+								setSlashOpen(false)
+								return
+							}
 							if (mentionOpen && e.key === "Enter") {
 								e.preventDefault()
-								const nextDoc = filteredMention[0]
-								if (nextDoc) {
-									addMentionedDocId(nextDoc.id)
-									setMentionOpen(false)
-									setMentionQuery("")
+								if (mentionView === "projects") {
+									const nextProject = mentionProjects[0]
+									if (nextProject) {
+										setMentionProjectTag(nextProject.containerTag)
+										setMentionView("documents")
+										setMentionQuery("")
+									}
+								} else {
+									const nextDoc = mentionDocs[0]
+									if (nextDoc) {
+										addMentionedDocId(nextDoc.id)
+										setInput((prev) => prev.replace(/@[^@\s]*$/, "").trimEnd())
+										setMentionOpen(false)
+										setMentionView("projects")
+										setMentionProjectTag(null)
+										setMentionQuery("")
+									}
 								}
 								return
 							}
-							// Submit on Enter
+							if (slashOpen && e.key === "ArrowDown") {
+								e.preventDefault()
+								setSlashActiveIndex((prev) => {
+									if (visibleSlashCommands.length === 0) return 0
+									return Math.min(prev + 1, visibleSlashCommands.length - 1)
+								})
+								return
+							}
+							if (slashOpen && e.key === "ArrowUp") {
+								e.preventDefault()
+								setSlashActiveIndex((prev) => Math.max(prev - 1, 0))
+								return
+							}
+							if (slashOpen && e.key === "Enter") {
+								e.preventDefault()
+								const command =
+									visibleSlashCommands[slashActiveIndex] ??
+									visibleSlashCommands[0]
+								if (command) {
+									applySlashCommand(command.id)
+								}
+								return
+							}
 							if (e.key === "Enter" && !e.shiftKey) {
 								e.preventDefault()
+								if (input.trim().startsWith("/")) {
+									const applied = applySlashCommand(input)
+									if (applied) {
+										setInput("")
+										setSlashOpen(false)
+										return
+									}
+								}
 								if (
 									input.trim() &&
 									status !== "submitted" &&
@@ -3050,6 +3729,7 @@ export function ChatMessages({
 									scrollToBottom("auto")
 									sendUserMessage(input)
 									setMentionOpen(false)
+									setSlashOpen(false)
 									setInput("")
 								}
 							}
@@ -3061,8 +3741,8 @@ export function ChatMessages({
 						}
 						value={input}
 					/>
-					<InputGroupAddon align="inline-start" className="gap-1 bottom-0">
-						<div className="ml-2 mb-2 flex items-center gap-1 text-zinc-400">
+					<div className="mt-1 flex items-center justify-between gap-2 px-1">
+						<div className="flex items-center gap-1 text-zinc-400">
 							<ChatModeSelector
 								mode="agent"
 								onSelectMode={(mode) => {
@@ -3080,69 +3760,116 @@ export function ChatMessages({
 								<ChevronDown className="size-3.5" />
 							</button>
 						</div>
-					</InputGroupAddon>
-
-					<InputGroupAddon align="inline-end" className="gap-1 bottom-0">
-						<InputGroupButton
-							className="mb-2 h-8 w-8 p-0 bg-[#050608] border border-white/10 text-zinc-600 hover:text-zinc-300 hover:bg-[#0a0c11] rounded-lg transition-colors"
-							disabled={status === "submitted"}
-							size="sm"
-							type="button"
-							variant="ghost"
-						>
-							<Circle className="size-3.5" />
-						</InputGroupButton>
-						<InputGroupButton
-							className="mb-2 h-8 w-8 p-0 text-zinc-400 hover:text-zinc-200 hover:bg-white/5 rounded-lg transition-colors"
-							disabled={status === "submitted"}
-							size="sm"
-							type="button"
-							variant="ghost"
-						>
-							<Paperclip className="size-3.5" />
-						</InputGroupButton>
-						<InputGroupButton
-							className="mb-2 mr-2 h-8 w-8 p-0 bg-zinc-200 hover:bg-white text-zinc-900 rounded-full disabled:opacity-30 transition-colors"
-							disabled={false}
-							size="sm"
-							type="submit"
-						>
-							{status === "streaming" || status === "submitted" ? (
-								<X className="size-3.5" />
-							) : status === "ready" ? (
-								<ArrowUp className="size-3.5" />
-							) : (
-								<ArrowUp className="size-3.5" />
-							)}
-						</InputGroupButton>
-					</InputGroupAddon>
-				</InputGroup>
+						<div className="flex items-center gap-1">
+							<button
+								className="h-8 w-8 p-0 bg-[#0e0f10] border border-white/10 text-zinc-600 hover:text-zinc-300 hover:bg-[#0a0a0a] rounded-lg transition-colors inline-flex items-center justify-center"
+								disabled={status === "submitted"}
+								type="button"
+							>
+								<Circle className="size-3.5" />
+							</button>
+							<button
+								className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-200 hover:bg-white/5 rounded-lg transition-colors inline-flex items-center justify-center"
+								disabled={status === "submitted"}
+								type="button"
+							>
+								<Paperclip className="size-3.5" />
+							</button>
+							<button
+								className="h-8 w-8 p-0 bg-zinc-200 hover:bg-white text-zinc-900 rounded-full disabled:opacity-30 transition-colors inline-flex items-center justify-center"
+								type="submit"
+							>
+								{status === "streaming" || status === "submitted" ? (
+									<X className="size-3.5" />
+								) : (
+									<ArrowUp className="size-3.5" />
+								)}
+							</button>
+						</div>
+					</div>
+				</div>
 				{mentionOpen && (
-					<div className="absolute bottom-24 left-6 right-6 max-h-64 overflow-auto rounded-lg border border-white/10 bg-[#090b10]/95 backdrop-blur-xl z-10 p-2 shadow-lg">
-						<div className="mb-2">
+					<div className="absolute bottom-24 left-0 right-0 max-h-64 overflow-auto rounded-lg border border-white/10 bg-[#0c0c0c]/95 backdrop-blur-xl z-10 p-2 shadow-lg">
+						<div className="mb-2 flex items-center gap-2">
+							{mentionView === "documents" ? (
+								<button
+									className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-300 hover:bg-[#141414]"
+									onClick={() => {
+										setMentionView("projects")
+										setMentionProjectTag(null)
+										setMentionQuery("")
+									}}
+									type="button"
+								>
+									<ChevronLeft className="size-4" />
+								</button>
+							) : null}
 							<input
-								className="w-full text-xs bg-[#11141b] border-0 rounded-md px-2.5 py-1.5 text-foreground placeholder-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-white/20"
+								className="w-full text-xs bg-[#141414] border-0 rounded-md px-2.5 py-1.5 text-foreground placeholder-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-white/20"
 								onChange={(e) => setMentionQuery(e.target.value)}
-								placeholder="Search documents..."
+								placeholder={
+									mentionView === "projects"
+										? "Search projects..."
+										: "Search documents..."
+								}
 								ref={mentionInputRef}
 								value={mentionQuery}
 							/>
 						</div>
-						{filteredMention.length === 0 ? (
+						{mentionView === "projects" ? (
+							loadingProjects ? (
+								<div className="text-xs text-muted-foreground/70 px-1 py-2">
+									Loading projects...
+								</div>
+							) : mentionProjects.length === 0 ? (
+								<div className="text-xs text-muted-foreground/70 px-1 py-2">
+									No projects found
+								</div>
+							) : (
+								<div className="space-y-0.5">
+									{mentionProjects.slice(0, 12).map((projectItem) => (
+										<button
+											className="w-full text-left text-xs text-foreground/85 hover:text-foreground hover:bg-[#141414] rounded-md px-2 py-1.5 flex items-center justify-between gap-2 transition-colors"
+											key={projectItem.id}
+											onClick={() => {
+												setMentionProjectTag(projectItem.containerTag)
+												setMentionView("documents")
+												setMentionQuery("")
+											}}
+											type="button"
+										>
+											<span className="inline-flex items-center gap-2 truncate">
+												<Folder className="size-3.5 text-zinc-400 shrink-0" />
+												<span className="truncate">{projectItem.name}</span>
+											</span>
+											<span className="text-[10px] text-zinc-500">
+												{projectItem.count}
+											</span>
+										</button>
+									))}
+								</div>
+							)
+						) : mentionDocs.length === 0 ? (
 							<div className="text-xs text-muted-foreground/70 px-1 py-2">
 								No documents found
 							</div>
 						) : (
 							<div className="space-y-0.5">
-								{filteredMention.slice(0, 8).map((d) => {
+								{mentionDocs.slice(0, 12).map((d) => {
 									const preview = getPreviewUrl(d)
 									return (
 										<button
-											className="w-full text-left text-xs text-foreground/80 hover:text-foreground hover:bg-[#11141b] rounded-md px-2 py-1.5 flex items-center gap-2 transition-colors"
+											className="w-full text-left text-xs text-foreground/80 hover:text-foreground hover:bg-[#141414] rounded-md px-2 py-1.5 flex items-center gap-2 transition-colors"
 											key={d.id}
 											onClick={() => {
 												addMentionedDocId(d.id)
+												setInput((prev) =>
+													prev.replace(/@[^@\s]*$/, "").trimEnd(),
+												)
 												setMentionOpen(false)
+												setMentionView("projects")
+												setMentionProjectTag(null)
+												setMentionQuery("")
 											}}
 											type="button"
 										>
@@ -3154,7 +3881,7 @@ export function ChatMessages({
 													src={preview}
 												/>
 											) : (
-												<span className="w-6 h-4 rounded-sm bg-[#1a1f2b] inline-block" />
+												<span className="w-6 h-4 rounded-sm bg-[#1a1a1a] inline-block" />
 											)}
 											<span className="truncate">@{d.title || d.id}</span>
 										</button>
@@ -3164,6 +3891,49 @@ export function ChatMessages({
 						)}
 					</div>
 				)}
+				{slashOpen && (
+					<div
+						className="absolute bottom-24 left-0 right-0 max-h-72 overflow-auto rounded-lg border border-white/10 bg-[#0c0c0c]/95 backdrop-blur-xl z-10 p-2 shadow-lg"
+						onWheelCapture={(e) => e.stopPropagation()}
+					>
+						<div className="mb-1 px-1 text-[11px] uppercase tracking-wide text-zinc-500">
+							Slash Commands
+						</div>
+						{visibleSlashCommands.length === 0 ? (
+							<div className="text-xs text-muted-foreground/70 px-1 py-2">
+								Nenhum comando encontrado
+							</div>
+						) : (
+							<div className="space-y-0.5">
+								{visibleSlashCommands.map((command, index) => (
+									<button
+										className={cn(
+											"w-full text-left text-xs rounded-md px-2 py-1.5 flex items-center justify-between transition-colors",
+											index === slashActiveIndex
+												? "bg-[#1a1a1a] text-foreground"
+												: "text-foreground/80 hover:text-foreground hover:bg-[#141414]",
+										)}
+										key={command.id}
+										onMouseEnter={() => setSlashActiveIndex(index)}
+										onClick={() => {
+											applySlashCommand(command.id)
+											setSlashOpen(false)
+										}}
+										type="button"
+									>
+										<span className="font-mono text-[11px] text-zinc-300">
+											{command.label}
+										</span>
+										<span className="ml-3 truncate text-zinc-500">
+											{command.description}
+										</span>
+									</button>
+								))}
+							</div>
+						)}
+					</div>
+				)}
+				</div>
 			</form>
 		</div>
 	)

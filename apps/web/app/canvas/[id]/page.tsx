@@ -9,6 +9,10 @@ import { CanvasChatPanel } from "@/components/canvas-chat-panel"
 import { CanvasEditor } from "@/components/canvas-editor"
 import Menu from "@/components/menu"
 
+// Excalidraw dark mode applies CSS invert(93%) to <canvas>, so viewBackgroundColor
+// must be the pre-inversion value. #ffffff inverts to ~#111111 (visually dark).
+const CANVAS_DARK_BG_SOURCE = "#ffffff"
+
 export default function CanvasEditorPage() {
 	const params = useParams()
 	const id = params.id as string
@@ -47,7 +51,18 @@ export default function CanvasEditorPage() {
 
 				setInitialData({
 					...response.data,
-					content,
+					content: content
+						? {
+								...content,
+								appState: {
+									...(typeof content.appState === "object" && content.appState
+										? content.appState
+										: {}),
+									theme: "dark",
+									viewBackgroundColor: CANVAS_DARK_BG_SOURCE,
+								},
+							}
+						: content,
 				})
 			} catch (err) {
 				console.error("Failed to fetch canvas", err)
@@ -84,6 +99,7 @@ export default function CanvasEditorPage() {
 					initialData={initialData.content}
 					canvasId={id}
 					title={initialData.name}
+					initialVersion={initialData.version}
 					forceDarkMode
 				/>
 				<CanvasChatPanel canvasId={id} />

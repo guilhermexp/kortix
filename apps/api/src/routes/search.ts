@@ -1,11 +1,6 @@
 import { SearchRequestSchema, SearchResponseSchema } from "@repo/validation/api"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { env } from "../env"
-import {
-	cosineSimilarity,
-	ensureVectorSize,
-	generateDeterministicEmbedding,
-} from "../services/embedding"
 import { generateEmbedding } from "../services/embedding-provider"
 import { rerankSearchResults } from "../services/rerank"
 
@@ -28,16 +23,6 @@ type ChunkRow = {
 	metadata: Record<string, unknown> | null
 	documents: DocumentRow | null
 	distance?: number | string | null
-	embedding?: number[] | null
-}
-
-function _formatEmbeddingForSql(values: number[]): string {
-	const sanitized = values.map((value) => {
-		if (!Number.isFinite(value)) return "0"
-		const rounded = Math.abs(value) < 1e-6 ? 0 : value
-		return Number(rounded.toFixed(6)).toString()
-	})
-	return `[${sanitized.join(",")}]`
 }
 
 /**
@@ -107,22 +92,15 @@ export async function searchDocuments(
 	const payload = SearchRequestSchema.parse(body)
 	const start = Date.now()
 
-	const queryEmbedding = await generateEmbedding(payload.q)
+	const queryEmbedding = await generateEmbedding(payload.q, { inputType: "query" })
 	const baseLimit = Math.max(50, (payload.limit ?? 10) * 8)
 
 	let chunkRows: ChunkRow[] = []
-	let vectorQueryUsed = false
-	let searchPath:
-		| "rpc_vector"
-		| "fallback_local"
-		| "raw_no_scores"
-		| "broad_recent"
-		| "none" = "none"
+	let searchPath: "rpc_vector" | "broad_recent" | "none" = "none"
 
-	// Try RPC vector search first (fast & relevant)
+	// Vector search via RPC
 	try {
 		const embeddingString = `[${queryEmbedding.join(",")}]`
-		// Call the 3-parameter RPC variant present in DB: (limit_param, org_id_param, query_embedding)
 		const { data: rpcData, error: rpcError } = await client.rpc(
 			"search_chunks_vector",
 			{
@@ -134,12 +112,10 @@ export async function searchDocuments(
 
 		if (rpcError) throw rpcError
 		if (Array.isArray(rpcData) && rpcData.length > 0) {
-			// Get unique document IDs
 			const documentIds = [
 				...new Set(rpcData.map((row: any) => row.document_id)),
 			]
 
-			// Fetch documents separately
 			const { data: docsData } = await client
 				.from("documents")
 				.select(
@@ -158,63 +134,10 @@ export async function searchDocuments(
 				distance:
 					typeof row.similarity === "number" ? 1 - row.similarity : undefined,
 			}))
-			vectorQueryUsed = true
 			searchPath = "rpc_vector"
 		}
 	} catch (rpcErr) {
-		console.warn(
-			"RPC vector search failed, falling back to local similarity",
-			rpcErr,
-		)
-
-		try {
-			let builder = client
-				.from("document_chunks")
-				.select(
-					"id, document_id, content, metadata, documents(id, title, type, content, summary, metadata, created_at, updated_at, status), embedding",
-				)
-				.eq("org_id", orgId)
-				.limit(baseLimit)
-
-			if (payload.docId) builder = builder.eq("document_id", payload.docId)
-
-			const { data, error } = await builder
-			if (error) throw error
-			if (Array.isArray(data)) {
-				chunkRows = (data as ChunkRow[]).map((chunk) => {
-					if (Array.isArray(chunk.embedding)) {
-						const embedding = ensureVectorSize(chunk.embedding)
-						const distance = 1 - cosineSimilarity(queryEmbedding, embedding)
-						return { ...chunk, distance }
-					}
-					return chunk
-				})
-				vectorQueryUsed = true
-				searchPath = "fallback_local"
-			}
-		} catch (fallbackError) {
-			console.warn(
-				"Local similarity fallback failed, loading raw chunks without scores",
-				fallbackError,
-			)
-
-			let fallbackBuilder = client
-				.from("document_chunks")
-				.select(
-					"id, document_id, content, metadata, embedding, documents(id, title, type, content, summary, metadata, created_at, updated_at, status)",
-				)
-				.eq("org_id", orgId)
-				.limit(baseLimit)
-
-			if (payload.docId)
-				fallbackBuilder = fallbackBuilder.eq("document_id", payload.docId)
-
-			const { data: fallbackData2 } = await fallbackBuilder
-			if (Array.isArray(fallbackData2)) {
-				chunkRows = fallbackData2 as ChunkRow[]
-				searchPath = "raw_no_scores"
-			}
-		}
+		console.warn("RPC vector search failed", rpcErr)
 	}
 
 	const containerTagsFilter = payload.containerTags ?? []
@@ -258,24 +181,13 @@ export async function searchDocuments(
 				return null
 			}
 
-			let score: number | null = null
+			let score = 0
 
-			if (
-				vectorQueryUsed &&
-				chunk.distance !== undefined &&
-				chunk.distance !== null
-			) {
+			if (chunk.distance !== undefined && chunk.distance !== null) {
 				const distance = Number(chunk.distance)
 				if (Number.isFinite(distance)) {
 					score = Math.max(0, Math.min(1, 1 - distance))
 				}
-			}
-
-			if (score === null) {
-				const embedding = Array.isArray(chunk.embedding)
-					? ensureVectorSize(chunk.embedding)
-					: generateDeterministicEmbedding(chunk.content)
-				score = cosineSimilarity(queryEmbedding, embedding)
 			}
 
 			return {

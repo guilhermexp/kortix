@@ -324,8 +324,6 @@ export interface ExtractorServiceConfig {
 	/** PDF extraction configuration */
 	pdf?: {
 		enabled: boolean
-		ocrEnabled: boolean
-		ocrProvider?: "replicate" | "gemini"
 		timeout?: number
 	}
 	/** Default timeout for all extractors */

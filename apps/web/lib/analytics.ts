@@ -5,7 +5,7 @@ export const analytics = {
 	tourSkipped: () => {},
 
 	memoryAdded: (_props: {
-		type: "note" | "link" | "file"
+		type: "note" | "link" | "file" | "bundle"
 		project_id?: string
 		content_length?: number
 		file_size?: number

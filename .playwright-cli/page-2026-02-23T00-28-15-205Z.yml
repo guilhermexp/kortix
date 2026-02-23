@@ -1,0 +1,173 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e5]:
+      - generic [ref=e6]:
+        - button "Add Memory" [ref=e7] [cursor=pointer]:
+          - img [ref=e8]
+        - button "Chat" [ref=e10] [cursor=pointer]:
+          - img [ref=e11]
+        - button "List" [ref=e13] [cursor=pointer]:
+          - img [ref=e14]
+        - button "Canvas" [ref=e15] [cursor=pointer]:
+          - img [ref=e16]
+        - button "Connections" [ref=e19] [cursor=pointer]:
+          - img [ref=e20]
+        - button "Skills" [ref=e22] [cursor=pointer]:
+          - img [ref=e23]
+        - button "Profile" [ref=e26] [cursor=pointer]:
+          - img [ref=e27]
+    - main [ref=e30]:
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - link [ref=e34] [cursor=pointer]:
+              - /url: /canvas
+              - img [ref=e35]
+            - textbox "Untitled Canvas" [ref=e37]
+          - generic [ref=e38]:
+            - button "Import" [ref=e39] [cursor=pointer]:
+              - img
+              - text: Import
+            - button "Export" [ref=e40] [cursor=pointer]:
+              - img
+              - text: Export
+            - button "Save" [ref=e41] [cursor=pointer]:
+              - img
+              - text: Save
+        - generic [ref=e43]:
+          - generic:
+            - generic:
+              - generic:
+                - button [ref=e46] [cursor=pointer]:
+                  - img [ref=e47]
+                - region "Shapes":
+                  - generic [ref=e53]:
+                    - generic:
+                      - generic: To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool
+                    - heading "Shapes" [level=2] [ref=e54]
+                    - generic [ref=e55]:
+                      - generic "Keep selected tool active after drawing — Q" [ref=e56] [cursor=pointer]:
+                        - checkbox "Keep selected tool active after drawing"
+                        - img [ref=e58]
+                      - generic "Hand (panning tool) — H" [ref=e65] [cursor=pointer]:
+                        - radio "Hand (panning tool) — H"
+                        - img [ref=e67]
+                      - generic "Selection — V or 1" [ref=e74] [cursor=pointer]:
+                        - radio "Selection" [checked]
+                        - generic [ref=e75]:
+                          - img [ref=e76]
+                          - generic [ref=e81]: "1"
+                      - generic "Rectangle — R or 2" [ref=e82] [cursor=pointer]:
+                        - radio "Rectangle"
+                        - generic [ref=e83]:
+                          - img [ref=e84]
+                          - generic [ref=e88]: "2"
+                      - generic "Diamond — D or 3" [ref=e89] [cursor=pointer]:
+                        - radio "Diamond"
+                        - generic [ref=e90]:
+                          - img [ref=e91]
+                          - generic [ref=e95]: "3"
+                      - generic "Ellipse — O or 4" [ref=e96] [cursor=pointer]:
+                        - radio "Ellipse"
+                        - generic [ref=e97]:
+                          - img [ref=e98]
+                          - generic [ref=e102]: "4"
+                      - generic "Arrow — A or 5" [ref=e103] [cursor=pointer]:
+                        - radio "Arrow"
+                        - generic [ref=e104]:
+                          - img [ref=e105]
+                          - generic [ref=e110]: "5"
+                      - generic "Line — L or 6" [ref=e111] [cursor=pointer]:
+                        - radio "Line"
+                        - generic [ref=e112]:
+                          - img [ref=e113]
+                          - generic [ref=e114]: "6"
+                      - generic "Draw — P or 7" [ref=e115] [cursor=pointer]:
+                        - radio "Draw"
+                        - generic [ref=e116]:
+                          - img [ref=e117]
+                          - generic [ref=e121]: "7"
+                      - generic "Text — T or 8" [ref=e122] [cursor=pointer]:
+                        - radio "Text"
+                        - generic [ref=e123]:
+                          - img [ref=e124]
+                          - generic [ref=e129]: "8"
+                      - generic "Insert image — 9" [ref=e130] [cursor=pointer]:
+                        - radio "Insert image"
+                        - generic [ref=e131]:
+                          - img [ref=e132]
+                          - generic [ref=e137]: "9"
+                      - generic "Eraser — E or 0" [ref=e138] [cursor=pointer]:
+                        - radio "Eraser"
+                        - generic [ref=e139]:
+                          - img [ref=e140]
+                          - generic [ref=e145]: "0"
+                      - button "More tools" [ref=e147] [cursor=pointer]:
+                        - img [ref=e148]
+                - generic "Library" [ref=e154]:
+                  - checkbox "Library"
+                  - generic [ref=e155] [cursor=pointer]:
+                    - img [ref=e157]
+                    - generic: Library
+            - contentinfo:
+              - region "Canvas actions" [ref=e163]:
+                - heading "Canvas actions" [level=2] [ref=e164]
+                - generic [ref=e166]:
+                  - button "Zoom out" [disabled] [ref=e167]:
+                    - img [ref=e169]
+                  - button "Reset zoom" [ref=e171] [cursor=pointer]: 10%
+                  - button "Zoom in" [ref=e172] [cursor=pointer]:
+                    - img [ref=e174]
+                - generic [ref=e176]:
+                  - button "Undo" [disabled] [ref=e179]:
+                    - img [ref=e181]
+                  - button "Redo" [disabled] [ref=e185]:
+                    - img [ref=e187]
+              - button "Help" [ref=e190] [cursor=pointer]:
+                - img [ref=e191]
+          - generic:
+            - img
+          - generic [ref=e196]: Drawing canvas
+      - generic [ref=e210]:
+        - button "Drag chat panel" [ref=e211]:
+          - img [ref=e212]
+          - generic [ref=e219]: Mover
+        - button "Resize chat panel width" [ref=e220]
+        - button "Resize chat panel height" [ref=e221]
+        - generic [ref=e222]:
+          - generic [ref=e223]:
+            - heading "Greeting" [level=3] [ref=e224]
+            - generic [ref=e225]:
+              - button [ref=e226] [cursor=pointer]:
+                - img [ref=e227]
+              - button [ref=e231] [cursor=pointer]:
+                - img
+              - button [ref=e232] [cursor=pointer]:
+                - img
+          - generic [ref=e233]:
+            - generic [ref=e234]:
+              - button "Scroll to bottom"
+            - generic [ref=e238]:
+              - textbox "Plan, @ for context, / for commands" [active] [ref=e239]
+              - generic [ref=e240]:
+                - generic [ref=e241]:
+                  - button "Agent" [ref=e242] [cursor=pointer]:
+                    - img [ref=e243]
+                    - generic [ref=e245]: Agent
+                    - img [ref=e246]
+                  - button "K2.5" [ref=e248] [cursor=pointer]:
+                    - img [ref=e249]
+                    - generic [ref=e252]: K2.5
+                    - img [ref=e253]
+                - generic [ref=e255]:
+                  - button [ref=e256] [cursor=pointer]:
+                    - img [ref=e257]
+                  - button [ref=e259] [cursor=pointer]:
+                    - img [ref=e260]
+                  - button [ref=e262] [cursor=pointer]:
+                    - img [ref=e263]
+        - button "Resize chat panel" [ref=e265]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e204] [cursor=pointer]:
+    - img [ref=e205]
+  - alert [ref=e208]

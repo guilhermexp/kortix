@@ -8,6 +8,7 @@
 
 import { zValidator } from "@hono/zod-validator"
 import {
+	BundleCreateSchema,
 	DocumentsWithMemoriesQuerySchema,
 	ListMemoriesQuerySchema,
 	MemoryAddSchema,
@@ -15,18 +16,19 @@ import {
 } from "@repo/validation/api"
 import { Hono } from "hono"
 import { z } from "zod"
-import { AnalysisService } from "../services/analysis-service"
 import type { SessionContext } from "../session"
 import { createClientForSession } from "../supabase"
 import {
 	addDocument,
 	cancelDocument,
 	checkUrlExists,
+	createBundle,
 	DocumentsByIdsSchema,
 	deleteDocument,
 	ensureSpace,
 	findDocumentRelatedLinks,
 	getDocument,
+	getDocumentChildren,
 	getDocumentStatus,
 	getQueueMetrics,
 	listDocuments,
@@ -451,6 +453,42 @@ documentsRouter.post(
 	},
 )
 
+// Create document bundle (multi-link/note)
+documentsRouter.post(
+	"/bundle",
+	zValidator("json", BundleCreateSchema),
+	async (c) => {
+		const { organizationId, internalUserId } = c.var.session
+		const payload = c.req.valid("json")
+		const supabase = createClientForSession(c.var.session)
+
+		try {
+			const result = await createBundle({
+				organizationId,
+				userId: internalUserId,
+				payload,
+				client: supabase,
+			})
+			return c.json(result, 201)
+		} catch (error) {
+			console.error("Failed to create bundle", error)
+			const statusCode = (error as any)?.status ?? 400
+			return c.json(
+				{
+					error: {
+						message:
+							error instanceof Error
+								? error.message
+								: "Failed to create bundle",
+						code: (error as any)?.code,
+					},
+				},
+				statusCode,
+			)
+		}
+	},
+)
+
 // Resume all paused documents
 documentsRouter.post("/resume-all", async (c) => {
 	const { organizationId } = c.var.session
@@ -518,6 +556,31 @@ documentsRouter.get("/:id", async (c) => {
 				error: {
 					message:
 						error instanceof Error ? error.message : "Failed to fetch document",
+				},
+			},
+			500,
+		)
+	}
+})
+
+// Get bundle children
+documentsRouter.get("/:id/children", async (c) => {
+	const { organizationId } = c.var.session
+	const parentId = c.req.param("id")
+	const supabase = createClientForSession(c.var.session)
+
+	try {
+		const children = await getDocumentChildren(supabase, organizationId, parentId)
+		return c.json({ children })
+	} catch (error) {
+		console.error("Failed to fetch document children", error)
+		return c.json(
+			{
+				error: {
+					message:
+						error instanceof Error
+							? error.message
+							: "Failed to fetch children",
 				},
 			},
 			500,
@@ -712,46 +775,3 @@ documentsRouter.delete("/:id", async (c) => {
 	}
 })
 
-// Deep agent analysis router (separate since it's under /v3/deep-agent)
-export const deepAgentRouter = new Hono<{
-	Variables: { session: SessionContext }
-}>()
-
-deepAgentRouter.post(
-	"/analyze",
-	zValidator(
-		"json",
-		z.object({
-			url: z.string().url(),
-			mode: z.enum(["auto", "youtube"]).optional().default("auto"),
-			title: z.string().optional(),
-			githubToken: z.string().optional(),
-			useExa: z.boolean().optional(),
-		}),
-	),
-	async (c) => {
-		const body = c.req.valid("json")
-		const { url, title, githubToken, useExa } = body
-
-		try {
-			const service = new AnalysisService("gemini-2.5-flash", useExa)
-			const result = await service.analyzeAuto(url, title, githubToken, {
-				useExa,
-			})
-			return c.json(result)
-		} catch (error) {
-			console.error("Deep Agent analysis failed", error)
-			return c.json(
-				{
-					error: {
-						message:
-							error instanceof Error
-								? error.message
-								: "Deep Agent analysis failed",
-					},
-				},
-				500,
-			)
-		}
-	},
-)

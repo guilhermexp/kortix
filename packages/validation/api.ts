@@ -345,6 +345,18 @@ export const DocumentsWithMemoriesQuerySchema = z.object({
 	propertiesFilter: z.record(z.string(), z.unknown()).optional(),
 })
 
+export const BundleChildSchema = z.object({
+	id: z.string(),
+	title: z.string().nullable().optional(),
+	previewImage: z.string().nullable().optional(),
+	summary: z.string().nullable().optional(),
+	status: z.string().optional(),
+	url: z.string().nullable().optional(),
+	type: z.string().optional(),
+	content: z.string().nullable().optional(),
+	childOrder: z.number().optional(),
+})
+
 export const DocumentsWithMemoriesResponseSchema = z.object({
 	documents: z.array(
 		MemorySchema.extend({
@@ -357,6 +369,10 @@ export const DocumentsWithMemoriesResponseSchema = z.object({
 					updatedAt: z.string(),
 				}),
 			),
+			// Bundle fields (optional, only present for type=bundle)
+			parentId: z.string().nullable().optional(),
+			childCount: z.number().optional(),
+			children: z.array(BundleChildSchema).optional(),
 		}),
 	),
 	pagination: PaginationSchema,
@@ -947,6 +963,31 @@ export const MemorySearchResponseSchema = z.object({
 		description: "Total number of matching memory entries",
 		example: 42,
 	}),
+})
+
+// Bundle Schemas
+export const BundleItemSchema = z.object({
+	content: z.string().trim().min(1),
+	type: z.enum(["link", "note"]).default("link"),
+	metadata: MetadataSchema.nullable().optional(),
+})
+
+export const BundleCreateSchema = z.object({
+	items: z.array(BundleItemSchema).min(1).max(20),
+	title: z.string().optional(),
+	containerTags: z.array(z.string()).optional(),
+	metadata: MetadataSchema.nullable().optional(),
+})
+
+export const BundleResponseSchema = z.object({
+	id: z.string(),
+	status: z.string(),
+	children: z.array(z.object({
+		id: z.string(),
+		status: z.string(),
+		url: z.string().nullable().optional(),
+		type: z.string().optional(),
+	})),
 })
 
 // MCP Migration Schemas

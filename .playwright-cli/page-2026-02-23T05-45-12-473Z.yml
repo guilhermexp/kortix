@@ -1,0 +1,171 @@
+- generic:
+  - generic:
+    - generic:
+      - banner:
+        - link:
+          - /url: /
+          - img
+        - combobox:
+          - generic:
+            - img
+            - generic: Youtube
+          - img
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - heading [level=3]: Greeting
+              - generic:
+                - button:
+                  - img
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - link:
+                          - /url: https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s
+                          - img
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                          - text: Feb 22nd
+                        - generic:
+                          - img
+                          - text: webpage
+                      - link:
+                        - /url: https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s
+                        - img
+                        - generic: https://www.youtube.com/watch?v=hp7n45JqvIw&t=313s
+                        - img
+                      - generic:
+                        - button:
+                          - generic: Resumo do conteúdo
+                          - img
+                - button: Scroll to bottom
+              - generic:
+                - generic:
+                  - generic:
+                    - button:
+                      - generic: "@Nobody Is Talking About Openclaw’s Best Feature"
+                      - img
+                  - generic:
+                    - textbox:
+                      - /placeholder: Plan, @ for context, / for commands
+                    - generic:
+                      - generic:
+                        - button:
+                          - img
+                          - generic: Agent
+                          - img
+                        - button:
+                          - img
+                          - generic: K2.5
+                          - img
+                      - generic:
+                        - button:
+                          - img
+                        - button:
+                          - img
+                        - button:
+                          - img
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - button:
+                  - generic: Markdown do agente
+                  - img
+              - generic:
+                - button:
+                  - generic: Conteúdo original
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - img
+                  - text: Documentos Relacionados (0)
+                - button [expanded]:
+                  - img
+                  - generic: Add Connection
+            - generic:
+              - generic:
+                - img
+                - text: Images (1)
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - generic:
+                      - button:
+                        - img
+                    - generic:
+                      - img
+                      - generic: Main Preview
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e6] [cursor=pointer]:
+    - img [ref=e7]
+  - alert
+  - dialog "Conectar documento" [ref=e145]:
+    - generic [ref=e146]:
+      - heading "Conectar documento" [level=2] [ref=e147]
+      - paragraph [ref=e148]: Selecione um projeto e depois o documento que deseja conectar.
+    - generic [ref=e150]:
+      - button "Rich Markdown" [ref=e151] [cursor=pointer]:
+        - generic [ref=e153]: Rich Markdown
+      - button "Empresas | Corporaivo" [ref=e154] [cursor=pointer]:
+        - generic [ref=e156]: Empresas | Corporaivo
+      - button "Github" [ref=e157] [cursor=pointer]:
+        - generic [ref=e159]: Github
+      - button "Automations" [ref=e160] [cursor=pointer]:
+        - generic [ref=e162]: Automations
+      - button "Filmes" [ref=e163] [cursor=pointer]:
+        - generic [ref=e165]: Filmes
+      - button "Clawdbot" [ref=e166] [cursor=pointer]:
+        - generic [ref=e168]: Clawdbot
+      - button "Imagem" [ref=e169] [cursor=pointer]:
+        - generic [ref=e171]: Imagem
+      - button "Youtube" [ref=e172] [cursor=pointer]:
+        - generic [ref=e174]: Youtube
+      - button "Video" [ref=e175] [cursor=pointer]:
+        - generic [ref=e177]: Video
+      - button "Audio" [ref=e178] [cursor=pointer]:
+        - generic [ref=e180]: Audio
+      - button "MCP" [ref=e181] [cursor=pointer]:
+        - generic [ref=e183]: MCP
+      - button "Skills" [ref=e184] [cursor=pointer]:
+        - generic [ref=e186]: Skills
+      - button "Ingles" [ref=e187] [cursor=pointer]:
+        - generic [ref=e189]: Ingles
+      - button "Security" [ref=e190] [cursor=pointer]:
+        - generic [ref=e192]: Security
+      - button "Ideias" [ref=e193] [cursor=pointer]:
+        - generic [ref=e195]: Ideias
+      - button "Produção" [ref=e196] [cursor=pointer]:
+        - generic [ref=e198]: Produção
+      - button "StartupAI" [ref=e199] [cursor=pointer]:
+        - generic [ref=e201]: StartupAI
+      - button "Paraguai" [ref=e202] [cursor=pointer]:
+        - generic [ref=e204]: Paraguai
+      - button "Dev" [ref=e205] [cursor=pointer]:
+        - generic [ref=e207]: Dev
+      - button "Android" [ref=e208] [cursor=pointer]:
+        - generic [ref=e210]: Android
+      - button "UI/UX" [ref=e211] [cursor=pointer]:
+        - generic [ref=e213]: UI/UX
+      - button "OpenSource" [ref=e214] [cursor=pointer]:
+        - generic [ref=e216]: OpenSource
+      - button "ClaudeCode" [ref=e217] [cursor=pointer]:
+        - generic [ref=e219]: ClaudeCode
+      - button "Marketing" [ref=e220] [cursor=pointer]:
+        - generic [ref=e222]: Marketing
+      - button "Default" [ref=e223] [cursor=pointer]:
+        - generic [ref=e225]: Default
+    - button "Close" [active] [ref=e226] [cursor=pointer]:
+      - img
+      - generic [ref=e227]: Close

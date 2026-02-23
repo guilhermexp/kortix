@@ -355,11 +355,11 @@ export async function hybridSearch(
 		results = await keywordSearch(client, orgId, query, limit * 2)
 	} else if (mode === "vector") {
 		// Vector-only search
-		const embedding = await generateEmbedding(query)
+		const embedding = await generateEmbedding(query, { inputType: "query" })
 		results = await vectorSearch(client, orgId, query, embedding, limit * 2)
 	} else {
 		// Hybrid search - run both in parallel
-		const embedding = await generateEmbedding(query)
+		const embedding = await generateEmbedding(query, { inputType: "query" })
 
 		const [keywordResults, vectorResults] = await Promise.all([
 			keywordSearch(client, orgId, query, limit * 2),
@@ -367,7 +367,8 @@ export async function hybridSearch(
 		])
 
 		// Reciprocal Rank Fusion (RRF) for combining results
-		results = reciprocalRankFusion(keywordResults, vectorResults, weightVector)
+		// weightVector applies to vector results (list2), so keyword weight = 1 - weightVector
+		results = reciprocalRankFusion(keywordResults, vectorResults, 1 - weightVector)
 	}
 
 	// Apply container tags filter if specified

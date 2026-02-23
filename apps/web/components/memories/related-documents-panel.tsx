@@ -5,8 +5,19 @@
  * semantic similarity and manual connections.
  */
 
+import { $fetch } from "@lib/api"
 import { getColors } from "@repo/ui/memory-graph/constants"
-import { FileText, Link2, Plus, Sparkles, Trash2, User } from "lucide-react"
+import {
+	ChevronLeft,
+	FileText,
+	Link2,
+	Loader2,
+	Plus,
+	Search,
+	Sparkles,
+	Trash2,
+	User,
+} from "lucide-react"
 import { memo, useCallback, useEffect, useMemo, useState } from "react"
 import {
 	createDocumentConnection,
@@ -115,6 +126,17 @@ const RelatedDocumentsPanelImpl = ({
 	const [connectionReason, setConnectionReason] = useState("")
 	const [addLoading, setAddLoading] = useState(false)
 
+	// Project + document picker state
+	type PickerProject = { id: string; name: string | null; containerTag: string | null }
+	type PickerDoc = { id: string; title: string | null; type: string | null }
+	const [projects, setProjects] = useState<PickerProject[]>([])
+	const [projectDocs, setProjectDocs] = useState<PickerDoc[]>([])
+	const [selectedProject, setSelectedProject] = useState<PickerProject | null>(null)
+	const [docSearch, setDocSearch] = useState("")
+	const [loadingProjects, setLoadingProjects] = useState(false)
+	const [loadingDocs, setLoadingDocs] = useState(false)
+	const [selectedDocForConnection, setSelectedDocForConnection] = useState<PickerDoc | null>(null)
+
 	// Fetch related documents on mount
 	useEffect(() => {
 		async function fetchRelatedDocs() {
@@ -184,23 +206,110 @@ const RelatedDocumentsPanelImpl = ({
 		[],
 	)
 
-	const handleAddConnection = useCallback(async () => {
-		if (!selectedDocumentId) {
-			alert("Please enter a document ID")
+	// Load projects when dialog opens
+	useEffect(() => {
+		if (!isAddDialogOpen) return
+		let ignore = false
+		async function loadProjects() {
+			setLoadingProjects(true)
+			try {
+				const response = await $fetch("@get/projects")
+				if (ignore) return
+				setProjects(
+					(response.data?.projects ?? []).map((p: any) => ({
+						id: p.id,
+						name: p.name ?? null,
+						containerTag: p.containerTag ?? null,
+					})),
+				)
+			} catch {
+				// ignore
+			} finally {
+				if (!ignore) setLoadingProjects(false)
+			}
+		}
+		loadProjects()
+		return () => { ignore = true }
+	}, [isAddDialogOpen])
+
+	// Load docs when a project is selected
+	useEffect(() => {
+		if (!selectedProject) {
+			setProjectDocs([])
 			return
 		}
+		let ignore = false
+		async function loadDocs() {
+			setLoadingDocs(true)
+			try {
+				const res = await fetch("/v3/documents/documents", {
+					method: "POST",
+					credentials: "include",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						limit: 200,
+						page: 1,
+						sort: "updatedAt",
+						order: "desc",
+						...(selectedProject!.containerTag
+							? { containerTags: [selectedProject!.containerTag] }
+							: {}),
+					}),
+				})
+				if (!res.ok || ignore) return
+				const data = await res.json()
+				if (ignore) return
+				const docs = Array.isArray(data?.documents) ? data.documents : []
+				setProjectDocs(
+					docs
+						.filter((d: any) => d.id !== document.id)
+						.map((d: any) => ({
+							id: d.id,
+							title: d.title ?? null,
+							type: d.type ?? null,
+						})),
+				)
+			} catch {
+				// ignore
+			} finally {
+				if (!ignore) setLoadingDocs(false)
+			}
+		}
+		loadDocs()
+		return () => { ignore = true }
+	}, [selectedProject, document.id])
+
+	const filteredDocs = useMemo(() => {
+		const q = docSearch.trim().toLowerCase()
+		if (!q) return projectDocs
+		return projectDocs.filter(
+			(d) => (d.title || d.id).toLowerCase().includes(q),
+		)
+	}, [projectDocs, docSearch])
+
+	const resetPickerState = useCallback(() => {
+		setSelectedProject(null)
+		setProjectDocs([])
+		setDocSearch("")
+		setSelectedDocForConnection(null)
+		setSelectedDocumentId("")
+		setConnectionReason("")
+	}, [])
+
+	const handleAddConnection = useCallback(async () => {
+		const targetId = selectedDocumentId || selectedDocForConnection?.id
+		if (!targetId) return
 
 		try {
 			setAddLoading(true)
 			await createDocumentConnection(
 				document.id,
-				selectedDocumentId,
+				targetId,
 				connectionReason || undefined,
 			)
 
 			setIsAddDialogOpen(false)
-			setSelectedDocumentId("")
-			setConnectionReason("")
+			resetPickerState()
 
 			// Reload to show new connection
 			window.location.reload()
@@ -210,7 +319,7 @@ const RelatedDocumentsPanelImpl = ({
 		} finally {
 			setAddLoading(false)
 		}
-	}, [document.id, selectedDocumentId, connectionReason])
+	}, [document.id, selectedDocumentId, selectedDocForConnection, connectionReason, resetPickerState])
 
 	// Show loading state
 	if (loading) {
@@ -261,7 +370,13 @@ const RelatedDocumentsPanelImpl = ({
 					Documentos Relacionados ({relatedDocs.length})
 				</div>
 
-				<Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+				<Dialog
+					open={isAddDialogOpen}
+					onOpenChange={(open) => {
+						setIsAddDialogOpen(open)
+						if (!open) resetPickerState()
+					}}
+				>
 					<DialogTrigger asChild>
 						<Button
 							size="sm"
@@ -273,77 +388,162 @@ const RelatedDocumentsPanelImpl = ({
 							<span>Add Connection</span>
 						</Button>
 					</DialogTrigger>
-					<DialogContent>
+					<DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col">
 						<DialogHeader>
-							<DialogTitle>Add Manual Connection</DialogTitle>
+							<DialogTitle>Conectar documento</DialogTitle>
 							<DialogDescription>
-								Create a manual connection to another document. Manual
-								connections help you organize related information that might not
-								be automatically detected.
+								Selecione um projeto e depois o documento que deseja conectar.
 							</DialogDescription>
 						</DialogHeader>
 
-						<div className="py-4 space-y-4">
-							<div>
-								<label
-									className="text-sm font-medium"
-									style={{ color: colors.text.primary }}
-								>
-									Target Document ID
-								</label>
-								<input
-									type="text"
-									placeholder="Enter document ID"
-									className="w-full mt-2 px-3 py-2 bg-white/5 border border-white/10 rounded-md text-sm"
-									style={{ color: colors.text.primary }}
-									value={selectedDocumentId}
-									onChange={(e) => setSelectedDocumentId(e.target.value)}
-								/>
-								<p
-									className="text-xs mt-1"
-									style={{ color: colors.text.secondary }}
-								>
-									For now, paste the document ID. Document search will be added
-									later.
-								</p>
+						{/* Step: confirm selected doc */}
+						{selectedDocForConnection ? (
+							<div className="py-3 space-y-4">
+								<div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
+									<FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+									<div className="flex-1 min-w-0">
+										<p className="text-sm font-medium truncate" style={{ color: colors.text.primary }}>
+											{selectedDocForConnection.title || "Sem título"}
+										</p>
+										<p className="text-[10px] text-muted-foreground font-mono truncate">
+											{selectedDocForConnection.id}
+										</p>
+									</div>
+									<button
+										type="button"
+										className="text-xs text-muted-foreground hover:text-foreground"
+										onClick={() => {
+											setSelectedDocForConnection(null)
+											setSelectedDocumentId("")
+										}}
+									>
+										Trocar
+									</button>
+								</div>
+								<div>
+									<label className="text-sm font-medium" style={{ color: colors.text.primary }}>
+										Razão (opcional)
+									</label>
+									<textarea
+										placeholder="Por que esses documentos estão conectados?"
+										className="w-full mt-2 px-3 py-2 bg-white/5 border border-white/10 rounded-md text-sm"
+										style={{ color: colors.text.primary }}
+										rows={2}
+										maxLength={500}
+										value={connectionReason}
+										onChange={(e) => setConnectionReason(e.target.value)}
+									/>
+								</div>
+								<DialogFooter>
+									<Button
+										variant="outline"
+										onClick={() => { setIsAddDialogOpen(false); resetPickerState() }}
+										type="button"
+										disabled={addLoading}
+									>
+										Cancelar
+									</Button>
+									<Button
+										onClick={handleAddConnection}
+										type="button"
+										disabled={addLoading}
+									>
+										{addLoading ? "Conectando..." : "Conectar"}
+									</Button>
+								</DialogFooter>
 							</div>
-
-							<div>
-								<label
-									className="text-sm font-medium"
-									style={{ color: colors.text.primary }}
-								>
-									Reason (optional)
-								</label>
-								<textarea
-									placeholder="Why are these documents connected?"
-									className="w-full mt-2 px-3 py-2 bg-white/5 border border-white/10 rounded-md text-sm"
-									style={{ color: colors.text.primary }}
-									rows={3}
-									maxLength={500}
-									value={connectionReason}
-									onChange={(e) => setConnectionReason(e.target.value)}
-								/>
+						) : !selectedProject ? (
+							/* Step: pick project */
+							<div className="py-2">
+								{loadingProjects ? (
+									<div className="flex items-center justify-center py-8 text-muted-foreground">
+										<Loader2 className="w-4 h-4 animate-spin mr-2" />
+										<span className="text-sm">Carregando projetos...</span>
+									</div>
+								) : projects.length === 0 ? (
+									<p className="text-sm text-muted-foreground py-4 text-center">
+										Nenhum projeto encontrado.
+									</p>
+								) : (
+									<div className="space-y-1 max-h-[50vh] overflow-y-auto">
+										{projects.map((proj) => (
+											<button
+												key={proj.id}
+												type="button"
+												className="w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-white/5"
+												style={{ color: colors.text.primary }}
+												onClick={() => setSelectedProject(proj)}
+											>
+												<span className="truncate">{proj.name || proj.containerTag || proj.id}</span>
+											</button>
+										))}
+									</div>
+								)}
 							</div>
-						</div>
+						) : (
+							/* Step: pick document from project */
+							<div className="py-2 space-y-2">
+								<button
+									type="button"
+									className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-1"
+									onClick={() => {
+										setSelectedProject(null)
+										setProjectDocs([])
+										setDocSearch("")
+									}}
+								>
+									<ChevronLeft className="w-3.5 h-3.5" />
+									<span>{selectedProject.name || "Projetos"}</span>
+								</button>
 
-						<DialogFooter>
-							<Button
-								variant="outline"
-								onClick={() => setIsAddDialogOpen(false)}
-								type="button"
-								disabled={addLoading}
-							>
-								Cancel
-							</Button>
-							<Button
-								onClick={handleAddConnection}
-								type="button"
-								disabled={addLoading || !selectedDocumentId}
-							>
-								{addLoading ? "Adding..." : "Add Connection"}
-							</Button>
-						</DialogFooter>
+								<div className="relative">
+									<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+									<input
+										type="text"
+										placeholder="Buscar documento..."
+										className="w-full pl-8 pr-3 py-2 bg-white/5 border border-white/10 rounded-md text-sm"
+										style={{ color: colors.text.primary }}
+										value={docSearch}
+										onChange={(e) => setDocSearch(e.target.value)}
+										autoFocus
+									/>
+								</div>
+
+								{loadingDocs ? (
+									<div className="flex items-center justify-center py-8 text-muted-foreground">
+										<Loader2 className="w-4 h-4 animate-spin mr-2" />
+										<span className="text-sm">Carregando documentos...</span>
+									</div>
+								) : filteredDocs.length === 0 ? (
+									<p className="text-sm text-muted-foreground py-4 text-center">
+										{docSearch ? "Nenhum resultado." : "Nenhum documento neste projeto."}
+									</p>
+								) : (
+									<div className="space-y-0.5 max-h-[50vh] overflow-y-auto">
+										{filteredDocs.map((doc) => (
+											<button
+												key={doc.id}
+												type="button"
+												className="w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-white/5"
+												style={{ color: colors.text.primary }}
+												onClick={() => {
+													setSelectedDocForConnection(doc)
+													setSelectedDocumentId(doc.id)
+												}}
+											>
+												<FileText className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+												<span className="truncate flex-1">{doc.title || "Sem título"}</span>
+												{doc.type && (
+													<span className="text-[10px] text-muted-foreground/60 flex-shrink-0">
+														{doc.type}
+													</span>
+												)}
+											</button>
+										))}
+									</div>
+								)}
+							</div>
+						)}
 					</DialogContent>
 				</Dialog>
 			</div>

@@ -23,6 +23,7 @@ export const DocumentTypeEnum = z.enum([
 	"onedrive",
 	"url", // URL-based content (legacy type from database)
 	"document-summary", // AI-generated document summaries
+	"bundle", // Multi-link/note bundles
 ])
 export type DocumentType = z.infer<typeof DocumentTypeEnum>
 

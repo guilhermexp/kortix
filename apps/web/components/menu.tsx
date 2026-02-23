@@ -29,6 +29,7 @@ import {
 	Plus,
 	Puzzle,
 	Pencil,
+	Sparkles,
 	User,
 	X,
 } from "lucide-react"
@@ -84,12 +85,13 @@ function Menu({
 		"projects",
 		"profile",
 		"integrations",
+		"skills",
 	] as const
 	type ValidView = (typeof validViews)[number]
 
 	const [isHovered, setIsHovered] = useState(!hoverReveal)
 	const [expandedView, setExpandedView] = useState<
-		"addUrl" | "mcp" | "projects" | "profile" | "integrations" | null
+		"addUrl" | "mcp" | "projects" | "profile" | "integrations" | "skills" | null
 	>(null)
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 	const [_isCollapsing, setIsCollapsing] = useState(false)
@@ -164,6 +166,12 @@ function Menu({
 			disabled: false,
 		},
 		{
+			icon: Sparkles,
+			text: "Skills",
+			key: "skills" as const,
+			disabled: false,
+		},
+		{
 			icon: User,
 			text: "Profile",
 			key: "profile" as const,
@@ -178,6 +186,7 @@ function Menu({
 			| "connections"
 			| "projects"
 			| "profile"
+			| "skills"
 			| "projects"
 			| "profile"
 			| "list"
@@ -218,6 +227,10 @@ function Menu({
 			setIsMobileMenuOpen(false)
 			setExpandedView(null)
 			setShowConnectAIModal(!showConnectAIModal)
+		} else if (key === "skills") {
+			router.push("/settings/skills")
+			setIsMobileMenuOpen(false)
+			setExpandedView(null)
 		} else if (key === "profile") {
 			// Mark that button was clicked (prevents Dialog's onOpenChange from reopening)
 			buttonClickedRef.current = true
@@ -268,6 +281,10 @@ function Menu({
 				setIsMobileMenuOpen(false)
 				setExpandedView(null)
 				setShowProfileModal(true)
+			} else if (openParam === "skills") {
+				router.push("/settings/skills")
+				setIsMobileMenuOpen(false)
+				setExpandedView(null)
 			} else if (openParam === "addUrl") {
 				setShowAddMemoryView(true)
 				setExpandedView(null)

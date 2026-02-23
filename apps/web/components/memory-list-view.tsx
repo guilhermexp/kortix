@@ -6,16 +6,14 @@ import { useDeleteDocument } from "@lib/queries"
 import {
 	asRecord,
 	cn,
-	extractGalleryImages,
 	formatPreviewLabel,
 	getYouTubeId,
 	getYouTubeThumbnail,
 	isInlineSvgDataUrl,
-	isLowResolutionImage,
+	isValidPreviewUrl,
 	isYouTubeUrl,
 	PAUSED_STATUS,
 	PROCESSING_STATUSES,
-	pickFirstUrlSameHost,
 	proxyImageUrl,
 	safeHttpUrl,
 } from "@lib/utils"
@@ -43,11 +41,15 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
 	AlertTriangle,
 	Brain,
+	ChevronLeft,
+	ChevronRight,
 	Expand,
 	ExternalLink,
+	FileText,
 	Folder,
 	Loader,
 	Pause,
+	Pin,
 	Play,
 	RefreshCw,
 	Trash2,
@@ -102,7 +104,56 @@ import { TweetCard } from "./content-cards/tweet"
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>
 type DocumentWithMemories = DocumentsResponse["documents"][0]
 
-type PreviewData =
+// Hook to persist pinned document IDs per project in localStorage
+function usePinnedDocuments(projectId: string | null | undefined) {
+	const storageKey = `pinned-docs:${projectId ?? "default"}`
+	const [pinnedIds, setPinnedIds] = useState<Set<string>>(() => {
+		if (typeof window === "undefined") return new Set()
+		try {
+			const stored = localStorage.getItem(storageKey)
+			return stored ? new Set(JSON.parse(stored) as string[]) : new Set()
+		} catch {
+			return new Set()
+		}
+	})
+
+	// Re-read from localStorage when project changes
+	useEffect(() => {
+		try {
+			const stored = localStorage.getItem(storageKey)
+			setPinnedIds(stored ? new Set(JSON.parse(stored) as string[]) : new Set())
+		} catch {
+			setPinnedIds(new Set())
+		}
+	}, [storageKey])
+
+	// Persist to localStorage whenever pinnedIds changes
+	useEffect(() => {
+		try {
+			localStorage.setItem(storageKey, JSON.stringify([...pinnedIds]))
+		} catch {
+			// localStorage full or unavailable — silently ignore
+		}
+	}, [storageKey, pinnedIds])
+
+	const togglePin = useCallback((docId: string) => {
+		setPinnedIds((prev) => {
+			const next = new Set(prev)
+			if (next.has(docId)) {
+				next.delete(docId)
+			} else {
+				next.add(docId)
+			}
+			return next
+		})
+	}, [])
+
+	const isPinned = useCallback((docId: string) => pinnedIds.has(docId), [pinnedIds])
+
+	return { pinnedIds, togglePin, isPinned }
+}
+
+export type PreviewData =
 	| {
 			kind: "image"
 			src: string
@@ -143,315 +194,173 @@ const _shimmerStyle: CSSProperties = {
 	animation: "shimmer 1.8s linear infinite",
 }
 
-const getDocumentPreview = (
+/** Picks the first valid image URL from a record scanning common image keys */
+const pickFirstImageUrl = (
+	record: ReturnType<typeof asRecord>,
+	baseUrl?: string,
+): string | undefined => {
+	if (!record) return undefined
+	const keys = [
+		"ogImage", "og_image",
+		"twitterImage", "twitter_image",
+		"previewImage", "preview_image",
+		"image", "thumbnail", "thumbnailUrl", "thumbnail_url",
+		"firstContentImage",
+	]
+	for (const key of keys) {
+		const url = safeHttpUrl(record[key], baseUrl)
+		if (isValidPreviewUrl(url)) return url
+	}
+	return undefined
+}
+
+export const getDocumentPreview = (
 	document: DocumentWithMemories,
 ): PreviewData | null => {
-
 	const metadata = asRecord(document.metadata)
 	const raw = asRecord((document as any).raw)
 	const rawExtraction = asRecord(raw?.extraction)
 	const rawYoutube = asRecord(rawExtraction?.youtube)
+	const metaTags = asRecord((rawExtraction as any)?.metaTags)
 	const rawFirecrawl =
 		asRecord(raw?.firecrawl) ?? asRecord(rawExtraction?.firecrawl)
 	const rawFirecrawlMetadata = asRecord(rawFirecrawl?.metadata) ?? rawFirecrawl
-	const rawGemini = asRecord(raw?.geminiFile)
 
-	// Get preview_image directly from document (from database)
-	const documentPreviewImage =
-		(document as any).previewImage ?? (document as any).preview_image
-
-	const imageKeys = [
-		"ogImage",
-		"og_image",
-		"twitterImage",
-		"twitter_image",
-		"previewImage",
-		"preview_image",
-		"image",
-		"thumbnail",
-		"thumbnailUrl",
-		"thumbnail_url",
-		"favicon",
-	]
-
-	// Get URL from multiple possible locations first (needed as baseUrl)
+	// Resolve original URL (needed for relative URL resolution and YouTube detection)
 	const originalUrl =
 		safeHttpUrl(metadata?.originalUrl) ??
 		safeHttpUrl((metadata as any)?.source_url) ??
 		safeHttpUrl((metadata as any)?.sourceUrl) ??
 		safeHttpUrl(document.url) ??
 		safeHttpUrl(rawYoutube?.url)
-	const geminiFileUri = safeHttpUrl(rawGemini?.uri, originalUrl)
-	const geminiFileUrl = safeHttpUrl(rawGemini?.url, originalUrl)
-
-	// Now search for images with baseUrl context
-	const metadataImage = pickFirstUrlSameHost(metadata, imageKeys, originalUrl)
-	// Check raw object directly first (new extracted og:image metadata)
-	const rawDirectImage = pickFirstUrlSameHost(raw, imageKeys, originalUrl)
-	const rawImage =
-		pickFirstUrlSameHost(rawExtraction, imageKeys, originalUrl) ??
-		pickFirstUrlSameHost(rawFirecrawl, imageKeys, originalUrl) ??
-		pickFirstUrlSameHost(rawFirecrawlMetadata, imageKeys, originalUrl) ??
-		pickFirstUrlSameHost(rawGemini, imageKeys, originalUrl)
-
-	// Check Firecrawl metadata directly for Open Graph images
-	const firecrawlOgImage =
-		safeHttpUrl(rawFirecrawlMetadata?.ogImage, originalUrl) ??
-		safeHttpUrl(rawFirecrawl?.ogImage, originalUrl)
-	// Heuristics: avoid badges/svg; prefer GitHub social preview when available
-	const isSvgOrBadge = (u?: string) => {
-		if (!u) return true
-		const s = u.toLowerCase()
-		return (
-			s.startsWith("data:image/svg+xml") ||
-			s.endsWith(".svg") ||
-			s.includes("badge") ||
-			s.includes("shields") ||
-			s.includes("sprite") ||
-			s.includes("logo") ||
-			s.includes("icon") ||
-			s.includes("topics")
-		)
-	}
-	const isDisallowedBadgeDomain = (u?: string) => {
-		if (!u) return false
-		try {
-			const h = new URL(u).hostname.toLowerCase()
-			return h === "img.shields.io" || h.endsWith(".shields.io")
-		} catch {
-			return false
-		}
-	}
-	const isGitHubHost = (u?: string) => {
-		if (!u) return false
-		try {
-			return new URL(u).hostname.toLowerCase().includes("github.com")
-		} catch {
-			return false
-		}
-	}
-	const isGitHubAssets = (u?: string) => {
-		if (!u) return false
-		try {
-			return new URL(u).hostname.toLowerCase().endsWith("githubassets.com")
-		} catch {
-			return false
-		}
-	}
-	const isGitHubOpenGraph = (u?: string) => {
-		if (!u) return false
-		try {
-			return isGitHubAssets(u) && new URL(u).pathname.includes("/opengraph/")
-		} catch {
-			return false
-		}
-	}
-	const isValidPreviewCandidate = (u?: string | null): u is string => {
-		if (typeof u !== "string") return false
-		const trimmed = u.trim()
-		if (!trimmed) return false
-		if (isInlineSvgDataUrl(trimmed)) return false
-		if (isSvgOrBadge(trimmed)) return false
-		if (isDisallowedBadgeDomain(trimmed)) return false
-		if (isLowResolutionImage(trimmed)) return false
-		return true
-	}
-
-	const sanitizedPreviewImage = (() => {
-		if (typeof documentPreviewImage !== "string") return null
-		const trimmed = documentPreviewImage.trim()
-		if (!trimmed) return null
-		if (isInlineSvgDataUrl(trimmed)) return null
-		if (trimmed.startsWith("data:image/")) return trimmed
-		const resolved = safeHttpUrl(trimmed, originalUrl)
-		if (!resolved) return null
-		if (isSvgOrBadge(resolved)) return null
-		return resolved
-	})()
-
-	const preferredGitHubOg = isGitHubHost(originalUrl)
-		? [
-				sanitizedPreviewImage,
-				firecrawlOgImage,
-				metadataImage,
-				rawImage,
-				rawDirectImage,
-			].find((u): u is string => isValidPreviewCandidate(u) && isGitHubOpenGraph(u))
-		: undefined
-	const ordered = [
-		sanitizedPreviewImage,
-		rawImage,
-		firecrawlOgImage,
-		rawDirectImage,
-		geminiFileUri,
-		geminiFileUrl,
-		metadataImage,
-	].filter((u): u is string => typeof u === "string" && u.trim().length > 0)
-	const filtered = ordered.filter((u) => isValidPreviewCandidate(u))
-	const extractionImages = (() => {
-		const list: string[] = []
-		const push = (value?: unknown) => {
-			const candidate = safeHttpUrl(value as string | undefined, originalUrl)
-			if (!candidate) return
-			if (isSvgOrBadge(candidate)) return
-			if (isDisallowedBadgeDomain(candidate)) return
-			if (isLowResolutionImage(candidate)) return
-			if (!list.includes(candidate)) list.push(candidate)
-		}
-
-		const extractionArray = Array.isArray((rawExtraction as any)?.images)
-			? ((rawExtraction as any).images as unknown[])
-			: []
-		for (const item of extractionArray) push(item)
-
-		const metaTags = asRecord((rawExtraction as any)?.metaTags)
-		if (metaTags) {
-			push(metaTags.ogImage)
-			push((metaTags as any).twitterImage)
-		}
-
-		return list
-	})()
-	const memoryImages = (() => {
-		const seen = new Set<string>()
-		const collected: string[] = []
-		const addCandidate = (value?: unknown) => {
-			if (!value) return
-			if (typeof value === "string") {
-				const trimmed = value.trim()
-				if (!trimmed) return
-				if (trimmed.toLowerCase().startsWith("data:image/svg+xml")) return
-				const resolved = trimmed.startsWith("data:image/")
-					? trimmed
-					: safeHttpUrl(trimmed, originalUrl)
-				if (!resolved) return
-				if (isSvgOrBadge(resolved)) return
-				if (isLowResolutionImage(resolved)) return
-				if (!seen.has(resolved)) {
-					seen.add(resolved)
-					collected.push(resolved)
-				}
-				return
-			}
-			const record = asRecord(value)
-			if (record?.url) addCandidate(record.url)
-		}
-
-		for (const entry of document.memoryEntries) {
-			const meta = asRecord(entry.metadata)
-			if (!meta) continue
-			const images = Array.isArray(meta.images) ? meta.images : []
-			for (const img of images) addCandidate(img)
-			const thumbs = Array.isArray((meta as any).thumbnails)
-				? ((meta as any).thumbnails as unknown[])
-				: []
-			for (const thumb of thumbs) addCandidate(thumb)
-			if (typeof meta.cover === "string") addCandidate(meta.cover)
-			if (typeof (meta as any).preview === "string")
-				addCandidate((meta as any).preview)
-			if (typeof (meta as any).previewImage === "string")
-				addCandidate((meta as any).previewImage)
-		}
-
-		return collected
-	})()
-	const finalPreviewImage =
-		preferredGitHubOg ||
-		filtered[0] ||
-		ordered.find((candidate) => isValidPreviewCandidate(candidate) && isGitHubOpenGraph(candidate))
-	const contentType =
-		(typeof rawExtraction?.contentType === "string" &&
-			rawExtraction.contentType) ||
-		(typeof rawExtraction?.content_type === "string" &&
-			rawExtraction.content_type) ||
-		(typeof raw?.contentType === "string" && raw.contentType) ||
-		(typeof raw?.content_type === "string" && raw.content_type) ||
-		undefined
 
 	const normalizedType = document.type?.toLowerCase() ?? ""
 	const label = formatPreviewLabel(document.type)
 
-	let fallbackImage =
-		finalPreviewImage ??
-		sanitizedPreviewImage ??
-		extractionImages[0] ??
-		memoryImages[0] ??
-		ordered.find((candidate) => isValidPreviewCandidate(candidate)) ??
-		null
+	const contentType =
+		(typeof rawExtraction?.contentType === "string" && rawExtraction.contentType) ||
+		(typeof rawExtraction?.content_type === "string" && rawExtraction.content_type) ||
+		(typeof raw?.contentType === "string" && raw.contentType) ||
+		(typeof raw?.content_type === "string" && raw.content_type) ||
+		undefined
 
-	if (!fallbackImage && isGitHubHost(originalUrl)) {
-		try {
-			const parsed = new URL(originalUrl ?? "")
-			const segments = parsed.pathname.split("/").filter(Boolean).slice(0, 2)
-			if (segments.length === 2) {
-				const repoSlug = segments.join("/")
-				fallbackImage = `https://opengraph.githubassets.com/${document.id}/${repoSlug}`
-			}
-		} catch {
-			// ignore
-		}
-	}
-
-	if (normalizedType === "image" || contentType?.startsWith("image/")) {
-		const src = fallbackImage ?? originalUrl
-		if (src) {
-			return {
-				kind: "image",
-				src,
-				href: originalUrl ?? undefined,
-				label: label || "Image",
-			}
-		}
-	}
-
-	// Check for YouTube video data first
+	// --- YouTube / Video detection (before image resolution) ---
 	const youtubeUrl =
 		safeHttpUrl(rawYoutube?.url) ?? safeHttpUrl(rawYoutube?.embedUrl)
-	const youtubeThumbnail = safeHttpUrl(rawYoutube?.thumbnail)
-	const validYoutubeThumbnail = isValidPreviewCandidate(youtubeThumbnail)
-		? youtubeThumbnail
-		: undefined
-
 	const isVideoDocument =
 		normalizedType === "video" ||
 		contentType?.startsWith("video/") ||
 		!!youtubeUrl ||
 		(isYouTubeUrl(originalUrl) && !!originalUrl)
 
+	// --- Resolve preview image with simple priority chain ---
+	// 1. document.previewImage (backend persisted in Supabase)
+	const documentPreviewImage = safeHttpUrl(
+		(document as any).previewImage ?? (document as any).preview_image,
+		originalUrl,
+	)
+
+	// 2-3. OG / Twitter images from metaTags, then Firecrawl metadata, then page metadata
+	const ogImage =
+		safeHttpUrl(metaTags?.ogImage, originalUrl) ??
+		safeHttpUrl(rawFirecrawlMetadata?.ogImage, originalUrl) ??
+		safeHttpUrl(rawFirecrawl?.ogImage, originalUrl)
+	const twitterImage =
+		safeHttpUrl((metaTags as any)?.twitterImage, originalUrl) ??
+		safeHttpUrl(rawFirecrawlMetadata?.twitterImage, originalUrl)
+
+	// 4. Scan common image keys across metadata records
+	const metadataImage = pickFirstImageUrl(metadata, originalUrl)
+	const extractionImage = pickFirstImageUrl(rawExtraction, originalUrl)
+	const firecrawlImage = pickFirstImageUrl(rawFirecrawlMetadata, originalUrl)
+	const rawDirectImage = pickFirstImageUrl(raw, originalUrl)
+
+	// 5. First valid image from various image arrays
+	const firstFromArray = (source: unknown): string | undefined => {
+		if (!source) return undefined
+		// Handle string (e.g. firecrawl screenshot)
+		if (typeof source === "string") {
+			const url = safeHttpUrl(source, originalUrl)
+			return isValidPreviewUrl(url) ? url : undefined
+		}
+		if (!Array.isArray(source)) return undefined
+		for (const item of source) {
+			const url = safeHttpUrl(
+				typeof item === "string" ? item : (asRecord(item)?.url as string ?? asRecord(item)?.src as string),
+				originalUrl,
+			)
+			if (isValidPreviewUrl(url)) return url
+		}
+		return undefined
+	}
+
+	const firstExtractionImage = firstFromArray((rawExtraction as any)?.images)
+	const firstRawImage = firstFromArray((raw as any)?.images)
+	const firstFirecrawlImage =
+		firstFromArray((rawFirecrawl as any)?.images) ??
+		firstFromArray((rawFirecrawlMetadata as any)?.images)
+	const firecrawlScreenshot = firstFromArray((rawFirecrawl as any)?.screenshot)
+	const firstMetadataImage = firstFromArray((metadata as any)?.images)
+	const extractionMetaImages = firstFromArray(asRecord((rawExtraction as any)?.metadata)?.images)
+
+	// 6. First image from memoryEntries metadata
+	const firstMemoryImage = (() => {
+		for (const entry of document.memoryEntries) {
+			const meta = asRecord(entry.metadata)
+			if (!meta) continue
+			const images = Array.isArray(meta.images) ? meta.images : []
+			for (const img of images) {
+				const resolved = safeHttpUrl(typeof img === "string" ? img : (asRecord(img)?.url as string), originalUrl)
+				if (isValidPreviewUrl(resolved)) return resolved
+			}
+		}
+		return undefined
+	})()
+
+	// Pick first valid URL from priority chain
+	const previewImage = [
+		documentPreviewImage,
+		ogImage,
+		twitterImage,
+		metadataImage,
+		extractionImage,
+		firecrawlImage,
+		rawDirectImage,
+		firstExtractionImage,
+		firstFirecrawlImage,
+		firstRawImage,
+		firecrawlScreenshot,
+		firstMetadataImage,
+		extractionMetaImages,
+		firstMemoryImage,
+	].find(isValidPreviewUrl) ?? null
+
+	// --- Image-type documents ---
+	if (normalizedType === "image" || contentType?.startsWith("image/")) {
+		const src = previewImage ?? originalUrl
+		if (src) {
+			return { kind: "image", src, href: originalUrl ?? undefined, label: label || "Image" }
+		}
+	}
+
+	// --- Video documents ---
 	if (isVideoDocument) {
+		const youtubeThumbnail = safeHttpUrl(rawYoutube?.thumbnail)
 		return {
 			kind: "video",
-			src:
-				validYoutubeThumbnail ?? fallbackImage ?? getYouTubeThumbnail(originalUrl),
+			src: (isValidPreviewUrl(youtubeThumbnail) ? youtubeThumbnail : undefined) ??
+				previewImage ??
+				getYouTubeThumbnail(originalUrl),
 			href: youtubeUrl ?? originalUrl ?? undefined,
 			label: contentType === "video/youtube" ? "YouTube" : label || "Video",
 		}
 	}
 
-	if (fallbackImage) {
-		return {
-			kind: "image",
-			src: fallbackImage,
-			href: originalUrl ?? undefined,
-			label: label || "Preview",
-		}
+	// --- Generic document with preview image ---
+	if (previewImage) {
+		return { kind: "image", src: previewImage, href: originalUrl ?? undefined, label: label || "Preview" }
 	}
 
-	// === FALLBACK: Imagens da galeria ===
-	// Se não encontrou preview em nenhuma fonte, tenta usar imagem da galeria
-	const galleryImages = extractGalleryImages(document, { limit: 1 })
-	const firstImage = galleryImages[0]
-
-	if (firstImage) {
-		return {
-			kind: "image",
-			src: firstImage.src,
-			label: firstImage.alt || "Image",
-		}
-	}
-
-	// For links without preview images, don't render preview at all
-	// The card will just show the title and content
 	return null
 }
 
@@ -739,17 +648,40 @@ function DocumentPreviewModal({
 const MasonryCard = memo(
 	({
 		document,
+		isPinned,
 		onDelete,
 		onPreview,
+		onTogglePin,
 	}: {
 		document: DocumentWithMemories
+		isPinned: boolean
 		onDelete: (document: DocumentWithMemories) => void
 		onPreview: (document: DocumentWithMemories) => void
+		onTogglePin: (document: DocumentWithMemories) => void
 	}) => {
 		const router = useRouter()
 		const hasPrefetchedRef = useRef(false)
 		const activeMemories = document.memoryEntries.filter((m) => !(m as any).isForgotten)
 		const preview = useMemo(() => getDocumentPreview(document), [document])
+
+		// Fetch bundle children for carousel
+		const isBundle = document.type === "bundle"
+		const { data: bundleChildren } = useQuery({
+			queryKey: ["document-children", document.id],
+			queryFn: async () => {
+				const res = await $fetch(`@get/documents/${document.id}/children`)
+				return ((res.data as any)?.children ?? []) as Array<{
+					id: string
+					title: string | null
+					previewImage: string | null
+					summary: string | null
+					url: string | null
+				}>
+			},
+			enabled: isBundle,
+			staleTime: 60_000,
+		})
+		const [bundleIndex, setBundleIndex] = useState(0)
 
 		// Get projects list for showing project name
 		const { data: projects } = useProjectsList()
@@ -763,44 +695,17 @@ const MasonryCard = memo(
 		)
 
 		const sanitizedPreview = useMemo(() => {
-			// Se não há preview válido, tenta usar galeria como fallback
-			if (!preview) {
-				const galleryImages = extractGalleryImages(document, { limit: 1 })
-				const firstImage = galleryImages[0]
-
-				if (firstImage) {
-					return {
-						kind: "image" as const,
-						src: firstImage.src,
-						label: firstImage.alt || "Image",
-					}
-				}
-
-				return null
-			}
-
-			// Se preview é SVG inválido, tenta fallback
+			if (!preview) return null
+			// If preview src is an inline SVG, try YouTube fallback for videos, otherwise hide
 			if (preview.src && isInlineSvgDataUrl(preview.src)) {
 				if (preview.kind === "video") {
-					const fallback =
-						getYouTubeThumbnail(document.url ?? undefined) ?? undefined
+					const fallback = getYouTubeThumbnail(document.url ?? undefined)
 					if (fallback) return { ...preview, src: fallback } as PreviewData
-				}
-				// Se SVG inválido, tenta galeria
-				const galleryImages = extractGalleryImages(document, { limit: 1 })
-				const firstImage = galleryImages[0]
-				if (firstImage) {
-					return {
-						kind: "image" as const,
-						src: firstImage.src,
-						label: firstImage.alt || "Image",
-					}
 				}
 				return null
 			}
-
 			return preview
-		}, [preview, document, document.url])
+		}, [preview, document.url])
 
 		// Check if document is still being processed
 		const statusIsProcessing = document.status
@@ -878,45 +783,25 @@ const MasonryCard = memo(
 		const [stickyPreview, setStickyPreview] = useState<PreviewData | null>(null)
 		const [imageLoaded, setImageLoaded] = useState(false)
 		const [imageError, setImageError] = useState(false)
-		const [useFallbackImage, setUseFallbackImage] = useState(false)
-		const [fallbackImageSrc, setFallbackImageSrc] = useState<string | null>(null)
-		const [tryWithoutProxy, setTryWithoutProxy] = useState(false)
+		const [retryWithoutProxy, setRetryWithoutProxy] = useState(false)
 
-		// Handler para erro de carregamento de imagem com fallback de galeria
 		const handleImageError = useCallback(() => {
-			// Step 1: Try fallback gallery image if not tried yet
-			if (!useFallbackImage) {
-				const galleryImages = extractGalleryImages(document, { limit: 1 })
-				const firstImage = galleryImages[0]
-
-				if (firstImage) {
-					setUseFallbackImage(true)
-					setFallbackImageSrc(firstImage.src)
-					setImageError(false)
-					setImageLoaded(false)
-					return
-				}
-			}
-
-			// Step 2: Try without proxy if not tried yet
-			if (!tryWithoutProxy) {
-				setTryWithoutProxy(true)
+			// Step 1: Try without proxy if not tried yet
+			if (!retryWithoutProxy) {
+				setRetryWithoutProxy(true)
 				setImageError(false)
 				setImageLoaded(false)
 				return
 			}
-
-			// Step 3: All fallbacks failed, show error
+			// Step 2: All fallbacks failed, hide image
 			setImageError(true)
-		}, [document, useFallbackImage, tryWithoutProxy])
+		}, [retryWithoutProxy])
 
 		useEffect(() => {
 			setStickyPreview(null)
 			setImageLoaded(false)
 			setImageError(false)
-			setUseFallbackImage(false)
-			setFallbackImageSrc(null)
-			setTryWithoutProxy(false)
+			setRetryWithoutProxy(false)
 		}, [])
 
 		useEffect(() => {
@@ -1019,8 +904,11 @@ const MasonryCard = memo(
 			router.prefetch(`/memory/${document.id}/edit`)
 			hasPrefetchedRef.current = true
 		}, [router, document.id])
-		const hasPreviewImage = previewToRender?.src && !imageError
+		const hasBundlePreview = isBundle && bundleChildren && bundleChildren.length > 0
+		const hasPreviewImage = hasBundlePreview || (previewToRender?.src && !imageError)
 		const displayText = getDocumentSnippet(document)
+		const markdownContent = (document as any).content || document.summary || null
+		const isTextNote = document.type === "text" && !hasPreviewImage && !!markdownContent
 		const cleanedTitle = (() => {
 			const raw = document.title || ""
 			const isData = raw.startsWith("data:")
@@ -1249,16 +1137,93 @@ const MasonryCard = memo(
 					</div>
 				) : (
 					<>
-						{/* Image/Preview area - Pinterest style variable height */}
-						{hasPreviewImage && (
+						{/* Bundle carousel preview */}
+						{isBundle && bundleChildren && bundleChildren.length > 0 ? (
+							<div className="relative w-full overflow-hidden bg-muted">
+								{(() => {
+									const child = bundleChildren[bundleIndex] ?? bundleChildren[0]
+									if (!child) return null
+									const childSrc = child.previewImage
+									return childSrc ? (
+										<img
+											key={`bundle-${child.id}`}
+											alt={child.title ?? "Preview"}
+											className="w-full object-cover transition-all duration-300"
+											loading="lazy"
+											referrerPolicy="no-referrer"
+											src={proxyImageUrl(childSrc) || childSrc}
+										/>
+									) : (
+										<div className="w-full h-32 flex items-center justify-center bg-muted/50">
+											<FileText className="h-8 w-8 text-muted-foreground/40" />
+										</div>
+									)
+								})()}
+
+								{/* Child title overlay */}
+								<div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3 pt-8">
+									<p className="text-xs font-medium text-white line-clamp-1">
+										{bundleChildren[bundleIndex]?.title || bundleChildren[bundleIndex]?.url || "Untitled"}
+									</p>
+								</div>
+
+								{/* Navigation arrows */}
+								{bundleChildren.length > 1 && (
+									<>
+										<button
+											className="absolute left-1.5 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 rounded-full p-1 text-white transition-colors z-10"
+											onClick={(e) => {
+												e.stopPropagation()
+												e.preventDefault()
+												setBundleIndex((i) => (i > 0 ? i - 1 : bundleChildren.length - 1))
+											}}
+											type="button"
+										>
+											<ChevronLeft className="h-3.5 w-3.5" />
+										</button>
+										<button
+											className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 rounded-full p-1 text-white transition-colors z-10"
+											onClick={(e) => {
+												e.stopPropagation()
+												e.preventDefault()
+												setBundleIndex((i) => (i < bundleChildren.length - 1 ? i + 1 : 0))
+											}}
+											type="button"
+										>
+											<ChevronRight className="h-3.5 w-3.5" />
+										</button>
+									</>
+								)}
+
+								{/* Dot indicators */}
+								{bundleChildren.length > 1 && (
+									<div className="absolute top-2 left-0 right-0 flex justify-center gap-1 z-10">
+										{bundleChildren.map((_, i) => (
+											<button
+												key={i}
+												className={cn(
+													"w-1.5 h-1.5 rounded-full transition-all",
+													i === bundleIndex
+														? "bg-white scale-110"
+														: "bg-white/40 hover:bg-white/60",
+												)}
+												onClick={(e) => {
+													e.stopPropagation()
+													e.preventDefault()
+													setBundleIndex(i)
+												}}
+												type="button"
+											/>
+										))}
+									</div>
+								)}
+							</div>
+						) : !isBundle && previewToRender?.src && !imageError ? (
+						/* Image/Preview area - Pinterest style variable height */
 							<div className="relative w-full overflow-hidden bg-muted">
 								{!imageError && (
 									<img
-										key={
-											useFallbackImage && fallbackImageSrc
-												? `fallback-${fallbackImageSrc}`
-												: `preview-${previewToRender.src}`
-										}
+										key={`preview-${previewToRender.src}-${retryWithoutProxy ? "direct" : "proxy"}`}
 										alt={cleanedTitle}
 										className={cn(
 											"w-full object-cover transition-all duration-500",
@@ -1269,7 +1234,6 @@ const MasonryCard = memo(
 										onError={handleImageError}
 										onLoad={(e) => {
 											const img = e.currentTarget
-											// Ignore 1x1/empty placeholders (e.g. transparent proxy fallback).
 											if (img.naturalWidth <= 1 || img.naturalHeight <= 1) {
 												handleImageError()
 												return
@@ -1278,11 +1242,9 @@ const MasonryCard = memo(
 										}}
 										referrerPolicy="no-referrer"
 										src={
-											tryWithoutProxy
-												? (useFallbackImage && fallbackImageSrc ? fallbackImageSrc : previewToRender.src)
-												: (useFallbackImage && fallbackImageSrc
-													? proxyImageUrl(fallbackImageSrc) || fallbackImageSrc
-													: proxyImageUrl(previewToRender.src) || previewToRender.src)
+											retryWithoutProxy
+												? previewToRender.src
+												: proxyImageUrl(previewToRender.src) || previewToRender.src
 										}
 									/>
 								)}
@@ -1301,7 +1263,27 @@ const MasonryCard = memo(
 								{/* Gradient overlay for text readability */}
 								<div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/60 to-transparent" />
 							</div>
-						)}
+						) : isTextNote ? (
+							/* Markdown content preview for text/note documents */
+							<div className="relative w-full overflow-hidden bg-muted/30">
+								{/* Header bar with document title */}
+								<div className="flex items-center justify-between px-3 py-2 border-b border-border/30 bg-muted/50">
+									<span className="text-[11px] text-muted-foreground font-mono truncate">
+										{cleanedTitle}
+									</span>
+									<FileText className="h-3 w-3 text-muted-foreground/60 flex-shrink-0 ml-2" />
+								</div>
+								{/* Rendered markdown content with fade-out */}
+								<div className="px-3 py-2.5 max-h-[200px] overflow-hidden relative">
+									<MarkdownContent
+										content={markdownContent.slice(0, 800)}
+										className="text-xs text-muted-foreground leading-relaxed [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-foreground [&_h2]:text-xs [&_h2]:font-semibold [&_h2]:text-foreground [&_h3]:text-xs [&_h3]:font-medium [&_h3]:text-foreground [&_p]:text-xs [&_p]:mb-1.5 [&_strong]:text-foreground [&_code]:text-[10px] [&_pre]:text-[10px]"
+									/>
+									{/* Gradient fade-out at bottom */}
+									<div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+								</div>
+							</div>
+						) : null}
 
 						{/* Content area */}
 						<div className={cn("p-3", hasPreviewImage && "pt-2")}>
@@ -1310,8 +1292,15 @@ const MasonryCard = memo(
 								{cleanedTitle}
 							</h3>
 
+							{/* Bundle badge */}
+							{isBundle && (
+								<span className="inline-block px-2 py-0.5 text-[10px] rounded bg-primary/10 text-primary mb-1.5">
+									{bundleChildren?.length || (document as any).childCount || (document.metadata as any)?.childCount || "?"} items
+								</span>
+							)}
+
 							{/* Snippet - only if no preview image or short snippet */}
-							{displayText && !displayText.startsWith("data:") && (
+							{!isTextNote && displayText && !displayText.startsWith("data:") && (
 								<p
 									className={cn(
 										"text-xs text-muted-foreground line-clamp-3 leading-relaxed",
@@ -1432,51 +1421,71 @@ const MasonryCard = memo(
 									</div>
 								</div>
 
-								{/* Delete button */}
-								<AlertDialog>
-									<AlertDialogTrigger asChild>
-										<button
-											className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-											onClick={(e) => e.stopPropagation()}
-											type="button"
-										>
-											<Trash2 className="w-3.5 h-3.5" />
-										</button>
-									</AlertDialogTrigger>
-									<AlertDialogContent>
-										<AlertDialogHeader>
-											<AlertDialogTitle>Delete Document</AlertDialogTitle>
-											<AlertDialogDescription>
-												Are you sure you want to delete this document and all
-												its related memories? This action cannot be undone.
-											</AlertDialogDescription>
-										</AlertDialogHeader>
-										<AlertDialogFooter>
-											<AlertDialogCancel onClick={(e) => e.stopPropagation()}>
-												Cancel
-											</AlertDialogCancel>
-											<AlertDialogAction
-												className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-												onClick={async (e) => {
-													e.stopPropagation()
-													if (isProcessing) {
-														try {
-															await cancelDocument(document.id)
-														} catch (error) {
-															console.error(
-																"[MemoryListView] Failed to cancel document:",
-																error,
-															)
-														}
-													}
-													onDelete(document)
-												}}
+								<div className="flex items-center gap-1">
+									{/* Pin button */}
+									<button
+										className={cn(
+											"p-1 rounded transition-all",
+											isPinned
+												? "text-primary opacity-100"
+												: "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary",
+										)}
+										onClick={(e) => {
+											e.stopPropagation()
+											onTogglePin(document)
+										}}
+										title={isPinned ? "Desafixar" : "Fixar no topo"}
+										type="button"
+									>
+										<Pin className={cn("w-3.5 h-3.5", isPinned && "fill-primary")} />
+									</button>
+
+									{/* Delete button */}
+									<AlertDialog>
+										<AlertDialogTrigger asChild>
+											<button
+												className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+												onClick={(e) => e.stopPropagation()}
+												type="button"
 											>
-												Delete
-											</AlertDialogAction>
-										</AlertDialogFooter>
-									</AlertDialogContent>
-								</AlertDialog>
+												<Trash2 className="w-3.5 h-3.5" />
+											</button>
+										</AlertDialogTrigger>
+										<AlertDialogContent>
+											<AlertDialogHeader>
+												<AlertDialogTitle>Delete Document</AlertDialogTitle>
+												<AlertDialogDescription>
+													Are you sure you want to delete this document and all
+													its related memories? This action cannot be undone.
+												</AlertDialogDescription>
+											</AlertDialogHeader>
+											<AlertDialogFooter>
+												<AlertDialogCancel onClick={(e) => e.stopPropagation()}>
+													Cancel
+												</AlertDialogCancel>
+												<AlertDialogAction
+													className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+													onClick={async (e) => {
+														e.stopPropagation()
+														if (isProcessing) {
+															try {
+																await cancelDocument(document.id)
+															} catch (error) {
+																console.error(
+																	"[MemoryListView] Failed to cancel document:",
+																	error,
+																)
+															}
+														}
+														onDelete(document)
+													}}
+												>
+													Delete
+												</AlertDialogAction>
+											</AlertDialogFooter>
+										</AlertDialogContent>
+									</AlertDialog>
+								</div>
 							</div>
 
 							{/* Failed status badge */}
@@ -1510,6 +1519,7 @@ export const MemoryListView = ({
 	const sentinelRef = useRef<HTMLDivElement>(null)
 	const _isMobile = useIsMobile()
 	const { selectedProject } = useProject()
+	const { pinnedIds, togglePin, isPinned } = usePinnedDocuments(selectedProject)
 	const deleteDocumentMutation = useDeleteDocument(selectedProject)
 	const [previewDocument, setPreviewDocument] =
 		useState<DocumentWithMemories | null>(null)
@@ -1525,24 +1535,36 @@ export const MemoryListView = ({
 		[deleteDocumentMutation, onDocumentDeleted],
 	)
 
-	// Filter documents based on selected space
+	// Filter documents based on selected space, then sort pinned to top
 	const filteredDocuments = useMemo(() => {
 		if (!documents) return []
 
+		let docs: DocumentWithMemories[]
 		if (selectedSpace === "all") {
-			return documents
+			docs = documents
+		} else {
+			docs = documents
+				.map((doc) => ({
+					...doc,
+					memoryEntries: doc.memoryEntries.filter(
+						(memory) =>
+							((memory as any).spaceContainerTag ?? (memory as any).spaceId) === selectedSpace,
+					),
+				}))
+				.filter((doc) => doc.memoryEntries.length > 0)
 		}
 
-		return documents
-			.map((doc) => ({
-				...doc,
-				memoryEntries: doc.memoryEntries.filter(
-					(memory) =>
-						((memory as any).spaceContainerTag ?? (memory as any).spaceId) === selectedSpace,
-				),
-			}))
-			.filter((doc) => doc.memoryEntries.length > 0)
-	}, [documents, selectedSpace])
+		// Sort pinned documents to the top, preserving relative order
+		if (pinnedIds.size > 0) {
+			docs = [...docs].sort((a, b) => {
+				const aPinned = pinnedIds.has(a.id) ? 1 : 0
+				const bPinned = pinnedIds.has(b.id) ? 1 : 0
+				return bPinned - aPinned
+			})
+		}
+
+		return docs
+	}, [documents, selectedSpace, pinnedIds])
 
 	// Infinite scroll with IntersectionObserver
 	useEffect(() => {
@@ -1615,9 +1637,11 @@ export const MemoryListView = ({
 						{filteredDocuments.map((document) => (
 							<MasonryCard
 								document={document}
+								isPinned={isPinned(document.id)}
 								key={document.id}
 								onDelete={handleDeleteDocument}
 								onPreview={setPreviewDocument}
+								onTogglePin={(doc) => togglePin(doc.id)}
 							/>
 						))}
 					</div>

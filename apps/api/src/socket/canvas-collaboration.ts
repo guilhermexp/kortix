@@ -1,5 +1,5 @@
 import type { Server as HTTPServer } from "http"
-import { Server } from "socket.io"
+import { Server, type Server as SocketIOServer } from "socket.io"
 import { createClient } from "@supabase/supabase-js"
 import { extractAccessToken } from "../session"
 import { env } from "../env"
@@ -18,6 +18,15 @@ interface RoomUser extends User {
 }
 
 const rooms = new Map<string, Map<string, RoomUser>>()
+let canvasIo: SocketIOServer | null = null
+
+export function emitCanvasElementsChanged(
+	canvasId: string,
+	payload: { elements: any[]; version?: number },
+) {
+	if (!canvasIo || !canvasId || !Array.isArray(payload.elements)) return
+	canvasIo.to(`canvas_${canvasId}`).emit("elements-changed", payload)
+}
 
 export function setupCanvasCollaboration(httpServer: HTTPServer) {
 	const io = new Server(httpServer, {
@@ -30,6 +39,7 @@ export function setupCanvasCollaboration(httpServer: HTTPServer) {
 			credentials: true,
 		},
 	})
+	canvasIo = io
 
 	// Authentication middleware - verify JWT before allowing connection
 	io.use(async (socket, next) => {
