@@ -927,7 +927,7 @@ const MasonryCard = memo(
 
 		return (
 			<div
-				className="group relative mb-4 break-inside-avoid cursor-pointer rounded-xl overflow-hidden bg-card border border-border/50 hover:border-border transition-all duration-300 hover:shadow-lg hover:shadow-black/10"
+				className="group relative cursor-pointer rounded-xl overflow-hidden bg-card border border-border/50 hover:border-border transition-all duration-300 hover:shadow-lg hover:shadow-black/10"
 				onClick={() => {
 					analytics.documentCardClicked()
 					onPreview(document)
@@ -1621,18 +1621,15 @@ export const MemoryListView = ({
 					className="h-full overflow-auto pt-16 pb-20 custom-scrollbar"
 					ref={scrollRef}
 				>
-					{/* Masonry Grid with CSS columns */}
+					{/* Grid layout - flows left-to-right to preserve chronological order */}
 					<div
 						className={cn(
 							// Padding: left for floating menu, right normal
 							"pl-4 pr-4 md:pl-20 md:pr-6 lg:pl-20 lg:pr-8",
-							// CSS Columns for masonry layout
-							"columns-1 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5",
-							"gap-4",
+							// CSS Grid: items flow left-to-right, top-to-bottom (reading order)
+							"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5",
+							"gap-4 auto-rows-auto items-start",
 						)}
-						style={{
-							columnFill: "balance",
-						}}
 					>
 						{filteredDocuments.map((document) => (
 							<MasonryCard
