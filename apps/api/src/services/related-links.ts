@@ -7,7 +7,7 @@
 
 import { env } from "../env"
 import { searchWebWithExa } from "./exa-search"
-import { openRouterChat } from "./openrouter"
+import { grokChat } from "./grok"
 
 export type RelatedLink = {
 	title: string
@@ -68,13 +68,13 @@ export async function extractMentionsFromContent(
 	const truncated = content.slice(0, 8000)
 
 	try {
-		const response = await openRouterChat(
+		const response = await grokChat(
 			[
 				{ role: "system", content: EXTRACTION_PROMPT },
 				{ role: "user", content: truncated },
 			],
 			{
-				model: "x-ai/grok-4.1-fast", // Fast model for quick extraction
+				model: "grok-4-latest",
 				temperature: 0.1,
 				maxTokens: 1024,
 			},

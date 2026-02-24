@@ -3,7 +3,7 @@
  *
  * AI-powered document summarization service.
  * Features:
- * - OpenRouter integration as primary provider
+ * - Grok (X-AI) integration as primary provider
  * - Configurable summary length and style
  * - Context-aware summarization (title, URL, source type)
  * - Support for different document types (web, PDF, video, code)
@@ -36,12 +36,12 @@ const DEFAULT_STYLE = "concise" as const
  */
 export class SummarizationService implements ISummarizationService {
 	private initialized = false
-	private readonly provider: "openrouter" | "gemini"
+	private readonly provider: "grok" | "gemini" | "claude"
 	private readonly maxLength: number
 	private readonly style: "concise" | "detailed" | "technical"
 
 	constructor(options?: SummarizationOptions) {
-		this.provider = options?.provider ?? "openrouter"
+		this.provider = options?.provider ?? "grok"
 		this.maxLength = options?.maxLength ?? DEFAULT_MAX_LENGTH
 		this.style = options?.style ?? DEFAULT_STYLE
 	}

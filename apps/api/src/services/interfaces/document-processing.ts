@@ -353,14 +353,14 @@ export interface ProcessorServiceConfig {
 	/** Summarization configuration */
 	summarization?: {
 		enabled: boolean
-		provider: "openrouter" | "gemini" | "claude"
+		provider: "grok" | "gemini" | "claude"
 		model?: string
 		maxLength?: number
 	}
 	/** Tagging configuration */
 	tagging?: {
 		enabled: boolean
-		provider: "openrouter" | "gemini"
+		provider: "grok" | "gemini"
 		maxTags?: number
 	}
 	/** Metadata extraction configuration */

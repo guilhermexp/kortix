@@ -131,7 +131,7 @@ export interface SummarizationOptions {
 	/** Include key points */
 	includeKeyPoints?: boolean
 	/** AI provider */
-	provider?: "openrouter" | "gemini" | "claude"
+	provider?: "grok" | "gemini" | "claude"
 	/** Model to use */
 	model?: string
 	/** Timeout */
@@ -217,7 +217,7 @@ export interface TaggingOptions {
 	/** Include category tags */
 	includeCategories?: boolean
 	/** AI provider */
-	provider?: "openrouter" | "gemini"
+	provider?: "grok" | "gemini"
 	/** Model to use */
 	model?: string
 	/** Timeout */

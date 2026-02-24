@@ -3,7 +3,7 @@
  *
  * Automatic tag generation service for content categorization.
  * Features:
- * - AI-powered tag extraction using OpenRouter
+ * - AI-powered tag extraction using Grok (X-AI)
  * - Fallback keyword extraction from content
  * - Configurable tag categories and limits
  * - Multi-language support (EN, PT)
@@ -87,7 +87,7 @@ export class TaggingService implements ITaggingService {
 	private initialized = false
 	private readonly maxTags: number
 	private readonly locale: "pt-BR" | "en-US"
-	private readonly provider: "openrouter" | "heuristic"
+	private readonly provider: "grok" | "gemini" | "heuristic"
 
 	constructor(options?: TaggingOptions) {
 		this.maxTags = Math.max(
@@ -95,7 +95,7 @@ export class TaggingService implements ITaggingService {
 			Math.min(options?.maxTags ?? DEFAULT_MAX_TAGS, MAX_TAGS),
 		)
 		this.locale = options?.locale ?? "en-US"
-		this.provider = options?.provider ?? "openrouter"
+		this.provider = options?.provider ?? "grok"
 	}
 
 	// ========================================================================
@@ -196,7 +196,7 @@ export class TaggingService implements ITaggingService {
 		config: Required<TaggingOptions>,
 	): Promise<string[]> {
 		// Try AI provider first
-		if (config.provider === "openrouter") {
+		if (config.provider === "grok") {
 			try {
 				const tags = await this.generateWithAI(content, config)
 				if (tags && tags.length >= MIN_TAGS) {

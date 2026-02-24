@@ -15,13 +15,13 @@ import {
   getFallbackMessage,
   getSectionHeader,
 } from "../i18n";
-import { openRouterChat } from "./openrouter";
+import { grokChat } from "./grok";
 import {
   sanitizeSummaryMarkdown,
-  summarizeWithOpenRouter,
+  summarizeWithGrok,
 } from "./summarizer-fallback";
 
-const _googleClient = null; // Disable Gemini for summaries/tags; use OpenRouter
+const _googleClient = null; // Disable Gemini for summaries/tags; use Grok
 
 export async function generateSummary(
   text: string,
@@ -29,10 +29,10 @@ export async function generateSummary(
 ): Promise<string | null> {
   const trimmed = text.trim();
   if (!trimmed) return null;
-  console.log("[Summarizer] Using OpenRouter (summary)", {
+  console.log("[Summarizer] Using Grok (summary)", {
     hasUrl: Boolean(context?.url),
   });
-  const viaOpenRouter = await summarizeWithOpenRouter(trimmed, context);
+  const viaOpenRouter = await summarizeWithGrok(trimmed, context);
   return viaOpenRouter || buildFallbackSummary(trimmed, context);
 }
 
@@ -124,10 +124,10 @@ export async function generateDeepAnalysis(
   const trimmed = text.trim();
   if (!trimmed) return null;
 
-  console.log("[Summarizer] Using OpenRouter (deep analysis)", {
+  console.log("[Summarizer] Using Grok (deep analysis)", {
     hasUrl: Boolean(context?.url),
   });
-  const viaOpenRouter = await summarizeWithOpenRouter(trimmed, context);
+  const viaOpenRouter = await summarizeWithGrok(trimmed, context);
   return viaOpenRouter || buildFallbackSummary(trimmed, context);
 }
 
@@ -147,7 +147,7 @@ async function _generateTextBasedAnalysis(
   if (!trimmed) return null;
 
   try {
-    const viaOpenRouter = await summarizeWithOpenRouter(trimmed, context);
+    const viaOpenRouter = await summarizeWithGrok(trimmed, context);
     if (viaOpenRouter?.trim()) {
       return ensureUseCasesSection(viaOpenRouter);
     }
@@ -232,8 +232,8 @@ export async function summarizeYoutubeVideo(
       return null;
     }
 
-    // 2) Summarize with OpenRouter (Grok) - use longer timeout for YouTube videos (transcripts can be long)
-    const viaOpenRouter = await summarizeWithOpenRouter(
+    // 2) Summarize with Grok (X-AI direct) - use longer timeout for YouTube videos (transcripts can be long)
+    const viaGrok = await summarizeWithGrok(
       text,
       {
         title,
@@ -242,9 +242,9 @@ export async function summarizeYoutubeVideo(
       },
       { timeoutMs: 30_000 }, // 30 seconds for YouTube videos
     );
-    return viaOpenRouter ? ensureUseCasesSection(viaOpenRouter) : null;
+    return viaGrok ? ensureUseCasesSection(viaGrok) : null;
   } catch (error) {
-    console.error("summarizeYoutubeVideo (text+OpenRouter) failed:", error);
+    console.error("summarizeYoutubeVideo (text+Grok) failed:", error);
     return null;
   }
 }
@@ -355,7 +355,7 @@ export async function generateCategoryTags(
 
     const raw =
       (
-        await openRouterChat(
+        await grokChat(
           [
             { role: "system", content: "You generate concise topical tags." },
             { role: "user", content: prompt },
@@ -407,7 +407,7 @@ export async function generateCategoryTags(
     return uniq.length > 0 ? uniq : fallback();
   } catch (err) {
     console.warn(
-      "generateCategoryTags via OpenRouter failed; using heuristic fallback",
+      "generateCategoryTags via Grok failed; using heuristic fallback",
       err,
     );
     return fallback();

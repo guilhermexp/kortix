@@ -5,7 +5,7 @@ import {
   getFallbackMessage,
   getSectionHeader,
 } from "../i18n";
-import { openRouterChat } from "./openrouter";
+import { grokChat } from "./grok";
 
 const SUMMARY_SYSTEM_PROMPT =
   "Você é um assistente que gera resumos estruturados em Markdown. RESPONDA SEMPRE EM PORTUGUÊS DO BRASIL, mesmo que o conteúdo original esteja em inglês. SEMPRE inclua a seção Casos de Uso com pelo menos 3 itens REAIS - SEMPRE infira casos de uso baseado no contexto do conteúdo. NUNCA escreva '(sem casos de uso identificados)' ou 'N/A' - sempre gere casos de uso relevantes. NUNCA inclua o título do documento/página na resposta - o título já é exibido separadamente na interface. Sempre que mencionar projeto, ferramenta, empresa, pessoa, tecnologia, plataforma ou produto, inclua link em Markdown no mesmo bullet. Para cada item citado, adicione 2-3 frases curtas explicando o que é, seu diferencial e uso prático. Se não houver URL exata no conteúdo, inclua um link de busca confiável (ex.: GitHub Search ou site oficial). Evite duplicação: não repita bullets ou frases equivalentes. Comece DIRETAMENTE com ## Resumo Executivo.";
@@ -15,7 +15,7 @@ function buildUrlAnalysisPrompt(url: string, title?: string | null) {
   return buildUrlAnalysisPromptI18n(url, { title, isGitHub: isGh });
 }
 
-export async function summarizeWithOpenRouter(
+export async function summarizeWithGrok(
   text: string,
   context?: {
     title?: string | null;
@@ -38,13 +38,13 @@ export async function summarizeWithOpenRouter(
       isWebPage: isHtmlContent(context?.contentType, context?.url),
     });
     console.log(
-      "[OpenRouterFallback] Attempting text-based summary via OpenRouter",
+      "[Grok] Attempting text-based summary via Grok",
       {
         hasUrl: Boolean(context?.url),
-        model: "x-ai/grok-4.1-fast",
+        model: "grok-4-latest",
       },
     );
-    const answer = await openRouterChat(
+    const answer = await grokChat(
       [
         {
           role: "system",
@@ -56,12 +56,12 @@ export async function summarizeWithOpenRouter(
     );
     if (answer?.trim()) {
       console.log(
-        "[OpenRouterFallback] Text-based summary generated successfully",
+        "[Grok] Text-based summary generated successfully",
       );
       return ensureUseCases(answer);
     }
     console.warn(
-      "[OpenRouterFallback] Text-based summary failed or empty response; trying URL-based (if available)",
+      "[Grok] Text-based summary failed or empty response; trying URL-based (if available)",
     );
   }
 
@@ -72,13 +72,13 @@ export async function summarizeWithOpenRouter(
       context?.title || undefined,
     );
     console.log(
-      "[OpenRouterFallback] Attempting URL-based summary via OpenRouter",
+      "[Grok] Attempting URL-based summary via Grok",
       {
         url: context.url,
-        model: "x-ai/grok-4.1-fast",
+        model: "grok-4-latest",
       },
     );
-    const answer = await openRouterChat(
+    const answer = await grokChat(
       [
         {
           role: "system",
@@ -90,12 +90,12 @@ export async function summarizeWithOpenRouter(
     );
     if (answer?.trim()) {
       console.log(
-        "[OpenRouterFallback] URL-based summary generated successfully",
+        "[Grok] URL-based summary generated successfully",
       );
       return ensureUseCases(answer);
     }
     console.warn(
-      "[OpenRouterFallback] URL-based summary also failed or empty response",
+      "[Grok] URL-based summary also failed or empty response",
     );
   }
 

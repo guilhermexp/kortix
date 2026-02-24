@@ -77,13 +77,13 @@ async function getProcessors() {
 			respectParagraphs: true,
 		})
 		const summarization = new SummarizationService({
-			provider: "openrouter",
+			provider: "grok",
 			maxWords: 500,
 			style: "paragraph",
 		})
 		const tagging = new TaggingService({
 			maxTags: 6,
-			provider: "openrouter",
+			provider: "grok",
 		})
 		const metadata = new MetadataExtractor()
 
