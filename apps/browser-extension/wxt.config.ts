@@ -34,7 +34,7 @@ export default defineConfig({
 		],
 		web_accessible_resources: [
 			{
-				resources: ["icon-16.png", "fonts/*.ttf"],
+				resources: ["icon-16.png", "icon.svg", "fonts/*.ttf"],
 				matches: ["<all_urls>"],
 			},
 		],

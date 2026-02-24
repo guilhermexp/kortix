@@ -195,36 +195,36 @@ function App() {
 
 	if (loading) {
 		return (
-			<div className="w-80 p-0 font-[Space_Grotesk,-apple-system,BlinkMacSystemFont,Segoe_UI,Roboto,sans-serif] bg-white rounded-lg relative overflow-hidden">
-				<div className="flex items-center justify-between gap-3 p-2.5 border-b border-gray-200 relative">
+			<div className="w-80 p-0 font-[Space_Grotesk,-apple-system,BlinkMacSystemFont,Segoe_UI,Roboto,sans-serif] bg-black rounded-lg relative overflow-hidden">
+				<div className="flex items-center justify-between gap-3 p-2.5 border-b border-white/10 relative">
 					<img
 						alt="Kortix"
 						className="w-8 h-8 flex-shrink-0"
-						src="/icon-48.png"
+						src="/icon.svg"
 					/>
-					<h1 className="m-0 text-lg font-semibold text-black flex-1">
+					<h1 className="m-0 text-lg font-semibold text-white flex-1">
 						Kortix
 					</h1>
 				</div>
 				<div className="p-4">
-					<div>Loading...</div>
+					<div className="text-neutral-400">Loading...</div>
 				</div>
 			</div>
 		)
 	}
 
 	return (
-		<div className="w-80 p-0 font-[Space_Grotesk,-apple-system,BlinkMacSystemFont,Segoe_UI,Roboto,sans-serif] bg-white rounded-lg relative overflow-hidden">
-			<div className="flex items-center justify-between gap-3 p-2.5 border-b border-gray-200 relative">
+		<div className="w-80 p-0 font-[Space_Grotesk,-apple-system,BlinkMacSystemFont,Segoe_UI,Roboto,sans-serif] bg-black rounded-lg relative overflow-hidden">
+			<div className="flex items-center justify-between gap-3 p-2.5 border-b border-white/10 relative">
 				<img
 					alt="Kortix"
-					className="w-8 h-8 flex-shrink-0"
-					src="/icon-128.png"
+					className="flex-shrink-0"
+					src="/icon.svg"
 					style={{ width: "80%", height: "45px", objectFit: "contain" }}
 				/>
 				{userSignedIn && (
 					<button
-						className="bg-none border-none text-base cursor-pointer text-gray-500 p-1 rounded transition-colors duration-200 hover:text-black hover:bg-gray-100"
+						className="bg-none border-none text-base cursor-pointer text-neutral-500 p-1 rounded transition-colors duration-200 hover:text-white hover:bg-white/10"
 						onClick={handleSignOut}
 						title="Logout"
 						type="button"
@@ -251,12 +251,12 @@ function App() {
 				{userSignedIn ? (
 					<div className="text-left">
 						{/* Tab Navigation */}
-						<div className="flex bg-gray-100 rounded-lg p-1 mb-4">
+						<div className="flex bg-neutral-900 rounded-lg p-1 mb-4">
 							<button
 								className={`flex-1 py-2 px-3 bg-transparent border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-200 outline-none appearance-none ${
 									activeTab === "save"
-										? "bg-white text-black shadow-sm"
-										: "text-gray-500 hover:text-gray-700"
+										? "bg-white/10 text-white shadow-sm"
+										: "text-neutral-500 hover:text-neutral-300"
 								}`}
 								onClick={() => setActiveTab("save")}
 								type="button"
@@ -266,8 +266,8 @@ function App() {
 							<button
 								className={`flex-1 py-2 px-3 bg-transparent border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-200 outline-none appearance-none ${
 									activeTab === "imports"
-										? "bg-white text-black shadow-sm"
-										: "text-gray-500 hover:text-gray-700"
+										? "bg-white/10 text-white shadow-sm"
+										: "text-neutral-500 hover:text-neutral-300"
 								}`}
 								onClick={() => setActiveTab("imports")}
 								type="button"
@@ -277,8 +277,8 @@ function App() {
 							<button
 								className={`flex-1 py-2 px-3 bg-transparent border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-200 outline-none appearance-none ${
 									activeTab === "settings"
-										? "bg-white text-black shadow-sm"
-										: "text-gray-500 hover:text-gray-700"
+										? "bg-white/10 text-white shadow-sm"
+										: "text-neutral-500 hover:text-neutral-300"
 								}`}
 								onClick={() => setActiveTab("settings")}
 								type="button"
@@ -292,11 +292,11 @@ function App() {
 							<div className="flex flex-col gap-4 min-h-[200px]">
 								{/* Current Page Info */}
 								<div className="mb-0">
-									<div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-										<h3 className="m-0 mb-1 text-sm font-semibold text-black overflow-hidden text-ellipsis whitespace-nowrap">
+									<div className="bg-neutral-900 p-3 rounded-md border border-white/10">
+										<h3 className="m-0 mb-1 text-sm font-semibold text-white overflow-hidden text-ellipsis whitespace-nowrap">
 											{currentTitle || "Current Page"}
 										</h3>
-										<p className="m-0 text-xs text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap">
+										<p className="m-0 text-xs text-neutral-500 overflow-hidden text-ellipsis whitespace-nowrap">
 											{currentUrl}
 										</p>
 									</div>
@@ -309,19 +309,19 @@ function App() {
 										onClick={handleShowProjectSelector}
 										type="button"
 									>
-										<div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200 transition-colors duration-200 hover:bg-gray-200 hover:border-gray-300">
-											<span className="text-sm font-medium text-gray-600">
+										<div className="flex justify-between items-center p-3 bg-neutral-900 rounded-lg border border-white/10 transition-colors duration-200 hover:bg-neutral-800 hover:border-white/20">
+											<span className="text-sm font-medium text-neutral-400">
 												Save to project:
 											</span>
 											<div className="flex items-center gap-2">
-												<span className="text-sm font-medium text-black overflow-hidden text-ellipsis whitespace-nowrap max-w-[120px]">
+												<span className="text-sm font-medium text-white overflow-hidden text-ellipsis whitespace-nowrap max-w-[120px]">
 													{defaultProject
 														? defaultProject.name
 														: "Default Project"}
 												</span>
 												<svg
 													aria-label="Select project"
-													className="text-gray-500 flex-shrink-0 transition-transform duration-200 hover:text-gray-700 hover:translate-x-0.5"
+													className="text-neutral-500 flex-shrink-0 transition-transform duration-200 hover:text-neutral-300 hover:translate-x-0.5"
 													fill="none"
 													height="16"
 													stroke="currentColor"
@@ -342,7 +342,7 @@ function App() {
 								{/* Save Button at Bottom */}
 								<div className="mt-auto pt-4">
 									<button
-										className="w-full py-3 px-6 bg-gray-700 text-white border-none rounded-3xl text-base font-medium cursor-pointer transition-colors duration-200 hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
+										className="w-full py-3 px-6 bg-white text-black border-none rounded-3xl text-base font-medium cursor-pointer transition-colors duration-200 hover:bg-neutral-200 disabled:bg-neutral-700 disabled:text-neutral-400 disabled:cursor-not-allowed"
 										disabled={saving}
 										onClick={handleSaveCurrentPage}
 										type="button"
@@ -357,7 +357,7 @@ function App() {
 								<div className="flex flex-col gap-4">
 									<div className="flex flex-col gap-2">
 										<button
-											className="w-full py-3 px-3 bg-white text-black border border-gray-200 rounded-md text-sm font-medium cursor-pointer flex items-center justify-start transition-colors duration-200 hover:bg-gray-50"
+											className="w-full py-3 px-3 bg-neutral-900 text-white border border-white/10 rounded-md text-sm font-medium cursor-pointer flex items-center justify-start transition-colors duration-200 hover:bg-neutral-800 hover:border-white/20"
 											onClick={() => {
 												chrome.tabs.create({
 													url: "https://chatgpt.com/#settings/Personalization",
@@ -378,7 +378,7 @@ function App() {
 											</svg>
 											<div className="text-left">
 												<p>Import ChatGPT Memories</p>
-												<p className="m-0 text-[10px] text-gray-500 leading-tight">
+												<p className="m-0 text-[10px] text-neutral-500 leading-tight">
 													open 'manage', save your memories to Kortix
 												</p>
 											</div>
@@ -387,7 +387,7 @@ function App() {
 
 									<div className="flex flex-col gap-2">
 										<button
-											className="w-full py-3 px-3 bg-white text-black border border-gray-200 rounded-md text-sm font-medium cursor-pointer flex items-center justify-center transition-colors duration-200 outline-none appearance-none hover:bg-gray-50 focus:outline-none"
+											className="w-full py-3 px-3 bg-neutral-900 text-white border border-white/10 rounded-md text-sm font-medium cursor-pointer flex items-center justify-center transition-colors duration-200 outline-none appearance-none hover:bg-neutral-800 hover:border-white/20 focus:outline-none"
 											onClick={async () => {
 												const [activeTab] = await chrome.tabs.query({
 													active: true,
@@ -418,7 +418,7 @@ function App() {
 											</svg>
 											<div className="text-left">
 												<p>Import X/Twitter Bookmarks</p>
-												<p className="m-0 text-[10px] text-gray-500 leading-tight">
+												<p className="m-0 text-[10px] text-neutral-500 leading-tight">
 													Click on Kortix on top right to import bookmarks
 												</p>
 											</div>
@@ -430,25 +430,25 @@ function App() {
 							<div className="flex flex-col gap-4 min-h-[200px]">
 								{/* Account Section */}
 								<div>
-									<h3 className="text-base font-semibold text-black mb-3">
+									<h3 className="text-base font-semibold text-white mb-3">
 										Account
 									</h3>
-									<div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+									<div className="p-3 bg-neutral-900 rounded-lg border border-white/10">
 										{loadingUserData ? (
-											<div className="text-sm text-gray-500">
+											<div className="text-sm text-neutral-500">
 												Loading account data...
 											</div>
 										) : userData?.email ? (
 											<div className="flex justify-between items-center">
-												<span className="text-xs font-medium text-black">
+												<span className="text-xs font-medium text-neutral-400">
 													Email
 												</span>
-												<span className="text-sm text-gray-600">
+												<span className="text-sm text-neutral-300">
 													{userData.email}
 												</span>
 											</div>
 										) : (
-											<div className="text-sm text-gray-500">
+											<div className="text-sm text-neutral-500">
 												No email found
 											</div>
 										)}
@@ -457,15 +457,15 @@ function App() {
 
 								{/* Chat Integration Section */}
 								<div className="mb-4">
-									<h3 className="text-base font-semibold text-black mb-3">
+									<h3 className="text-base font-semibold text-white mb-3">
 										Chat Integration
 									</h3>
-									<div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+									<div className="flex items-center justify-between p-3 bg-neutral-900 rounded-lg border border-white/10">
 										<div className="flex flex-col">
-											<span className="text-sm font-medium text-black">
+											<span className="text-sm font-medium text-white">
 												Auto Search Memories
 											</span>
-											<span className="text-xs text-gray-500">
+											<span className="text-xs text-neutral-500">
 												Automatically search your memories while typing in chat
 												apps
 											</span>
@@ -479,10 +479,10 @@ function App() {
 												}
 												type="checkbox"
 											/>
-											<div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-700" />
+											<div className="w-11 h-6 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-neutral-800 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-white peer-checked:after:bg-black" />
 										</label>
 									</div>
-									<p className="text-xs text-gray-500 mt-2">
+									<p className="text-xs text-neutral-500 mt-2">
 										When enabled, Kortix will search your memories as you type
 										in ChatGPT, Claude, and T3.chat
 									</p>
@@ -491,11 +491,11 @@ function App() {
 						)}
 
 						{showProjectSelector && (
-							<div className="absolute inset-0 bg-white rounded-lg z-[1000] shadow-xl flex flex-col">
-								<div className="flex justify-between items-center p-4 border-b border-gray-200 text-base font-semibold text-black flex-shrink-0">
+							<div className="absolute inset-0 bg-black rounded-lg z-[1000] shadow-xl flex flex-col">
+								<div className="flex justify-between items-center p-4 border-b border-white/10 text-base font-semibold text-white flex-shrink-0">
 									<span>Select the Project</span>
 									<button
-										className="bg-transparent border-none text-xl cursor-pointer text-gray-500 p-0 w-6 h-6 flex items-center justify-center hover:text-black"
+										className="bg-transparent border-none text-xl cursor-pointer text-neutral-500 p-0 w-6 h-6 flex items-center justify-center hover:text-white"
 										onClick={() => setShowProjectSelector(false)}
 										type="button"
 									>
@@ -503,30 +503,30 @@ function App() {
 									</button>
 								</div>
 								{loadingProjects ? (
-									<div className="py-8 px-4 text-center text-gray-500 text-sm">
+									<div className="py-8 px-4 text-center text-neutral-500 text-sm">
 										Loading projects...
 									</div>
 								) : (
 									<div className="flex-1 overflow-y-auto min-h-0">
 										{projects.map((project) => (
 											<button
-												className={`flex justify-between items-center py-3 px-4 cursor-pointer transition-colors duration-200 border-b border-gray-100 bg-transparent border-none w-full text-left last:border-b-0 hover:bg-gray-50 ${
-													defaultProject?.id === project.id ? "bg-blue-50" : ""
+												className={`flex justify-between items-center py-3 px-4 cursor-pointer transition-colors duration-200 border-b border-white/5 bg-transparent border-none w-full text-left last:border-b-0 hover:bg-white/5 ${
+													defaultProject?.id === project.id ? "bg-white/10" : ""
 												}`}
 												key={project.id}
 												onClick={() => handleProjectSelect(project)}
 												type="button"
 											>
 												<div className="flex flex-col flex-1 gap-0.5">
-													<span className="text-sm font-medium text-black break-words leading-tight">
+													<span className="text-sm font-medium text-white break-words leading-tight">
 														{project.name}
 													</span>
-													<span className="text-xs text-gray-500">
+													<span className="text-xs text-neutral-500">
 														{project.documentCount} docs
 													</span>
 												</div>
 												{defaultProject?.id === project.id && (
-													<span className="text-blue-600 font-bold text-base">
+													<span className="text-white font-bold text-base">
 														✓
 													</span>
 												)}
@@ -541,11 +541,11 @@ function App() {
 					<div className="text-center py-2">
 						{authInvalidated ? (
 							<div className="mb-8">
-								<div className="p-3 mb-4 bg-red-50 border border-red-200 rounded-lg">
-									<h2 className="m-0 mb-2 text-sm font-semibold text-red-800 leading-tight">
+								<div className="p-3 mb-4 bg-red-950 border border-red-800 rounded-lg">
+									<h2 className="m-0 mb-2 text-sm font-semibold text-red-400 leading-tight">
 										Session Expired
 									</h2>
-									<p className="m-0 text-xs text-red-600 leading-tight">
+									<p className="m-0 text-xs text-red-500 leading-tight">
 										Logged out since authentication was invalidated. Please
 										login again.
 									</p>
@@ -553,18 +553,18 @@ function App() {
 							</div>
 						) : (
 							<div className="mb-8">
-								<h2 className="m-0 mb-4 text-sm font-normal text-black leading-tight">
+								<h2 className="m-0 mb-4 text-sm font-normal text-white leading-tight">
 									Login to unlock all chrome extension features
 								</h2>
 
 								<ul className="list-none p-0 m-0 text-left">
-									<li className="py-1.5 text-sm text-black relative pl-5 before:content-['•'] before:absolute before:left-0 before:text-black before:font-bold">
+									<li className="py-1.5 text-sm text-neutral-300 relative pl-5 before:content-['•'] before:absolute before:left-0 before:text-neutral-500 before:font-bold">
 										Save any page to your Kortix
 									</li>
-									<li className="py-1.5 text-sm text-black relative pl-5 before:content-['•'] before:absolute before:left-0 before:text-black before:font-bold">
+									<li className="py-1.5 text-sm text-neutral-300 relative pl-5 before:content-['•'] before:absolute before:left-0 before:text-neutral-500 before:font-bold">
 										Import all your Twitter / X Bookmarks
 									</li>
-									<li className="py-1.5 text-sm text-black relative pl-5 before:content-['•'] before:absolute before:left-0 before:text-black before:font-bold">
+									<li className="py-1.5 text-sm text-neutral-300 relative pl-5 before:content-['•'] before:absolute before:left-0 before:text-neutral-500 before:font-bold">
 										Import your ChatGPT Memories
 									</li>
 								</ul>
@@ -572,10 +572,10 @@ function App() {
 						)}
 
 						<div className="mt-8">
-							<p className="m-0 mb-4 text-sm text-gray-500">
+							<p className="m-0 mb-4 text-sm text-neutral-500">
 								Having trouble logging in?{" "}
 								<button
-									className="bg-transparent border-none text-blue-500 cursor-pointer underline text-sm p-0 hover:text-blue-700"
+									className="bg-transparent border-none text-neutral-300 cursor-pointer underline text-sm p-0 hover:text-white"
 									onClick={() => {
 										window.open("mailto:support@kortix.ai", "_blank")
 									}}
@@ -586,7 +586,7 @@ function App() {
 							</p>
 
 							<button
-								className="w-full py-3 px-6 bg-gray-700 text-white border-none rounded-3xl text-base font-medium cursor-pointer transition-colors duration-200 hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
+								className="w-full py-3 px-6 bg-white text-black border-none rounded-3xl text-base font-medium cursor-pointer transition-colors duration-200 hover:bg-neutral-200 disabled:bg-neutral-700 disabled:text-neutral-400 disabled:cursor-not-allowed"
 								onClick={() => {
 									const baseUrl = API_ENDPOINTS.KORTIX_WEB
 									const loginUrl = new URL("/login", baseUrl)

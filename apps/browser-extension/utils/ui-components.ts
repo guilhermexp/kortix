@@ -20,7 +20,8 @@ export function createToast(state: ToastState): HTMLElement {
     top: 20px;
     right: 20px;
     z-index: 2147483647;
-    background: #ffffff;
+    background: #0a0a0a;
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 9999px;
     padding: 12px 16px;
     display: flex;
@@ -28,11 +29,11 @@ export function createToast(state: ToastState): HTMLElement {
     gap: 12px;
     font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
-    color: #374151;
+    color: #e5e5e5;
     min-width: 200px;
     max-width: 300px;
     animation: slideIn 0.3s ease-out;
-    box-shadow: 0 4px 24px 0 rgba(0,0,0,0.18), 0 1.5px 6px 0 rgba(0,0,0,0.12);
+    box-shadow: 0 4px 24px 0 rgba(0,0,0,0.5), 0 1.5px 6px 0 rgba(0,0,0,0.4);
   `
 
 	// Add keyframe animations and fonts if not already present
@@ -102,14 +103,14 @@ export function createToast(state: ToastState): HTMLElement {
 		case "loading":
 			icon.innerHTML = `
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 6V2" stroke="#6366f1" stroke-width="2" stroke-linecap="round"/>
-          <path d="M12 22V18" stroke="#6366f1" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
-          <path d="M20.49 8.51L18.36 6.38" stroke="#6366f1" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
-          <path d="M5.64 17.64L3.51 15.51" stroke="#6366f1" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
-          <path d="M22 12H18" stroke="#6366f1" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
-          <path d="M6 12H2" stroke="#6366f1" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
-          <path d="M20.49 15.49L18.36 17.62" stroke="#6366f1" stroke-width="2" stroke-linecap="round" opacity="0.9"/>
-          <path d="M5.64 6.36L3.51 8.49" stroke="#6366f1" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+          <path d="M12 6V2" stroke="#a3a3a3" stroke-width="2" stroke-linecap="round"/>
+          <path d="M12 22V18" stroke="#a3a3a3" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
+          <path d="M20.49 8.51L18.36 6.38" stroke="#a3a3a3" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+          <path d="M5.64 17.64L3.51 15.51" stroke="#a3a3a3" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+          <path d="M22 12H18" stroke="#a3a3a3" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+          <path d="M6 12H2" stroke="#a3a3a3" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+          <path d="M20.49 15.49L18.36 17.62" stroke="#a3a3a3" stroke-width="2" stroke-linecap="round" opacity="0.9"/>
+          <path d="M5.64 6.36L3.51 8.49" stroke="#a3a3a3" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
         </svg>
       `
 			icon.style.animation = "spin 1s linear infinite"
@@ -141,7 +142,7 @@ export function createToast(state: ToastState): HTMLElement {
 
 			const helperText = document.createElement("span")
 			helperText.style.cssText =
-				"font-size: 12px; color: #6b7280; font-weight: 400; line-height: 1.2;"
+				"font-size: 12px; color: #737373; font-weight: 400; line-height: 1.2;"
 			helperText.textContent = "Make sure you are logged in"
 
 			textContainer.appendChild(mainText)
@@ -171,9 +172,9 @@ export function createTwitterImportButton(onClick: () => void): HTMLElement {
     top: 10px;
     right: 10px;
     z-index: 2147483646;
-    background: #ffffff;
-    color: black;
-    border: none;
+    background: #0a0a0a;
+    color: #e5e5e5;
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 50px;
     padding: 10px 12px;
     cursor: pointer;
@@ -181,6 +182,7 @@ export function createTwitterImportButton(onClick: () => void): HTMLElement {
     align-items: center;
     gap: 8px;
     transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
   `
 
 	const iconUrl = browser.runtime.getURL("/icon-16.png")
@@ -191,12 +193,12 @@ export function createTwitterImportButton(onClick: () => void): HTMLElement {
 
 	button.addEventListener("mouseenter", () => {
 		button.style.opacity = "0.8"
-		button.style.boxShadow = "0 4px 12px rgba(29, 155, 240, 0.4)"
+		button.style.boxShadow = "0 4px 12px rgba(0,0,0,0.6)"
 	})
 
 	button.addEventListener("mouseleave", () => {
 		button.style.opacity = "1"
-		button.style.boxShadow = "0 2px 8px rgba(29, 155, 240, 0.3)"
+		button.style.boxShadow = "0 2px 8px rgba(0,0,0,0.4)"
 	})
 
 	button.addEventListener("click", onClick)
@@ -316,13 +318,13 @@ export function createClaudeInputBarElement(onClick: () => void): HTMLElement {
   `
 
 	iconButton.addEventListener("mouseenter", () => {
-		iconButton.style.backgroundColor = "rgba(0, 0, 0, 0.05)"
-		iconButton.style.borderColor = "rgba(0, 0, 0, 0.2)"
+		iconButton.style.backgroundColor = "rgba(255, 255, 255, 0.05)"
+		iconButton.style.borderColor = "rgba(255, 255, 255, 0.15)"
 	})
 
 	iconButton.addEventListener("mouseleave", () => {
 		iconButton.style.backgroundColor = "transparent"
-		iconButton.style.borderColor = "rgba(0, 0, 0, 0.1)"
+		iconButton.style.borderColor = "rgba(255, 255, 255, 0.1)"
 	})
 
 	iconButton.addEventListener("click", (event) => {
@@ -360,13 +362,13 @@ export function createT3InputBarElement(onClick: () => void): HTMLElement {
   `
 
 	iconButton.addEventListener("mouseenter", () => {
-		iconButton.style.backgroundColor = "rgba(0, 0, 0, 0.05)"
-		iconButton.style.borderColor = "rgba(0, 0, 0, 0.2)"
+		iconButton.style.backgroundColor = "rgba(255, 255, 255, 0.05)"
+		iconButton.style.borderColor = "rgba(255, 255, 255, 0.15)"
 	})
 
 	iconButton.addEventListener("mouseleave", () => {
 		iconButton.style.backgroundColor = "transparent"
-		iconButton.style.borderColor = "rgba(0, 0, 0, 0.1)"
+		iconButton.style.borderColor = "rgba(255, 255, 255, 0.1)"
 	})
 
 	iconButton.addEventListener("click", (event) => {
@@ -461,7 +463,7 @@ export const DOMUtils = {
 
 					const helperText = document.createElement("span")
 					helperText.style.cssText =
-						"font-size: 12px; color: #6b7280; font-weight: 400; line-height: 1.2;"
+						"font-size: 12px; color: #737373; font-weight: 400; line-height: 1.2;"
 					helperText.textContent = "Make sure you are logged in"
 
 					textContainer.appendChild(mainText)
