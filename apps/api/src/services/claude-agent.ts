@@ -1,7 +1,11 @@
 import { access } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import {
+  query,
+  type Options,
+  type McpServerConfig,
+} from "@anthropic-ai/claude-agent-sdk";
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -219,17 +223,21 @@ export async function executeClaudeAgent(
   // API server is launched from inside Claude Code (which sets CLAUDECODE).
   delete process.env.CLAUDECODE;
 
-  // Apply provider-specific configuration to environment
-  // Note: This modifies global state. In production, consider using a per-request
-  // Anthropic client instance instead of environment variables.
-  process.env.ANTHROPIC_API_KEY = providerConfig.apiKey;
-  process.env.ANTHROPIC_AUTH_TOKEN = providerConfig.apiKey;
-  process.env.ANTHROPIC_BASE_URL = providerConfig.baseURL;
-  process.env.ANTHROPIC_MODEL = resolvedModel;
-  process.env.ANTHROPIC_SMALL_FAST_MODEL = providerConfig.models.fast;
-  process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = providerConfig.models.balanced;
-  process.env.ANTHROPIC_DEFAULT_OPUS_MODEL = providerConfig.models.advanced;
-  process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL = providerConfig.models.fast;
+  // Build per-request env to pass to the SDK subprocess (concurrency-safe).
+  // This avoids mutating global process.env which causes race conditions
+  // when handling simultaneous requests with different providers.
+  const sdkEnv: Record<string, string | undefined> = {
+    ...process.env,
+    CLAUDECODE: undefined, // Ensure nested session detection is disabled
+    ANTHROPIC_API_KEY: providerConfig.apiKey,
+    ANTHROPIC_AUTH_TOKEN: providerConfig.apiKey,
+    ANTHROPIC_BASE_URL: providerConfig.baseURL,
+    ANTHROPIC_MODEL: resolvedModel,
+    ANTHROPIC_SMALL_FAST_MODEL: providerConfig.models.fast,
+    ANTHROPIC_DEFAULT_SONNET_MODEL: providerConfig.models.balanced,
+    ANTHROPIC_DEFAULT_OPUS_MODEL: providerConfig.models.advanced,
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: providerConfig.models.fast,
+  };
 
   console.log("[executeClaudeAgent] Using base URL:", providerConfig.baseURL);
   console.log("[executeClaudeAgent] Using model:", resolvedModel);
@@ -271,7 +279,7 @@ export async function executeClaudeAgent(
     // Note: Sequential thinking server is now DISABLED by default as it requires
     // an external binary that may not be installed, causing "Stream closed" errors.
     // To enable: set SEQ_MCP_ENABLED=true and SEQ_MCP_COMMAND to the binary path
-    const mcpServers: Record<string, unknown> = {
+    const mcpServers: Record<string, McpServerConfig> = {
       "kortix-tools": toolsServer,
     };
 
@@ -312,26 +320,22 @@ export async function executeClaudeAgent(
       Object.keys(mcpServers).join(", "),
     );
 
-    const queryOptions: Record<string, unknown> = {
+    const queryOptions: Options = {
       model: resolvedModel,
       thinking: { type: "adaptive" },
       mcpServers,
+      env: sdkEnv,
       disallowedTools: [
         "Bash",
-        "bash",
         "Grep",
-        "grep",
-        "KillShell",
-        "killshell",
         "BashOutput",
-        "bashoutput",
         "ExitPlanMode",
-        "exitplanmode",
       ],
       permissionMode: "bypassPermissions",
       includePartialMessages: Boolean(callbacks.onEvent),
       allowDangerouslySkipPermissions: true,
       pathToClaudeCodeExecutable,
+      persistSession: false, // Server use — avoid accumulating session files on disk
 
       // Enable loading CLAUDE.md from .claude/ directory
       settingSources: ["project"],
@@ -352,8 +356,9 @@ export async function executeClaudeAgent(
     // Otherwise, let SDK load from .claude/CLAUDE.md on new sessions
     if (systemPrompt) {
       queryOptions.systemPrompt = systemPrompt;
-      // Don't use settingSources when we have a custom prompt
-      delete queryOptions.settingSources;
+      // Don't use settingSources when we have a custom prompt —
+      // this means no project-level settings (CLAUDE.md, settings.json) will apply
+      queryOptions.settingSources = undefined;
       console.log(
         "[executeClaudeAgent] Using custom system prompt - length:",
         systemPrompt.length,
@@ -369,12 +374,6 @@ export async function executeClaudeAgent(
       );
     }
 
-    // Suppress verbose CLI output by not passing --verbose flag when in production
-    // This prevents the system prompt from being logged
-    if (process.env.NODE_ENV === "production") {
-      delete (queryOptions as any).verbose;
-    }
-
     // Session management: continue (most recent) vs resume (specific session)
     if (continueSession) {
       // Continue most recent session automatically (for sequential chat)
@@ -382,19 +381,13 @@ export async function executeClaudeAgent(
       console.log(
         "[executeClaudeAgent] Using continue mode (most recent session)",
       );
-    } else if (sdkSessionId && resume) {
-      // Resume old session with --resume flag (for returning to conversations after days)
-      queryOptions.resume = sdkSessionId;
-      console.log(
-        "[executeClaudeAgent] Resuming old session with --resume flag:",
-        sdkSessionId,
-      );
     } else if (sdkSessionId) {
-      // Resume specific session (backward compatibility - without explicit resume flag)
+      // Resume specific session (with or without explicit resume flag — both use SDK resume)
       queryOptions.resume = sdkSessionId;
       console.log(
-        "[executeClaudeAgent] Resuming specific session (legacy):",
+        "[executeClaudeAgent] Resuming session:",
         sdkSessionId,
+        resume ? "(explicit resume)" : "(legacy)",
       );
     }
     // else: new session (no continue, no resume)
@@ -424,7 +417,7 @@ export async function executeClaudeAgent(
       sessionMode: queryOptions.continue
         ? "continue (most recent)"
         : queryOptions.resume
-          ? `resume (${queryOptions.resume})`
+          ? `resume (${queryOptions.resume as string})`
           : "new session",
       maxTurns: queryOptions.maxTurns,
       hasTools: !!queryOptions.mcpServers,
