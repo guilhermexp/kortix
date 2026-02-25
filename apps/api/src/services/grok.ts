@@ -25,7 +25,7 @@ export async function grokChat(
 		return null
 	}
 
-	const model = options?.model || env.XAI_MODEL || "grok-4-latest"
+	const model = options?.model || env.XAI_MODEL || "grok-4-1-fast-non-reasoning"
 	const temperature = options?.temperature ?? 0.2
 	const maxTokens = options?.maxTokens ?? 1024
 	const timeoutMs = options?.timeoutMs ?? 12_000
