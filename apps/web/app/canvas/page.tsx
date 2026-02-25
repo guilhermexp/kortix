@@ -199,7 +199,7 @@ export default function CanvasListPage() {
 						</div>
 					</div>
 
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 						{filteredCanvases?.map((canvas, index) => (
 							<motion.div
 								key={canvas.id}
@@ -207,38 +207,38 @@ export default function CanvasListPage() {
 								animate={{ opacity: 1, y: 0 }}
 								transition={{ delay: index * 0.05 }}
 							>
-								<Link
-									href={`/canvas/${canvas.id}`}
-									className="group block relative aspect-video bg-muted/30 rounded-lg border border-border hover:border-foreground/20 transition-all overflow-hidden"
-								>
-									<div className="absolute inset-0 flex items-center justify-center text-muted-foreground/20 group-hover:scale-105 transition-transform duration-500">
-										{canvas.preview ? (
-											<img
-												src={canvas.preview}
-												alt={canvas.name}
-												className="w-full h-full object-contain p-4"
-											/>
-										) : (
-											<div className="w-3/4 h-3/4 bg-background/50 rounded flex items-center justify-center">
-												<span className="text-4xl select-none">✏️</span>
-											</div>
-										)}
-									</div>
-									<div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-background/90 to-transparent">
-										<h3 className="font-medium text-foreground truncate">
-											{canvas.name}
-										</h3>
-										<p className="text-xs text-muted-foreground">
-											{new Date(canvas.updatedAt).toLocaleDateString()}
-										</p>
-									</div>
-									<button
-										onClick={(e) => handleDeleteCanvas(e, canvas.id)}
-										className="absolute top-2 right-2 p-2 rounded-md bg-background/80 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all hover:bg-background shadow-sm"
+									<Link
+										href={`/canvas/${canvas.id}`}
+										className="group block relative aspect-video rounded-xl border border-border/60 hover:border-foreground/20 transition-all overflow-hidden bg-[#08090c] hover:shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
 									>
-										<Trash2 className="w-4 h-4" />
-									</button>
-								</Link>
+										<div className="absolute inset-0 flex items-center justify-center">
+											{canvas.preview ? (
+												<img
+													src={canvas.preview}
+													alt={canvas.name}
+													className="w-full h-full object-contain p-0"
+												/>
+											) : (
+												<div className="w-full h-full bg-background/30 flex items-center justify-center">
+													<span className="text-4xl select-none">✏️</span>
+												</div>
+											)}
+										</div>
+										<div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/95 via-black/60 to-transparent">
+											<h3 className="font-medium text-foreground truncate">
+												{canvas.name}
+											</h3>
+											<p className="text-xs text-zinc-400">
+												{new Date(canvas.updatedAt).toLocaleDateString()}
+											</p>
+										</div>
+										<button
+											onClick={(e) => handleDeleteCanvas(e, canvas.id)}
+											className="absolute top-2 right-2 p-2 rounded-md bg-black/55 backdrop-blur-sm text-zinc-300 opacity-0 group-hover:opacity-100 hover:text-destructive transition-all hover:bg-black/75"
+										>
+											<Trash2 className="w-4 h-4" />
+										</button>
+									</Link>
 							</motion.div>
 						))}
 
