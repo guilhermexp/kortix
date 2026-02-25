@@ -505,12 +505,12 @@ export function MemoryEditClient({
 						</div>
 					) : (
 						<>
-							<img
-								alt={documentTitle}
-								className="w-full object-cover max-h-[38vh] transition-transform duration-500 group-hover:scale-[1.02]"
-								referrerPolicy="no-referrer"
-								src={proxyImageUrl(mainImage) || mainImage}
-								onError={(e) => {
+								<img
+									alt={documentTitle}
+									className="w-full h-[38vh] object-contain transition-transform duration-500"
+									referrerPolicy="no-referrer"
+									src={proxyImageUrl(mainImage) || mainImage}
+									onError={(e) => {
 									const target = e.currentTarget
 									const originalUrl = mainImage
 									if (target.src !== originalUrl) {

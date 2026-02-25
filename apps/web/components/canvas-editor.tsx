@@ -246,16 +246,24 @@ export function CanvasEditor({
 		previewTimeoutRef.current = setTimeout(async () => {
 			if (!excalidrawAPI) return
 
-			const elements = excalidrawAPI.getSceneElements()
-			const appState = excalidrawAPI.getAppState()
-			const files = excalidrawAPI.getFiles()
+			try {
+				const elements = excalidrawAPI.getSceneElements()
+				const appState = excalidrawAPI.getAppState()
+				const files = excalidrawAPI.getFiles()
 
-			const preview = await generateCanvasPreview(elements, appState, files)
-			if (preview) {
-				await $fetch("@patch/canvas/:id", {
+				const preview = await generateCanvasPreview(elements, appState, files)
+				if (!preview) return
+
+				const response = await $fetch("@patch/canvas/:id", {
 					params: { id: canvasId },
 					body: { preview },
 				})
+
+				if (response.error) {
+					console.warn("Failed to save canvas preview", response.error)
+				}
+			} catch (error) {
+				console.warn("Canvas preview autosave failed", error)
 			}
 		}, 10000) // Generate preview after 10 seconds of inactivity
 

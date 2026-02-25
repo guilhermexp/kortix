@@ -5,7 +5,6 @@ import { Button } from "@ui/components/button"
 // Select components removed - no longer needed with Claude Agent SDK
 import {
 	ArrowUp,
-	Circle,
 	Check,
 	ChevronLeft,
 	ChevronDown,
@@ -3760,16 +3759,9 @@ export function ChatMessages({
 								<ChevronDown className="size-3.5" />
 							</button>
 						</div>
-						<div className="flex items-center gap-1">
-							<button
-								className="h-8 w-8 p-0 bg-[#0e0f10] border border-white/10 text-zinc-600 hover:text-zinc-300 hover:bg-[#0a0a0a] rounded-lg transition-colors inline-flex items-center justify-center"
-								disabled={status === "submitted"}
-								type="button"
-							>
-								<Circle className="size-3.5" />
-							</button>
-							<button
-								className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-200 hover:bg-white/5 rounded-lg transition-colors inline-flex items-center justify-center"
+							<div className="flex items-center gap-1">
+								<button
+									className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-200 hover:bg-white/5 rounded-lg transition-colors inline-flex items-center justify-center"
 								disabled={status === "submitted"}
 								type="button"
 							>

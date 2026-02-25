@@ -49,6 +49,15 @@ function toBase64(str: string): string {
 	return btoa(binary)
 }
 
+const MAX_CANVAS_PREVIEW_CHARS = 480_000
+
+function minifySvg(svgString: string): string {
+	return svgString
+		.replace(/>\s+</g, "><")
+		.replace(/\s{2,}/g, " ")
+		.trim()
+}
+
 export async function generateCanvasPreview(
 	elements: readonly any[],
 	appState: any,
@@ -66,10 +75,23 @@ export async function generateCanvasPreview(
 			files,
 		})
 
-		// Convert SVG to base64 data URL for storage
-		const svgString = new XMLSerializer().serializeToString(svg)
-		const sanitized = sanitizeSvg(svgString)
-		return `data:image/svg+xml;base64,${toBase64(sanitized)}`
+			// Convert SVG to base64 data URL for storage
+			const svgString = new XMLSerializer().serializeToString(svg)
+			const sanitized = sanitizeSvg(svgString)
+			const compact = minifySvg(sanitized)
+			const dataUrl = `data:image/svg+xml;base64,${toBase64(compact)}`
+
+			// Keep below API validation limit (`preview <= 500_000` chars).
+			// Some canvases with embedded assets can produce very large SVG previews.
+			if (dataUrl.length > MAX_CANVAS_PREVIEW_CHARS) {
+				console.warn(
+					"[canvas-preview] Skipping oversized preview",
+					dataUrl.length,
+				)
+				return null
+			}
+
+			return dataUrl
 	} catch (error) {
 		console.error("Failed to generate preview", error)
 		return null

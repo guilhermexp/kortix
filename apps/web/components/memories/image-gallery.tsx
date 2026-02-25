@@ -35,23 +35,47 @@ const pickFirstUrl = (
 	return undefined
 }
 
-/** Returns true if the URL looks like a favicon or small icon */
+/** Returns true if the URL looks like a favicon/icon/logo asset (not content imagery) */
 const isIconUrl = (url: string): boolean => {
 	try {
-		const { pathname } = new URL(url)
+		const { pathname, search } = new URL(url)
 		const lower = pathname.toLowerCase()
+		const full = `${lower}${search.toLowerCase()}`
+		const fileName = lower.split("/").pop() ?? ""
+
 		// Common favicon / icon patterns
-		if (lower.includes("favicon")) return true
-		if (lower.includes("apple-touch-icon")) return true
+		if (full.includes("favicon")) return true
+		if (full.includes("apple-touch-icon")) return true
+		if (full.includes("android-chrome-")) return true
+		if (full.includes("mstile-")) return true
+		if (full.includes("mask-icon")) return true
+		if (full.includes("site-icon")) return true
+		if (full.includes("pinned-tab")) return true
 		if (lower.endsWith(".ico")) return true
 		// Paths like /icon-192x192.png or /icons/...
 		if (/\/(icons?)[/.-]/i.test(lower)) return true
-		// Small dimension markers like 16x16, 32x32, 48x48, 64x64, 96x96, 128x128, 192x192
-		if (/\d{2,3}x\d{2,3}/.test(lower)) {
-			const match = lower.match(/(\d{2,3})x(\d{2,3})/)
+		if (/(^|[._/-])icon([._/-]|$)/i.test(fileName)) return true
+		// Logos/brand assets frequently pollute Firecrawl image arrays
+		if (/(^|[._/-])(logo|brandmark|wordmark)([._/-]|$)/i.test(fileName)) {
+			return true
+		}
+		// Dimension markers typically used by favicons/manifest icons
+		if (/\d{2,4}x\d{2,4}/.test(full)) {
+			const match = full.match(/(\d{2,4})x(\d{2,4})/)
 			if (match) {
 				const dim = Math.max(Number(match[1]), Number(match[2]))
+				// If the file is clearly icon-ish, allow larger manifest sizes (e.g. 512x512)
 				if (dim <= 192) return true
+				if (
+					dim <= 512 &&
+					(full.includes("icon") ||
+						full.includes("logo") ||
+						full.includes("android-chrome") ||
+						full.includes("mstile") ||
+						full.includes("apple-touch"))
+				) {
+					return true
+				}
 			}
 		}
 		return false
@@ -107,7 +131,10 @@ const extractImagesFromDocument = (
 		safeHttpUrl(rawFirecrawlMetadata?.ogImage) ??
 		safeHttpUrl(rawFirecrawl?.ogImage)
 
-	const mainImage = rawImage ?? metadataImage ?? firecrawlOgImage
+	const mainImageCandidates = [rawImage, metadataImage, firecrawlOgImage].filter(
+		(img): img is string => !!img,
+	)
+	const mainImage = mainImageCandidates.find((img) => !isIconUrl(img))
 
 	if (mainImage) {
 		images.push({

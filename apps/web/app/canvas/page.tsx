@@ -142,7 +142,7 @@ export default function CanvasListPage() {
 
 	return (
 		<div className="dark flex h-screen bg-background overflow-hidden">
-			<Menu hoverReveal />
+			<Menu />
 
 			<main className="flex-1 overflow-auto p-6 md:p-12 relative">
 				<div className="max-w-5xl mx-auto space-y-8">
