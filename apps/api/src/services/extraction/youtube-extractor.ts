@@ -83,6 +83,10 @@ export class YouTubeExtractor implements IYouTubeExtractor {
 			throw new Error("URL is required for YouTube extraction")
 		}
 
+		if (this.isInstagramReelUrl(input.url)) {
+			return await this.extractInstagramReel(input.url)
+		}
+
 		const videoId = this.parseVideoId(input.url)
 		if (!videoId) {
 			throw new Error("Invalid YouTube URL")
@@ -93,7 +97,7 @@ export class YouTubeExtractor implements IYouTubeExtractor {
 
 	canHandle(input: ExtractionInput): boolean {
 		if (!input.url) return false
-		return this.isYouTubeUrl(input.url)
+		return this.isYouTubeUrl(input.url) || this.isInstagramReelUrl(input.url)
 	}
 
 	getPriority(): number {
@@ -104,8 +108,8 @@ export class YouTubeExtractor implements IYouTubeExtractor {
 		if (!input.url) {
 			throw new Error("URL is required")
 		}
-		if (!this.isYouTubeUrl(input.url)) {
-			throw new Error("Not a valid YouTube URL")
+		if (!this.isYouTubeUrl(input.url) && !this.isInstagramReelUrl(input.url)) {
+			throw new Error("Not a valid YouTube URL or Instagram Reel URL")
 		}
 	}
 
@@ -201,6 +205,24 @@ export class YouTubeExtractor implements IYouTubeExtractor {
 		)
 	}
 
+	private isInstagramReelUrl(url: string): boolean {
+		try {
+			const parsed = new URL(url)
+			const hostname = parsed.hostname.toLowerCase()
+			const isInstagramHost =
+				hostname === "instagram.com" ||
+				hostname === "www.instagram.com" ||
+				hostname === "instagr.am" ||
+				hostname === "www.instagr.am"
+
+			if (!isInstagramHost) return false
+
+			return /^\/reel\/[^/]+\/?$/i.test(parsed.pathname)
+		} catch {
+			return false
+		}
+	}
+
 	// ========================================================================
 	// Private Methods
 	// ========================================================================
@@ -210,6 +232,7 @@ export class YouTubeExtractor implements IYouTubeExtractor {
 	 */
 	private async scrapeWithFirecrawl(
 		url: string,
+		options?: { includeVideo?: boolean },
 	): Promise<{ markdown: string; metadata?: Record<string, unknown> } | null> {
 		if (!FIRECRAWL_API_URL || !FIRECRAWL_API_KEY) {
 			console.warn("[YouTubeExtractor] Firecrawl not configured")
@@ -217,13 +240,17 @@ export class YouTubeExtractor implements IYouTubeExtractor {
 		}
 
 		try {
+			const requestBody = options?.includeVideo
+				? { url, include_video: true }
+				: { url, formats: ["markdown"] }
+
 			const response = await fetch(`${FIRECRAWL_API_URL}/v1/scrape`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
 					Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
 				},
-				body: JSON.stringify({ url, formats: ["markdown"] }),
+				body: JSON.stringify(requestBody),
 				signal: AbortSignal.timeout(FIRECRAWL_TIMEOUT_MS),
 			})
 
@@ -267,6 +294,52 @@ export class YouTubeExtractor implements IYouTubeExtractor {
 				err instanceof Error ? err.message : String(err),
 			)
 			return null
+		}
+	}
+
+	private async extractInstagramReel(url: string): Promise<ExtractionResult> {
+		console.info("[YouTubeExtractor] Extracting Instagram Reel via Firecrawl", url)
+
+		const firecrawlResult = await this.scrapeWithFirecrawl(url, {
+			includeVideo: true,
+		})
+
+		if (!firecrawlResult) {
+			throw new Error(`Firecrawl failed to extract Instagram Reel for ${url}`)
+		}
+
+		const metadata = { ...(firecrawlResult.metadata ?? {}) }
+		const videoBase64 =
+			typeof metadata.video === "string" ? metadata.video : undefined
+		if ("video" in metadata) {
+			delete metadata.video
+		}
+
+		const title =
+			(typeof metadata.title === "string" && metadata.title.trim()) ||
+			"Instagram Reel"
+
+		const cleanedContent = this.cleanContent(firecrawlResult.markdown)
+
+		return {
+			text: cleanedContent,
+			title,
+			source: "instagram",
+			url,
+			contentType: "video/instagram-reel",
+			raw: {
+				metadata,
+				transcriptSource: "firecrawl",
+				videoBase64Omitted: !!videoBase64,
+			},
+			wordCount: this.countWords(cleanedContent),
+			extractorUsed: "YouTubeExtractor (Firecrawl Instagram Reel)",
+			extractionMetadata: {
+				platform: "instagram",
+				reelUrl: url,
+				videoAvailable: !!videoBase64,
+				...(videoBase64 ? { videoBase64Length: videoBase64.length } : {}),
+			},
 		}
 	}
 

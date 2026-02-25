@@ -1704,14 +1704,15 @@ export const MemoryListView = ({
 					ref={scrollRef}
 				>
 					{/* Masonry layout without row gaps */}
-						<div
-							className={cn(
-								// Padding: left for floating menu, right normal
-								"pl-4 pr-4 md:pl-20 md:pr-6 lg:pl-20 lg:pr-8",
-								"columns-1 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5",
-								"gap-4 [column-gap:1rem] [column-fill:auto]",
-							)}
-						>
+							<div
+								className={cn(
+									// Padding: left for floating menu, right normal
+									"pl-4 pr-4 md:pl-20 md:pr-6 lg:pl-20 lg:pr-8",
+									"w-full max-w-none",
+									"columns-1 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5",
+									"gap-4 [column-gap:1rem] [column-fill:balance]",
+								)}
+							>
 						{filteredDocuments.map((document) => (
 							<MasonryCard
 								document={document}

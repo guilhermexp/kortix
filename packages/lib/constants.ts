@@ -7,6 +7,7 @@ const ADD_MEMORY_SHORTCUT_URL =
 
 const FIXED_PROJECTS = {
 	YOUTUBE: "sm_project_youtube",
+	INSTAGRAM_REELS: "sm_project_instagram_reels",
 	BOOKMARKS_X: "sm_project_twitter_bookmarks",
 	SKILLS: "sm_project_skills",
 	RICH_MARKDOWN: "sm_project_rich_markdown",

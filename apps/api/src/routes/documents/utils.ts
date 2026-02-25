@@ -117,6 +117,12 @@ export function resolveDefaultProject(params: {
   )
     return FIXED_PROJECTS.YOUTUBE;
 
+  // Instagram Reels
+  if (
+    /(?:^|\/\/)(?:www\.)?(?:instagram\.com|instagr\.am)\/reel\//.test(lowerUrl)
+  )
+    return FIXED_PROJECTS.INSTAGRAM_REELS;
+
   // Bookmarks/X
   if (
     type === "tweet" ||
