@@ -214,6 +214,42 @@ const pickFirstImageUrl = (
 	return undefined
 }
 
+const extractFirstImageFromText = (
+	value: unknown,
+	baseUrl?: string,
+): string | undefined => {
+	if (typeof value !== "string" || !value.trim()) return undefined
+
+	const markdownImagePattern = /!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g
+	let markdownMatch: RegExpExecArray | null
+	while ((markdownMatch = markdownImagePattern.exec(value)) !== null) {
+		const resolved = safeHttpUrl(markdownMatch[1], baseUrl)
+		if (isValidPreviewUrl(resolved)) return resolved
+	}
+
+	const htmlImagePattern = /<img[^>]*\bsrc=["']([^"']+)["']/gi
+	let htmlMatch: RegExpExecArray | null
+	while ((htmlMatch = htmlImagePattern.exec(value)) !== null) {
+		const resolved = safeHttpUrl(htmlMatch[1], baseUrl)
+		if (isValidPreviewUrl(resolved)) return resolved
+	}
+
+	return undefined
+}
+
+const isLikelyIconAsset = (value?: string | null): boolean => {
+	if (!value) return false
+	const url = value.toLowerCase()
+	return (
+		url.endsWith(".ico") ||
+		url.includes("favicon") ||
+		url.includes("apple-touch-icon") ||
+		url.includes("mask-icon") ||
+		url.includes("icon-") ||
+		url.includes("/icon/")
+	)
+}
+
 export const getDocumentPreview = (
 	document: DocumentWithMemories,
 ): PreviewData | null => {
@@ -303,15 +339,44 @@ export const getDocumentPreview = (
 	const firstMetadataImage = firstFromArray((metadata as any)?.images)
 	const extractionMetaImages = firstFromArray(asRecord((rawExtraction as any)?.metadata)?.images)
 
-	// 6. First image from memoryEntries metadata
+	// 6. First image from memoryEntries metadata/content
 	const firstMemoryImage = (() => {
 		for (const entry of document.memoryEntries) {
 			const meta = asRecord(entry.metadata)
-			if (!meta) continue
-			const images = Array.isArray(meta.images) ? meta.images : []
-			for (const img of images) {
-				const resolved = safeHttpUrl(typeof img === "string" ? img : (asRecord(img)?.url as string), originalUrl)
-				if (isValidPreviewUrl(resolved)) return resolved
+			if (meta) {
+				const memoryMetaImage = pickFirstImageUrl(meta, originalUrl)
+				if (memoryMetaImage && !isLikelyIconAsset(memoryMetaImage)) {
+					return memoryMetaImage
+				}
+
+				const images = Array.isArray(meta.images) ? meta.images : []
+				for (const img of images) {
+					const resolved = safeHttpUrl(
+						typeof img === "string" ? img : (asRecord(img)?.url as string),
+						originalUrl,
+					)
+					if (isValidPreviewUrl(resolved) && !isLikelyIconAsset(resolved)) {
+						return resolved
+					}
+				}
+
+				const thumbs = Array.isArray((meta as any).thumbnails)
+					? ((meta as any).thumbnails as unknown[])
+					: []
+				for (const thumb of thumbs) {
+					const resolved = safeHttpUrl(thumb, originalUrl)
+					if (isValidPreviewUrl(resolved) && !isLikelyIconAsset(resolved)) {
+						return resolved
+					}
+				}
+			}
+
+			const imageFromMemoryText = extractFirstImageFromText(
+				(entry as any).memory,
+				originalUrl,
+			)
+			if (imageFromMemoryText && !isLikelyIconAsset(imageFromMemoryText)) {
+				return imageFromMemoryText
 			}
 		}
 		return undefined
@@ -319,6 +384,7 @@ export const getDocumentPreview = (
 
 	// Pick first valid URL from priority chain
 	const previewImage = [
+		firstMemoryImage,
 		documentPreviewImage,
 		ogImage,
 		twitterImage,
@@ -332,8 +398,24 @@ export const getDocumentPreview = (
 		firecrawlScreenshot,
 		firstMetadataImage,
 		extractionMetaImages,
-		firstMemoryImage,
-	].find(isValidPreviewUrl) ?? null
+	].find((url) => isValidPreviewUrl(url) && !isLikelyIconAsset(url)) ??
+		[
+			firstMemoryImage,
+			documentPreviewImage,
+			ogImage,
+			twitterImage,
+			metadataImage,
+			extractionImage,
+			firecrawlImage,
+			rawDirectImage,
+			firstExtractionImage,
+			firstFirecrawlImage,
+			firstRawImage,
+			firecrawlScreenshot,
+			firstMetadataImage,
+			extractionMetaImages,
+		].find(isValidPreviewUrl) ??
+		null
 
 	// --- Image-type documents ---
 	if (normalizedType === "image" || contentType?.startsWith("image/")) {
@@ -925,13 +1007,13 @@ const MasonryCard = memo(
 			return cleaned
 		})()
 
-		return (
-			<div
-				className="group relative cursor-pointer rounded-xl overflow-hidden bg-card border border-border/50 hover:border-border transition-all duration-300 hover:shadow-lg hover:shadow-black/10"
-				onClick={() => {
-					analytics.documentCardClicked()
-					onPreview(document)
-				}}
+			return (
+				<div
+					className="group relative inline-block w-full mb-4 break-inside-avoid cursor-pointer rounded-xl overflow-hidden bg-card border border-border/50 hover:border-border transition-all duration-300 hover:shadow-lg hover:shadow-black/10"
+					onClick={() => {
+						analytics.documentCardClicked()
+						onPreview(document)
+					}}
 				onFocus={handlePrefetchEdit}
 				onMouseEnter={handlePrefetchEdit}
 				onTouchStart={handlePrefetchEdit}
@@ -1621,16 +1703,15 @@ export const MemoryListView = ({
 					className="h-full overflow-auto pt-16 pb-20 custom-scrollbar"
 					ref={scrollRef}
 				>
-					{/* Grid layout - flows left-to-right to preserve chronological order */}
-					<div
-						className={cn(
-							// Padding: left for floating menu, right normal
-							"pl-4 pr-4 md:pl-20 md:pr-6 lg:pl-20 lg:pr-8",
-							// CSS Grid: items flow left-to-right, top-to-bottom (reading order)
-							"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5",
-							"gap-4 auto-rows-auto items-start",
-						)}
-					>
+					{/* Masonry layout without row gaps */}
+						<div
+							className={cn(
+								// Padding: left for floating menu, right normal
+								"pl-4 pr-4 md:pl-20 md:pr-6 lg:pl-20 lg:pr-8",
+								"columns-1 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5",
+								"gap-4 [column-gap:1rem] [column-fill:auto]",
+							)}
+						>
 						{filteredDocuments.map((document) => (
 							<MasonryCard
 								document={document}
