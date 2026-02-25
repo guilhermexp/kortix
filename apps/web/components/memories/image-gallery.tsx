@@ -4,14 +4,14 @@ import { ExternalLink, ImageIcon } from "lucide-react"
 import { memo, useCallback, useMemo, useState } from "react"
 
 // Helper functions from memory-list-view.tsx
-const safeHttpUrl = (url: unknown): string | undefined => {
+const safeHttpUrl = (url: unknown, baseUrl?: string): string | undefined => {
 	if (typeof url !== "string") return undefined
 	try {
-		const parsed = new URL(url)
+		const parsed = baseUrl ? new URL(url, baseUrl) : new URL(url)
 		if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
 			return undefined
 		}
-		return url
+		return parsed.toString()
 	} catch {
 		return undefined
 	}
@@ -26,10 +26,11 @@ const asRecord = (obj: unknown): Record<string, unknown> | undefined => {
 const pickFirstUrl = (
 	obj: Record<string, unknown> | undefined,
 	keys: string[],
+	baseUrl?: string,
 ): string | undefined => {
 	if (!obj) return undefined
 	for (const key of keys) {
-		const url = safeHttpUrl(obj[key])
+		const url = safeHttpUrl(obj[key], baseUrl)
 		if (url) return url
 	}
 	return undefined
@@ -84,6 +85,30 @@ const isIconUrl = (url: string): boolean => {
 	}
 }
 
+const isBadgeLikeUrl = (url: string): boolean => {
+	try {
+		const parsed = new URL(url)
+		const full = `${parsed.hostname}${parsed.pathname}${parsed.search}`.toLowerCase()
+		const pathname = parsed.pathname.toLowerCase()
+		const fileName = pathname.split("/").pop() ?? ""
+
+		if (full.includes("shields.io")) return true
+		if (full.includes("badge")) return true
+		if (full.includes("/badges/")) return true
+		if (full.includes("for-the-badge")) return true
+		if (full.includes("camo.githubusercontent.com") && full.includes("img.shields.io")) {
+			return true
+		}
+
+		// Small UI badge/chip assets common in README hero sections
+		if (/(^|[._/-])(button|chip|pill)([._/-]|$)/i.test(fileName)) return true
+
+		return false
+	} catch {
+		return false
+	}
+}
+
 interface ImageData {
 	src: string
 	alt: string
@@ -105,6 +130,10 @@ const extractImagesFromDocument = (
 		asRecord(raw?.firecrawl) ?? asRecord(rawExtraction?.firecrawl)
 	const rawFirecrawlMetadata = asRecord(rawFirecrawl?.metadata) ?? rawFirecrawl
 	const rawGemini = asRecord(raw?.geminiFile)
+	const sourceUrl =
+		safeHttpUrl(document.url) ??
+		safeHttpUrl(metadata?.originalUrl) ??
+		safeHttpUrl((metadata as any)?.source_url)
 
 	const imageKeys = [
 		"previewImage",
@@ -122,19 +151,21 @@ const extractImagesFromDocument = (
 	// Get the main preview image
 	const metadataImage = pickFirstUrl(metadata, imageKeys)
 	const rawImage =
-		pickFirstUrl(rawExtraction, imageKeys) ??
-		pickFirstUrl(rawFirecrawl, imageKeys) ??
-		pickFirstUrl(rawFirecrawlMetadata, imageKeys) ??
-		pickFirstUrl(rawGemini, imageKeys)
+		pickFirstUrl(rawExtraction, imageKeys, sourceUrl) ??
+		pickFirstUrl(rawFirecrawl, imageKeys, sourceUrl) ??
+		pickFirstUrl(rawFirecrawlMetadata, imageKeys, sourceUrl) ??
+		pickFirstUrl(rawGemini, imageKeys, sourceUrl)
 
 	const firecrawlOgImage =
-		safeHttpUrl(rawFirecrawlMetadata?.ogImage) ??
-		safeHttpUrl(rawFirecrawl?.ogImage)
+		safeHttpUrl(rawFirecrawlMetadata?.ogImage, sourceUrl) ??
+		safeHttpUrl(rawFirecrawl?.ogImage, sourceUrl)
 
 	const mainImageCandidates = [rawImage, metadataImage, firecrawlOgImage].filter(
 		(img): img is string => !!img,
 	)
-	const mainImage = mainImageCandidates.find((img) => !isIconUrl(img))
+	const mainImage = mainImageCandidates.find(
+		(img) => !isIconUrl(img) && !isBadgeLikeUrl(img),
+	)
 
 	if (mainImage) {
 		images.push({
@@ -143,6 +174,31 @@ const extractImagesFromDocument = (
 			title: "Main Preview",
 			description: "Primary image from the webpage",
 		})
+	}
+
+	// Prefer images embedded in markdown content (README screenshots), then fill with extraction arrays.
+	const content = (document as any).content
+	if (typeof content === "string") {
+		const mdImageRegex = /!\[[^\]]*\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g
+		const htmlImgRegex = /<img[^>]+src=["']([^"']+)["']/gi
+		for (const regex of [mdImageRegex, htmlImgRegex]) {
+			let match: RegExpExecArray | null
+			while ((match = regex.exec(content)) !== null) {
+				const imgUrl = safeHttpUrl(match[1], sourceUrl)
+				if (
+					imgUrl &&
+					!isIconUrl(imgUrl) &&
+					!isBadgeLikeUrl(imgUrl) &&
+					!images.some((existing) => existing.src === imgUrl)
+				) {
+					images.push({
+						src: imgUrl,
+						alt: document.title || "Content image",
+						title: "Content Image",
+					})
+				}
+			}
+		}
 	}
 
 	// Try to get additional images from various sources
@@ -157,8 +213,13 @@ const extractImagesFromDocument = (
 		if (Array.isArray(source)) {
 			for (const img of source) {
 				if (typeof img === "string") {
-					const imgUrl = safeHttpUrl(img)
-					if (imgUrl && !isIconUrl(imgUrl) && !images.some((existing) => existing.src === imgUrl)) {
+					const imgUrl = safeHttpUrl(img, sourceUrl)
+					if (
+						imgUrl &&
+						!isIconUrl(imgUrl) &&
+						!isBadgeLikeUrl(imgUrl) &&
+						!images.some((existing) => existing.src === imgUrl)
+					) {
 						images.push({
 							src: imgUrl,
 							alt: document.title || "Additional image",
@@ -168,8 +229,13 @@ const extractImagesFromDocument = (
 				} else if (img && typeof img === "object") {
 					const imgRecord = asRecord(img)
 					if (imgRecord) {
-						const imgUrl = safeHttpUrl(imgRecord.url || imgRecord.src)
-						if (imgUrl && !isIconUrl(imgUrl) && !images.some((existing) => existing.src === imgUrl)) {
+						const imgUrl = safeHttpUrl(imgRecord.url || imgRecord.src, sourceUrl)
+						if (
+							imgUrl &&
+							!isIconUrl(imgUrl) &&
+							!isBadgeLikeUrl(imgUrl) &&
+							!images.some((existing) => existing.src === imgUrl)
+						) {
 							images.push({
 								src: imgUrl,
 								alt:
@@ -181,26 +247,6 @@ const extractImagesFromDocument = (
 							})
 						}
 					}
-				}
-			}
-		}
-	}
-
-	// Extract images from markdown content (![alt](url) and <img src="url">)
-	const content = (document as any).content
-	if (typeof content === "string") {
-		const mdImageRegex = /!\[[^\]]*\]\(([^)]+)\)/g
-		const htmlImgRegex = /<img[^>]+src=["']([^"']+)["']/gi
-		for (const regex of [mdImageRegex, htmlImgRegex]) {
-			let match: RegExpExecArray | null
-			while ((match = regex.exec(content)) !== null) {
-				const imgUrl = safeHttpUrl(match[1])
-				if (imgUrl && !isIconUrl(imgUrl) && !images.some((existing) => existing.src === imgUrl)) {
-					images.push({
-						src: imgUrl,
-						alt: document.title || "Content image",
-						title: "Content Image",
-					})
 				}
 			}
 		}
