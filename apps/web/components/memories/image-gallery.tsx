@@ -109,6 +109,62 @@ const isBadgeLikeUrl = (url: string): boolean => {
 	}
 }
 
+const isAvatarLikeUrl = (url: string): boolean => {
+	try {
+		const parsed = new URL(url)
+		const full = `${parsed.hostname}${parsed.pathname}${parsed.search}`.toLowerCase()
+		const pathname = parsed.pathname.toLowerCase()
+		const fileName = pathname.split("/").pop() ?? ""
+
+		if (full.includes("avatars.githubusercontent.com")) return true
+		if (full.includes("gravatar.com")) return true
+		if (full.includes("ui-avatars.com")) return true
+		if (full.includes("profile_images")) return true
+		if (full.includes("/avatar/") || full.includes("/avatars/")) return true
+		if (full.includes("/authors/") || full.includes("/team/")) return true
+		if (full.includes("headshot")) return true
+		if (full.includes("portrait")) return true
+		if (
+			/(^|[._/-])(avatar|profile|userpic|headshot|portrait|author)([._/-]|$)/i.test(
+				fileName,
+			)
+		) {
+			return true
+		}
+
+		return false
+	} catch {
+		return false
+	}
+}
+
+const isLogoLikeUrl = (url: string): boolean => {
+	try {
+		const parsed = new URL(url)
+		const full = `${parsed.hostname}${parsed.pathname}${parsed.search}`.toLowerCase()
+		const pathname = parsed.pathname.toLowerCase()
+		const fileName = pathname.split("/").pop() ?? ""
+
+		if (full.includes("/logos/") || full.includes("/logo/")) return true
+		if (full.includes("simple-icons")) return true
+		if (full.includes("devicon")) return true
+		if (full.includes("skill-icons")) return true
+		if (full.includes("vectorlogo")) return true
+		if (full.includes("cdn.simpleicons.org")) return true
+		if (/(^|[._/-])(logo|logos|brand|brands)([._/-]|$)/i.test(fileName)) {
+			return true
+		}
+		if (/(^|\/)(logos?|brands?)(\/|$)/i.test(pathname)) return true
+
+		return false
+	} catch {
+		return false
+	}
+}
+
+const isExcludedGalleryImageUrl = (url: string): boolean =>
+	isIconUrl(url) || isBadgeLikeUrl(url) || isAvatarLikeUrl(url) || isLogoLikeUrl(url)
+
 interface ImageData {
 	src: string
 	alt: string
@@ -164,7 +220,7 @@ const extractImagesFromDocument = (
 		(img): img is string => !!img,
 	)
 	const mainImage = mainImageCandidates.find(
-		(img) => !isIconUrl(img) && !isBadgeLikeUrl(img),
+		(img) => !isExcludedGalleryImageUrl(img),
 	)
 
 	if (mainImage) {
@@ -187,8 +243,7 @@ const extractImagesFromDocument = (
 				const imgUrl = safeHttpUrl(match[1], sourceUrl)
 				if (
 					imgUrl &&
-					!isIconUrl(imgUrl) &&
-					!isBadgeLikeUrl(imgUrl) &&
+					!isExcludedGalleryImageUrl(imgUrl) &&
 					!images.some((existing) => existing.src === imgUrl)
 				) {
 					images.push({
@@ -216,8 +271,7 @@ const extractImagesFromDocument = (
 					const imgUrl = safeHttpUrl(img, sourceUrl)
 					if (
 						imgUrl &&
-						!isIconUrl(imgUrl) &&
-						!isBadgeLikeUrl(imgUrl) &&
+						!isExcludedGalleryImageUrl(imgUrl) &&
 						!images.some((existing) => existing.src === imgUrl)
 					) {
 						images.push({
@@ -232,8 +286,7 @@ const extractImagesFromDocument = (
 						const imgUrl = safeHttpUrl(imgRecord.url || imgRecord.src, sourceUrl)
 						if (
 							imgUrl &&
-							!isIconUrl(imgUrl) &&
-							!isBadgeLikeUrl(imgUrl) &&
+							!isExcludedGalleryImageUrl(imgUrl) &&
 							!images.some((existing) => existing.src === imgUrl)
 						) {
 							images.push({
