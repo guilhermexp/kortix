@@ -1196,7 +1196,44 @@ function useClaudeChat({
 					signal: controller.signal,
 				})
 				if (!response.ok) {
-					throw new Error(`Request failed with status ${response.status}`)
+					let errorDetails = ""
+					try {
+						const raw = (await response.text()).trim()
+						if (raw) {
+							try {
+								const parsed = JSON.parse(raw) as Record<string, unknown>
+								if (
+									parsed &&
+									typeof parsed.error === "string" &&
+									parsed.error.length > 0
+								) {
+									errorDetails = parsed.error
+								} else if (
+									parsed &&
+									typeof parsed.error === "object" &&
+									parsed.error &&
+									"message" in parsed.error &&
+									typeof (parsed.error as { message?: unknown }).message ===
+										"string"
+								) {
+									errorDetails = String(
+										(parsed.error as { message: string }).message,
+									)
+								} else {
+									errorDetails = raw.slice(0, 300)
+								}
+							} catch {
+								errorDetails = raw.slice(0, 300)
+							}
+						}
+					} catch {
+						// ignore response body parsing errors
+					}
+					throw new Error(
+						errorDetails
+							? `Request failed with status ${response.status}: ${errorDetails}`
+							: `Request failed with status ${response.status}`,
+					)
 				}
 				setStatus("streaming")
 

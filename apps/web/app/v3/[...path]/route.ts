@@ -143,7 +143,7 @@ async function proxyRequest(request: NextRequest, pathSegments: string[]) {
 			headers: responseHeaders,
 		})
 	} catch (error) {
-		console.error(`Proxy error for /v3/${path}:`, error)
+		console.error(`Proxy error for /v3/${path} -> ${url}:`, error)
 		return new Response(
 			JSON.stringify({ error: { message: "Proxy request failed" } }),
 			{
