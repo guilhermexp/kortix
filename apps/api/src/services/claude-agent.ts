@@ -217,7 +217,7 @@ export async function executeClaudeAgent(
   }
 
   // Use provider's default model if no specific model provided
-  const resolvedModel = model || providerConfig.models.balanced;
+  const resolvedModel = model || providerConfig.models.default;
 
   // Prevent the claude-agent-sdk CLI from detecting a nested session when the
   // API server is launched from inside Claude Code (which sets CLAUDECODE).
@@ -236,7 +236,7 @@ export async function executeClaudeAgent(
     ANTHROPIC_SMALL_FAST_MODEL: providerConfig.models.fast,
     ANTHROPIC_DEFAULT_SONNET_MODEL: providerConfig.models.balanced,
     ANTHROPIC_DEFAULT_OPUS_MODEL: providerConfig.models.advanced,
-    ANTHROPIC_DEFAULT_HAIKU_MODEL: providerConfig.models.fast,
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: providerConfig.models.haiku,
   };
 
   console.log("[executeClaudeAgent] Using base URL:", providerConfig.baseURL);
@@ -322,7 +322,7 @@ export async function executeClaudeAgent(
 
     const queryOptions: Options = {
       model: resolvedModel,
-      thinking: { type: "adaptive" },
+      thinking: providerConfig.thinking ? { type: "adaptive" } : { type: "disabled" },
       mcpServers,
       env: sdkEnv,
       disallowedTools: [

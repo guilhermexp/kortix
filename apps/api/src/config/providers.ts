@@ -12,17 +12,25 @@ import { env } from "../env"
 export const PROVIDER_CONFIGS = {
 	kimi: {
 		id: "kimi" as const,
-		name: "Kimi (K2.5)",
+		name: "Kimi (K2.5 Thinking)",
 		displayName: "kimi-k2.5-coding",
 		apiKey: env.KIMI_API_KEY,
 		baseURL: "https://api.kimi.com/coding",
 		models: {
+			/** Modelo Principal */
+			default: "kimi-k2.5-coding",
+			/** Modelo Rápido */
 			fast: "kimi-k2.5-coding",
+			/** Modelo Sonnet */
 			balanced: "kimi-k2.5-coding",
+			/** Modelo Opus */
 			advanced: "kimi-k2.5-coding",
+			/** Modelo Haiku */
+			haiku: "kimi-k2.5-coding",
 		},
+		thinking: true,
 		settings: {
-			timeout: 3000000, // 50 minutes (matching profile)
+			timeout: 3000000, // 50 minutes
 		},
 	},
 } as const
