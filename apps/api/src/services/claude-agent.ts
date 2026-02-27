@@ -335,6 +335,7 @@ export async function executeClaudeAgent(
       includePartialMessages: Boolean(callbacks.onEvent),
       allowDangerouslySkipPermissions: true,
       pathToClaudeCodeExecutable,
+      executable: "node", // Force node runtime — bun fails to spawn the CLI subprocess correctly
       persistSession: false, // Server use — avoid accumulating session files on disk
 
       // Enable loading CLAUDE.md from .claude/ directory
