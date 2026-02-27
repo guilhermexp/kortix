@@ -112,15 +112,25 @@ export default defineBackground(() => {
 			} else if (data.isLink && data.url) {
 				content = data.url
 			} else {
-				content = [data.highlightedText, data.html, data.url]
+				content = [data.highlightedText, data.url]
 					.filter(Boolean)
 					.join("\n\n")
+			}
+
+			const metadata: MemoryPayload["metadata"] = {
+				sm_source: "consumer",
+			}
+			if (data.html) {
+				metadata.html = data.html
+			}
+			if (data.title) {
+				metadata.title = data.title
 			}
 
 			const payload: MemoryPayload = {
 				containerTags: [containerTag],
 				content,
-				metadata: { sm_source: "consumer" },
+				metadata,
 			}
 
 			const responseData = await saveMemory(payload)
