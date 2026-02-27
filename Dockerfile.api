@@ -27,10 +27,17 @@ COPY . .
 # Install MarkItDown Python dependencies
 RUN bash apps/api/install-markitdown.sh || true
 
+# Create non-root user (Claude Agent SDK refuses --dangerously-skip-permissions as root)
+RUN groupadd -r kortix && useradd -r -g kortix -d /app -s /bin/bash kortix \
+    && chown -R kortix:kortix /app
+
 # Set environment variables
 ENV NODE_ENV=production
 ENV MARKITDOWN_PYTHON_PATH=python3
 ENV PORT=4000
+
+# Switch to non-root user
+USER kortix
 
 # Expose port
 EXPOSE 4000
