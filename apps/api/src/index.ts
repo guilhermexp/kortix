@@ -339,6 +339,91 @@ app.get("/debug/agent", async (c) => {
 		checks.cliLoadTest = e instanceof Error ? e.message : String(e)
 	}
 
+	// Test actual SDK query if ?test=true
+	if (c.req.query("test") === "true") {
+		try {
+			const { query: sdkQuery } = await import("@anthropic-ai/claude-agent-sdk")
+			const { getDefaultProvider, getProviderConfig } = await import("./config/providers")
+
+			const providerId = getDefaultProvider()
+			const providerConfig = getProviderConfig(providerId)
+			const cliPath = (checks as any).cliPathResolved
+
+			const stderrOutput: string[] = []
+			const sdkEnv: Record<string, string | undefined> = {
+				...process.env,
+				CLAUDECODE: undefined,
+				ANTHROPIC_API_KEY: providerConfig.apiKey,
+				ANTHROPIC_AUTH_TOKEN: providerConfig.apiKey,
+				ANTHROPIC_BASE_URL: providerConfig.baseURL,
+				ANTHROPIC_MODEL: providerConfig.models.default,
+			}
+
+			const events: unknown[] = []
+			const iter = sdkQuery({
+				prompt: "Say exactly: OK",
+				options: {
+					model: providerConfig.models.default,
+					maxTurns: 1,
+					env: sdkEnv,
+					pathToClaudeCodeExecutable: cliPath,
+					executable: "node",
+					permissionMode: "bypassPermissions",
+					allowDangerouslySkipPermissions: true,
+					persistSession: false,
+					systemPrompt: "You are a test. Reply with exactly 'OK' and nothing else.",
+					cwd: process.cwd(),
+					stderr: (data: string) => {
+						stderrOutput.push(data.trim())
+					},
+				},
+			})
+
+			const timeout = new Promise((_, reject) =>
+				setTimeout(() => reject(new Error("SDK query timed out after 30s")), 30000)
+			)
+
+			try {
+				const iterPromise = (async () => {
+					for await (const event of iter) {
+						events.push(event)
+						if (events.length > 20) break
+					}
+				})()
+				await Promise.race([iterPromise, timeout])
+			} catch (e) {
+				checks.sdkQueryError = e instanceof Error ? e.message : String(e)
+			}
+
+			checks.sdkQueryEvents = events.length
+			checks.sdkQueryEventTypes = events
+				.filter((e): e is Record<string, unknown> => !!e && typeof e === "object" && "type" in e)
+				.map((e) => e.type)
+			checks.sdkStderr = stderrOutput.filter((s) => s.length > 0).slice(0, 10)
+
+			// Extract text from response
+			const textBlocks: string[] = []
+			for (const event of events) {
+				if (event && typeof event === "object" && "type" in event) {
+					const ev = event as Record<string, unknown>
+					if (ev.type === "assistant" && ev.message && typeof ev.message === "object") {
+						const msg = ev.message as Record<string, unknown>
+						if (Array.isArray(msg.content)) {
+							for (const block of msg.content) {
+								if (block && typeof block === "object" && (block as any).type === "text") {
+									textBlocks.push((block as any).text)
+								}
+							}
+						}
+					}
+				}
+			}
+			checks.sdkQueryText = textBlocks.join("") || null
+		} catch (e) {
+			checks.sdkTestError = e instanceof Error ? `${e.message}\n${e.stack}` : String(e)
+		}
+	}
+
 	return c.json(checks)
 })
 
