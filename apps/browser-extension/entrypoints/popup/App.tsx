@@ -88,7 +88,7 @@ function App() {
 
 				const autoSearchSetting =
 					result[STORAGE_KEYS.AUTO_SEARCH_ENABLED] ?? false
-				setAutoSearchEnabled(autoSearchSetting)
+				setAutoSearchEnabled(Boolean(autoSearchSetting))
 			} catch (error) {
 				console.error("Error checking auth status:", error)
 				setUserSignedIn(false)

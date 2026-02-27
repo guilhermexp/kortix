@@ -53,7 +53,7 @@ const mockStorage = {
 // Mock fetch API
 const mockFetch = mock(async (url: string, options?: RequestInit) => {
 	// Simulate authentication check
-	const authHeader = options?.headers?.Authorization as string
+	const authHeader = new Headers(options?.headers).get("Authorization")
 	if (!authHeader || !authHeader.includes("test-bearer-token-123")) {
 		return {
 			ok: false,
@@ -280,7 +280,7 @@ describe("Browser Extension API", () => {
 			const payload: MemoryPayload = {
 				content: "Test memory content",
 				containerTags: ["test-tag"],
-				metadata: { source: "test" },
+				metadata: { sm_source: "test", source: "test" },
 			}
 
 			const result = await saveMemory(payload)
@@ -296,6 +296,7 @@ describe("Browser Extension API", () => {
 			const payload: MemoryPayload = {
 				content: "Test",
 				containerTags: ["tag"],
+				metadata: { sm_source: "test" },
 			}
 
 			await saveMemory(payload)
@@ -309,6 +310,7 @@ describe("Browser Extension API", () => {
 			const payload: MemoryPayload = {
 				content: "Test",
 				containerTags: ["tag"],
+				metadata: { sm_source: "test" },
 			}
 
 			await saveMemory(payload)

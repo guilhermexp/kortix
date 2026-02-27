@@ -4,6 +4,7 @@
  */
 
 import { saveAllTweets } from "./api"
+import type { MemoryPayload } from "./types"
 import { createTwitterAPIHeaders, getTwitterTokens } from "./twitter-auth"
 import {
 	BOOKMARKS_URL,
@@ -147,25 +148,25 @@ export class TwitterImporter {
 				try {
 					const tweetUrl = `https://x.com/${tweet.user.screen_name}/status/${tweet.id_str}`
 					// Pick best preview image: photo > video thumbnail > profile pic
-					const previewImage =
-						tweet.photos?.[0]?.url ||
-						tweet.videos?.[0]?.thumbnail_url ||
-						tweet.user.profile_image_url_https ||
-						""
-					const metadata: Record<string, unknown> = {
-						sm_source: "consumer",
-						type: "tweet",
-						url: tweetUrl,
-						originalUrl: tweetUrl,
-						tweet_id: tweet.id_str,
-						author: tweet.user.screen_name,
-						created_at: tweet.created_at,
-						likes: tweet.favorite_count,
-						retweets: tweet.retweet_count || 0,
-						sm_internal_group_id: uniqueGroupId,
-						raw_tweet: JSON.stringify(tweet),
-						...(previewImage && { image: previewImage }),
-					}
+						const previewImage =
+							tweet.photos?.[0]?.url ||
+							tweet.videos?.[0]?.thumbnail_url ||
+							tweet.user.profile_image_url_https ||
+							""
+						const metadata: MemoryPayload["metadata"] = {
+							sm_source: "consumer",
+							type: "tweet",
+							url: tweetUrl,
+							originalUrl: tweetUrl,
+							tweet_id: tweet.id_str,
+							author: tweet.user.screen_name,
+							created_at: tweet.created_at,
+							likes: tweet.favorite_count,
+							retweets: tweet.retweet_count || 0,
+							sm_internal_group_id: uniqueGroupId,
+							raw_tweet: JSON.stringify(tweet),
+							...(previewImage && { image: previewImage }),
+						}
 					documents.push({
 						containerTags: ["sm_project_twitter_bookmarks"],
 						content: tweetToMarkdown(tweet),

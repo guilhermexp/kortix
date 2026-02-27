@@ -336,7 +336,7 @@ export async function executeClaudeAgent(
       allowDangerouslySkipPermissions: true,
       pathToClaudeCodeExecutable,
       executable: "node", // Force node runtime — bun fails to spawn the CLI subprocess correctly
-      persistSession: false, // Server use — avoid accumulating session files on disk
+      persistSession: true, // Required for session continuity (continue/resume)
 
       // Enable loading CLAUDE.md from .claude/ directory
       settingSources: ["project"],

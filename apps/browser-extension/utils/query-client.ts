@@ -15,7 +15,7 @@ export const queryClient = new QueryClient({
 				}
 				return failureCount < 3
 			},
-			refetchOnMount: "stale", // Only refetch on mount if data is stale (not every mount)
+			refetchOnMount: (query) => query.isStale(), // Only refetch on mount if stale
 			refetchOnWindowFocus: false,
 		},
 		mutations: {

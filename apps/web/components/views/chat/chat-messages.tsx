@@ -3531,7 +3531,7 @@ export function ChatMessages({
 						<div
 							className={cn(
 								"flex text-muted-foreground justify-start gap-1.5 items-center w-full max-w-3xl mx-auto",
-								compact ? "px-3 py-2" : "px-4 py-3",
+								compact ? "px-3 py-3" : "px-4 py-5",
 							)}
 						>
 							<Spinner className="size-3" />
@@ -3787,14 +3787,10 @@ export function ChatMessages({
 									}
 								}}
 							/>
-							<button
-								className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] hover:bg-white/5 transition-colors"
-								type="button"
-							>
+							<span className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] text-zinc-400">
 								<Sparkles className="size-3.5" />
 								<span>{provider === "kimi" ? "K2.5" : "Model"}</span>
-								<ChevronDown className="size-3.5" />
-							</button>
+							</span>
 						</div>
 							<div className="flex items-center gap-1">
 								<button

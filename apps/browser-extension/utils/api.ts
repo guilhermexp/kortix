@@ -15,7 +15,7 @@ import {
  */
 async function getBearerToken(): Promise<string> {
 	const result = await chrome.storage.local.get([STORAGE_KEYS.BEARER_TOKEN])
-	const token = result[STORAGE_KEYS.BEARER_TOKEN]
+	const token = result[STORAGE_KEYS.BEARER_TOKEN] as string | undefined
 
 	if (!token) {
 		throw new AuthenticationError("Bearer token not found")
@@ -131,7 +131,10 @@ export async function getDefaultProject(): Promise<Project | null> {
 		const result = await chrome.storage.local.get([
 			STORAGE_KEYS.DEFAULT_PROJECT,
 		])
-		return result[STORAGE_KEYS.DEFAULT_PROJECT] || null
+		const defaultProject = result[STORAGE_KEYS.DEFAULT_PROJECT] as
+			| Project
+			| undefined
+		return defaultProject ?? null
 	} catch (error) {
 		console.error("Failed to get default project:", error)
 		return null

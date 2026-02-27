@@ -64,19 +64,18 @@ export async function getTwitterTokens(): Promise<TwitterAuthTokens | null> {
 		STORAGE_KEYS.TWITTER_CSRF,
 		STORAGE_KEYS.TWITTER_AUTH_TOKEN,
 	])
+	const cookie = result[STORAGE_KEYS.TWITTER_COOKIE] as string | undefined
+	const csrf = result[STORAGE_KEYS.TWITTER_CSRF] as string | undefined
+	const auth = result[STORAGE_KEYS.TWITTER_AUTH_TOKEN] as string | undefined
 
-	if (
-		!result[STORAGE_KEYS.TWITTER_COOKIE] ||
-		!result[STORAGE_KEYS.TWITTER_CSRF] ||
-		!result[STORAGE_KEYS.TWITTER_AUTH_TOKEN]
-	) {
+	if (!cookie || !csrf || !auth) {
 		return null
 	}
 
 	return {
-		cookie: result[STORAGE_KEYS.TWITTER_COOKIE],
-		csrf: result[STORAGE_KEYS.TWITTER_CSRF],
-		auth: result[STORAGE_KEYS.TWITTER_AUTH_TOKEN],
+		cookie,
+		csrf,
+		auth,
 	}
 }
 
