@@ -6,7 +6,7 @@ const envSchema = z.object({
 	SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 	SUPABASE_ANON_KEY: z.string().min(1), // Required for RLS enforcement
 	GOOGLE_API_KEY: z.string().min(1).optional(),
-	ANTHROPIC_API_KEY: z.string().min(1),
+	ANTHROPIC_API_KEY: z.string().min(1).optional(),
 	ANTHROPIC_BASE_URL: z.string().url().optional(),
 	COHERE_API_KEY: z.string().min(1).optional(),
 	EXA_API_KEY: z.string().min(1).optional(),
