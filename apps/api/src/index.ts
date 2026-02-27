@@ -247,6 +247,101 @@ app.use("*", rateLimiter())
 
 app.get("/health", healthHandler)
 
+// Diagnostic endpoint to debug agent setup in production
+app.get("/debug/agent", async (c) => {
+	const { execSync } = await import("node:child_process")
+	const { access } = await import("node:fs/promises")
+	const { resolve: resolvePath } = await import("node:path")
+	const { fileURLToPath } = await import("node:url")
+
+	const checks: Record<string, unknown> = {}
+
+	// Check node availability
+	try {
+		const nodeVersion = execSync("node --version", { timeout: 5000 }).toString().trim()
+		checks.nodeAvailable = true
+		checks.nodeVersion = nodeVersion
+		checks.nodePath = execSync("which node", { timeout: 5000 }).toString().trim()
+	} catch (e) {
+		checks.nodeAvailable = false
+		checks.nodeError = e instanceof Error ? e.message : String(e)
+	}
+
+	// Check bun availability
+	try {
+		checks.bunVersion = execSync("bun --version", { timeout: 5000 }).toString().trim()
+	} catch {
+		checks.bunVersion = "not available"
+	}
+
+	// Check CLI path resolution
+	try {
+		const moduleDir = fileURLToPath(new URL(".", import.meta.url))
+		const candidateBases = [
+			process.cwd(),
+			resolvePath(process.cwd(), ".."),
+			moduleDir,
+			resolvePath(moduleDir, ".."),
+			resolvePath(moduleDir, "..", ".."),
+			resolvePath(moduleDir, "..", "..", ".."),
+			resolvePath(moduleDir, "..", "..", "..", ".."),
+		]
+		const candidatePaths = Array.from(
+			new Set(
+				candidateBases.map((base) =>
+					resolvePath(base, "node_modules/@anthropic-ai/claude-agent-sdk/cli.js"),
+				),
+			),
+		)
+
+		const results: { path: string; exists: boolean }[] = []
+		for (const candidate of candidatePaths) {
+			try {
+				await access(candidate)
+				results.push({ path: candidate, exists: true })
+			} catch {
+				results.push({ path: candidate, exists: false })
+			}
+		}
+		checks.cliPathCandidates = results
+		checks.cliPathResolved = results.find((r) => r.exists)?.path || null
+	} catch (e) {
+		checks.cliPathError = e instanceof Error ? e.message : String(e)
+	}
+
+	// Check environment
+	checks.cwd = process.cwd()
+	checks.nodeEnv = process.env.NODE_ENV
+	checks.hasKimiKey = !!process.env.KIMI_API_KEY
+	checks.hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY
+
+	// Check CLAUDE.md
+	try {
+		const claudeMdPath = resolvePath(process.cwd(), ".claude", "CLAUDE.md")
+		await access(claudeMdPath)
+		checks.claudeMdExists = true
+		checks.claudeMdPath = claudeMdPath
+	} catch {
+		checks.claudeMdExists = false
+	}
+
+	// Quick SDK test (spawn node with cli.js to check if it starts)
+	try {
+		const cliPath = (checks as any).cliPathResolved
+		if (cliPath) {
+			const result = execSync(`node -e "require('${cliPath}')" 2>&1 || true`, {
+				timeout: 5000,
+				env: { ...process.env, CLAUDECODE: undefined },
+			}).toString().trim()
+			checks.cliLoadTest = result || "loaded OK (no output)"
+		}
+	} catch (e) {
+		checks.cliLoadTest = e instanceof Error ? e.message : String(e)
+	}
+
+	return c.json(checks)
+})
+
 app.get("/", (c) =>
 	c.json({
 		message: "Kortix API",
