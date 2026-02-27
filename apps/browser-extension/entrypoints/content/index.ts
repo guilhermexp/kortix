@@ -17,12 +17,70 @@ import {
 export default defineContentScript({
 	matches: ["<all_urls>"],
 	main() {
+		const bridgeTwitterGridCommand = async (command: "toggle" | "state") => {
+			const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+			return await new Promise<{ active: boolean }>((resolve) => {
+				const responseEventName = "kortix-grid-response"
+				const requestEventName = "kortix-grid-request"
+
+				const handler = (event: Event) => {
+					const detail = (event as CustomEvent).detail
+					if (!detail || detail.requestId !== requestId) {
+						return
+					}
+
+					cleanup()
+					resolve({ active: Boolean(detail.active) })
+				}
+
+				const cleanup = () => {
+					document.removeEventListener(responseEventName, handler as EventListener)
+					window.clearTimeout(timeoutId)
+				}
+
+				const timeoutId = window.setTimeout(() => {
+					cleanup()
+					resolve({ active: "twcStarted" in document.body.dataset })
+				}, 1200)
+
+				document.addEventListener(responseEventName, handler as EventListener)
+				document.dispatchEvent(
+					new CustomEvent(requestEventName, {
+						detail: { requestId, command },
+					}),
+				)
+			})
+		}
+
 		// Setup global event listeners
-		browser.runtime.onMessage.addListener(async (message) => {
+		browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 			if (message.action === MESSAGE_TYPES.SHOW_TOAST) {
 				DOMUtils.showToast(message.state)
 			} else if (message.action === MESSAGE_TYPES.SAVE_MEMORY) {
-				await saveMemory()
+				saveMemory()
+					.then(() => sendResponse({ success: true }))
+					.catch(() => sendResponse({ success: false }))
+				return true
+			} else if (
+				message.action === MESSAGE_TYPES.TOGGLE_X_GRID ||
+				message.action === MESSAGE_TYPES.GET_X_GRID_STATE
+			) {
+				if (!DOMUtils.isOnDomain(DOMAINS.TWITTER)) {
+					sendResponse({ active: false })
+					return
+				}
+
+				const command =
+					message.action === MESSAGE_TYPES.TOGGLE_X_GRID ? "toggle" : "state"
+
+				bridgeTwitterGridCommand(command)
+					.then(sendResponse)
+					.catch((error) => {
+						console.error("Failed to bridge Twitter grid action:", error)
+						sendResponse({ active: false })
+					})
+				return true
 			} else if (message.type === MESSAGE_TYPES.IMPORT_UPDATE) {
 				updateTwitterImportUI(message)
 			} else if (message.type === MESSAGE_TYPES.IMPORT_DONE) {

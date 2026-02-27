@@ -1,13 +1,34 @@
 import { DOMAINS, MESSAGE_TYPES, STORAGE_KEYS } from "../../utils/constants"
 import { DOMUtils } from "../../utils/ui-components"
 
+const LINK_ONLY_DOMAINS = [
+	"youtube.com",
+	"www.youtube.com",
+	"youtu.be",
+	"m.youtube.com",
+	"music.youtube.com",
+]
+
+function isLinkOnlyDomain(url: string): boolean {
+	try {
+		const hostname = new URL(url).hostname
+		return LINK_ONLY_DOMAINS.some(
+			(d) => hostname === d || hostname.endsWith(`.${d}`),
+		)
+	} catch {
+		return false
+	}
+}
+
 export async function saveMemory() {
 	try {
 		DOMUtils.showToast("loading")
 
 		const highlightedText = window.getSelection()?.toString() || ""
 		const url = window.location.href
-		const html = document.documentElement.outerHTML
+		const title = document.title
+		const isLink = isLinkOnlyDomain(url)
+		const html = isLink ? "" : document.documentElement.outerHTML
 
 		const response = await browser.runtime.sendMessage({
 			action: MESSAGE_TYPES.SAVE_MEMORY,
@@ -15,6 +36,8 @@ export async function saveMemory() {
 				html,
 				highlightedText,
 				url,
+				title,
+				isLink,
 			},
 			actionSource: "context_menu",
 		})

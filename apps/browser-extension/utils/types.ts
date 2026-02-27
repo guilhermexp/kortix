@@ -28,6 +28,8 @@ export interface MemoryData {
 	content?: string
 	highlightedText?: string
 	url?: string
+	title?: string
+	isLink?: boolean
 }
 
 /**

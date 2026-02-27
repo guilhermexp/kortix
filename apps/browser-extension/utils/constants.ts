@@ -1,5 +1,5 @@
-const DEFAULT_API_URL = "http://localhost:4000"
-const DEFAULT_APP_URL = "http://localhost:3001"
+const DEFAULT_API_URL = "https://kortix-api.claudedokploy.com"
+const DEFAULT_APP_URL = "https://kortix.claudedokploy.com"
 
 const KORTIX_API =
 	(import.meta.env.VITE_KORTIX_API as string | undefined) ?? DEFAULT_API_URL
@@ -92,6 +92,8 @@ export const MESSAGE_TYPES = {
 	IMPORT_DONE: "sm-import-done",
 	GET_RELATED_MEMORIES: "sm-get-related-memories",
 	CAPTURE_PROMPT: "sm-capture-prompt",
+	TOGGLE_X_GRID: "sm-toggle-x-grid",
+	GET_X_GRID_STATE: "sm-get-x-grid-state",
 } as const
 
 export const CONTEXT_MENU_IDS = {

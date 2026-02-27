@@ -106,11 +106,20 @@ export default defineBackground(() => {
 				console.warn("Failed to get default project, using fallback:", error)
 			}
 
+			let content: string
+			if (data.content) {
+				content = data.content
+			} else if (data.isLink && data.url) {
+				content = data.url
+			} else {
+				content = [data.highlightedText, data.html, data.url]
+					.filter(Boolean)
+					.join("\n\n")
+			}
+
 			const payload: MemoryPayload = {
 				containerTags: [containerTag],
-				content:
-					data.content ||
-					`${data.highlightedText}\n\n${data.html}\n\n${data?.url}`,
+				content,
 				metadata: { sm_source: "consumer" },
 			}
 

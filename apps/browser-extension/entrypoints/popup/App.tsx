@@ -15,6 +15,20 @@ import {
 } from "../../utils/query-hooks"
 import type { Project } from "../../utils/types"
 
+function isTwitterPageUrl(url: string): boolean {
+	try {
+		const hostname = new URL(url).hostname
+		return (
+			hostname === "x.com" ||
+			hostname === "twitter.com" ||
+			hostname.endsWith(".x.com") ||
+			hostname.endsWith(".twitter.com")
+		)
+	} catch {
+		return false
+	}
+}
+
 function App() {
 	const [userSignedIn, setUserSignedIn] = useState<boolean>(false)
 	const [loading, setLoading] = useState<boolean>(true)
@@ -27,6 +41,8 @@ function App() {
 	)
 	const [autoSearchEnabled, setAutoSearchEnabled] = useState<boolean>(false)
 	const [authInvalidated, setAuthInvalidated] = useState<boolean>(false)
+	const [xGridActive, setXGridActive] = useState<boolean>(false)
+	const [xGridLoading, setXGridLoading] = useState<boolean>(false)
 
 	const queryClient = useQueryClient()
 	const { data: projects = [], isLoading: loadingProjects } = useProjects({
@@ -88,9 +104,22 @@ function App() {
 					active: true,
 					currentWindow: true,
 				})
-				if (tabs.length > 0 && tabs[0].url && tabs[0].title) {
+				if (tabs.length > 0 && tabs[0].url) {
 					setCurrentUrl(tabs[0].url)
-					setCurrentTitle(tabs[0].title)
+					setCurrentTitle(tabs[0].title ?? "")
+
+					if (tabs[0].id && isTwitterPageUrl(tabs[0].url)) {
+						try {
+							const response = await chrome.tabs.sendMessage(tabs[0].id, {
+								action: MESSAGE_TYPES.GET_X_GRID_STATE,
+							})
+							setXGridActive(Boolean(response?.active))
+						} catch {
+							setXGridActive(false)
+						}
+					} else {
+						setXGridActive(false)
+					}
 				}
 			} catch (error) {
 				console.error("Error getting current tab:", error)
@@ -338,6 +367,58 @@ function App() {
 										</div>
 									</button>
 								</div>
+
+									{/* X - GRID Button (only on Twitter/X) */}
+									{isTwitterPageUrl(currentUrl) && (
+										<div>
+											<button
+												className={`w-full flex items-center justify-center gap-2 py-3 px-3 border rounded-lg text-sm font-semibold cursor-pointer transition-colors duration-200 ${
+													xGridActive
+														? "bg-sky-950/40 text-sky-200 border-sky-500/40 hover:bg-sky-900/40"
+														: "bg-neutral-900 text-white border-white/10 hover:bg-neutral-800 hover:border-white/20"
+												}`}
+												disabled={xGridLoading}
+												onClick={async () => {
+													setXGridLoading(true)
+													try {
+														const tabs = await chrome.tabs.query({
+															active: true,
+															currentWindow: true,
+														})
+														if (tabs.length > 0 && tabs[0].id) {
+															const response = await chrome.tabs.sendMessage(
+																tabs[0].id,
+																{
+																	action: MESSAGE_TYPES.TOGGLE_X_GRID,
+																},
+															)
+															setXGridActive(Boolean(response?.active))
+														}
+													} catch (error) {
+														console.error("Failed to toggle X Grid:", error)
+													} finally {
+														setXGridLoading(false)
+													}
+												}}
+												type="button"
+											>
+												<svg
+													fill="currentColor"
+													height="16"
+													viewBox="0 0 24 24"
+													width="16"
+												>
+													<title>Grid</title>
+													<path d="M3 3h7v7H3V3zm0 11h7v7H3v-7zm11-11h7v7h-7V3zm0 11h7v7h-7v-7z" />
+												</svg>
+												{xGridLoading
+													? "X - GRID..."
+													: xGridActive
+														? "X - GRID (ON)"
+														: "X - GRID (OFF)"}
+											</button>
+										</div>
+									)}
 
 								{/* Save Button at Bottom */}
 								<div className="mt-auto pt-4">

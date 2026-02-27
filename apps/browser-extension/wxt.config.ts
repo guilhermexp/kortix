@@ -1,8 +1,8 @@
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig, type WxtViteConfig } from "wxt"
 
-const DEFAULT_APP_URL = "http://localhost:3001"
-const DEFAULT_API_URL = "http://localhost:4000"
+const DEFAULT_APP_URL = "https://kortix.claudedokploy.com"
+const DEFAULT_API_URL = "https://kortix-api.claudedokploy.com"
 
 const APP_URL = process.env.KORTIX_APP_URL ?? DEFAULT_APP_URL
 const API_URL = process.env.KORTIX_API_URL ?? DEFAULT_API_URL
@@ -34,7 +34,7 @@ export default defineConfig({
 		],
 		web_accessible_resources: [
 			{
-				resources: ["icon-16.png", "icon.svg", "fonts/*.ttf"],
+				resources: ["icon-16.png", "icon.svg", "fonts/*.ttf", "images/icon-128.png"],
 				matches: ["<all_urls>"],
 			},
 		],
