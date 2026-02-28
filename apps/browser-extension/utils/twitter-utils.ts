@@ -353,9 +353,6 @@ export function tweetToMarkdown(tweet: Tweet): string {
 		markdown += `**Mentions:** ${tweet.entities.user_mentions.map((m) => `@${m.screen_name}`).join(", ")}\n`
 	}
 
-	// Add raw data for reference
-	markdown += `\n---\n<details>\n<summary>Raw Tweet Data</summary>\n\n\`\`\`json\n${JSON.stringify(tweet, null, 2)}\n\`\`\`\n</details>`
-
 	return markdown
 }
 

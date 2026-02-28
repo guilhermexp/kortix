@@ -16,7 +16,6 @@ import {
 	type TwitterComponents,
 } from "react-tweet"
 import type { Tweet } from "react-tweet/api"
-import { getPastelBackgroundColor } from "../memories-utils"
 
 type MyTweetProps = {
 	tweet: Tweet
@@ -79,9 +78,12 @@ export const TweetCard = ({
 	return (
 		<div
 			className="relative transition-all"
+			data-theme="dark"
 			style={{
-				backgroundColor: getPastelBackgroundColor(data.id_str || "tweet"),
-			}}
+				"--tweet-bg-color": "transparent",
+				"--tweet-bg-color-hover": "rgba(255,255,255,0.03)",
+				"--tweet-border": "1px solid rgba(255,255,255,0.15)",
+			} as React.CSSProperties}
 		>
 			<CustomTweet components={{}} tweet={data} />
 			{activeMemories && activeMemories.length > 0 && (

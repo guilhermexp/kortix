@@ -11,7 +11,10 @@ export async function getDocumentById(
 ): Promise<DocumentWithMemories | null> {
 	try {
 		const cookieStore = await cookies()
-		const sessionCookie = cookieStore.get("kortix_session")
+		const cookieHeader = cookieStore
+			.getAll()
+			.map((c) => `${c.name}=${c.value}`)
+			.join("; ")
 
 		const response = await fetch(
 			`${BACKEND_URL_SSR.replace(/\/$/, "")}/v3/documents/documents/by-ids`,
@@ -19,9 +22,7 @@ export async function getDocumentById(
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					...(sessionCookie && {
-						Cookie: `${sessionCookie.name}=${sessionCookie.value}`,
-					}),
+					...(cookieHeader && { Cookie: cookieHeader }),
 				},
 				body: JSON.stringify({
 					ids: [id],

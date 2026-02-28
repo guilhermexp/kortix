@@ -482,7 +482,7 @@ export function MemoryEditClient({
 
 			{/* Tweet card - rich rendering */}
 			{!isBundle && hasTweetData && (
-				<div className="rounded-2xl overflow-hidden">
+				<div className="flex justify-center rounded-2xl overflow-hidden">
 					<TweetCard
 						data={rawTweet as any}
 						activeMemories={activeMemories}
