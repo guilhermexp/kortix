@@ -3058,7 +3058,7 @@ export function ChatMessages({
 		// Walk messages in reverse to find the latest active part
 		for (let i = messages.length - 1; i >= 0; i--) {
 			const msg = messages[i]
-			if (msg.role !== "assistant") continue
+			if (!msg || msg.role !== "assistant") continue
 			const parts = Array.isArray(msg.parts) ? msg.parts : []
 			// Check parts in reverse (latest first)
 			for (let j = parts.length - 1; j >= 0; j--) {
