@@ -38,17 +38,19 @@ export default defineContentScript({
 		let isPopulating = false
 
 		const twcCss = `
-/* Body scroll stays enabled — Twitter's virtualizer needs real window scroll
-   to trigger IntersectionObserver on its sentinel and load more tweets.
-   Hide the scrollbar since the grid overlay covers the viewport. */
+/* ==========================================================
+   Twitter Card Grid – CSS Completo
+   ========================================================== */
+
+/* ── 0. Body: esconder scrollbar nativa ───────────────────── */
 body[data-twc-started][data-twc-grid-mode] {
 	scrollbar-width: none !important;
 }
-
 body[data-twc-started][data-twc-grid-mode]::-webkit-scrollbar {
 	display: none !important;
 }
 
+/* ── 1. Esconder sidebar, header, drawers ─────────────────── */
 body[data-twc-started][data-twc-grid-mode] header[role="banner"],
 body[data-twc-started][data-twc-grid-mode] [data-testid="sidebarColumn"],
 body[data-twc-started][data-twc-grid-mode] [data-testid="DMDrawer"],
@@ -56,9 +58,7 @@ body[data-twc-started][data-twc-grid-mode] [data-testid="GrokDrawer"] {
 	display: none !important;
 }
 
-/* main stays in document flow (NOT position:fixed) so it contributes to
-   document.scrollHeight. The virtualizer uses window scroll position to
-   decide which items to render and when to fetch more. */
+/* ── 2. Esconder main original (precisa existir pro virtualizer) */
 body[data-twc-started][data-twc-grid-mode] main {
 	opacity: 0 !important;
 	pointer-events: none !important;
@@ -66,8 +66,11 @@ body[data-twc-started][data-twc-grid-mode] main {
 	position: relative !important;
 }
 
+/* ── 3. Masonry container (CSS columns) ───────────────────── */
 body[data-twc-started][data-twc-grid-mode] .${GRID_CONTAINER_CLASS} {
-	display: grid !important;
+	display: block !important;
+	column-count: 3;
+	column-gap: 16px;
 	position: fixed;
 	top: 56px;
 	left: 0;
@@ -76,31 +79,54 @@ body[data-twc-started][data-twc-grid-mode] .${GRID_CONTAINER_CLASS} {
 	overflow-y: auto;
 	overflow-x: hidden;
 	padding: 16px;
-	gap: 16px;
-	grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-	align-content: start;
-	background: #000;
+	background-color: rgb(0, 0, 0);
 	z-index: 2147483646;
 }
 
+/* ── 4. Grid item ─────────────────────────────────────────── */
 body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} {
 	min-width: 0;
+	break-inside: avoid;
+	margin-bottom: 16px;
+	display: block;
 }
 
+/* ── 5. Card do tweet ─────────────────────────────────────── */
 body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="tweet"] {
-	width: 100% !important;
-	max-width: none !important;
-	margin: 0 !important;
 	border: 1px solid rgba(255, 255, 255, 0.12);
 	border-radius: 16px;
 	overflow: hidden;
-	background: #000;
+	background-color: rgb(0, 0, 0);
+	width: 100% !important;
+	max-width: none !important;
+	margin: 0 !important;
+	contain: inline-size;
 }
 
+/* ── 6. Wildcard: limitar largura de TODOS os filhos ──────── */
 body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="tweet"] * {
-	max-width: 100%;
+	max-width: 100% !important;
+	box-sizing: border-box;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   CORREÇÃO #1: Divs com height FIXO inline
+   Twitter coloca style="width: 502px; height: 510px;" num
+   container ancestral da mídia. max-width:100% reduz o width,
+   mas o HEIGHT permanece fixo → distorção.
+   ══════════════════════════════════════════════════════════════ */
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="tweet"] div[style*="height"] {
+	height: auto !important;
+}
+/* Exceções: preservar height fixa nos avatares */
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="tweet"] [data-testid*="UserAvatar"] div[style*="height"],
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="tweet"] [data-testid="Tweet-User-Avatar"] div[style*="height"] {
+	height: revert !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CORREÇÃO #2: Imagens e vídeos responsivos
+   ══════════════════════════════════════════════════════════════ */
 body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="tweetPhoto"] img,
 body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="videoPlayer"] video,
 body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="videoPlayer"] img,
@@ -111,69 +137,177 @@ body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="vid
 	object-fit: cover !important;
 }
 
+/* ── 8. Container de vídeo ────────────────────────────────── */
 body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="videoPlayer"],
 body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="videoComponent"] {
+	border-radius: 12px;
 	max-height: ${GRID_MEDIA_MAX_HEIGHT_PX}px !important;
 	overflow: hidden !important;
+	width: 100% !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CORREÇÃO #3: NÃO sobrescrever padding-bottom original.
+   Preservar aspect ratio nativo (16:9, 9:16, 1:1, etc.).
+   ══════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════
+   CORREÇÃO #4: Container de mídia com width inline fixa
+   ══════════════════════════════════════════════════════════════ */
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="tweet"] div[style*="width"] {
+	width: 100% !important;
+}
+/* Exceções: avatares */
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="tweet"] [data-testid*="UserAvatar"] div[style*="width"],
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="tweet"] [data-testid="Tweet-User-Avatar"] div[style*="width"] {
+	width: revert !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CORREÇÃO #5: tweetPhoto container
+   ══════════════════════════════════════════════════════════════ */
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="tweetPhoto"] {
+	width: 100% !important;
+	height: auto !important;
+	max-height: ${GRID_MEDIA_MAX_HEIGHT_PX}px;
+	overflow: hidden;
 	border-radius: 12px;
 }
 
-body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="videoPlayer"] div[style*="padding-bottom"] {
-	padding-bottom: 56.25% !important;
+/* ══════════════════════════════════════════════════════════════
+   CORREÇÃO #6: Card wrapper (link previews: GitHub, etc)
+   ══════════════════════════════════════════════════════════════ */
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="card.wrapper"] {
+	width: 100% !important;
+	max-width: 100% !important;
+	overflow: hidden;
+	border-radius: 12px;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+}
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="card.layoutLarge.media"],
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="card.layoutSmall.media"] {
+	width: 100% !important;
+	overflow: hidden;
+}
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="card.wrapper"] img {
+	width: 100% !important;
+	height: auto !important;
+	max-height: 300px;
+	object-fit: cover !important;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   CORREÇÃO #7: Grid de múltiplas imagens
+   ══════════════════════════════════════════════════════════════ */
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="tweet"] [aria-label] div[style*="grid"] {
+	width: 100% !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CORREÇÃO #8: Links <a> com width fixa
+   ══════════════════════════════════════════════════════════════ */
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="tweet"] a {
+	max-width: 100% !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CORREÇÃO #9: Video element overflow (+3px bug do Twitter)
+   ══════════════════════════════════════════════════════════════ */
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} video {
+	width: 100% !important;
+	max-width: 100% !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CORREÇÃO #11: Thumbnail <img> sobre vídeo – position absolute
+   Quando tweetPhoto contém um <video>, o Twitter sobrepõe uma
+   <img> (thumbnail) com position:absolute. Ao clonar, o clone
+   perde o position:absolute e os 2 filhos empilham, dobrando
+   a altura. :has(video) garante que só se aplica quando há vídeo.
+   ══════════════════════════════════════════════════════════════ */
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="tweetPhoto"]:has(video) > img {
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
+	width: 100% !important;
+	height: 100% !important;
+	z-index: 1 !important;
+	object-fit: cover !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CORREÇÃO #10: Texto longo – truncar com line-clamp
+   ══════════════════════════════════════════════════════════════ */
+body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="tweetText"] {
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 8;
+	-webkit-box-orient: vertical;
+	word-break: break-word;
+}
+
+/* ── 11. Botão start (UI da extensão) ─────────────────────── */
 .twc-start {
 	width: 40px;
 	height: 40px;
 	border: none;
 	border-radius: 10px;
 	position: fixed;
-	bottom: 16px;
-	left: 16px;
+	bottom: 80px;
+	right: 16px;
 	cursor: pointer;
 	transition: opacity 0.2s, transform 0.2s;
-	background: #000;
-	color: #fff;
+	background: rgb(0, 0, 0);
+	color: rgb(255, 255, 255);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	opacity: 0.7;
+	padding: 0;
 	z-index: 2147483647;
+	opacity: 0.7;
+	border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .twc-start:hover {
 	opacity: 1;
-	transform: scale(1.05);
+	transform: scale(1.1);
 }
 
 .twc-txt-btn {
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 	background: none;
 	border: none;
-	color: #8b98a5;
+	color: rgb(139, 152, 165);
 	transition: color 0.2s;
+	cursor: pointer;
+	font-size: 13px;
+	padding: 4px 8px;
 	z-index: 2147483647;
 }
 
 .twc-txt-btn:hover {
-	color: #fff;
+	color: rgb(255, 255, 255);
 }
 
 body[data-twc-started] .twc-start {
 	display: none;
 }
 
+/* ── 12. Responsivo ───────────────────────────────────────── */
 @media (max-width: 900px) {
 	body[data-twc-started][data-twc-grid-mode] .${GRID_CONTAINER_CLASS} {
-		grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+		column-count: 2;
 	}
 }
 
 @media (max-width: 560px) {
 	body[data-twc-started][data-twc-grid-mode] .${GRID_CONTAINER_CLASS} {
-		grid-template-columns: 1fr;
+		column-count: 1;
 		padding: 10px;
-		gap: 10px;
+		column-gap: 10px;
+	}
+	body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} {
+		margin-bottom: 10px;
 	}
 }
 `
@@ -297,9 +431,6 @@ body[data-twc-started] .twc-start {
 
 		function fixClonedMedia(clone: HTMLElement, original: HTMLElement): void {
 			// 1. Copy background-image ONLY inside media containers.
-			//    Twitter's RNW Image component renders the visible image as
-			//    background-image on a div via atomic CSS classes. We only need
-			//    to fix this inside tweet photos / cards — NOT profile pics or icons.
 			for (const sel of MEDIA_SELECTORS) {
 				const cloneContainers = Array.from(clone.querySelectorAll<HTMLElement>(sel))
 				const origContainers = Array.from(original.querySelectorAll<HTMLElement>(sel))
@@ -318,7 +449,6 @@ body[data-twc-started] .twc-start {
 							cloneDivs[i].style.backgroundRepeat = "no-repeat"
 						}
 
-						// Remove dark placeholder backgrounds (black boxes)
 						const bgColor = computed.backgroundColor
 						if (
 							bgColor === "rgb(32, 35, 39)" ||
@@ -338,11 +468,9 @@ body[data-twc-started] .twc-start {
 			cloneImgs.forEach((img, i) => {
 				const origImg = originalImgs[i]
 
-				// Force eager loading for all images
 				img.removeAttribute("loading")
 				img.setAttribute("loading", "eager")
 
-				// Copy the resolved src from the original
 				if (origImg?.currentSrc) {
 					img.src = origImg.currentSrc
 				}
@@ -350,11 +478,8 @@ body[data-twc-started] .twc-start {
 					img.srcset = origImg.srcset
 				}
 
-				// Make opacity visible (RNW hides <img> via CSS class)
 				img.style.setProperty("opacity", "1", "important")
 
-				// Only apply size/position overrides to images INSIDE media containers
-				// (tweet photos, cards, video players). Leave profile pics and icons alone.
 				if (isInsideMedia(img)) {
 					img.style.setProperty("position", "relative", "important")
 					img.style.setProperty("z-index", "auto", "important")
@@ -365,8 +490,6 @@ body[data-twc-started] .twc-start {
 			})
 
 			// 3. Fix profile images — copy background-image for avatar circles.
-			//    Twitter renders avatars as background-image on a div inside the
-			//    [data-testid="Tweet-User-Avatar"] container.
 			const cloneAvatars = clone.querySelectorAll<HTMLElement>('[data-testid="Tweet-User-Avatar"] div')
 			const origAvatars = original.querySelectorAll<HTMLElement>('[data-testid="Tweet-User-Avatar"] div')
 			for (let i = 0; i < cloneAvatars.length && i < origAvatars.length; i++) {
@@ -379,15 +502,184 @@ body[data-twc-started] .twc-start {
 				}
 			}
 
-			// 4. Fix videos — copy poster, pause playback
+			// 4. Fix videos — copy poster + create fallback poster <img>.
 			const cloneVideos = clone.querySelectorAll<HTMLVideoElement>("video")
 			const originalVideos = original.querySelectorAll<HTMLVideoElement>("video")
 			cloneVideos.forEach((video, i) => {
 				const origVideo = originalVideos[i]
-				if (origVideo?.poster) video.poster = origVideo.poster
+				const posterUrl = origVideo?.poster || video.getAttribute("poster")
+				if (posterUrl) video.poster = posterUrl
+
 				video.style.setProperty("object-fit", "cover", "important")
 				video.preload = "none"
 				try { video.pause() } catch {}
+
+				if (posterUrl) {
+					const photoContainer = video.closest('[data-testid="tweetPhoto"]') ||
+						video.closest('[data-testid="videoPlayer"]')
+					if (photoContainer && !photoContainer.querySelector("img.twc-poster")) {
+						const posterImg = document.createElement("img")
+						posterImg.src = posterUrl
+						posterImg.classList.add("twc-poster")
+						posterImg.style.cssText =
+							"position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:1;"
+						photoContainer.prepend(posterImg)
+					}
+				}
+			})
+
+			// 5. Fallback: if tweetPhoto containers have no loaded images at all
+			//    (Twitter lazy-loaded them after cloning), check and inject.
+			clone.querySelectorAll<HTMLElement>('[data-testid="tweetPhoto"]').forEach((tp) => {
+				const video = tp.querySelector("video")
+				const imgs = tp.querySelectorAll<HTMLImageElement>("img")
+				const hasLoadedImg = Array.from(imgs).some(
+					(img) => img.naturalWidth > 0 || img.currentSrc,
+				)
+				if (!hasLoadedImg && video?.poster && !tp.querySelector("img.twc-poster")) {
+					const posterImg = document.createElement("img")
+					posterImg.src = video.poster
+					posterImg.classList.add("twc-poster")
+					posterImg.style.cssText =
+						"position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:1;"
+					tp.prepend(posterImg)
+				}
+			})
+		}
+
+		// ================================================================
+		// Deferred media sync — watches originals for lazy-loaded images
+		// that Twitter renders AFTER we cloned the tweet, and patches the
+		// grid clone when media appears.
+		// ================================================================
+
+		/** Map from tweet ID → { clone, original } for deferred patching */
+		const pendingMediaSync = new Map<string, { clone: HTMLElement; original: HTMLElement }>()
+		let mediaSyncObserver: MutationObserver | null = null
+
+		function setupMediaSyncObserver(): void {
+			if (mediaSyncObserver) return
+
+			mediaSyncObserver = new MutationObserver(() => {
+				if (pendingMediaSync.size === 0) return
+
+				for (const [tweetId, { clone, original }] of pendingMediaSync) {
+					// Check if the original now has media that the clone is missing
+					const origPhotos = original.querySelectorAll<HTMLElement>('[data-testid="tweetPhoto"]')
+					const clonePhotos = clone.querySelectorAll<HTMLElement>('[data-testid="tweetPhoto"]')
+
+					let patched = false
+					origPhotos.forEach((origPhoto, idx) => {
+						const clonePhoto = clonePhotos[idx]
+						if (!clonePhoto) return
+
+						// Check if clone is missing images the original now has
+						const origImgs = origPhoto.querySelectorAll<HTMLImageElement>("img")
+						const cloneImgs = clonePhoto.querySelectorAll<HTMLImageElement>("img")
+
+						origImgs.forEach((origImg, imgIdx) => {
+							if (!origImg.currentSrc) return
+							const cloneImg = cloneImgs[imgIdx]
+							if (cloneImg && !cloneImg.currentSrc) {
+								cloneImg.src = origImg.currentSrc
+								if (origImg.srcset) cloneImg.srcset = origImg.srcset
+								cloneImg.style.setProperty("opacity", "1", "important")
+								patched = true
+							}
+						})
+
+						// Also copy background-images that appeared after clone
+						const origDivs = Array.from(origPhoto.querySelectorAll<HTMLElement>("div"))
+						const cloneDivs = Array.from(clonePhoto.querySelectorAll<HTMLElement>("div"))
+						for (let i = 0; i < origDivs.length && i < cloneDivs.length; i++) {
+							const computed = window.getComputedStyle(origDivs[i])
+							const bg = computed.backgroundImage
+							if (bg && bg !== "none" && !cloneDivs[i].style.backgroundImage) {
+								cloneDivs[i].style.backgroundImage = bg
+								cloneDivs[i].style.backgroundSize = computed.backgroundSize || "cover"
+								cloneDivs[i].style.backgroundPosition = computed.backgroundPosition || "center"
+								cloneDivs[i].style.backgroundRepeat = "no-repeat"
+								patched = true
+							}
+						}
+					})
+
+					if (patched) {
+						pendingMediaSync.delete(tweetId)
+					}
+				}
+			})
+
+			const timelineRoot = getTimelineRoot()
+			if (timelineRoot) {
+				mediaSyncObserver.observe(timelineRoot, {
+					childList: true,
+					subtree: true,
+					attributes: true,
+					attributeFilter: ["src", "style"],
+				})
+			}
+		}
+
+		function teardownMediaSyncObserver(): void {
+			if (!mediaSyncObserver) return
+			mediaSyncObserver.disconnect()
+			mediaSyncObserver = null
+			pendingMediaSync.clear()
+		}
+
+		/**
+		 * Hide empty media containers in grid items.
+		 * When Twitter's lazy loading didn't render images before cloning,
+		 * the clone has a tall empty div between tweet text and the action bar.
+		 * This detects that gap and hides the outermost empty container.
+		 */
+		function cleanEmptyMediaContainers(gridContainer: HTMLElement): void {
+			const items = gridContainer.querySelectorAll<HTMLElement>(`.${GRID_ITEM_CLASS}`)
+			items.forEach((item) => {
+				const article = item.querySelector<HTMLElement>('[data-testid="tweet"]')
+				if (!article) return
+
+				const textEl = article.querySelector<HTMLElement>('[data-testid="tweetText"]')
+				const actionBar = article.querySelector<HTMLElement>('[role="group"]')
+				if (!textEl || !actionBar) return
+
+				const textBottom = textEl.getBoundingClientRect().bottom
+				const actionTop = actionBar.getBoundingClientRect().top
+				const gap = actionTop - textBottom
+
+				if (gap < 60) return // Normal gap, nothing to fix
+
+				// Check if there's actual visual content (img/video) in that space
+				let hasVisualInGap = false
+				article.querySelectorAll<HTMLElement>("img, video").forEach((el) => {
+					const r = el.getBoundingClientRect()
+					if (r.top >= textBottom - 10 && r.bottom <= actionTop + 10 && r.height > 30) {
+						hasVisualInGap = true
+					}
+				})
+
+				if (hasVisualInGap) return // Has real media, don't hide
+
+				// Find the outermost empty container in the gap and hide it
+				const candidates: Array<{ el: HTMLElement; depth: number }> = []
+				article.querySelectorAll<HTMLElement>("div, a").forEach((el) => {
+					const r = el.getBoundingClientRect()
+					if (r.top >= textBottom - 5 && r.bottom <= actionTop + 5 && r.height > 50) {
+						let depth = 0
+						let p: HTMLElement | null = el
+						while (p && p !== article) {
+							depth++
+							p = p.parentElement as HTMLElement | null
+						}
+						candidates.push({ el, depth })
+					}
+				})
+
+				if (candidates.length > 0) {
+					candidates.sort((a, b) => a.depth - b.depth)
+					candidates[0].el.style.display = "none"
+				}
 			})
 		}
 
@@ -432,11 +724,31 @@ body[data-twc-started] .twc-start {
 					// Fix lazy-loaded images and media in the clone
 					fixClonedMedia(clone, tweetEl)
 
+					// Register for deferred media sync — if the original had lazy
+					// images that weren't loaded yet, the observer will patch the
+					// clone when Twitter finishes loading them.
+					if (tweetId) {
+						const clonePhotos = clone.querySelectorAll('[data-testid="tweetPhoto"]')
+						const origPhotos = tweetEl.querySelectorAll('[data-testid="tweetPhoto"]')
+						const hasMissingMedia = Array.from(clonePhotos).some((cp) => {
+							const imgs = cp.querySelectorAll<HTMLImageElement>("img:not(.twc-poster)")
+							return Array.from(imgs).some((img) => !img.currentSrc && img.naturalWidth === 0)
+						})
+						if (hasMissingMedia && origPhotos.length > 0) {
+							pendingMediaSync.set(tweetId, { clone, original: tweetEl })
+						}
+					}
+
 					const wrapper = document.createElement("article")
 					wrapper.classList.add(GRID_ITEM_CLASS)
 					wrapper.appendChild(clone)
 					gridContainer.appendChild(wrapper)
 				}
+
+				// Clean up empty media containers after a frame so layout is settled
+				requestAnimationFrame(() => {
+					cleanEmptyMediaContainers(gridContainer)
+				})
 			} finally {
 				isPopulating = false
 			}
@@ -551,6 +863,7 @@ body[data-twc-started] .twc-start {
 			// Initial harvest of already-rendered tweets
 			autoPopulateGrid(30)
 			setupTimelineObserver()
+			setupMediaSyncObserver()
 
 			if (gameInterval !== -1) {
 				window.clearInterval(gameInterval)
@@ -571,6 +884,7 @@ body[data-twc-started] .twc-start {
 			}
 
 			teardownTimelineObserver()
+			teardownMediaSyncObserver()
 			gridScrollSetup = false
 
 			delete document.body.dataset.twcStarted
@@ -689,5 +1003,19 @@ body[data-twc-started] .twc-start {
 		document.addEventListener("kortix-toggle-grid", () => {
 			toggleTwcGrid()
 		})
+
+		// ================================================================
+		// Auto-initialize — show the grid button as soon as X loads
+		// ================================================================
+
+		function autoInit(): void {
+			if (document.readyState === "loading") {
+				document.addEventListener("DOMContentLoaded", () => ensureTwcSetup())
+			} else {
+				ensureTwcSetup()
+			}
+		}
+
+		autoInit()
 	},
 })
