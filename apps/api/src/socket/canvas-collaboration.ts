@@ -24,8 +24,19 @@ export function emitCanvasElementsChanged(
 	canvasId: string,
 	payload: { elements: any[]; version?: number },
 ) {
-	if (!canvasIo || !canvasId || !Array.isArray(payload.elements)) return
-	canvasIo.to(`canvas_${canvasId}`).emit("elements-changed", payload)
+	if (!canvasIo) {
+		console.warn("[Canvas WS] canvasIo not initialized — skipping emit")
+		return
+	}
+	if (!canvasId || !Array.isArray(payload.elements)) {
+		console.warn("[Canvas WS] Invalid emit args:", { canvasId, elementsIsArray: Array.isArray(payload.elements) })
+		return
+	}
+	const roomId = `canvas_${canvasId}`
+	const room = canvasIo.sockets.adapter.rooms.get(roomId)
+	const socketCount = room?.size ?? 0
+	console.log(`[Canvas WS] Emitting elements-changed to ${roomId} (${socketCount} sockets, ${payload.elements.length} elements, v${payload.version})`)
+	canvasIo.to(roomId).emit("elements-changed", payload)
 }
 
 export function setupCanvasCollaboration(httpServer: HTTPServer) {

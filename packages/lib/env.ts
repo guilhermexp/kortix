@@ -15,9 +15,10 @@ export const BACKEND_URL =
 			: DEFAULT_BACKEND_URL
 
 // For SSR (Server-Side Rendering), we need absolute URLs
-// Use internal Railway service URL or fall back to public URL
+// Use internal service URL or fall back to public URL
 export const BACKEND_URL_SSR =
 	process.env.BACKEND_URL_INTERNAL?.trim() ||
+	process.env.API_INTERNAL_URL?.trim() ||
 	process.env.NEXT_PUBLIC_BACKEND_URL?.trim() ||
 	DEFAULT_BACKEND_URL
 

@@ -23,7 +23,9 @@ export default async function MemoryEditPage({ params }: PageProps) {
 		document = await getDocumentById(id)
 	} catch (error) {
 		console.error("Error fetching document:", error)
-		throw error
+		// Instead of throwing (which produces a generic error in production),
+		// show not-found so the user gets a clear page instead of a broken render.
+		notFound()
 	}
 
 	// If document not found, show 404

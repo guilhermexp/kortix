@@ -169,6 +169,104 @@ function makeElementId(prefix: string) {
 	return `${prefix}_${randomUUID().slice(0, 8)}`
 }
 
+const FONT_FAMILY_MAP: Record<string, number> = {
+	virgil: 1,
+	"hand-drawn": 1,
+	handdrawn: 1,
+	helvetica: 2,
+	arial: 2,
+	"sans-serif": 2,
+	inter: 2,
+	cascadia: 3,
+	monospace: 3,
+	"courier new": 3,
+	code: 3,
+	excalifont: 5,
+}
+
+/**
+ * Sanitize element properties that could crash Excalidraw on the frontend.
+ * Ensures all required Excalidraw fields are present with valid defaults,
+ * normalizes fontFamily from string names to numeric IDs, and fills
+ * missing structural fields so the element renders without errors.
+ */
+function sanitizeElement(el: Record<string, unknown>): Record<string, unknown> {
+	// Start with required Excalidraw defaults, then overlay the agent's values
+	const defaults: Record<string, unknown> = {
+		angle: 0,
+		strokeColor: "#1e1e1e",
+		backgroundColor: "transparent",
+		fillStyle: "solid",
+		strokeWidth: 2,
+		strokeStyle: "solid",
+		roughness: 1,
+		opacity: 100,
+		groupIds: [],
+		frameId: null,
+		roundness: null,
+		seed: Math.floor(Math.random() * 2_147_483_647),
+		version: 1,
+		versionNonce: Math.floor(Math.random() * 2_147_483_647),
+		isDeleted: false,
+		boundElements: null,
+		updated: Date.now(),
+		link: null,
+		locked: false,
+	}
+
+	const out = { ...defaults, ...el }
+
+	// Normalize fontFamily: Excalidraw expects numeric IDs (1=Virgil, 2=Helvetica, 3=Cascadia, 5=Excalifont)
+	if ("fontFamily" in el) {
+		const ff = el.fontFamily
+		if (typeof ff === "string") {
+			out.fontFamily = FONT_FAMILY_MAP[ff.toLowerCase()] ?? 1
+		} else if (typeof ff === "number" && [1, 2, 3, 4, 5].includes(ff)) {
+			// valid numeric ID — keep as is
+		} else {
+			out.fontFamily = 1
+		}
+	}
+
+	// Ensure seed/versionNonce are valid even if agent sent bad values
+	if (typeof out.seed !== "number" || !Number.isFinite(out.seed)) {
+		out.seed = Math.floor(Math.random() * 2_147_483_647)
+	}
+	if (typeof out.versionNonce !== "number" || !Number.isFinite(out.versionNonce)) {
+		out.versionNonce = Math.floor(Math.random() * 2_147_483_647)
+	}
+	if (typeof out.version !== "number" || out.version < 1) {
+		out.version = 1
+	}
+
+	// Ensure groupIds is always an array
+	if (!Array.isArray(out.groupIds)) {
+		out.groupIds = []
+	}
+
+	// Text elements need additional required fields
+	if (out.type === "text") {
+		if (typeof out.fontSize !== "number") out.fontSize = 20
+		if (typeof out.fontFamily !== "number") out.fontFamily = 1
+		if (typeof out.textAlign !== "string") out.textAlign = "left"
+		if (typeof out.verticalAlign !== "string") out.verticalAlign = "top"
+		if (typeof out.lineHeight !== "number") out.lineHeight = 1.25
+		if (typeof out.autoResize !== "boolean") out.autoResize = true
+		// Excalidraw requires originalText to match text
+		if (typeof out.text === "string" && typeof out.originalText !== "string") {
+			out.originalText = out.text
+		}
+		if (out.containerId === undefined) out.containerId = null
+	}
+
+	// Arrow/line elements need points array
+	if ((out.type === "arrow" || out.type === "line") && !Array.isArray(out.points)) {
+		out.points = [[0, 0], [100, 0]]
+	}
+
+	return out
+}
+
 function makeBaseElement(type: string, overrides: Record<string, unknown>): Record<string, unknown> {
 	return {
 		id: makeElementId(type),
@@ -607,14 +705,14 @@ export async function applyCanvasCreateView({
 			continue
 		}
 
-		if (typeof op.id !== "string" || op.id.trim().length === 0) {
-			continue
-		}
 		if (!type) {
 			continue
 		}
-		const elementId = op.id.trim()
-		byId.set(elementId, { ...op, id: elementId, type })
+		const elementId =
+			typeof op.id === "string" && op.id.trim().length > 0
+				? op.id.trim()
+				: randomUUID()
+		byId.set(elementId, sanitizeElement({ ...op, id: elementId, type }))
 		appliedElementIds.push(elementId)
 		deletedIds.delete(elementId)
 	}
