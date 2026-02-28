@@ -90,6 +90,8 @@ const envSchema = z.object({
 	LLM_COUNCIL_URL: z.string().url().optional().default("http://localhost:8001"),
 	COUNCIL_MODELS: z.string().optional(),
 	COUNCIL_CHAIRMAN_MODEL: z.string().optional(),
+	// Cookie domain for cross-subdomain authentication (e.g., ".kortix.com" for api.kortix.com and app.kortix.com)
+	COOKIE_DOMAIN: z.string().min(1).optional(),
 })
 
 const parsed = envSchema.safeParse({
@@ -136,6 +138,7 @@ const parsed = envSchema.safeParse({
 	LLM_COUNCIL_URL: process.env.LLM_COUNCIL_URL,
 	COUNCIL_MODELS: process.env.COUNCIL_MODELS,
 	COUNCIL_CHAIRMAN_MODEL: process.env.COUNCIL_CHAIRMAN_MODEL,
+	COOKIE_DOMAIN: process.env.COOKIE_DOMAIN,
 })
 
 if (!parsed.success) {

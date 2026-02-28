@@ -308,14 +308,15 @@ export async function signOut(c: Context) {
 
 	const isProduction = process.env.NODE_ENV === "production"
 
-	// Clear legacy session cookie
+	// Clear session cookie with same attributes used when setting
 	c.header(
 		"Set-Cookie",
 		serializeCookie(SESSION_COOKIE, "", {
 			maxAge: 0,
 			httpOnly: true,
 			secure: isProduction,
-			sameSite: "lax",
+			sameSite: isProduction ? "none" : "lax",
+			domain: env.COOKIE_DOMAIN,
 		}),
 	)
 
@@ -425,6 +426,8 @@ function setSessionCookie(c: Context, token: string) {
 		// Use "none" for cross-site cookies (API on different domain than frontend)
 		// This requires Secure=true which is set in production
 		sameSite: isProduction ? "none" : "lax",
+		// Set domain for cross-subdomain authentication (e.g., ".kortix.com")
+		domain: env.COOKIE_DOMAIN,
 	})
 	c.header("Set-Cookie", cookie)
 }

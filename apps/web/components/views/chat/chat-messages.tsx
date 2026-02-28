@@ -770,7 +770,6 @@ type ClaudeChatOptions = {
 	buildRequestBody: (
 		userMessage: string,
 		sdkSessionId: string | null,
-		continueSession: boolean,
 	) => Record<string, unknown>
 	onComplete?: (payload: {
 		text: string
@@ -906,8 +905,6 @@ function useClaudeChat({
 
 	// Session management state
 	const sdkSessionIdRef = useRef<string | null>(null)
-	const lastMessageTimeRef = useRef<number>(0)
-	const SESSION_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
 	const cancelEndpoint = endpoint.endsWith("/v2")
 		? `${endpoint}/cancel`
 		: `${endpoint.replace(/\/$/, "")}/v2/cancel`
@@ -929,7 +926,6 @@ function useClaudeChat({
 				debugLog("[Chat Hook] Saved SDK session ID:", savedSessionId)
 				if (savedSessionId) {
 					sdkSessionIdRef.current = savedSessionId
-					lastMessageTimeRef.current = 0 // Reset tempo para forçar resume ao invés de continue
 					debugLog(
 						"✅ [Frontend Session] Loaded SDK session ID:",
 						savedSessionId,
@@ -939,7 +935,6 @@ function useClaudeChat({
 					)
 				} else {
 					sdkSessionIdRef.current = null
-					lastMessageTimeRef.current = 0
 					debugLog(
 						"⚠️ [Frontend Session] No SDK session ID found for this conversation",
 					)
@@ -951,7 +946,6 @@ function useClaudeChat({
 		} else {
 			// Nova conversa - reset session
 			sdkSessionIdRef.current = null
-			lastMessageTimeRef.current = 0
 			debugLog(
 				"🆕 [Frontend Session] New conversation - will create NEW session",
 			)
@@ -1148,37 +1142,21 @@ function useClaudeChat({
 			setStatus("submitted")
 			setIsThinking(true)
 
-			// Calculate session continuity
-			const now = Date.now()
-			const timeSinceLastMessage = now - lastMessageTimeRef.current
-			const hasRecentSession =
-				sdkSessionIdRef.current !== null &&
-				timeSinceLastMessage < SESSION_TIMEOUT_MS
-
-			// Determine session mode: continue (< 30min) vs resume (> 30min with session) vs new (no session)
-			const continueSession = hasRecentSession
-			const sdkSessionId = continueSession ? null : sdkSessionIdRef.current
+			// Session: resume if we have a session ID, otherwise new
+			const sdkSessionId = sdkSessionIdRef.current
 
 			debugLog("========================================")
 			debugLog("📤 [Send Message] Preparing to send message...")
 			debugLog("[Frontend Session] Current state:", {
 				currentSdkSessionId: sdkSessionIdRef.current,
-				timeSinceLastMessage: `${Math.round(timeSinceLastMessage / 1000)}s`,
-				sessionTimeout: `${SESSION_TIMEOUT_MS / 1000}s`,
-				hasRecentSession,
 			})
 			debugLog("[Frontend Session] Decision:", {
-				mode: continueSession
-					? "CONTINUE (recent session)"
-					: sdkSessionId
-						? "RESUME (old session)"
-						: "NEW SESSION",
-				continueSession,
+				mode: sdkSessionId ? "RESUME" : "NEW SESSION",
 				sdkSessionIdToSend: sdkSessionId,
 			})
 
 			try {
-				const body = buildRequestBody(trimmed, sdkSessionId, continueSession)
+				const body = buildRequestBody(trimmed, sdkSessionId)
 				// Inject server-assigned conversationId so subsequent messages reuse the same conversation
 				if (serverConversationIdRef.current && !body.conversationId) {
 					body.conversationId = serverConversationIdRef.current
@@ -1787,7 +1765,6 @@ function useClaudeChat({
 										record.sdkSessionId.length > 0
 									) {
 										sdkSessionIdRef.current = record.sdkSessionId
-										lastMessageTimeRef.current = Date.now()
 										debugLog(
 											"✅ [Frontend Session] Captured sdkSessionId:",
 											record.sdkSessionId,
@@ -1922,7 +1899,6 @@ function useClaudeChat({
 								record.sdkSessionId.length > 0
 							) {
 								sdkSessionIdRef.current = record.sdkSessionId
-								lastMessageTimeRef.current = Date.now()
 								debugLog(
 									"[Frontend Session] Captured sdkSessionId:",
 									record.sdkSessionId,
@@ -2248,11 +2224,7 @@ export function ChatMessages({
 	const { provider } = useProviderSelection()
 
 	const composeRequestBody = useCallback(
-		(
-			userMessage: string,
-			sdkSessionId: string | null,
-			continueSession: boolean,
-		) => {
+		(userMessage: string, sdkSessionId: string | null) => {
 			// Use pending ref if available, otherwise use current state
 			const currentMentionedIds =
 				pendingMentionedDocIdsRef.current.length > 0
@@ -2293,8 +2265,7 @@ export function ChatMessages({
 
 			return {
 				message: userMessage,
-				...(sdkSessionId ? { sdkSessionId, resume: true } : {}),
-				...(continueSession ? { continueSession: true } : {}),
+				...(sdkSessionId ? { sdkSessionId } : {}),
 				...(scopedIds && scopedIds.length > 0
 					? { scopedDocumentIds: scopedIds }
 					: {}),
@@ -2372,6 +2343,9 @@ export function ChatMessages({
 			debugLog("========================================")
 		},
 	})
+
+	const statusRef = useRef(status)
+	statusRef.current = status
 
 	const [input, setInput] = useState("")
 	const [mentionOpen, setMentionOpen] = useState(false)
@@ -2887,7 +2861,7 @@ export function ChatMessages({
 				shouldGenerateTitleRef.current = false
 				return
 			}
-			if (status === "submitted" || status === "streaming") {
+			if (statusRef.current === "submitted" || statusRef.current === "streaming") {
 				const localMessages = getCurrentConversationRef.current()
 				if (cancelled) return
 				if (Array.isArray(localMessages) && localMessages.length > 0) {
@@ -3022,7 +2996,12 @@ export function ChatMessages({
 		id,
 		setMessages,
 		setHydrationOrigin,
-		status,
+		// NOTE: `status` was intentionally removed from deps.
+		// Having it here caused the effect to re-run every time streaming
+		// completed (status: "streaming" → "ready"), triggering an unnecessary
+		// server fetch and showing the "History loaded from server" badge.
+		// The streaming guard (status === "submitted" || "streaming") still
+		// protects against server fetches when the effect runs for other reasons.
 	])
 
 	useEffect(() => {
@@ -3534,7 +3513,6 @@ export function ChatMessages({
 								compact ? "px-3 py-3" : "px-4 py-5",
 							)}
 						>
-							<Spinner className="size-3" />
 							<TextShimmer as="span" className="text-xs" duration={1.1}>
 								Thinking
 							</TextShimmer>

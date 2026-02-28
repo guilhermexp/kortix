@@ -16,6 +16,11 @@ import {
 import { env } from "../env";
 import { createKortixTools } from "./claude-agent-tools";
 
+// Prevent the Claude Agent SDK from detecting a nested session.
+// This MUST happen at module load time (before any query() calls)
+// because the SDK subprocess inherits process.env.
+delete process.env.CLAUDECODE;
+
 // Content block types for Claude messages
 export type TextBlock = { type: "text"; text: string };
 export type ToolUseBlock = {
@@ -48,8 +53,6 @@ export type AgentContextOptions = {
 export type ClaudeAgentOptions = {
   message: string; // Single user message for this turn
   sdkSessionId?: string; // SDK session ID to resume (from SDK, not our DB)
-  resume?: boolean; // If true with sdkSessionId, use --resume flag to resume old session
-  continueSession?: boolean; // If true, use 'continue' to resume most recent session automatically
   client: SupabaseClient;
   orgId: string;
   systemPrompt?: string;
@@ -168,8 +171,6 @@ export async function executeClaudeAgent(
   {
     message,
     sdkSessionId,
-    resume,
-    continueSession,
     client,
     orgId,
     systemPrompt,
@@ -187,13 +188,7 @@ export async function executeClaudeAgent(
   parts: AgentPart[];
   sdkSessionId: string | null; // SDK session ID for future requests
 }> {
-  const sessionMode = continueSession
-    ? "continuing session"
-    : sdkSessionId && resume
-      ? "resuming old session with --resume flag"
-      : sdkSessionId
-        ? "resuming specific session"
-        : "new session";
+  const sessionMode = sdkSessionId ? "resuming session" : "new session";
 
   // Get provider configuration
   const providerId = provider || getDefaultProvider();
@@ -219,16 +214,10 @@ export async function executeClaudeAgent(
   // Use provider's default model if no specific model provided
   const resolvedModel = model || providerConfig.models.default;
 
-  // Prevent the claude-agent-sdk CLI from detecting a nested session when the
-  // API server is launched from inside Claude Code (which sets CLAUDECODE).
-  delete process.env.CLAUDECODE;
-
   // Build per-request env to pass to the SDK subprocess (concurrency-safe).
-  // This avoids mutating global process.env which causes race conditions
-  // when handling simultaneous requests with different providers.
+  // CLAUDECODE is already removed from process.env at module load time.
   const sdkEnv: Record<string, string | undefined> = {
     ...process.env,
-    CLAUDECODE: undefined, // Ensure nested session detection is disabled
     ANTHROPIC_API_KEY: providerConfig.apiKey,
     ANTHROPIC_AUTH_TOKEN: providerConfig.apiKey,
     ANTHROPIC_BASE_URL: providerConfig.baseURL,
@@ -258,8 +247,7 @@ export async function executeClaudeAgent(
       pathToClaudeCodeExecutable,
     );
 
-    // Determine if this is a new session (no continue, no resume)
-    const isNewSession = !continueSession && !sdkSessionId;
+    const isNewSession = !sdkSessionId;
 
     // Debug: Check if CLAUDE.md exists
     const workingDir = resolve(process.cwd());
@@ -375,21 +363,10 @@ export async function executeClaudeAgent(
       );
     }
 
-    // Session management: continue (most recent) vs resume (specific session)
-    if (continueSession) {
-      // Continue most recent session automatically (for sequential chat)
-      queryOptions.continue = true;
-      console.log(
-        "[executeClaudeAgent] Using continue mode (most recent session)",
-      );
-    } else if (sdkSessionId) {
-      // Resume specific session (with or without explicit resume flag — both use SDK resume)
+    // Session management: resume specific session or start new
+    if (sdkSessionId) {
       queryOptions.resume = sdkSessionId;
-      console.log(
-        "[executeClaudeAgent] Resuming session:",
-        sdkSessionId,
-        resume ? "(explicit resume)" : "(legacy)",
-      );
+      console.log("[executeClaudeAgent] Resuming session:", sdkSessionId);
     }
     // else: new session (no continue, no resume)
     if (toolNames) {
@@ -415,11 +392,9 @@ export async function executeClaudeAgent(
 
     console.log("[executeClaudeAgent] Query options:", {
       model: queryOptions.model,
-      sessionMode: queryOptions.continue
-        ? "continue (most recent)"
-        : queryOptions.resume
-          ? `resume (${queryOptions.resume as string})`
-          : "new session",
+      sessionMode: queryOptions.resume
+        ? `resume (${queryOptions.resume as string})`
+        : "new session",
       maxTurns: queryOptions.maxTurns,
       hasTools: !!queryOptions.mcpServers,
       message: message.substring(0, 50),
@@ -528,7 +503,10 @@ export async function executeClaudeAgent(
       sdkSessionId: capturedSessionId,
     };
   } catch (error) {
-    console.error("[executeClaudeAgent] Error:", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack?.split("\n").slice(0, 5).join("\n") : "";
+    console.error("[executeClaudeAgent] Error message:", errMsg);
+    console.error("[executeClaudeAgent] Error stack:", errStack);
     // Fallback: use direct Anthropic Messages API when CLI process fails (common under Bun)
     try {
       const fallbackClient = new Anthropic({

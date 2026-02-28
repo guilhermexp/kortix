@@ -1,5 +1,5 @@
 "use client"
-// Auth module - v2 - includes web domain cookie support
+// Auth module - v3 - fixed session persistence issues
 
 import useSWR, { mutate } from "swr"
 
@@ -14,16 +14,15 @@ let isRefreshing = false
 let refreshPromise: Promise<boolean> | null = null
 
 // Store tokens in localStorage for persistence
+// Note: Cookie is set by the backend with httpOnly for security
 function storeTokens(accessToken: string, refreshToken?: string) {
 	if (typeof window !== "undefined") {
 		localStorage.setItem(AUTH_TOKEN_KEY, accessToken)
 		if (refreshToken) {
 			localStorage.setItem(AUTH_REFRESH_KEY, refreshToken)
 		}
-		// Also set a cookie on the web domain for server-side auth checks (middleware/proxy)
-		// This is needed because the API sets its cookie on the API domain, not the web domain
-		const maxAge = 60 * 60 * 24 * 7 // 7 days
-		document.cookie = `kortix_session=${accessToken}; path=/; max-age=${maxAge}; secure; samesite=lax`
+		// Don't set cookie here - let the backend handle it with httpOnly for security
+		// This avoids conflicts with sameSite attributes
 	}
 }
 
@@ -31,8 +30,6 @@ function clearTokens() {
 	if (typeof window !== "undefined") {
 		localStorage.removeItem(AUTH_TOKEN_KEY)
 		localStorage.removeItem(AUTH_REFRESH_KEY)
-		// Also clear the web domain cookie
-		document.cookie = "kortix_session=; path=/; max-age=0; secure; samesite=lax"
 	}
 }
 
@@ -53,6 +50,7 @@ function getStoredRefreshToken(): string | null {
 /**
  * Attempt to refresh the session using the stored refresh token.
  * Returns true if successful, false otherwise.
+ * Includes retry logic for transient network failures.
  */
 async function tryRefreshSession(): Promise<boolean> {
 	// If already refreshing, wait for that to complete
@@ -67,35 +65,99 @@ async function tryRefreshSession(): Promise<boolean> {
 
 	isRefreshing = true
 	refreshPromise = (async () => {
-		try {
-			const response = await fetch(`${API_BASE}/api/auth/refresh`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ refresh_token: refreshToken }),
-				credentials: "include",
-			})
+		const maxRetries = 2
+		let lastError: Error | null = null
 
-			if (!response.ok) {
-				// Refresh failed - clear tokens and redirect to login
-				clearTokens()
+		for (let attempt = 0; attempt <= maxRetries; attempt++) {
+			try {
+				// Add small delay between retries
+				if (attempt > 0) {
+					await new Promise((resolve) => setTimeout(resolve, 500 * attempt))
+				}
+
+				const response = await fetch(`${API_BASE}/api/auth/refresh`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ refresh_token: refreshToken }),
+					credentials: "include",
+				})
+
+				if (!response.ok) {
+					// Only clear tokens if it's an auth error (401), not network/server errors
+					if (response.status === 401) {
+						// Refresh token is invalid - user needs to re-login
+						clearTokens()
+						return false
+					}
+					// Server error - might be temporary, retry
+					lastError = new Error(`Server returned ${response.status}`)
+					continue
+				}
+
+				const data = await response.json()
+				if (data?.session?.access_token) {
+					storeTokens(data.session.access_token, data.session.refresh_token)
+					return true
+				}
 				return false
+			} catch (error) {
+				// Network error - might be temporary
+				lastError = error instanceof Error ? error : new Error("Network error")
+				continue
 			}
-
-			const data = await response.json()
-			if (data?.session?.access_token) {
-				storeTokens(data.session.access_token, data.session.refresh_token)
-				return true
-			}
-			return false
-		} catch {
-			return false
-		} finally {
-			isRefreshing = false
-			refreshPromise = null
 		}
+
+		// All retries failed - don't clear tokens, might be temporary network issue
+		console.warn("[auth] Refresh failed after retries:", lastError?.message)
+		return false
 	})()
 
-	return refreshPromise
+	const result = await refreshPromise
+	isRefreshing = false
+	refreshPromise = null
+	return result
+}
+
+/**
+ * Decode JWT and get expiration time (in milliseconds since epoch)
+ */
+function getJwtExp(token: string): number | null {
+	try {
+		const parts = token.split(".")
+		if (parts.length < 2) return null
+		const payload = JSON.parse(atob(parts[1]?.replace(/-/g, "+").replace(/_/g, "/") ?? ""))
+		return typeof payload.exp === "number" ? payload.exp * 1000 : null
+	} catch {
+		return null
+	}
+}
+
+/**
+ * Check if token is expired or about to expire (within 5 minutes)
+ */
+function isTokenExpiringSoon(token: string | null): boolean {
+	if (!token) return true
+	const exp = getJwtExp(token)
+	if (!exp) return false // Can't determine, assume valid
+	return Date.now() > exp - 5 * 60 * 1000 // 5 minutes buffer
+}
+
+/**
+ * Proactively refresh token if it's about to expire
+ */
+async function ensureFreshToken(): Promise<string | null> {
+	const token = getStoredToken()
+	if (!token) return null
+
+	if (isTokenExpiringSoon(token)) {
+		const refreshed = await tryRefreshSession()
+		if (refreshed) {
+			return getStoredToken()
+		}
+		// Refresh failed but we still have a token - let request proceed
+		// It might still work if server clock is different
+	}
+	return token
 }
 
 async function request(
@@ -103,7 +165,8 @@ async function request(
 	init: RequestInit = {},
 	retryOnAuthError = true,
 ) {
-	const token = getStoredToken()
+	// Proactively refresh token if expiring soon
+	const token = await ensureFreshToken()
 	const headers: Record<string, string> = {
 		"Content-Type": "application/json",
 		...((init.headers as Record<string, string>) ?? {}),
@@ -130,8 +193,11 @@ async function request(
 			// Retry the request with the new token
 			return request(path, init, false)
 		}
-		// Refresh failed - redirect to login
-		if (typeof window !== "undefined" && !path.includes("/auth/")) {
+		// Refresh failed - only redirect if we have no token at all
+		// This allows the app to continue working during temporary network issues
+		const currentToken = getStoredToken()
+		if (!currentToken && typeof window !== "undefined" && !path.includes("/auth/")) {
+			// No token available - user needs to login
 			window.location.href = "/login"
 		}
 	}

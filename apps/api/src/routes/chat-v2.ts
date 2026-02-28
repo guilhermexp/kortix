@@ -21,8 +21,6 @@ import {
 const chatRequestSchema = z.object({
 	message: z.string().min(1).max(50000), // Single user message (max 50KB)
 	sdkSessionId: z.string().optional(), // SDK session ID to resume (from SDK, not our DB)
-	resume: z.boolean().optional(), // If true with sdkSessionId, resume old session (for returning after days)
-	continueSession: z.boolean().optional(), // If true, continue most recent session (for sequential chat)
 	conversationId: z.string().uuid().optional(), // Our DB ID for display/analytics (optional)
 	mode: z.enum(["simple", "agentic", "deep"]).default("simple"),
 	metadata: z.record(z.string(), z.any()).optional(),
@@ -469,8 +467,6 @@ export async function handleChatV2({
 		console.log("[Chat V2] Payload:", {
 			conversationId: payload.conversationId,
 			sdkSessionId: payload.sdkSessionId,
-			resume: payload.resume,
-			continueSession: payload.continueSession,
 			hasMessage: !!payload.message,
 			messageLength: payload.message?.length,
 		})
@@ -978,8 +974,6 @@ export async function handleChatV2({
 						{
 							message: messageForAgent,
 							sdkSessionId: payload.sdkSessionId,
-							resume: payload.resume, // Pass resume flag for old sessions
-							continueSession: payload.continueSession,
 							client,
 							orgId,
 							systemPrompt,
