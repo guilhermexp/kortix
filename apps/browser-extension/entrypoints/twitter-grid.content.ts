@@ -253,8 +253,8 @@ body[data-twc-started][data-twc-grid-mode] .${GRID_ITEM_CLASS} [data-testid="twe
 	border: none;
 	border-radius: 10px;
 	position: fixed;
-	bottom: 80px;
-	right: 16px;
+	bottom: 16px;
+	left: 16px;
 	cursor: pointer;
 	transition: opacity 0.2s, transform 0.2s;
 	background: rgb(0, 0, 0);
@@ -683,6 +683,216 @@ body[data-twc-started] .twc-start {
 			})
 		}
 
+		/**
+		 * Extract real .mp4 URLs from Twitter's React fiber tree and replace
+		 * cloned blob: videos with native HTML5 <video> players.
+		 *
+		 * Twitter uses Media Source Extensions (blob: URLs) for video playback.
+		 * When we clone the DOM, the <video> loses its src. The actual .mp4 URLs
+		 * are stored in the React fiber tree: memoizedProps.source.variants.
+		 */
+		function makeVideosPlayable(): void {
+			// 1. Find the React fiber key (changes every page load)
+			const sampleEl = document.querySelector('[data-testid="videoPlayer"]')
+			if (!sampleEl) return
+			const fiberKey = Object.keys(sampleEl).find((k) => k.startsWith("__reactFiber"))
+			if (!fiberKey) return
+
+			const mainEl = document.querySelector("main")
+			const gc = document.querySelector<HTMLElement>(`.${GRID_CONTAINER_CLASS}`)
+			if (!mainEl || !gc) return
+
+			// 2. Build map: tweetId → best .mp4 URL from original tweets in main
+			const videoMap: Record<string, { url: string; bitrate: number }> = {}
+			mainEl.querySelectorAll("article").forEach((art) => {
+				const vp = art.querySelector('[data-testid="videoPlayer"]')
+				if (!vp) return
+
+				const timeLink = art.querySelector('a[href*="/status/"] time')
+				const statusLink = timeLink?.parentElement as HTMLAnchorElement | null
+				const href = statusLink?.href ?? ""
+				const match = href.match(/status\/(\d+)/)
+				if (!match) return
+
+				// Walk up the fiber tree to find source.variants
+				let fiber = (vp as any)[fiberKey]
+				let depth = 0
+				while (fiber && depth < 25) {
+					if (fiber.memoizedProps?.source?.variants) {
+						const variants = fiber.memoizedProps.source.variants as Array<{
+							content_type?: string
+							contentType?: string
+							bitrate?: number
+							url?: string
+							src?: string
+						}>
+
+						// Prefer ≤5Mbps for performance, fallback to highest
+						let best: (typeof variants)[0] | null = null
+						for (const v of variants) {
+							const ct = v.content_type || v.contentType
+							if (ct !== "video/mp4") continue
+							const br = v.bitrate ?? 0
+							if (!best || (br > (best.bitrate ?? 0) && br <= 5_000_000)) {
+								best = v
+							}
+						}
+						if (!best) {
+							for (const v of variants) {
+								const ct = v.content_type || v.contentType
+								if (ct === "video/mp4" && (!best || (v.bitrate ?? 0) > (best.bitrate ?? 0))) {
+									best = v
+								}
+							}
+						}
+
+						if (best) {
+							videoMap[match[1]] = {
+								url: best.url || best.src || "",
+								bitrate: best.bitrate ?? 0,
+							}
+						}
+						break
+					}
+					fiber = fiber.return
+					depth++
+				}
+			})
+
+			// 3. Replace cloned videos with native HTML5 players
+			gc.querySelectorAll<HTMLElement>(`.${GRID_ITEM_CLASS}`).forEach((item) => {
+				const video = item.querySelector("video")
+				if (!video) return
+				// Skip if already replaced
+				if (video.dataset.twcPlayable) return
+
+				const timeLink = item.querySelector('a[href*="/status/"] time')
+				const href = (timeLink?.parentElement as HTMLAnchorElement | null)?.href ?? ""
+				const match = href.match(/status\/(\d+)/)
+				if (!match || !videoMap[match[1]]) return
+
+				const tweetPhoto = item.querySelector<HTMLElement>('[data-testid="tweetPhoto"]')
+				if (!tweetPhoto) return
+
+				const newVideo = document.createElement("video")
+				newVideo.src = videoMap[match[1]].url
+				newVideo.controls = true
+				newVideo.playsInline = true
+				newVideo.preload = "metadata"
+				newVideo.poster = video.poster || ""
+				newVideo.dataset.twcPlayable = "true"
+				newVideo.style.cssText =
+					"width:100%; height:auto; max-height:500px; object-fit:contain; border-radius:12px; background:#000;"
+
+				tweetPhoto.innerHTML = ""
+				tweetPhoto.style.display = "block"
+				tweetPhoto.appendChild(newVideo)
+			})
+		}
+
+		/**
+		 * Wire up bookmark buttons in cloned tweets to Twitter's REST API.
+		 *
+		 * React event handlers don't work on cloned nodes, so we intercept
+		 * clicks and call the bookmark add/remove API directly via fetch.
+		 * The BEARER token is a public constant from Twitter's Web App.
+		 */
+		function setupBookmarkAPI(): void {
+			const gc = document.querySelector<HTMLElement>(`.${GRID_CONTAINER_CLASS}`)
+			if (!gc) return
+
+			function getCsrfToken(): string | null {
+				const match = document.cookie
+					.split(";")
+					.map((c) => c.trim())
+					.find((c) => c.startsWith("ct0="))
+				return match ? match.split("=")[1] : null
+			}
+
+			const BEARER =
+				"AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA"
+
+			async function callBookmarkAPI(
+				tweetId: string,
+				action: "add" | "remove",
+			): Promise<boolean> {
+				const ct0 = getCsrfToken()
+				if (!ct0) return false
+				const url =
+					action === "remove"
+						? "https://x.com/i/api/1.1/bookmark/entries/remove.json"
+						: "https://x.com/i/api/1.1/bookmark/entries/add.json"
+				const resp = await fetch(url, {
+					method: "POST",
+					headers: {
+						authorization: "Bearer " + decodeURIComponent(BEARER),
+						"x-csrf-token": ct0,
+						"x-twitter-auth-type": "OAuth2Session",
+						"x-twitter-active-user": "yes",
+						"content-type": "application/x-www-form-urlencoded",
+					},
+					body: "tweet_id=" + tweetId,
+					credentials: "include",
+				})
+				return resp.status === 200
+			}
+
+			const FILLED_SVG =
+				'<g><path d="M4 4.5C4 3.12 5.119 2 6.5 2h11C18.881 2 20 3.12 20 4.5v18.44l-8-5.71-8 5.71V4.5z"></path></g>'
+			const EMPTY_SVG =
+				'<g><path d="M4 4.5C4 3.12 5.119 2 6.5 2h11C18.881 2 20 3.12 20 4.5v18.44l-8-5.71-8 5.71V4.5zM6.5 4c-.276 0-.5.22-.5.5v14.56l6-4.29 6 4.29V4.5c0-.28-.224-.5-.5-.5h-11z"></path></g>'
+
+			gc.querySelectorAll<HTMLElement>(`.${GRID_ITEM_CLASS}`).forEach((item) => {
+				const article = item.querySelector("article")
+				if (!article) return
+
+				const timeLink = article.querySelector('a[href*="/status/"] time')
+				const href = (timeLink?.parentElement as HTMLAnchorElement | null)?.href ?? ""
+				const m = href.match(/status\/(\d+)/)
+				if (!m) return
+				const tweetId = m[1]
+
+				const btn = article.querySelector<HTMLElement>(
+					'[data-testid="removeBookmark"], [data-testid="bookmark"]',
+				)
+				if (!btn || btn.dataset.twcBookmarkProxy) return
+
+				btn.dataset.twcBookmarkProxy = "true"
+				btn.style.cursor = "pointer"
+
+				btn.addEventListener(
+					"click",
+					async (e) => {
+						e.preventDefault()
+						e.stopPropagation()
+						e.stopImmediatePropagation()
+
+						const isBookmarked = btn.getAttribute("data-testid") === "removeBookmark"
+						const success = await callBookmarkAPI(tweetId, isBookmarked ? "remove" : "add")
+						if (success) {
+							const svg = btn.querySelector("svg")
+							if (isBookmarked) {
+								btn.setAttribute("data-testid", "bookmark")
+								btn.setAttribute("aria-label", "Bookmark")
+								if (svg) {
+									svg.innerHTML = EMPTY_SVG
+									svg.style.color = "rgb(113, 118, 123)"
+								}
+							} else {
+								btn.setAttribute("data-testid", "removeBookmark")
+								btn.setAttribute("aria-label", "Bookmarked")
+								if (svg) {
+									svg.innerHTML = FILLED_SVG
+									svg.style.color = "rgb(29, 155, 240)"
+								}
+							}
+						}
+					},
+					true,
+				)
+			})
+		}
+
 		function autoPopulateGrid(limit = 12): void {
 			if (isPopulating) return
 			isPopulating = true
@@ -745,9 +955,12 @@ body[data-twc-started] .twc-start {
 					gridContainer.appendChild(wrapper)
 				}
 
-				// Clean up empty media containers after a frame so layout is settled
+				// Clean up empty media containers and make videos playable
+				// after a frame so layout is settled
 				requestAnimationFrame(() => {
 					cleanEmptyMediaContainers(gridContainer)
+					makeVideosPlayable()
+					setupBookmarkAPI()
 				})
 			} finally {
 				isPopulating = false
@@ -818,25 +1031,28 @@ body[data-twc-started] .twc-start {
 			gridContainer.addEventListener("scroll", () => {
 				if (ticking) return
 
+				// Only trigger when user is very close to the actual bottom
+				// (within 400px). This prevents premature loading that shifts
+				// content while the user is still reading.
 				const nearBottom =
 					gridContainer.scrollTop + gridContainer.clientHeight >=
-					gridContainer.scrollHeight - 1200
+					gridContainer.scrollHeight - 400
 
 				if (!nearBottom) return
 
 				ticking = true
 
-				// First scroll the hidden timeline to trigger Twitter's loading
+				// Scroll the hidden timeline to trigger Twitter's loading
 				triggerLoadMore()
 
-				// Then harvest in waves, giving Twitter time to render new DOM
+				// Harvest in waves, giving Twitter time to render new DOM
 				window.setTimeout(() => {
 					autoPopulateGrid(20)
 					window.setTimeout(() => {
 						autoPopulateGrid(20)
 						ticking = false
-					}, 1000)
-				}, 800)
+					}, 1500)
+				}, 1000)
 			})
 		}
 
@@ -869,12 +1085,8 @@ body[data-twc-started] .twc-start {
 				window.clearInterval(gameInterval)
 			}
 
-			// Periodic: only harvest tweets that Twitter has already rendered.
-			// Do NOT call triggerLoadMore() here — that should only happen
-			// when the user scrolls near the bottom of the grid.
-			gameInterval = window.setInterval(() => {
-				autoPopulateGrid(8)
-			}, 2000)
+			// No periodic polling — only load more when the user scrolls
+			// near the bottom. This prevents content shifts while reading.
 		}
 
 		function stopGame(reloadPage = false): void {

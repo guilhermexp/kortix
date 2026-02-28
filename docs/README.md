@@ -137,7 +137,7 @@ Guia prático do comportamento mais recente de busca:
 1. **Document Management**: Upload, processamento e indexação
 2. **Hybrid Search**: Full-text + Vector search
 3. **AI Chat**: Conversas contextualizadas com IA
-4. **Canvas**: Whiteboard colaborativo (tldraw)
+4. **Canvas**: Whiteboard colaborativo (Excalidraw)
 5. **Rich Editor**: Editor de texto rico (Slate)
 6. **MCP Integration**: Model Context Protocol
 7. **Cloud Sync**: Google Drive, Notion, etc.

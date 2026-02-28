@@ -243,7 +243,7 @@ graph TB
 | Zustand | 5.0.9 | Client state management |
 | Framer Motion | 12.25 | Animações |
 | next-intl | 4.7.0 | Internacionalização (pt/en) |
-| tldraw | 4.2.3 | Canvas colaborativo |
+| @excalidraw/excalidraw | 0.18.0 | Canvas colaborativo |
 | Slate | 0.118+ | Editor de texto rico |
 | next-themes | 0.4.6 | Dark mode |
 
@@ -1198,7 +1198,7 @@ O Kortix possui uma **arquitetura moderna e bem estruturada**, com separação c
 - Next.js 16, React 19, TypeScript 5.9
 - Tailwind CSS, Radix UI, Framer Motion
 - TanStack Query, Zustand, next-intl
-- tldraw, Slate Editor
+- Excalidraw, Slate Editor
 
 **Backend**:
 - Hono 4.11, Bun 1.2, TypeScript 5.9

@@ -170,7 +170,7 @@ C4Component
         Component(layouts, "Layouts", "React Components", "Layouts reutilizáveis")
 
         Component(comp_menu, "Menu Component", "React", "Navegação principal")
-        Component(comp_canvas, "Canvas Component", "tldraw + React", "Whiteboard")
+        Component(comp_canvas, "Canvas Component", "Excalidraw + React", "Whiteboard")
         Component(comp_editor, "Editor Component", "Slate + React", "Editor de texto")
         Component(comp_chat, "Chat Component", "React", "Interface de chat")
         Component(comp_list, "List View", "React", "Listagem de memórias")
@@ -317,7 +317,7 @@ graph TB
 | **zustand** | 5.0.9 | apps/web | Client state | Redux, Jotai |
 | **zod** | 4.3.5 | apps/api, apps/web | Schema validation | Yup, Joi |
 | **bullmq** | 5.66.4 | apps/api | Background jobs | Agenda, Bee-Queue |
-| **tldraw** | 4.2.3 | apps/web | Canvas whiteboard | Excalidraw, Fabric.js |
+| **@excalidraw/excalidraw** | 0.18.0 | apps/web | Canvas whiteboard | Fabric.js, Konva |
 | **slate** | 0.118.1 | apps/web | Rich text editor | Lexical, ProseMirror |
 
 ### Gráfico de Tamanho de Dependências
@@ -326,7 +326,7 @@ graph TB
 pie title Bundle Size Distribution (apps/web)
     "Next.js + React" : 45
     "Radix UI Components" : 15
-    "tldraw + Slate" : 12
+    "Excalidraw + Slate" : 12
     "TanStack Query + Zustand" : 8
     "AI SDK Clients" : 6
     "Framer Motion" : 5
@@ -359,7 +359,7 @@ graph LR
         REACT19 --> RADIX[Radix UI]
         REACT19 --> TANSTACK[TanStack Query]
         REACT19 --> ZUSTAND[Zustand]
-        REACT19 --> TLDRAW[tldraw]
+        REACT19 --> EXCALIDRAW[Excalidraw]
         REACT19 --> SLATE[Slate]
         REACT19 --> FRAMER[Framer Motion]
         NEXTJS --> NEXTINTL[next-intl]

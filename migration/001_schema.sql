@@ -163,9 +163,9 @@ CREATE TABLE IF NOT EXISTS canvas_states (
     CONSTRAINT canvas_states_user_project_unique UNIQUE (user_id, project_id)
 );
 
-COMMENT ON TABLE canvas_states IS 'Stores tldraw canvas state for each user per project';
+COMMENT ON TABLE canvas_states IS 'Stores canvas state for each user per project';
 COMMENT ON COLUMN canvas_states.project_id IS 'Project/space identifier (container_tag or default)';
-COMMENT ON COLUMN canvas_states.state IS 'Full tldraw document state as JSONB';
+COMMENT ON COLUMN canvas_states.state IS 'Full canvas document state as JSONB';
 
 -- =====================================================
 -- 10. CANVAS_PROJECTS TABLE (depends on users, organizations)
