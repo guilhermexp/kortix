@@ -26,7 +26,7 @@ const MyTweet = ({ tweet: t, components }: MyTweetProps) => {
 	const parsedTweet = typeof t === "string" ? JSON.parse(t) : t
 	const tweet = enrichTweet(parsedTweet)
 	return (
-		<TweetContainer className="pb-5">
+		<TweetContainer className="pb-5 !bg-transparent !border-white/15">
 			<TweetHeader components={components} tweet={tweet} />
 			{tweet.in_reply_to_status_id_str && <TweetInReplyTo tweet={tweet} />}
 			<TweetBody tweet={tweet} />
@@ -79,11 +79,6 @@ export const TweetCard = ({
 		<div
 			className="relative transition-all"
 			data-theme="dark"
-			style={{
-				"--tweet-bg-color": "transparent",
-				"--tweet-bg-color-hover": "rgba(255,255,255,0.03)",
-				"--tweet-border": "1px solid rgba(255,255,255,0.15)",
-			} as React.CSSProperties}
 		>
 			<CustomTweet components={{}} tweet={data} />
 			{activeMemories && activeMemories.length > 0 && (
