@@ -6,14 +6,9 @@ import {
 	API_ENDPOINTS,
 	MESSAGE_TYPES,
 	STORAGE_KEYS,
+	getContainerTagForUrl,
 } from "../../utils/constants"
-import {
-	useDefaultProject,
-	useProjects,
-	useSetDefaultProject,
-	useUserData,
-} from "../../utils/query-hooks"
-import type { Project } from "../../utils/types"
+import { useProjects, useUserData } from "../../utils/query-hooks"
 
 function isTwitterPageUrl(url: string): boolean {
 	try {
@@ -29,10 +24,20 @@ function isTwitterPageUrl(url: string): boolean {
 	}
 }
 
+/**
+ * Human-readable labels for container tags (fallback when project not found in list).
+ */
+const CONTAINER_TAG_LABELS: Record<string, string> = {
+	sm_project_youtube: "YouTube",
+	sm_project_twitter_bookmarks: "Twitter Bookmarks",
+	sm_project_github: "GitHub",
+	sm_project_digitalmemory: "Digitalmemory",
+	sm_project_default: "Digitalmemory",
+}
+
 function App() {
 	const [userSignedIn, setUserSignedIn] = useState<boolean>(false)
 	const [loading, setLoading] = useState<boolean>(true)
-	const [showProjectSelector, setShowProjectSelector] = useState<boolean>(false)
 	const [currentUrl, setCurrentUrl] = useState<string>("")
 	const [currentTitle, setCurrentTitle] = useState<string>("")
 	const [saving, setSaving] = useState<boolean>(false)
@@ -45,16 +50,12 @@ function App() {
 	const [xGridLoading, setXGridLoading] = useState<boolean>(false)
 
 	const queryClient = useQueryClient()
-	const { data: projects = [], isLoading: loadingProjects } = useProjects({
-		enabled: userSignedIn,
-	})
-	const { data: defaultProject } = useDefaultProject({
+	const { data: projects = [] } = useProjects({
 		enabled: userSignedIn,
 	})
 	const { data: userData, isLoading: loadingUserData } = useUserData({
 		enabled: userSignedIn,
 	})
-	const setDefaultProjectMutation = useSetDefaultProject()
 
 	useEffect(() => {
 		const checkAuthStatus = async () => {
@@ -130,28 +131,6 @@ function App() {
 		getCurrentTab()
 	}, [])
 
-	const handleProjectSelect = (project: Project) => {
-		setDefaultProjectMutation.mutate(project, {
-			onSuccess: () => {
-				setShowProjectSelector(false)
-			},
-			onError: (error) => {
-				console.error("Error setting default project:", error)
-			},
-		})
-	}
-
-	const handleShowProjectSelector = () => {
-		setShowProjectSelector(true)
-	}
-
-	useEffect(() => {
-		if (!defaultProject && projects.length > 0) {
-			const firstProject = projects[0]
-			setDefaultProjectMutation.mutate(firstProject)
-		}
-	}, [defaultProject, projects, setDefaultProjectMutation])
-
 	const handleSaveCurrentPage = async () => {
 		setSaving(true)
 
@@ -220,6 +199,13 @@ function App() {
 		} catch (error) {
 			console.error("Error signing out:", error)
 		}
+	}
+
+	/** Resolve project name from current URL domain */
+	const getProjectDisplayName = (): string => {
+		const tag = getContainerTagForUrl(currentUrl)
+		const matched = projects.find((p) => p.containerTag === tag)
+		return matched?.name ?? CONTAINER_TAG_LABELS[tag] ?? "Digitalmemory"
 	}
 
 	if (loading) {
@@ -331,94 +317,69 @@ function App() {
 									</div>
 								</div>
 
-								{/* Project Selection */}
+								{/* Project — auto-detected from domain */}
 								<div className="mb-0">
-									<button
-										className="w-full bg-transparent border-none p-0 cursor-pointer text-left"
-										onClick={handleShowProjectSelector}
-										type="button"
-									>
-										<div className="flex justify-between items-center p-3 bg-neutral-900 rounded-lg border border-white/10 transition-colors duration-200 hover:bg-neutral-800 hover:border-white/20">
-											<span className="text-sm font-medium text-neutral-400">
-												Save to project:
-											</span>
-											<div className="flex items-center gap-2">
-												<span className="text-sm font-medium text-white overflow-hidden text-ellipsis whitespace-nowrap max-w-[120px]">
-													{defaultProject
-														? defaultProject.name
-														: "Default Project"}
-												</span>
-												<svg
-													aria-label="Select project"
-													className="text-neutral-500 flex-shrink-0 transition-transform duration-200 hover:text-neutral-300 hover:translate-x-0.5"
-													fill="none"
-													height="16"
-													stroke="currentColor"
-													strokeLinecap="round"
-													strokeLinejoin="round"
-													strokeWidth="2"
-													viewBox="0 0 24 24"
-													width="16"
-												>
-													<title>Select project</title>
-													<path d="M9 18l6-6-6-6" />
-												</svg>
-											</div>
-										</div>
-									</button>
+									<div className="flex justify-between items-center p-3 bg-neutral-900 rounded-lg border border-white/10">
+										<span className="text-sm font-medium text-neutral-400">
+											Save to project:
+										</span>
+										<span className="text-sm font-medium text-white overflow-hidden text-ellipsis whitespace-nowrap max-w-[150px]">
+											{getProjectDisplayName()}
+										</span>
+									</div>
 								</div>
 
-									{/* X - GRID Button (only on Twitter/X) */}
-									{isTwitterPageUrl(currentUrl) && (
-										<div>
-											<button
-												className={`w-full flex items-center justify-center gap-2 py-3 px-3 border rounded-lg text-sm font-semibold cursor-pointer transition-colors duration-200 ${
-													xGridActive
-														? "bg-sky-950/40 text-sky-200 border-sky-500/40 hover:bg-sky-900/40"
-														: "bg-neutral-900 text-white border-white/10 hover:bg-neutral-800 hover:border-white/20"
-												}`}
-												disabled={xGridLoading}
-												onClick={async () => {
-													setXGridLoading(true)
-													try {
-														const tabs = await chrome.tabs.query({
-															active: true,
-															currentWindow: true,
-														})
-														if (tabs.length > 0 && tabs[0].id) {
-															const response = await chrome.tabs.sendMessage(
-																tabs[0].id,
-																{
-																	action: MESSAGE_TYPES.TOGGLE_X_GRID,
-																},
-															)
-															setXGridActive(Boolean(response?.active))
-														}
-													} catch (error) {
-														console.error("Failed to toggle X Grid:", error)
-													} finally {
-														setXGridLoading(false)
+								{/* X - GRID Button (only on Twitter/X) */}
+								{isTwitterPageUrl(currentUrl) && (
+									<div>
+										<button
+											className={`w-full flex items-center justify-center gap-2 py-3 px-3 border rounded-lg text-sm font-semibold cursor-pointer transition-colors duration-200 ${
+												xGridActive
+													? "bg-sky-950/40 text-sky-200 border-sky-500/40 hover:bg-sky-900/40"
+													: "bg-neutral-900 text-white border-white/10 hover:bg-neutral-800 hover:border-white/20"
+											}`}
+											disabled={xGridLoading}
+											onClick={async () => {
+												setXGridLoading(true)
+												try {
+													const tabs = await chrome.tabs.query({
+														active: true,
+														currentWindow: true,
+													})
+													if (tabs.length > 0 && tabs[0].id) {
+														const response = await chrome.tabs.sendMessage(
+															tabs[0].id,
+															{
+																action: MESSAGE_TYPES.TOGGLE_X_GRID,
+															},
+														)
+														setXGridActive(Boolean(response?.active))
 													}
-												}}
-												type="button"
+												} catch (error) {
+													console.error("Failed to toggle X Grid:", error)
+												} finally {
+													setXGridLoading(false)
+												}
+											}}
+											type="button"
+										>
+											<svg
+												fill="currentColor"
+												height="16"
+												viewBox="0 0 24 24"
+												width="16"
 											>
-												<svg
-													fill="currentColor"
-													height="16"
-													viewBox="0 0 24 24"
-													width="16"
-												>
-													<title>Grid</title>
-													<path d="M3 3h7v7H3V3zm0 11h7v7H3v-7zm11-11h7v7h-7V3zm0 11h7v7h-7v-7z" />
-												</svg>
-												{xGridLoading
-													? "X - GRID..."
-													: xGridActive
-														? "X - GRID (ON)"
-														: "X - GRID (OFF)"}
-											</button>
-										</div>
-									)}
+												<title>Grid</title>
+												<path d="M3 3h7v7H3V3zm0 11h7v7H3v-7zm11-11h7v7h-7V3zm0 11h7v7h-7v-7z" />
+											</svg>
+											{xGridLoading
+												? "X - GRID..."
+												: xGridActive
+													? "X - GRID (ON)"
+													: "X - GRID (OFF)"}
+										</button>
+									</div>
+								)}
 
 								{/* Save Button at Bottom */}
 								<div className="mt-auto pt-4">
@@ -568,53 +529,6 @@ function App() {
 										in ChatGPT, Claude, and T3.chat
 									</p>
 								</div>
-							</div>
-						)}
-
-						{showProjectSelector && (
-							<div className="absolute inset-0 bg-black rounded-lg z-[1000] shadow-xl flex flex-col">
-								<div className="flex justify-between items-center p-4 border-b border-white/10 text-base font-semibold text-white flex-shrink-0">
-									<span>Select the Project</span>
-									<button
-										className="bg-transparent border-none text-xl cursor-pointer text-neutral-500 p-0 w-6 h-6 flex items-center justify-center hover:text-white"
-										onClick={() => setShowProjectSelector(false)}
-										type="button"
-									>
-										×
-									</button>
-								</div>
-								{loadingProjects ? (
-									<div className="py-8 px-4 text-center text-neutral-500 text-sm">
-										Loading projects...
-									</div>
-								) : (
-									<div className="flex-1 overflow-y-auto min-h-0">
-										{projects.map((project) => (
-											<button
-												className={`flex justify-between items-center py-3 px-4 cursor-pointer transition-colors duration-200 border-b border-white/5 bg-transparent border-none w-full text-left last:border-b-0 hover:bg-white/5 ${
-													defaultProject?.id === project.id ? "bg-white/10" : ""
-												}`}
-												key={project.id}
-												onClick={() => handleProjectSelect(project)}
-												type="button"
-											>
-												<div className="flex flex-col flex-1 gap-0.5">
-													<span className="text-sm font-medium text-white break-words leading-tight">
-														{project.name}
-													</span>
-													<span className="text-xs text-neutral-500">
-														{project.documentCount} docs
-													</span>
-												</div>
-												{defaultProject?.id === project.id && (
-													<span className="text-white font-bold text-base">
-														✓
-													</span>
-												)}
-											</button>
-										))}
-									</div>
-								)}
 							</div>
 						)}
 					</div>

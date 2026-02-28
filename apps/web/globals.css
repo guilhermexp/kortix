@@ -336,6 +336,41 @@ small,
 	font-size: var(--font-size-base);
 }
 
+/* Prose table borders — subtle in dark mode */
+.prose-invert table,
+.prose-invert thead,
+.prose-invert tbody,
+.prose-invert tr {
+	border-color: rgba(255, 255, 255, 0.1);
+}
+
+.prose-invert th,
+.prose-invert td {
+	border-color: rgba(255, 255, 255, 0.1);
+	padding: 0.5rem 0.75rem;
+}
+
+.prose-invert th {
+	background-color: rgba(255, 255, 255, 0.04);
+}
+
+.prose-invert thead {
+	border-bottom-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Code blocks and all bordered elements inside prose-invert */
+.prose-invert pre,
+.prose-invert code,
+.prose-invert pre *,
+.prose-invert [class*="border"] {
+	border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Force subtle borders on ALL elements inside prose chat responses */
+.prose.prose-invert *:not(button):not(svg) {
+	border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
 /* Estilos para referências/citações [1], [2], etc. */
 .chat-markdown sup {
 	font-size: 0.75rem;

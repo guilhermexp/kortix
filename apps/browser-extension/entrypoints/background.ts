@@ -1,8 +1,8 @@
-import { getDefaultProject, saveMemory, searchMemories } from "../utils/api"
+import { saveMemory, searchMemories } from "../utils/api"
 import {
-	CONTAINER_TAGS,
 	CONTEXT_MENU_IDS,
 	MESSAGE_TYPES,
+	getContainerTagForUrl,
 } from "../utils/constants"
 import { captureTwitterTokens } from "../utils/twitter-auth"
 import {
@@ -29,6 +29,26 @@ export default defineBackground(() => {
 			browser.tabs.create({
 				url: browser.runtime.getURL("/welcome.html"),
 			})
+		}
+	})
+
+	// Handle Cmd+K / Ctrl+K keyboard shortcut via chrome.commands API.
+	browser.commands.onCommand.addListener(async (command) => {
+		if (command === "save-to-kortix") {
+			const tabs = await browser.tabs.query({
+				active: true,
+				currentWindow: true,
+			})
+			if (tabs[0]?.id) {
+				try {
+					await browser.tabs.sendMessage(tabs[0].id, {
+						action: MESSAGE_TYPES.SAVE_MEMORY,
+						actionSource: "keyboard_shortcut",
+					})
+				} catch (error) {
+					console.error("Failed to trigger save via shortcut:", error)
+				}
+			}
 		}
 	})
 
@@ -89,22 +109,19 @@ export default defineBackground(() => {
 	}
 
 	/**
-	 * Save memory to Kortix API
+	 * Save memory to Kortix API.
+	 * Routes to the correct project based on the page URL:
+	 *   youtube.com  → YouTube
+	 *   x.com/twitter → Twitter Bookmarks
+	 *   github.com   → GitHub
+	 *   everything else → Digitalmemory
 	 */
 	const saveMemoryToKortix = async (
 		data: MemoryData,
 		actionSource: string,
 	): Promise<{ success: boolean; data?: unknown; error?: string }> => {
 		try {
-			let containerTag: string = CONTAINER_TAGS.DEFAULT_PROJECT
-			try {
-				const defaultProject = await getDefaultProject()
-				if (defaultProject?.containerTag) {
-					containerTag = defaultProject.containerTag
-				}
-			} catch (error) {
-				console.warn("Failed to get default project, using fallback:", error)
-			}
+			const containerTag = getContainerTagForUrl(data.url)
 
 			let content: string
 			if (data.content) {

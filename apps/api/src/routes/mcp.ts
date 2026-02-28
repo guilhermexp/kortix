@@ -13,8 +13,21 @@ import {
 import { SSEHonoTransport, streamSSE } from "muppet/streaming";
 import { z } from "zod";
 
+import { env } from "../env";
+import {
+  CANVAS_READ_ME_TEXT,
+  applyCanvasCreateView,
+  autoArrangeCanvasForAgent,
+  clearCanvasForAgent,
+  createFlowchartCanvasForAgent,
+  createMindmapCanvasForAgent,
+  listCanvasCheckpointsForAgent,
+  readCanvasSceneForAgent,
+  summarizeCanvasSceneForAgent,
+} from "../services/canvas-agent-service";
 import { createScopedSupabase, supabaseAdmin } from "../supabase";
 import { addDocument, ensureSpace } from "./documents";
+import { createCanvas, getCanvas, listCanvases } from "./canvas";
 import {
   executeStructuredSearch,
   formatStructuredSearchForHumans,
@@ -49,7 +62,95 @@ const searchToolSchema = z.object({
   responseFormat: z.enum(["json", "human"]).optional().default("json"),
 });
 
+const mcpCanvasCreateSchema = z.object({
+  name: z.string().min(1).max(120).optional().default("Untitled Canvas"),
+  projectId: z.string().uuid().optional(),
+  content: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+});
+
+const mcpCanvasListSchema = z.object({
+  projectId: z.string().uuid().optional(),
+});
+
+const mcpCanvasIdSchema = z.object({
+  canvasId: z.string().uuid(),
+});
+
+const mcpCanvasReadSceneSchema = z.object({
+  canvasId: z.string().uuid(),
+  elementLimit: z.number().int().min(1).max(1000).optional().default(200),
+  includeRaw: z.boolean().optional().default(false),
+});
+
+const mcpCanvasCreateViewSchema = z.object({
+  canvasId: z.string().uuid(),
+  input: z.string().min(2),
+  checkpointId: z.string().uuid().optional(),
+  mode: z.enum(["append", "replace"]).optional().default("append"),
+  baseVersion: z.number().int().min(1).optional(),
+});
+
+const mcpCanvasListCheckpointsSchema = z.object({
+  canvasId: z.string().uuid(),
+  limit: z.number().int().min(1).max(100).optional().default(20),
+});
+
+const mcpCanvasRestoreCheckpointSchema = z.object({
+  canvasId: z.string().uuid(),
+  checkpointId: z.string().uuid(),
+  baseVersion: z.number().int().min(1).optional(),
+});
+
+const mcpCanvasAutoArrangeSchema = z.object({
+  canvasId: z.string().uuid(),
+  columns: z.number().int().min(1).max(12).optional(),
+  gapX: z.number().int().min(16).max(600).optional(),
+  gapY: z.number().int().min(16).max(600).optional(),
+  padding: z.number().int().min(0).max(2000).optional(),
+  baseVersion: z.number().int().min(1).optional(),
+});
+
+const mcpCanvasFlowchartSchema = z.object({
+  canvasId: z.string().uuid(),
+  title: z.string().max(200).optional(),
+  steps: z.array(z.string().min(1).max(240)).min(1).max(20),
+  direction: z.enum(["vertical", "horizontal"]).optional().default("vertical"),
+  mode: z.enum(["append", "replace"]).optional().default("append"),
+  baseVersion: z.number().int().min(1).optional(),
+});
+
+const mcpMindmapBranchSchema = z.union([
+  z.string().min(1).max(240),
+  z.object({
+    label: z.string().min(1).max(240),
+    children: z.array(z.string().min(1).max(240)).max(12).optional(),
+  }),
+]);
+
+const mcpCanvasMindmapSchema = z.object({
+  canvasId: z.string().uuid(),
+  center: z.string().min(1).max(240),
+  branches: z.array(mcpMindmapBranchSchema).min(1).max(24),
+  mode: z.enum(["append", "replace"]).optional().default("append"),
+  baseVersion: z.number().int().min(1).optional(),
+});
+
 const MCP_MAX_MEMORIES = 2000;
+
+function zodIssuesToMessage(error: unknown): string {
+  if (error instanceof z.ZodError) {
+    return error.issues.map((issue) => issue.message).join(", ");
+  }
+  return "Invalid payload";
+}
+
+function toolText(text: string): ToolResponseType {
+  return [{ type: "text", text }];
+}
+
+function toolJson(payload: unknown): ToolResponseType {
+  return [{ type: "text", text: JSON.stringify(payload, null, 2) }];
+}
 
 function extractApiKey(c: Context): string | null {
   const authHeader =
@@ -330,6 +431,434 @@ function buildMcpApp(context: {
       }
     },
   );
+
+  if (env.CANVAS_AGENT_TOOLS_ENABLED === "true") {
+    app.post(
+      "/canvas-read-me",
+      describeTool({
+        name: "canvasReadMe",
+        description:
+          "Read the operating guide for Canvas tools and recommended sequencing.",
+      }),
+      async (c) => c.json(toolText(CANVAS_READ_ME_TEXT)),
+    );
+
+    app.post(
+      "/canvas-list",
+      describeTool({
+        name: "canvasList",
+        description:
+          "List canvases available to the authenticated MCP API key user.",
+      }),
+      async (c) => {
+        const supabase = c.get("supabase");
+
+        let body: z.infer<typeof mcpCanvasListSchema>;
+        try {
+          body = mcpCanvasListSchema.parse(
+            await c.req.json().catch(() => ({})),
+          );
+        } catch (error) {
+          return c.json(toolText(zodIssuesToMessage(error)), 400);
+        }
+
+        try {
+          const canvases = await listCanvases(
+            supabase,
+            actorUserId,
+            body.projectId,
+          );
+          const compact = canvases.map((canvas) => ({
+            id: canvas.id,
+            name: canvas.name,
+            projectId: canvas.projectId ?? null,
+            version: canvas.version,
+            updatedAt: canvas.updatedAt,
+          }));
+          return c.json(toolJson({ total: compact.length, canvases: compact }));
+        } catch (error) {
+          console.error("Failed to list canvases over MCP", error);
+          return c.json(toolText("Failed to list canvases."), 500);
+        }
+      },
+    );
+
+    app.post(
+      "/canvas-get",
+      describeTool({
+        name: "canvasGet",
+        description:
+          "Fetch one canvas by ID including current serialized content and metadata.",
+      }),
+      async (c) => {
+        const supabase = c.get("supabase");
+
+        let body: z.infer<typeof mcpCanvasIdSchema>;
+        try {
+          body = mcpCanvasIdSchema.parse(await c.req.json().catch(() => ({})));
+        } catch (error) {
+          return c.json(toolText(zodIssuesToMessage(error)), 400);
+        }
+
+        try {
+          const canvas = await getCanvas(supabase, body.canvasId, actorUserId);
+          return c.json(toolJson(canvas));
+        } catch (error) {
+          console.error("Failed to fetch canvas over MCP", error);
+          return c.json(toolText("Canvas not found or access denied."), 404);
+        }
+      },
+    );
+
+    app.post(
+      "/canvas-create",
+      describeTool({
+        name: "canvasCreate",
+        description:
+          "Create a new canvas. Optionally provide a projectId and initial content.",
+      }),
+      async (c) => {
+        const supabase = c.get("supabase");
+
+        let body: z.infer<typeof mcpCanvasCreateSchema>;
+        try {
+          body = mcpCanvasCreateSchema.parse(
+            await c.req.json().catch(() => ({})),
+          );
+        } catch (error) {
+          return c.json(toolText(zodIssuesToMessage(error)), 400);
+        }
+
+        try {
+          const created = await createCanvas(supabase, actorUserId, body);
+          return c.json(toolJson(created));
+        } catch (error) {
+          console.error("Failed to create canvas over MCP", error);
+          return c.json(toolText("Failed to create canvas."), 500);
+        }
+      },
+    );
+
+    app.post(
+      "/canvas-read-scene",
+      describeTool({
+        name: "canvasReadScene",
+        description:
+          "Read scene statistics, bounds, text snippets and normalized elements from a canvas.",
+      }),
+      async (c) => {
+        const supabase = c.get("supabase");
+
+        let body: z.infer<typeof mcpCanvasReadSceneSchema>;
+        try {
+          body = mcpCanvasReadSceneSchema.parse(
+            await c.req.json().catch(() => ({})),
+          );
+        } catch (error) {
+          return c.json(toolText(zodIssuesToMessage(error)), 400);
+        }
+
+        try {
+          const result = await readCanvasSceneForAgent({
+            client: supabase,
+            userId: actorUserId,
+            canvasId: body.canvasId,
+            elementLimit: body.elementLimit,
+            includeRaw: body.includeRaw,
+          });
+          return c.json(toolJson(result));
+        } catch (error) {
+          console.error("Failed to read canvas scene over MCP", error);
+          return c.json(toolText("Failed to read canvas scene."), 500);
+        }
+      },
+    );
+
+    app.post(
+      "/canvas-create-view",
+      describeTool({
+        name: "canvasCreateView",
+        description:
+          "Apply Excalidraw ops JSON to a canvas (append/replace), with optional checkpoint and baseVersion conflict control.",
+      }),
+      async (c) => {
+        const supabase = c.get("supabase");
+
+        let body: z.infer<typeof mcpCanvasCreateViewSchema>;
+        try {
+          body = mcpCanvasCreateViewSchema.parse(
+            await c.req.json().catch(() => ({})),
+          );
+        } catch (error) {
+          return c.json(toolText(zodIssuesToMessage(error)), 400);
+        }
+
+        try {
+          const result = await applyCanvasCreateView({
+            client: supabase,
+            userId: actorUserId,
+            canvasId: body.canvasId,
+            input: body.input,
+            checkpointId: body.checkpointId,
+            mode: body.mode,
+            baseVersion: body.baseVersion,
+            source: "mcp:external",
+          });
+          return c.json(toolJson(result));
+        } catch (error) {
+          console.error("Failed to apply canvas create view over MCP", error);
+          return c.json(toolText("Failed to apply canvas operations."), 500);
+        }
+      },
+    );
+
+    app.post(
+      "/canvas-list-checkpoints",
+      describeTool({
+        name: "canvasListCheckpoints",
+        description:
+          "List recent checkpoints for a given canvas so clients can restore safely.",
+      }),
+      async (c) => {
+        const supabase = c.get("supabase");
+
+        let body: z.infer<typeof mcpCanvasListCheckpointsSchema>;
+        try {
+          body = mcpCanvasListCheckpointsSchema.parse(
+            await c.req.json().catch(() => ({})),
+          );
+        } catch (error) {
+          return c.json(toolText(zodIssuesToMessage(error)), 400);
+        }
+
+        try {
+          const result = await listCanvasCheckpointsForAgent({
+            client: supabase,
+            userId: actorUserId,
+            canvasId: body.canvasId,
+            limit: body.limit,
+          });
+          return c.json(toolJson(result));
+        } catch (error) {
+          console.error("Failed to list canvas checkpoints over MCP", error);
+          return c.json(toolText("Failed to list checkpoints."), 500);
+        }
+      },
+    );
+
+    app.post(
+      "/canvas-restore-checkpoint",
+      describeTool({
+        name: "canvasRestoreCheckpoint",
+        description:
+          "Restore a canvas to a checkpoint ID. Uses optimistic concurrency when baseVersion is provided.",
+      }),
+      async (c) => {
+        const supabase = c.get("supabase");
+
+        let body: z.infer<typeof mcpCanvasRestoreCheckpointSchema>;
+        try {
+          body = mcpCanvasRestoreCheckpointSchema.parse(
+            await c.req.json().catch(() => ({})),
+          );
+        } catch (error) {
+          return c.json(toolText(zodIssuesToMessage(error)), 400);
+        }
+
+        try {
+          const result = await applyCanvasCreateView({
+            client: supabase,
+            userId: actorUserId,
+            canvasId: body.canvasId,
+            input: "[]",
+            checkpointId: body.checkpointId,
+            mode: "append",
+            baseVersion: body.baseVersion,
+            source: "mcp:restore",
+          });
+          return c.json(toolJson(result));
+        } catch (error) {
+          console.error("Failed to restore canvas checkpoint over MCP", error);
+          return c.json(toolText("Failed to restore checkpoint."), 500);
+        }
+      },
+    );
+
+    app.post(
+      "/canvas-auto-arrange",
+      describeTool({
+        name: "canvasAutoArrange",
+        description:
+          "Auto-arrange eligible canvas elements in a grid while preserving container child relationships.",
+      }),
+      async (c) => {
+        const supabase = c.get("supabase");
+
+        let body: z.infer<typeof mcpCanvasAutoArrangeSchema>;
+        try {
+          body = mcpCanvasAutoArrangeSchema.parse(
+            await c.req.json().catch(() => ({})),
+          );
+        } catch (error) {
+          return c.json(toolText(zodIssuesToMessage(error)), 400);
+        }
+
+        try {
+          const result = await autoArrangeCanvasForAgent({
+            client: supabase,
+            userId: actorUserId,
+            canvasId: body.canvasId,
+            columns: body.columns,
+            gapX: body.gapX,
+            gapY: body.gapY,
+            padding: body.padding,
+            baseVersion: body.baseVersion,
+          });
+          return c.json(toolJson(result));
+        } catch (error) {
+          console.error("Failed to auto-arrange canvas over MCP", error);
+          return c.json(toolText("Failed to auto-arrange canvas."), 500);
+        }
+      },
+    );
+
+    app.post(
+      "/canvas-summarize-scene",
+      describeTool({
+        name: "canvasSummarizeScene",
+        description:
+          "Generate a structured summary of the canvas (stats, inferred kind, text preview and prose summary).",
+      }),
+      async (c) => {
+        const supabase = c.get("supabase");
+
+        let body: z.infer<typeof mcpCanvasIdSchema>;
+        try {
+          body = mcpCanvasIdSchema.parse(await c.req.json().catch(() => ({})));
+        } catch (error) {
+          return c.json(toolText(zodIssuesToMessage(error)), 400);
+        }
+
+        try {
+          const result = await summarizeCanvasSceneForAgent({
+            client: supabase,
+            userId: actorUserId,
+            canvasId: body.canvasId,
+          });
+          return c.json(toolJson(result));
+        } catch (error) {
+          console.error("Failed to summarize canvas scene over MCP", error);
+          return c.json(toolText("Failed to summarize canvas."), 500);
+        }
+      },
+    );
+
+    app.post(
+      "/canvas-create-flowchart",
+      describeTool({
+        name: "canvasCreateFlowchart",
+        description:
+          "Create a flowchart in the target canvas from an ordered steps list.",
+      }),
+      async (c) => {
+        const supabase = c.get("supabase");
+
+        let body: z.infer<typeof mcpCanvasFlowchartSchema>;
+        try {
+          body = mcpCanvasFlowchartSchema.parse(
+            await c.req.json().catch(() => ({})),
+          );
+        } catch (error) {
+          return c.json(toolText(zodIssuesToMessage(error)), 400);
+        }
+
+        try {
+          const result = await createFlowchartCanvasForAgent({
+            client: supabase,
+            userId: actorUserId,
+            canvasId: body.canvasId,
+            title: body.title,
+            steps: body.steps,
+            direction: body.direction,
+            mode: body.mode,
+            baseVersion: body.baseVersion,
+          });
+          return c.json(toolJson(result));
+        } catch (error) {
+          console.error("Failed to create canvas flowchart over MCP", error);
+          return c.json(toolText("Failed to create flowchart in canvas."), 500);
+        }
+      },
+    );
+
+    app.post(
+      "/canvas-create-mindmap",
+      describeTool({
+        name: "canvasCreateMindmap",
+        description:
+          "Create a mindmap in the target canvas from a center topic and branches.",
+      }),
+      async (c) => {
+        const supabase = c.get("supabase");
+
+        let body: z.infer<typeof mcpCanvasMindmapSchema>;
+        try {
+          body = mcpCanvasMindmapSchema.parse(
+            await c.req.json().catch(() => ({})),
+          );
+        } catch (error) {
+          return c.json(toolText(zodIssuesToMessage(error)), 400);
+        }
+
+        try {
+          const result = await createMindmapCanvasForAgent({
+            client: supabase,
+            userId: actorUserId,
+            canvasId: body.canvasId,
+            center: body.center,
+            branches: body.branches,
+            mode: body.mode,
+            baseVersion: body.baseVersion,
+          });
+          return c.json(toolJson(result));
+        } catch (error) {
+          console.error("Failed to create canvas mindmap over MCP", error);
+          return c.json(toolText("Failed to create mindmap in canvas."), 500);
+        }
+      },
+    );
+
+    app.post(
+      "/canvas-clear",
+      describeTool({
+        name: "canvasClear",
+        description:
+          "Clear all elements from a canvas in a single operation.",
+      }),
+      async (c) => {
+        const supabase = c.get("supabase");
+
+        let body: z.infer<typeof mcpCanvasIdSchema>;
+        try {
+          body = mcpCanvasIdSchema.parse(await c.req.json().catch(() => ({})));
+        } catch (error) {
+          return c.json(toolText(zodIssuesToMessage(error)), 400);
+        }
+
+        try {
+          const result = await clearCanvasForAgent({
+            client: supabase,
+            userId: actorUserId,
+            canvasId: body.canvasId,
+          });
+          return c.json(toolJson(result));
+        } catch (error) {
+          console.error("Failed to clear canvas over MCP", error);
+          return c.json(toolText("Failed to clear canvas."), 500);
+        }
+      },
+    );
+  }
 
   return app;
 }

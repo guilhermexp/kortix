@@ -55,6 +55,8 @@ export async function saveMemory() {
 }
 
 export function setupGlobalKeyboardShortcut() {
+	// Cmd+K / Ctrl+K is handled by chrome.commands API (manifest).
+	// Cmd+Shift+M / Ctrl+Shift+M is kept as a secondary shortcut via content script.
 	document.addEventListener("keydown", async (event) => {
 		if (
 			(event.ctrlKey || event.metaKey) &&

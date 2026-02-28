@@ -85,6 +85,38 @@ Comportamento:
 - Em `responseFormat=json`, retorna payload estruturado (recomendado para agentes).
 - Em `responseFormat=human`, retorna texto resumido para leitura humana.
 
+## Ferramentas de Canvas (MCP Externo)
+
+Arquivo principal:
+
+- `apps/api/src/routes/mcp.ts`
+
+Pré-requisito:
+
+- `CANVAS_AGENT_TOOLS_ENABLED=true`
+
+Tools MCP expostas para clientes externos:
+
+- `canvasReadMe`
+- `canvasList`
+- `canvasGet`
+- `canvasCreate`
+- `canvasReadScene`
+- `canvasCreateView`
+- `canvasListCheckpoints`
+- `canvasRestoreCheckpoint`
+- `canvasAutoArrange`
+- `canvasSummarizeScene`
+- `canvasCreateFlowchart`
+- `canvasCreateMindmap`
+- `canvasClear`
+
+Observações:
+
+- Todas as operações respeitam autenticação por API key e escopo do usuário autenticado.
+- Para edição de elementos, prefira `canvasCreateView` (JSON de operações Excalidraw).
+- Para fluxo seguro: `canvasListCheckpoints` -> `canvasCreateView` -> `canvasSummarizeScene`.
+
 ## Contrato do Agente Interno
 
 Arquivos:

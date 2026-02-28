@@ -2402,8 +2402,6 @@ export function ChatMessages({
 		containerTag?: string | null
 	}
 	const [canvasDocs, setCanvasDocs] = useState<CanvasDoc[]>([])
-	const prevIsOpenRef = useRef(false)
-	const lastClosedTimeRef = useRef<number>(0)
 	const canvasDocMap = useMemo(() => {
 		const map = new Map<string, CanvasDoc>()
 		for (const doc of canvasDocs) {
@@ -2806,39 +2804,6 @@ export function ChatMessages({
 	}, [setMessages])
 
 	useEffect(() => {
-		// Detect when chat is opened (transitions from closed to open)
-		if (effectiveOpen && !prevIsOpenRef.current) {
-			const now = Date.now()
-			const timeSinceClosed = now - lastClosedTimeRef.current
-			const QUICK_REOPEN_THRESHOLD = 60 * 1000 // 1 minute
-
-			// Always create a new chat when opening, unless chat was
-			// closed and reopened quickly. This avoids relying on local
-			// messages state to decide session continuity.
-			const isQuickReopen =
-				timeSinceClosed < QUICK_REOPEN_THRESHOLD && Boolean(currentChatId)
-
-			if (!isQuickReopen) {
-				const newChatId = crypto.randomUUID()
-				skipHydrationRef.current = true // Prevent 404 fetch for new chats
-				setCurrentChatId(newChatId)
-				localOnlyConversationIdsRef.current.add(newChatId)
-				setConversation(newChatId, [])
-				setMessages([])
-				shouldGenerateTitleRef.current = false
-				setHydrationOrigin(null)
-			}
-		}
-
-		// Track when chat is closed
-		if (!effectiveOpen && prevIsOpenRef.current) {
-			lastClosedTimeRef.current = Date.now()
-		}
-
-		prevIsOpenRef.current = effectiveOpen
-	}, [currentChatId, effectiveOpen, setConversation, setCurrentChatId, setMessages])
-
-	useEffect(() => {
 		activeChatIdRef.current = currentChatId ?? id ?? null
 	}, [currentChatId, id])
 
@@ -3087,6 +3052,33 @@ export function ChatMessages({
 		}
 		return false
 	}, [messages])
+
+	const agentStatusLabel = useMemo(() => {
+		if (status !== "streaming" && status !== "submitted") return null
+		// Walk messages in reverse to find the latest active part
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const msg = messages[i]
+			if (msg.role !== "assistant") continue
+			const parts = Array.isArray(msg.parts) ? msg.parts : []
+			// Check parts in reverse (latest first)
+			for (let j = parts.length - 1; j >= 0; j--) {
+				const part = parts[j]
+				const isActive =
+					isObject(part) &&
+					("state" in part) &&
+					(part.state === "input-streaming" || part.state === "input-available")
+				if (!isActive) continue
+				if (isThinkingPart(part)) return "Thinking"
+				if (isSearchMemoriesPart(part)) return "Searching memories"
+				if (isGenericToolPart(part)) {
+					const label = formatToolLabel(part.toolName)
+					return `Using ${label}`
+				}
+			}
+		}
+		if (isThinking) return "Thinking"
+		return "Generating"
+	}, [messages, status, isThinking])
 
 	return (
 		<div className="flex flex-col h-full bg-[#0e0f10]">
@@ -3506,19 +3498,7 @@ export function ChatMessages({
 							)}
 						</div>
 					))}
-					{isThinking && !hasActiveTools && (
-						<div
-							className={cn(
-								"flex text-muted-foreground justify-start gap-1.5 items-center w-full max-w-3xl mx-auto",
-								compact ? "px-3 py-3" : "px-4 py-5",
-							)}
-						>
-							<TextShimmer as="span" className="text-xs" duration={1.1}>
-								Thinking
-							</TextShimmer>
-						</div>
-					)}
-					<div ref={bottomRef} />
+						<div ref={bottomRef} />
 				</div>
 
 				<Button
@@ -3609,11 +3589,11 @@ export function ChatMessages({
 						))}
 					</div>
 				)}
-				{(status === "streaming" || status === "submitted") && (
-					<div className="mb-2 flex items-center justify-between rounded-xl border border-white/10 bg-[#0c0c0c] px-4 py-2.5">
-						<span className="text-[16px] leading-none font-medium text-zinc-400">
-							Generating..
-						</span>
+				{agentStatusLabel && (
+					<div className="mb-2 flex items-center justify-between rounded-xl border border-white/10 bg-transparent px-4 py-2.5">
+						<TextShimmer as="span" className="text-[16px] leading-none font-medium" duration={1.2}>
+							{agentStatusLabel}
+						</TextShimmer>
 						<button
 							className="inline-flex items-center gap-2 text-zinc-100 hover:text-white transition-colors"
 							onClick={stop}
@@ -3767,7 +3747,7 @@ export function ChatMessages({
 							/>
 							<span className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] text-zinc-400">
 								<Sparkles className="size-3.5" />
-								<span>{provider === "kimi" ? "K2.5" : "Model"}</span>
+								<span>{provider === "kimi" ? "Kimi" : "Model"}</span>
 							</span>
 						</div>
 							<div className="flex items-center gap-1">

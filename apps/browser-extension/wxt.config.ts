@@ -20,8 +20,17 @@ export default defineConfig({
 	manifest: {
 		name: "Kortix",
 		homepage_url: APP_URL,
-		version: "6.0.003",
+		version: "6.0.004",
 		permissions: ["contextMenus", "storage", "activeTab", "webRequest", "tabs"],
+		commands: {
+			"save-to-kortix": {
+				suggested_key: {
+					default: "Ctrl+K",
+					mac: "Command+K",
+				},
+				description: "Save current page to Kortix",
+			},
+		},
 		host_permissions: [
 			"*://x.com/*",
 			"*://twitter.com/*",

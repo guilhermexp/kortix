@@ -15,7 +15,7 @@ const PROVIDERS: ProviderConfig[] = [
 	{
 		id: "kimi",
 		name: "Kimi",
-		displayName: "K2.5",
+		displayName: "Kimi",
 		description: "Fast and balanced coding model by Moonshot AI",
 	},
 ]
@@ -38,7 +38,7 @@ export function ProviderSelector({
 	return (
 		<div className="flex items-center gap-1.5">
 			<span className="h-6 px-1.5 inline-flex items-center text-muted-foreground text-[11px] font-normal">
-				{currentProvider?.displayName ?? "K2.5"}
+				{currentProvider?.displayName ?? "Kimi"}
 			</span>
 		</div>
 	)

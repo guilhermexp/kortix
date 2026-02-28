@@ -206,15 +206,21 @@ export function DocumentProjectTransfer({
 			(project) => project.containerTag === selection,
 		)
 
-		return (
-			<span className={`flex items-center ${compact ? "gap-1" : "gap-1.5"}`}>
-				<FolderIcon className={compact ? "h-3 w-3 flex-shrink-0" : "h-3.5 w-3.5"} />
-				<span className={compact ? "truncate max-w-[60px]" : ""}>
-					{currentOption ? currentOption.name : selection}
+			return (
+				<span className={`flex items-center ${compact ? "gap-1" : "gap-1.5"}`}>
+					<FolderIcon className={compact ? "h-3 w-3 flex-shrink-0" : "h-3.5 w-3.5"} />
+					<span
+						className={
+							compact
+								? "whitespace-normal break-words text-left leading-[1.05] text-[8px]"
+								: ""
+						}
+					>
+						{currentOption ? currentOption.name : selection}
+					</span>
 				</span>
-			</span>
-		)
-	})()
+			)
+		})()
 
 	return (
 		<Select
@@ -224,13 +230,13 @@ export function DocumentProjectTransfer({
 			onValueChange={handleChange}
 			value={selection}
 		>
-			<SelectTrigger
-				className={
-					compact
-						? "h-6 w-auto gap-1 px-1.5 text-[9px] border-0 bg-transparent text-muted-foreground hover:bg-muted/50 rounded"
-						: "h-8 w-auto gap-2 px-2.5 text-xs border-0 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md"
-				}
-			>
+				<SelectTrigger
+					className={
+						compact
+							? "h-auto min-h-6 w-auto gap-1 px-1.5 py-0.5 text-[8px] border-0 bg-transparent text-muted-foreground hover:bg-muted/50 rounded whitespace-normal leading-[1.05]"
+							: "h-8 w-auto gap-2 px-2.5 text-xs border-0 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md"
+					}
+				>
 				{triggerLabel}
 			</SelectTrigger>
 			<SelectContent>

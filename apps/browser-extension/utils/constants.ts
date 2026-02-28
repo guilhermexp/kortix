@@ -72,6 +72,7 @@ export const DOMAINS = {
  */
 export const CONTAINER_TAGS = {
 	DEFAULT_PROJECT: "sm_project_default",
+	DIGITALMEMORY: "sm_project_digitalmemory",
 	YOUTUBE: "sm_project_youtube",
 	TWITTER_BOOKMARKS: "sm_project_twitter_bookmarks",
 	SKILLS: "sm_project_skills",
@@ -80,6 +81,37 @@ export const CONTAINER_TAGS = {
 	PDF: "sm_project_pdf",
 	AUDIO: "sm_project_audio",
 } as const
+
+/**
+ * Domain-to-project routing map.
+ * Domains not listed here fall back to DIGITALMEMORY.
+ */
+export const DOMAIN_PROJECT_MAP: [string, string][] = [
+	["youtube.com", CONTAINER_TAGS.YOUTUBE],
+	["youtu.be", CONTAINER_TAGS.YOUTUBE],
+	["x.com", CONTAINER_TAGS.TWITTER_BOOKMARKS],
+	["twitter.com", CONTAINER_TAGS.TWITTER_BOOKMARKS],
+	["github.com", CONTAINER_TAGS.GITHUB],
+]
+
+/**
+ * Resolve container tag from a page URL.
+ * Returns the mapped project tag or DIGITALMEMORY as fallback.
+ */
+export function getContainerTagForUrl(url?: string): string {
+	if (!url) return CONTAINER_TAGS.DIGITALMEMORY
+	try {
+		const hostname = new URL(url).hostname
+		for (const [domain, tag] of DOMAIN_PROJECT_MAP) {
+			if (hostname === domain || hostname.endsWith(`.${domain}`)) {
+				return tag
+			}
+		}
+	} catch {
+		// invalid URL — fall through
+	}
+	return CONTAINER_TAGS.DIGITALMEMORY
+}
 
 /**
  * Message Types for extension communication

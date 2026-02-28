@@ -1482,7 +1482,7 @@ const MasonryCard = memo(
 
 							{/* Footer with memory count and delete */}
 							<div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
-								<div className="flex items-center gap-2">
+								<div className="flex min-w-0 items-start gap-2">
 									{activeMemories.length > 0 && (
 										<span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
 											<Brain className="w-3 h-3" />
@@ -1491,10 +1491,10 @@ const MasonryCard = memo(
 										</span>
 									)}
 									{/* Project selector - click to change project */}
-									<div
-										className="max-w-[100px]"
-										onClick={(e) => e.stopPropagation()}
-									>
+										<div
+											className="min-w-0 flex-1"
+											onClick={(e) => e.stopPropagation()}
+										>
 										<DocumentProjectTransfer
 											documentId={document.id}
 											currentProject={containerTag}
