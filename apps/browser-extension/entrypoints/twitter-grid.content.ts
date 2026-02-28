@@ -267,64 +267,126 @@ body[data-twc-started] .twc-start {
 		// ================================================================
 
 		/**
-		 * Force images inside a cloned node to actually load.
-		 * Twitter uses lazy loading, blob URLs, and srcset — clones need a nudge.
+		 * Fix media in cloned tweet nodes.
+		 *
+		 * Twitter uses React Native for Web (RNW). The VISIBLE image is a CSS
+		 * `background-image` on a <div>, applied via atomic CSS classes (r-xxxxx).
+		 * The <img> tag is hidden (opacity:0, position:absolute) for accessibility.
+		 *
+		 * cloneNode copies class names but RNW's dynamically-generated CSS rules
+		 * may not carry the background-image to the clone. We fix this by:
+		 * 1. Copying computed background-image from ALL original divs to clones
+		 * 2. Making the hidden <img> visible as fallback
+		 * 3. Removing dark placeholder backgrounds
 		 */
+		/**
+		 * Media container selectors — only images/divs inside these get
+		 * aggressive size overrides. Everything else (profile pics, icons,
+		 * action buttons) is left alone.
+		 */
+		const MEDIA_SELECTORS = [
+			"[data-testid='tweetPhoto']",
+			"[data-testid='card.wrapper']",
+			"[data-testid='videoPlayer']",
+			"[data-testid='videoComponent']",
+		]
+
+		function isInsideMedia(el: HTMLElement): boolean {
+			return MEDIA_SELECTORS.some((sel) => el.closest(sel) !== null)
+		}
+
 		function fixClonedMedia(clone: HTMLElement, original: HTMLElement): void {
-			// Fix all images
+			// 1. Copy background-image ONLY inside media containers.
+			//    Twitter's RNW Image component renders the visible image as
+			//    background-image on a div via atomic CSS classes. We only need
+			//    to fix this inside tweet photos / cards — NOT profile pics or icons.
+			for (const sel of MEDIA_SELECTORS) {
+				const cloneContainers = Array.from(clone.querySelectorAll<HTMLElement>(sel))
+				const origContainers = Array.from(original.querySelectorAll<HTMLElement>(sel))
+
+				for (let c = 0; c < cloneContainers.length && c < origContainers.length; c++) {
+					const cloneDivs = Array.from(cloneContainers[c].querySelectorAll<HTMLElement>("div"))
+					const origDivs = Array.from(origContainers[c].querySelectorAll<HTMLElement>("div"))
+
+					for (let i = 0; i < cloneDivs.length && i < origDivs.length; i++) {
+						const computed = window.getComputedStyle(origDivs[i])
+						const bg = computed.backgroundImage
+						if (bg && bg !== "none") {
+							cloneDivs[i].style.backgroundImage = bg
+							cloneDivs[i].style.backgroundSize = computed.backgroundSize || "cover"
+							cloneDivs[i].style.backgroundPosition = computed.backgroundPosition || "center"
+							cloneDivs[i].style.backgroundRepeat = "no-repeat"
+						}
+
+						// Remove dark placeholder backgrounds (black boxes)
+						const bgColor = computed.backgroundColor
+						if (
+							bgColor === "rgb(32, 35, 39)" ||
+							bgColor === "rgb(21, 24, 28)" ||
+							bgColor === "rgb(39, 44, 48)"
+						) {
+							cloneDivs[i].style.backgroundColor = "transparent"
+						}
+					}
+				}
+			}
+
+			// 2. Fix <img> elements — scope aggressive overrides to media only.
 			const cloneImgs = clone.querySelectorAll<HTMLImageElement>("img")
 			const originalImgs = original.querySelectorAll<HTMLImageElement>("img")
 
 			cloneImgs.forEach((img, i) => {
 				const origImg = originalImgs[i]
 
-				// Force eager loading
+				// Force eager loading for all images
 				img.removeAttribute("loading")
 				img.setAttribute("loading", "eager")
 
-				// If the original has a resolved src (currentSrc), use it
-				if (origImg?.currentSrc && origImg.currentSrc !== img.src) {
+				// Copy the resolved src from the original
+				if (origImg?.currentSrc) {
 					img.src = origImg.currentSrc
 				}
-
-				// Copy srcset from original if present
 				if (origImg?.srcset) {
 					img.srcset = origImg.srcset
 				}
 
-				// If src is empty or a placeholder, try data-src
-				if (!img.src || img.src === "about:blank") {
-					const dataSrc = img.getAttribute("data-src") || img.dataset.src
-					if (dataSrc) img.src = dataSrc
-				}
+				// Make opacity visible (RNW hides <img> via CSS class)
+				img.style.setProperty("opacity", "1", "important")
 
-				// Remove any lazy/hidden styles
-				img.style.removeProperty("visibility")
-				img.style.removeProperty("opacity")
-			})
-
-			// Fix background images (Twitter sometimes uses div backgrounds for cards)
-			const cloneDivs = clone.querySelectorAll<HTMLElement>("div[style*='background-image']")
-			const originalDivs = original.querySelectorAll<HTMLElement>("div[style*='background-image']")
-			cloneDivs.forEach((div, i) => {
-				const origDiv = originalDivs[i]
-				if (origDiv) {
-					const bg = window.getComputedStyle(origDiv).backgroundImage
-					if (bg && bg !== "none") {
-						div.style.backgroundImage = bg
-					}
+				// Only apply size/position overrides to images INSIDE media containers
+				// (tweet photos, cards, video players). Leave profile pics and icons alone.
+				if (isInsideMedia(img)) {
+					img.style.setProperty("position", "relative", "important")
+					img.style.setProperty("z-index", "auto", "important")
+					img.style.setProperty("width", "100%", "important")
+					img.style.setProperty("height", "100%", "important")
+					img.style.setProperty("object-fit", "cover", "important")
 				}
 			})
 
-			// Fix videos — show poster image instead (videos can't play in clones)
+			// 3. Fix profile images — copy background-image for avatar circles.
+			//    Twitter renders avatars as background-image on a div inside the
+			//    [data-testid="Tweet-User-Avatar"] container.
+			const cloneAvatars = clone.querySelectorAll<HTMLElement>('[data-testid="Tweet-User-Avatar"] div')
+			const origAvatars = original.querySelectorAll<HTMLElement>('[data-testid="Tweet-User-Avatar"] div')
+			for (let i = 0; i < cloneAvatars.length && i < origAvatars.length; i++) {
+				const computed = window.getComputedStyle(origAvatars[i])
+				const bg = computed.backgroundImage
+				if (bg && bg !== "none") {
+					cloneAvatars[i].style.backgroundImage = bg
+					cloneAvatars[i].style.backgroundSize = computed.backgroundSize || "cover"
+					cloneAvatars[i].style.backgroundPosition = computed.backgroundPosition || "center"
+				}
+			}
+
+			// 4. Fix videos — copy poster, pause playback
 			const cloneVideos = clone.querySelectorAll<HTMLVideoElement>("video")
 			const originalVideos = original.querySelectorAll<HTMLVideoElement>("video")
 			cloneVideos.forEach((video, i) => {
 				const origVideo = originalVideos[i]
-				if (origVideo?.poster) {
-					video.poster = origVideo.poster
-				}
-				// Pause to prevent any autoplay attempts
+				if (origVideo?.poster) video.poster = origVideo.poster
+				video.style.setProperty("object-fit", "cover", "important")
+				video.preload = "none"
 				try { video.pause() } catch {}
 			})
 		}
