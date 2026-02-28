@@ -147,6 +147,109 @@ export function resolveDefaultProject(params: {
   return defaultContainerTag;
 }
 
+// ---------------------------------------------------------------------------
+// X/Twitter helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract tweet ID from an X/Twitter URL.
+ * Handles x.com, twitter.com, mobile.twitter.com, etc.
+ */
+export function extractTweetId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (
+      !u.hostname.includes("x.com") &&
+      !u.hostname.includes("twitter.com")
+    )
+      return null;
+    const match = u.pathname.match(/\/status\/(\d+)/);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function isXTwitterUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.hostname.includes("x.com") || u.hostname.includes("twitter.com");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Generate the token used by Twitter's syndication API.
+ * Same algorithm used by react-tweet.
+ */
+function generateSyndicationToken(tweetId: string): string {
+  return ((Number(tweetId) / 1e15) * Math.PI)
+    .toString(36)
+    .replace(/(0+|\.)/g, "");
+}
+
+/**
+ * Fetch tweet preview image via Twitter syndication API.
+ * Returns the first photo URL, or the author profile image as fallback.
+ */
+async function fetchTweetPreviewImage(
+  tweetId: string,
+  timeoutMs = 5000,
+): Promise<string | null> {
+  try {
+    const token = generateSyndicationToken(tweetId);
+    const syndicationUrl = `https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&lang=en&token=${token}`;
+
+    const response = await fetch(syndicationUrl, {
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as Record<string, unknown>;
+
+    // Try to get first photo from mediaDetails
+    const mediaDetails = data.mediaDetails as
+      | Array<{ type?: string; media_url_https?: string }>
+      | undefined;
+    if (mediaDetails?.length) {
+      const photo = mediaDetails.find((m) => m.type === "photo");
+      if (photo?.media_url_https) return photo.media_url_https;
+      // Any media with image URL
+      const anyMedia = mediaDetails.find((m) => m.media_url_https);
+      if (anyMedia?.media_url_https) return anyMedia.media_url_https;
+    }
+
+    // Try photos array
+    const photos = data.photos as
+      | Array<{ url?: string }>
+      | undefined;
+    if (photos?.[0]?.url) return photos[0].url;
+
+    // Try video thumbnail
+    const video = data.video as
+      | { poster?: string }
+      | undefined;
+    if (video?.poster) return video.poster;
+
+    // Fallback: author profile image (higher res)
+    const user = data.user as
+      | { profile_image_url_https?: string }
+      | undefined;
+    if (user?.profile_image_url_https) {
+      return user.profile_image_url_https.replace("_normal", "_400x400");
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Quick OG image extraction for immediate preview loading
  * Fetches first 50KB of HTML to find og:image meta tag
@@ -155,6 +258,16 @@ export async function extractOgImageQuick(
   url: string,
   timeoutMs = 3000,
 ): Promise<string | null> {
+  // Special handling for X/Twitter URLs — their HTML doesn't contain useful og:image
+  if (isXTwitterUrl(url)) {
+    const tweetId = extractTweetId(url);
+    if (tweetId) {
+      return fetchTweetPreviewImage(tweetId, timeoutMs);
+    }
+    // Non-tweet X URL (profile page etc.) — skip, let the full pipeline handle it
+    return null;
+  }
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);

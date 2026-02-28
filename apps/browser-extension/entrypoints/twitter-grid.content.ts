@@ -1,13 +1,20 @@
 /**
  * X/Twitter grid mode content script (MAIN world)
- * Grid-only experience for tweet browsing.
+ *
+ * Architecture: "Shadow Grid" approach
+ * - The original timeline stays in the document flow (invisible) so Twitter's
+ *   virtual scroller keeps working and loading more tweets via infinite scroll.
+ * - We CLONE tweet nodes into a fixed grid overlay — originals are never moved.
+ * - window.scrollBy() drives the hidden timeline forward; IntersectionObserver
+ *   on the sentinel triggers Twitter's API calls for more data.
+ * - MutationObserver on the timeline picks up newly rendered tweets.
  */
 
 export default defineContentScript({
 	matches: ["*://x.com/*", "*://twitter.com/*"],
 	world: "MAIN",
 	main() {
-		const TWC_VERSION = "2.0.0"
+		const TWC_VERSION = "3.0.0"
 
 		type TwcSettings = {
 			version: string
@@ -28,10 +35,18 @@ export default defineContentScript({
 		let gameInterval = -1
 		let gridScrollSetup = false
 		let timelineObserver: MutationObserver | null = null
+		let isPopulating = false
 
 		const twcCss = `
+/* Body scroll stays enabled — Twitter's virtualizer needs real window scroll
+   to trigger IntersectionObserver on its sentinel and load more tweets.
+   Hide the scrollbar since the grid overlay covers the viewport. */
 body[data-twc-started][data-twc-grid-mode] {
-	overflow: hidden !important;
+	scrollbar-width: none !important;
+}
+
+body[data-twc-started][data-twc-grid-mode]::-webkit-scrollbar {
+	display: none !important;
 }
 
 body[data-twc-started][data-twc-grid-mode] header[role="banner"],
@@ -41,12 +56,14 @@ body[data-twc-started][data-twc-grid-mode] [data-testid="GrokDrawer"] {
 	display: none !important;
 }
 
+/* main stays in document flow (NOT position:fixed) so it contributes to
+   document.scrollHeight. The virtualizer uses window scroll position to
+   decide which items to render and when to fetch more. */
 body[data-twc-started][data-twc-grid-mode] main {
-	position: fixed !important;
-	inset: 0 !important;
 	opacity: 0 !important;
 	pointer-events: none !important;
 	z-index: -1 !important;
+	position: relative !important;
 }
 
 body[data-twc-started][data-twc-grid-mode] .${GRID_CONTAINER_CLASS} {
@@ -56,7 +73,8 @@ body[data-twc-started][data-twc-grid-mode] .${GRID_CONTAINER_CLASS} {
 	left: 0;
 	right: 0;
 	bottom: 0;
-	overflow: auto;
+	overflow-y: auto;
+	overflow-x: hidden;
 	padding: 16px;
 	gap: 16px;
 	grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
@@ -160,6 +178,10 @@ body[data-twc-started] .twc-start {
 }
 `
 
+		// ================================================================
+		// Helpers
+		// ================================================================
+
 		function setStyle(styleText: string): void {
 			let styleEl = document.querySelector<HTMLStyleElement>(".twc-style")
 			if (!styleEl) {
@@ -177,7 +199,6 @@ body[data-twc-started] .twc-start {
 			} catch {
 				localStorage.removeItem("twc-settings")
 			}
-
 			if (typeof loadedSettings.autoStart === "boolean") {
 				TWC_SETTINGS.autoStart = loadedSettings.autoStart
 			}
@@ -192,184 +213,265 @@ body[data-twc-started] .twc-start {
 			return "twcStarted" in document.body.dataset
 		}
 
+		// ================================================================
+		// Timeline discovery — works on Home, Profile, Search, Lists, etc.
+		// ================================================================
+
 		function getTimelineRoot(): HTMLElement | null {
-			return document.querySelector<HTMLElement>('[aria-label="Home timeline"]')
+			// Try multiple aria-label patterns for different X pages/locales
+			return (
+				document.querySelector<HTMLElement>('[aria-label="Timeline: Your Home Timeline"]') ||
+				document.querySelector<HTMLElement>('[aria-label="Home timeline"]') ||
+				document.querySelector<HTMLElement>(
+					'[data-testid="primaryColumn"] section > h1 + div[aria-label] > div',
+				) ||
+				document.querySelector<HTMLElement>(
+					'[data-testid="primaryColumn"] section [aria-label]',
+				)
+			)
 		}
 
 		function getTweetId(tweetEl: HTMLElement): string | null {
 			const link = tweetEl.querySelector<HTMLAnchorElement>('a[href*="/status/"]')
-			if (!link) {
-				return null
-			}
-
+			if (!link) return null
 			const match = link.href.match(/\/status\/(\d+)/)
 			return match ? match[1] : null
 		}
 
+		// ================================================================
+		// Tweet harvesting — reads from timeline, NEVER moves nodes
+		// ================================================================
+
 		function getNextTweets(limit: number): HTMLElement[] {
 			const timelineRoot = getTimelineRoot()
-			if (!timelineRoot) {
-				return []
-			}
+			if (!timelineRoot) return []
 
 			const candidates = Array.from(
 				timelineRoot.querySelectorAll<HTMLElement>(
-					"[data-testid='tweet']:not([data-twc-used])",
+					"[data-testid='tweet']:not([data-twc-cloned])",
 				),
 			)
 
 			const filtered = candidates.filter((tweetEl) => {
 				const cell = tweetEl.closest<HTMLElement>("[data-testid='cellInnerDiv']")
-				if (!cell) {
-					return false
-				}
-				if (cell.querySelector(".HiddenTweet")) {
-					return false
-				}
-				if (cell.querySelector("div[role='progressbar']")) {
-					return false
-				}
+				if (!cell) return false
+				if (cell.querySelector("div[role='progressbar']")) return false
 				return true
 			})
 
-			const result = filtered.slice(0, limit)
-			result.forEach((tweetEl) => {
-				tweetEl.dataset.twcUsed = "true"
-			})
-			return result
+			return filtered.slice(0, limit)
 		}
 
-		function normalizeGridTweet(tweetEl: HTMLElement): void {
-			tweetEl.dataset.twcCard = "true"
-			delete tweetEl.dataset.twcGone
-			delete tweetEl.dataset.twcPick
+		// ================================================================
+		// Grid population — CLONE tweets, never move
+		// ================================================================
 
-			tweetEl.style.removeProperty("position")
-			tweetEl.style.removeProperty("top")
-			tweetEl.style.removeProperty("left")
-			tweetEl.style.removeProperty("transform")
-			tweetEl.style.removeProperty("translate")
-			tweetEl.style.removeProperty("rotate")
-			tweetEl.style.removeProperty("width")
+		/**
+		 * Force images inside a cloned node to actually load.
+		 * Twitter uses lazy loading, blob URLs, and srcset — clones need a nudge.
+		 */
+		function fixClonedMedia(clone: HTMLElement, original: HTMLElement): void {
+			// Fix all images
+			const cloneImgs = clone.querySelectorAll<HTMLImageElement>("img")
+			const originalImgs = original.querySelectorAll<HTMLImageElement>("img")
 
-			const richText = tweetEl.querySelector<HTMLElement>('[data-testid="tweetText"]')
-			if (richText) {
-				richText.style.filter = "none"
-			}
+			cloneImgs.forEach((img, i) => {
+				const origImg = originalImgs[i]
 
-			const photo = tweetEl.querySelector<HTMLElement>('[data-testid="tweetPhoto"]')
-			if (photo) {
-				photo.style.filter = "none"
-			}
+				// Force eager loading
+				img.removeAttribute("loading")
+				img.setAttribute("loading", "eager")
+
+				// If the original has a resolved src (currentSrc), use it
+				if (origImg?.currentSrc && origImg.currentSrc !== img.src) {
+					img.src = origImg.currentSrc
+				}
+
+				// Copy srcset from original if present
+				if (origImg?.srcset) {
+					img.srcset = origImg.srcset
+				}
+
+				// If src is empty or a placeholder, try data-src
+				if (!img.src || img.src === "about:blank") {
+					const dataSrc = img.getAttribute("data-src") || img.dataset.src
+					if (dataSrc) img.src = dataSrc
+				}
+
+				// Remove any lazy/hidden styles
+				img.style.removeProperty("visibility")
+				img.style.removeProperty("opacity")
+			})
+
+			// Fix background images (Twitter sometimes uses div backgrounds for cards)
+			const cloneDivs = clone.querySelectorAll<HTMLElement>("div[style*='background-image']")
+			const originalDivs = original.querySelectorAll<HTMLElement>("div[style*='background-image']")
+			cloneDivs.forEach((div, i) => {
+				const origDiv = originalDivs[i]
+				if (origDiv) {
+					const bg = window.getComputedStyle(origDiv).backgroundImage
+					if (bg && bg !== "none") {
+						div.style.backgroundImage = bg
+					}
+				}
+			})
+
+			// Fix videos — show poster image instead (videos can't play in clones)
+			const cloneVideos = clone.querySelectorAll<HTMLVideoElement>("video")
+			const originalVideos = original.querySelectorAll<HTMLVideoElement>("video")
+			cloneVideos.forEach((video, i) => {
+				const origVideo = originalVideos[i]
+				if (origVideo?.poster) {
+					video.poster = origVideo.poster
+				}
+				// Pause to prevent any autoplay attempts
+				try { video.pause() } catch {}
+			})
 		}
 
 		function autoPopulateGrid(limit = 12): void {
-			const gridContainer = document.querySelector<HTMLElement>(
-				`.${GRID_CONTAINER_CLASS}`,
-			)
-			if (!gridContainer) {
-				return
-			}
+			if (isPopulating) return
+			isPopulating = true
 
-			const tweets = getNextTweets(limit)
-			if (tweets.length === 0) {
-				return
-			}
+			try {
+				const gridContainer = document.querySelector<HTMLElement>(
+					`.${GRID_CONTAINER_CLASS}`,
+				)
+				if (!gridContainer) return
 
-			for (const tweetEl of tweets) {
-				const tweetId = getTweetId(tweetEl)
-				if (tweetId && ADDED_TWEET_IDS.has(tweetId)) {
-					continue
+				const tweets = getNextTweets(limit)
+
+				for (const tweetEl of tweets) {
+					const tweetId = getTweetId(tweetEl)
+
+					// Skip duplicates
+					if (tweetId && ADDED_TWEET_IDS.has(tweetId)) {
+						tweetEl.setAttribute("data-twc-cloned", "true")
+						continue
+					}
+
+					// Mark the original so we don't process it again.
+					// The original stays in the timeline — virtualizer is untouched.
+					tweetEl.setAttribute("data-twc-cloned", "true")
+					if (tweetId) ADDED_TWEET_IDS.add(tweetId)
+
+					// Deep clone the tweet node into the grid
+					const clone = tweetEl.cloneNode(true) as HTMLElement
+
+					// Clean up clone styles that the virtualizer may have set
+					clone.style.removeProperty("position")
+					clone.style.removeProperty("top")
+					clone.style.removeProperty("left")
+					clone.style.removeProperty("transform")
+					clone.style.removeProperty("translate")
+					clone.style.removeProperty("rotate")
+					clone.style.removeProperty("width")
+
+					// Fix lazy-loaded images and media in the clone
+					fixClonedMedia(clone, tweetEl)
+
+					const wrapper = document.createElement("article")
+					wrapper.classList.add(GRID_ITEM_CLASS)
+					wrapper.appendChild(clone)
+					gridContainer.appendChild(wrapper)
 				}
-
-				if (tweetId) {
-					ADDED_TWEET_IDS.add(tweetId)
-				}
-
-				normalizeGridTweet(tweetEl)
-
-				const wrapper = document.createElement("article")
-				wrapper.classList.add(GRID_ITEM_CLASS)
-				wrapper.appendChild(tweetEl)
-				gridContainer.appendChild(wrapper)
+			} finally {
+				isPopulating = false
 			}
 		}
+
+		// ================================================================
+		// Scroll driver — scrolls the hidden window to trigger Twitter's
+		// IntersectionObserver sentinel and load more tweets
+		// ================================================================
 
 		function triggerLoadMore(): void {
-			const timelineRoot = getTimelineRoot()
-			if (timelineRoot) {
-				timelineRoot.scrollTop = timelineRoot.scrollHeight
+			// Scroll the window incrementally. Twitter's sentinel-based infinite
+			// scroll uses IntersectionObserver which only fires when the sentinel
+			// enters the viewport. Small increments ensure we don't skip over it.
+			const scrollStep = 600
+			const steps = 5
+			for (let i = 0; i < steps; i++) {
+				window.setTimeout(() => {
+					window.scrollBy(0, scrollStep)
+				}, i * 100)
 			}
-
-			window.scrollTo({ top: document.body.scrollHeight, behavior: "auto" })
 		}
 
+		// ================================================================
+		// MutationObserver — watches for new tweets rendered by Twitter
+		// ================================================================
+
 		function setupTimelineObserver(): void {
-			if (timelineObserver) {
-				return
-			}
+			if (timelineObserver) return
 
 			const timelineRoot = getTimelineRoot()
-			if (!timelineRoot) {
-				return
-			}
+			if (!timelineRoot) return
 
 			timelineObserver = new MutationObserver(() => {
-				if (isTwcRunning()) {
+				if (!isTwcRunning() || isPopulating) return
+				// Debounce: batch mutations with rAF
+				requestAnimationFrame(() => {
 					autoPopulateGrid(8)
-				}
+				})
 			})
 
 			timelineObserver.observe(timelineRoot, { childList: true, subtree: true })
 		}
 
 		function teardownTimelineObserver(): void {
-			if (!timelineObserver) {
-				return
-			}
+			if (!timelineObserver) return
 			timelineObserver.disconnect()
 			timelineObserver = null
 		}
 
+		// ================================================================
+		// Grid scroll — when user scrolls near bottom of grid, drive the
+		// hidden timeline forward to load more
+		// ================================================================
+
 		function setupGridScroll(): void {
-			if (gridScrollSetup) {
-				return
-			}
+			if (gridScrollSetup) return
 
 			const gridContainer = document.querySelector<HTMLElement>(
 				`.${GRID_CONTAINER_CLASS}`,
 			)
-			if (!gridContainer) {
-				return
-			}
+			if (!gridContainer) return
 
 			gridScrollSetup = true
-			let isLoading = false
+			let ticking = false
 
 			gridContainer.addEventListener("scroll", () => {
+				if (ticking) return
+
 				const nearBottom =
 					gridContainer.scrollTop + gridContainer.clientHeight >=
-					gridContainer.scrollHeight - 700
+					gridContainer.scrollHeight - 1200
 
-				if (!nearBottom || isLoading) {
-					return
-				}
+				if (!nearBottom) return
 
-				isLoading = true
-				autoPopulateGrid(20)
+				ticking = true
+
+				// First scroll the hidden timeline to trigger Twitter's loading
 				triggerLoadMore()
 
+				// Then harvest in waves, giving Twitter time to render new DOM
 				window.setTimeout(() => {
 					autoPopulateGrid(20)
-					isLoading = false
-				}, 700)
+					window.setTimeout(() => {
+						autoPopulateGrid(20)
+						ticking = false
+					}, 1000)
+				}, 800)
 			})
 		}
 
+		// ================================================================
+		// Grid container lifecycle
+		// ================================================================
+
 		function ensureGridContainer(): void {
-			if (document.querySelector(`.${GRID_CONTAINER_CLASS}`)) {
-				return
-			}
+			if (document.querySelector(`.${GRID_CONTAINER_CLASS}`)) return
 
 			const container = document.createElement("div")
 			container.classList.add(GRID_CONTAINER_CLASS)
@@ -378,13 +480,13 @@ body[data-twc-started] .twc-start {
 		}
 
 		function startGame(): void {
-			if (isTwcRunning()) {
-				return
-			}
+			if (isTwcRunning()) return
 
 			document.body.dataset.twcStarted = "true"
 			document.body.dataset.twcGridMode = "true"
 			ensureGridContainer()
+
+			// Initial harvest of already-rendered tweets
 			autoPopulateGrid(30)
 			setupTimelineObserver()
 
@@ -392,10 +494,12 @@ body[data-twc-started] .twc-start {
 				window.clearInterval(gameInterval)
 			}
 
+			// Periodic: only harvest tweets that Twitter has already rendered.
+			// Do NOT call triggerLoadMore() here — that should only happen
+			// when the user scrolls near the bottom of the grid.
 			gameInterval = window.setInterval(() => {
-				autoPopulateGrid(12)
-				triggerLoadMore()
-			}, 1500)
+				autoPopulateGrid(8)
+			}, 2000)
 		}
 
 		function stopGame(reloadPage = false): void {
@@ -411,16 +515,11 @@ body[data-twc-started] .twc-start {
 			delete document.body.dataset.twcGridMode
 
 			const gridContainer = document.querySelector(`.${GRID_CONTAINER_CLASS}`)
-			if (gridContainer) {
-				gridContainer.remove()
-			}
+			if (gridContainer) gridContainer.remove()
 
 			ADDED_TWEET_IDS.clear()
 
-			// We move live tweet nodes out of timeline; reload restores original X layout cleanly.
-			if (reloadPage) {
-				window.location.reload()
-			}
+			if (reloadPage) window.location.reload()
 		}
 
 		function toggleTwcGrid(): boolean {
@@ -428,11 +527,14 @@ body[data-twc-started] .twc-start {
 				stopGame(true)
 				return false
 			}
-
 			ensureTwcSetup()
 			startGame()
 			return true
 		}
+
+		// ================================================================
+		// UI Controls
+		// ================================================================
 
 		function addTwcControls(): void {
 			const twcButton = document.createElement("button")
@@ -482,22 +584,26 @@ body[data-twc-started] .twc-start {
 			document.body.appendChild(twcSettings)
 		}
 
+		// ================================================================
+		// Initialization
+		// ================================================================
+
 		function setupTwc(): void {
 			loadTwcSettings()
 			setStyle(twcCss)
 			addTwcControls()
-			if (TWC_SETTINGS.autoStart) {
-				startGame()
-			}
+			if (TWC_SETTINGS.autoStart) startGame()
 		}
 
 		function ensureTwcSetup(): void {
-			if (twcInitialized) {
-				return
-			}
+			if (twcInitialized) return
 			twcInitialized = true
 			setupTwc()
 		}
+
+		// ================================================================
+		// External API (used by popup / content script)
+		// ================================================================
 
 		document.addEventListener("kortix-grid-request", (event) => {
 			const detail = (event as CustomEvent).detail ?? {}

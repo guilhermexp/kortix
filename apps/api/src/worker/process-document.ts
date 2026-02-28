@@ -11,6 +11,7 @@
  */
 
 import { ensureSpace, updateBundleParentStatus } from "../routes/documents"
+import { extractTweetId } from "../routes/documents/utils"
 import {
 	extractDocument,
 	generatePreview,
@@ -74,6 +75,70 @@ function extractContainerTags(payload: unknown, metadata: unknown): string[] {
 function isYouTubeUrl(url: string | null | undefined): boolean {
 	if (!url) return false
 	return url.includes("youtube.com") || url.includes("youtu.be")
+}
+
+function isXTwitterUrl(url: string | null | undefined): boolean {
+	if (!url) return false
+	return url.includes("x.com") || url.includes("twitter.com")
+}
+
+/**
+ * Generate the token used by Twitter's syndication API (same as react-tweet).
+ */
+function generateSyndicationToken(tweetId: string): string {
+	return ((Number(tweetId) / 1e15) * Math.PI)
+		.toString(36)
+		.replace(/(0+|\.)/g, "")
+}
+
+/**
+ * Fetch tweet preview image from Twitter syndication API.
+ */
+async function fetchTweetPreviewImage(
+	tweetId: string,
+	timeoutMs = 8000,
+): Promise<string | null> {
+	try {
+		const token = generateSyndicationToken(tweetId)
+		const url = `https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&lang=en&token=${token}`
+		const response = await fetch(url, {
+			signal: AbortSignal.timeout(timeoutMs),
+			headers: { Accept: "application/json" },
+		})
+		if (!response.ok) return null
+
+		const data = (await response.json()) as Record<string, unknown>
+
+		// First photo from mediaDetails
+		const mediaDetails = data.mediaDetails as
+			| Array<{ type?: string; media_url_https?: string }>
+			| undefined
+		if (mediaDetails?.length) {
+			const photo = mediaDetails.find((m) => m.type === "photo")
+			if (photo?.media_url_https) return photo.media_url_https
+			const anyMedia = mediaDetails.find((m) => m.media_url_https)
+			if (anyMedia?.media_url_https) return anyMedia.media_url_https
+		}
+
+		// photos array
+		const photos = data.photos as Array<{ url?: string }> | undefined
+		if (photos?.[0]?.url) return photos[0].url
+
+		// Video poster
+		const video = data.video as { poster?: string } | undefined
+		if (video?.poster) return video.poster
+
+		// Fallback: profile image
+		const user = data.user as
+			| { profile_image_url_https?: string }
+			| undefined
+		if (user?.profile_image_url_https) {
+			return user.profile_image_url_https.replace("_normal", "_400x400")
+		}
+		return null
+	} catch {
+		return null
+	}
 }
 
 // ============================================================================
@@ -194,8 +259,20 @@ export async function processAndSaveDocument(
 			}
 		}
 
-		// Fallback to preview service (skip for tweets with raw data)
-		if (!previewUrl && document.url && !isTweetWithData) {
+		// X/Twitter URL shortcut (syndication API)
+		if (!previewUrl && document.url && isXTwitterUrl(document.url) && !isTweetWithData) {
+			const tweetId = extractTweetId(document.url)
+			if (tweetId) {
+				const tweetImage = await fetchTweetPreviewImage(tweetId)
+				if (tweetImage) {
+					const stored = await persistPreviewImage(documentId, tweetImage)
+					previewUrl = stored ?? tweetImage
+				}
+			}
+		}
+
+		// Fallback to preview service (skip for tweets with raw data and X/Twitter URLs)
+		if (!previewUrl && document.url && !isTweetWithData && !isXTwitterUrl(document.url)) {
 			const previewResult = await generatePreview({
 				title: document.title || "Untitled",
 				text: document.content || "",

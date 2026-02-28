@@ -47,6 +47,72 @@ const YOUTUBE_PATTERNS = [
 	/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
 ]
 
+// X/Twitter helpers
+function isXTwitterUrl(url: string): boolean {
+	return url.includes("x.com") || url.includes("twitter.com")
+}
+
+function extractTweetId(url: string): string | null {
+	try {
+		const u = new URL(url)
+		if (!u.hostname.includes("x.com") && !u.hostname.includes("twitter.com"))
+			return null
+		const match = u.pathname.match(/\/status\/(\d+)/)
+		return match?.[1] ?? null
+	} catch {
+		return null
+	}
+}
+
+function generateSyndicationToken(tweetId: string): string {
+	return ((Number(tweetId) / 1e15) * Math.PI)
+		.toString(36)
+		.replace(/(0+|\.)/g, "")
+}
+
+async function fetchTweetPreviewImage(
+	tweetId: string,
+	timeoutMs = 8000,
+): Promise<string | null> {
+	try {
+		const token = generateSyndicationToken(tweetId)
+		const apiUrl = `https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&lang=en&token=${token}`
+		const response = await fetch(apiUrl, {
+			signal: AbortSignal.timeout(timeoutMs),
+			headers: { Accept: "application/json" },
+		})
+		if (!response.ok) return null
+
+		const data = (await response.json()) as Record<string, unknown>
+
+		const mediaDetails = data.mediaDetails as
+			| Array<{ type?: string; media_url_https?: string }>
+			| undefined
+		if (mediaDetails?.length) {
+			const photo = mediaDetails.find((m) => m.type === "photo")
+			if (photo?.media_url_https) return photo.media_url_https
+			const anyMedia = mediaDetails.find((m) => m.media_url_https)
+			if (anyMedia?.media_url_https) return anyMedia.media_url_https
+		}
+
+		const photos = data.photos as Array<{ url?: string }> | undefined
+		if (photos?.[0]?.url) return photos[0].url
+
+		const video = data.video as { poster?: string } | undefined
+		if (video?.poster) return video.poster
+
+		const user = data.user as
+			| { profile_image_url_https?: string }
+			| undefined
+		if (user?.profile_image_url_https) {
+			return user.profile_image_url_https.replace("_normal", "_400x400")
+		}
+		return null
+	} catch {
+		return null
+	}
+}
+
 /**
  * Extract YouTube video ID from URL
  */
@@ -213,6 +279,22 @@ export class ImageExtractor implements IImageExtractor {
 				}
 			}
 
+			// Strategy 0b: Handle X/Twitter URLs via syndication API
+			if (extraction.url && isXTwitterUrl(extraction.url)) {
+				const tweetId = extractTweetId(extraction.url)
+				if (tweetId) {
+					const tweetImage = await fetchTweetPreviewImage(tweetId)
+					if (tweetImage) {
+						console.info("X/Twitter preview via syndication", {
+							imageUrl: tweetImage,
+						})
+						return tweetImage
+					}
+				}
+				// Don't fall through to HTML fetch — X blocks it
+				return null
+			}
+
 			// Strategy 1: Check if extraction already has an image URL in metadata
 			if (extraction.metadata?.image) {
 				const imageUrl = extraction.metadata.image as string
@@ -315,6 +397,30 @@ export class ImageExtractor implements IImageExtractor {
 							isVector: false,
 						},
 					}
+				}
+			}
+
+			// Handle X/Twitter URLs via syndication API (HTML fetch is unreliable)
+			if (isXTwitterUrl(url)) {
+				const tweetId = extractTweetId(url)
+				if (tweetId) {
+					const tweetImage = await fetchTweetPreviewImage(tweetId)
+					if (tweetImage) {
+						console.info("X/Twitter preview image found via syndication", {
+							imageUrl: tweetImage,
+						})
+						return {
+							imageUrl: tweetImage,
+							source: "twitter-syndication",
+							metadata: await this.safeGetImageMetadata(tweetImage),
+						}
+					}
+				}
+				// Non-tweet X URL or syndication failed — skip HTML fetch (X blocks it)
+				return {
+					imageUrl: null,
+					source: "none",
+					metadata: null,
 				}
 			}
 
