@@ -136,7 +136,8 @@ export const FlagRuleSchema = z
 		}),
 	})
 	.meta({
-		description: "Rule for targeting specific users or implementing gradual rollouts",
+		description:
+			"Rule for targeting specific users or implementing gradual rollouts",
 		example: {
 			id: "rule_abc123",
 			flag_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -238,7 +239,8 @@ export const CreateFlagSchema = z
 			example: "Enables the redesigned dashboard with improved analytics",
 		}),
 		enabled: z.boolean().default(false).meta({
-			description: "Whether the flag should be enabled on creation (default: false)",
+			description:
+				"Whether the flag should be enabled on creation (default: false)",
 			example: false,
 		}),
 		org_id: z.string().uuid().meta({
@@ -274,7 +276,8 @@ export const UpdateFlagSchema = z
 		}),
 		description: z.string().optional().meta({
 			description: "Explanation of what this flag controls",
-			example: "Enables the redesigned dashboard with improved analytics and AI",
+			example:
+				"Enables the redesigned dashboard with improved analytics and AI",
 		}),
 		enabled: z.boolean().optional().meta({
 			description: "Whether the flag is currently active",
@@ -289,7 +292,8 @@ export const UpdateFlagSchema = z
 		description: "Input schema for updating an existing feature flag",
 		example: {
 			name: "New Dashboard v2",
-			description: "Enables the redesigned dashboard with improved analytics and AI",
+			description:
+				"Enables the redesigned dashboard with improved analytics and AI",
 			enabled: true,
 			metadata: exampleMetadata,
 		},
@@ -315,16 +319,11 @@ export const CreateFlagRuleSchema = z
 				'Rule conditions in JSON format (e.g., {"userRole": "admin"})',
 			example: exampleConditions,
 		}),
-		rollout_percentage: z
-			.number()
-			.min(0)
-			.max(100)
-			.nullable()
-			.optional()
-			.meta({
-				description: "Percentage of users to include (0-100) for percentage rollouts",
-				example: 25,
-			}),
+		rollout_percentage: z.number().min(0).max(100).nullable().optional().meta({
+			description:
+				"Percentage of users to include (0-100) for percentage rollouts",
+			example: 25,
+		}),
 		priority: z.number().default(0).meta({
 			description: "Rule evaluation priority (higher numbers evaluated first)",
 			example: 100,
@@ -362,16 +361,11 @@ export const UpdateFlagRuleSchema = z
 				'Rule conditions in JSON format (e.g., {"userRole": "admin"})',
 			example: exampleConditions,
 		}),
-		rollout_percentage: z
-			.number()
-			.min(0)
-			.max(100)
-			.nullable()
-			.optional()
-			.meta({
-				description: "Percentage of users to include (0-100) for percentage rollouts",
-				example: 50,
-			}),
+		rollout_percentage: z.number().min(0).max(100).nullable().optional().meta({
+			description:
+				"Percentage of users to include (0-100) for percentage rollouts",
+			example: 50,
+		}),
 		priority: z.number().optional().meta({
 			description: "Rule evaluation priority (higher numbers evaluated first)",
 			example: 200,
@@ -412,14 +406,22 @@ export const FlagAuditLogSchema = z
 				"Type of change: created, updated, deleted, enabled, disabled, rule_added, rule_updated, rule_deleted",
 			example: "enabled",
 		}),
-		old_value: z.record(z.string(), z.any()).nullable().optional().meta({
-			description: "Previous state of the flag or rule before the change",
-			example: { enabled: false },
-		}),
-		new_value: z.record(z.string(), z.any()).nullable().optional().meta({
-			description: "New state of the flag or rule after the change",
-			example: { enabled: true },
-		}),
+		old_value: z
+			.record(z.string(), z.any())
+			.nullable()
+			.optional()
+			.meta({
+				description: "Previous state of the flag or rule before the change",
+				example: { enabled: false },
+			}),
+		new_value: z
+			.record(z.string(), z.any())
+			.nullable()
+			.optional()
+			.meta({
+				description: "New state of the flag or rule after the change",
+				example: { enabled: true },
+			}),
 		metadata: z.record(z.string(), z.any()).meta({
 			description: "Additional metadata about the change",
 			example: { ip_address: "192.168.1.1", user_agent: "Mozilla/5.0" },

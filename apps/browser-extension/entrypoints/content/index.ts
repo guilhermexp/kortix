@@ -35,7 +35,10 @@ export default defineContentScript({
 				}
 
 				const cleanup = () => {
-					document.removeEventListener(responseEventName, handler as EventListener)
+					document.removeEventListener(
+						responseEventName,
+						handler as EventListener,
+					)
 					window.clearTimeout(timeoutId)
 				}
 

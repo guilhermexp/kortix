@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test"
 import type { MultiLevelSummary, SummarizationOptions } from "../../interfaces"
-import {
-	SummarizationService,
-} from "../summarization-service"
+import { SummarizationService } from "../summarization-service"
 
 describe("SummarizationService", () => {
 	let service: SummarizationService

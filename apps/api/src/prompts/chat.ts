@@ -78,7 +78,37 @@ When presenting results:
 - ALWAYS respond in Brazilian Portuguese
 - Be concise when possible, but prefer completeness when the task requires depth
 - Keep answers structured and easy to scan
-`;
+`
+
+export const CANVAS_CONTEXT_PROMPT = `## Canvas Context (ACTIVE)
+
+You are currently in a Canvas workspace. The canvas is your visual communication tool — USE IT LIBERALLY.
+
+### When to Create Visuals (BE PROACTIVE)
+- Architecture analysis → create a diagram or flowchart
+- Explaining a process/flow → create a flowchart
+- Comparing concepts → create a mindmap or structured layout
+- Summarizing findings → create a visual summary on canvas
+- Analyzing a repository → diagram the architecture
+- Any complex explanation → consider if a visual would help
+
+### Workflow
+1. First call canvas_read_me to learn the element format
+2. Read the current canvas state with canvas_read_scene
+3. Create your visual with the appropriate tool:
+   - canvas_create_flowchart — for processes, pipelines, sequences
+   - canvas_create_mindmap — for topics, comparisons, hierarchies
+   - canvas_create_view — for custom diagrams (architecture, ER, etc.)
+4. Verify with canvas_read_scene or canvas_get_preview
+
+### Rules
+- ALWAYS read canvas_read_me before your first canvas operation in a conversation
+- Prefer canvas_create_flowchart / canvas_create_mindmap for standard diagrams
+- Use canvas_create_view with raw elements for custom/complex diagrams
+- Don't ask "should I create a diagram?" — just create it when it adds value
+- Combine text response + canvas visual for the best experience
+- Use mode "append" to add to existing content, "replace" to start fresh
+`
 
 export const CONDENSE_SYSTEM_PROMPT = `You are a query rewriting assistant. Given a conversation between a user and an assistant and the user's latest follow-up question, rewrite the follow-up into a standalone query that:
 
@@ -87,109 +117,109 @@ export const CONDENSE_SYSTEM_PROMPT = `You are a query rewriting assistant. Give
 3. Includes relevant specifications or constraints mentioned previously
 4. Removes conversational fillers or acknowledgements
 
-Return ONLY the rewritten query without any punctuation or commentary.`;
+Return ONLY the rewritten query without any punctuation or commentary.`
 
-export const FALLBACK_PROMPT = `You are a helpful assistant with access to the user's personal knowledge base.`;
+export const FALLBACK_PROMPT = `You are a helpful assistant with access to the user's personal knowledge base.`
 
 export function formatSearchResultsForSystemMessage(
-  results: Array<{
-    documentId: string;
-    title: string | null;
-    summary: string | null;
-    score: number;
-    chunks?: Array<{ content: string; score: number }>;
-    metadata?: Record<string, unknown> | null;
-  }>,
-  options: {
-    maxResults?: number;
-    includeScore?: boolean;
-    includeSummary?: boolean;
-    includeChunks?: boolean;
-    maxChunkLength?: number;
-  } = {},
+	results: Array<{
+		documentId: string
+		title: string | null
+		summary: string | null
+		score: number
+		chunks?: Array<{ content: string; score: number }>
+		metadata?: Record<string, unknown> | null
+	}>,
+	options: {
+		maxResults?: number
+		includeScore?: boolean
+		includeSummary?: boolean
+		includeChunks?: boolean
+		maxChunkLength?: number
+	} = {},
 ) {
-  const {
-    maxResults = 5,
-    includeScore = true,
-    includeSummary = true,
-    includeChunks = true,
-    maxChunkLength = 300,
-  } = options;
+	const {
+		maxResults = 5,
+		includeScore = true,
+		includeSummary = true,
+		includeChunks = true,
+		maxChunkLength = 300,
+	} = options
 
-  if (!Array.isArray(results) || results.length === 0) {
-    return "";
-  }
+	if (!Array.isArray(results) || results.length === 0) {
+		return ""
+	}
 
-  const topResults = results.slice(0, maxResults);
-  const formatted = topResults.map((result, index) => {
-    const lines: string[] = [];
+	const topResults = results.slice(0, maxResults)
+	const formatted = topResults.map((result, index) => {
+		const lines: string[] = []
 
-    // Document title and score
-    const title = result.title || `Document ${result.documentId}`;
-    const scorePart =
-      includeScore && Number.isFinite(result.score)
-        ? ` (relevance: ${(result.score * 100).toFixed(1)}%)`
-        : "";
-    lines.push(`[${index + 1}] ${title}${scorePart}`);
+		// Document title and score
+		const title = result.title || `Document ${result.documentId}`
+		const scorePart =
+			includeScore && Number.isFinite(result.score)
+				? ` (relevance: ${(result.score * 100).toFixed(1)}%)`
+				: ""
+		lines.push(`[${index + 1}] ${title}${scorePart}`)
 
-    // Source label if available
-    const metadata = result.metadata ?? null;
-    const sourceValue = metadata?.source;
-    const sourceLabel =
-      typeof sourceValue === "string" ? (sourceValue as string) : undefined;
-    if (sourceLabel) {
-      lines.push(`    Source: ${sourceLabel}`);
-    }
+		// Source label if available
+		const metadata = result.metadata ?? null
+		const sourceValue = metadata?.source
+		const sourceLabel =
+			typeof sourceValue === "string" ? (sourceValue as string) : undefined
+		if (sourceLabel) {
+			lines.push(`    Source: ${sourceLabel}`)
+		}
 
-    // URL if available
-    const urlCandidate = metadata?.url ?? metadata?.source_url;
-    const url =
-      typeof urlCandidate === "string" ? (urlCandidate as string) : undefined;
-    if (url) {
-      lines.push(`    URL: ${url}`);
-    }
+		// URL if available
+		const urlCandidate = metadata?.url ?? metadata?.source_url
+		const url =
+			typeof urlCandidate === "string" ? (urlCandidate as string) : undefined
+		if (url) {
+			lines.push(`    URL: ${url}`)
+		}
 
-    // Summary if available and requested
-    if (includeSummary && result.summary) {
-      const summary =
-        result.summary.length > 200
-          ? `${result.summary.slice(0, 197)}...`
-          : result.summary;
-      lines.push(`    Summary: ${summary}`);
-    }
+		// Summary if available and requested
+		if (includeSummary && result.summary) {
+			const summary =
+				result.summary.length > 200
+					? `${result.summary.slice(0, 197)}...`
+					: result.summary
+			lines.push(`    Summary: ${summary}`)
+		}
 
-    // Relevant chunks if requested
-    if (includeChunks && result.chunks?.length > 0) {
-      const relevantChunks = result.chunks
-        .filter((chunk) => chunk.score > 0.3) // Only include relevant chunks
-        .slice(0, 2); // Limit to top 2 chunks
+		// Relevant chunks if requested
+		if (includeChunks && result.chunks?.length > 0) {
+			const relevantChunks = result.chunks
+				.filter((chunk) => chunk.score > 0.3) // Only include relevant chunks
+				.slice(0, 2) // Limit to top 2 chunks
 
-      if (relevantChunks.length > 0) {
-        lines.push("    Relevant excerpts:");
-        for (const chunk of relevantChunks) {
-          const content = chunk.content?.replace(/\s+/g, " ").trim();
-          if (!content) continue;
-          const excerpt =
-            content.length > maxChunkLength
-              ? `${content.slice(0, maxChunkLength - 3)}...`
-              : content;
-          lines.push(`      • ${excerpt}`);
-        }
-      }
-    }
+			if (relevantChunks.length > 0) {
+				lines.push("    Relevant excerpts:")
+				for (const chunk of relevantChunks) {
+					const content = chunk.content?.replace(/\s+/g, " ").trim()
+					if (!content) continue
+					const excerpt =
+						content.length > maxChunkLength
+							? `${content.slice(0, maxChunkLength - 3)}...`
+							: content
+					lines.push(`      • ${excerpt}`)
+				}
+			}
+		}
 
-    return lines.join("\n");
-  });
+		return lines.join("\n")
+	})
 
-  const contextMessage = `## Retrieved Context from Your Knowledge Base:
+	const contextMessage = `## Retrieved Context from Your Knowledge Base:
 ${formatted.join("\n\n")}
 
 Total documents found: ${results.length}
 Showing top ${topResults.length} most relevant results.
 
-Use this context to provide accurate, personalized responses based on the user's saved information.`;
+Use this context to provide accurate, personalized responses based on the user's saved information.`
 
-  return contextMessage;
+	return contextMessage
 }
 
 export const QUERY_GENERATION_PROMPT = `Given the user's question, generate 3-5 alternative search queries that could help find relevant information in their knowledge base.
@@ -205,7 +235,7 @@ Return queries as a JSON array of strings.
 User's question: {{QUESTION}}
 
 Example output:
-["machine learning basics", "ML fundamentals", "artificial intelligence introduction", "neural networks explained"]`;
+["machine learning basics", "ML fundamentals", "artificial intelligence introduction", "neural networks explained"]`
 
 export const ANSWER_SYNTHESIS_PROMPT = `You are synthesizing information from multiple sources to answer the user's question.
 
@@ -222,4 +252,4 @@ export const ANSWER_SYNTHESIS_PROMPT = `You are synthesizing information from mu
 4. If the available information doesn't fully answer the question, mention what's missing
 5. Suggest follow-up questions or related topics from the knowledge base
 
-Remember to be accurate, helpful, and make connections between different pieces of information when relevant.`;
+Remember to be accurate, helpful, and make connections between different pieces of information when relevant.`

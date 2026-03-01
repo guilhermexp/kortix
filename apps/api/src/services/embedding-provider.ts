@@ -54,7 +54,7 @@ export async function generateEmbeddingsBatch(
 	const inputType = options?.inputType ?? "document"
 
 	// Sanitize: replace undefined/null with empty string
-	const safeTexts = texts.map((t) => (t ?? ""))
+	const safeTexts = texts.map((t) => t ?? "")
 
 	if (isVoyageAvailable()) {
 		try {

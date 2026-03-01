@@ -54,7 +54,9 @@ export function extractAccessToken(
 			} catch {
 				// Not JSON, try as raw token (strip base64- prefix if present)
 				if (value.startsWith("base64-")) {
-					const decoded = Buffer.from(value.slice(7), "base64").toString("utf-8")
+					const decoded = Buffer.from(value.slice(7), "base64").toString(
+						"utf-8",
+					)
 					return decoded
 				}
 				return value

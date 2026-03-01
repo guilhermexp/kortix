@@ -129,9 +129,7 @@ async function fetchTweetPreviewImage(
 		if (video?.poster) return video.poster
 
 		// Fallback: profile image
-		const user = data.user as
-			| { profile_image_url_https?: string }
-			| undefined
+		const user = data.user as { profile_image_url_https?: string } | undefined
 		if (user?.profile_image_url_https) {
 			return user.profile_image_url_https.replace("_normal", "_400x400")
 		}
@@ -217,12 +215,10 @@ export async function processAndSaveDocument(
 			const rawTweet = JSON.parse(
 				(document.metadata as Record<string, unknown>).raw_tweet as string,
 			)
+			// Only use actual tweet media as preview — not the profile avatar
 			let tweetPreview =
 				rawTweet?.photos?.[0]?.url ||
-				rawTweet?.user?.profile_image_url_https?.replace(
-					"_normal",
-					"_400x400",
-				) ||
+				rawTweet?.videos?.[0]?.thumbnail_url ||
 				null
 			if (tweetPreview) {
 				const stored = await persistPreviewImage(documentId, tweetPreview)
@@ -260,7 +256,12 @@ export async function processAndSaveDocument(
 		}
 
 		// X/Twitter URL shortcut (syndication API)
-		if (!previewUrl && document.url && isXTwitterUrl(document.url) && !isTweetWithData) {
+		if (
+			!previewUrl &&
+			document.url &&
+			isXTwitterUrl(document.url) &&
+			!isTweetWithData
+		) {
 			const tweetId = extractTweetId(document.url)
 			if (tweetId) {
 				const tweetImage = await fetchTweetPreviewImage(tweetId)
@@ -272,7 +273,12 @@ export async function processAndSaveDocument(
 		}
 
 		// Fallback to preview service (skip for tweets with raw data and X/Twitter URLs)
-		if (!previewUrl && document.url && !isTweetWithData && !isXTwitterUrl(document.url)) {
+		if (
+			!previewUrl &&
+			document.url &&
+			!isTweetWithData &&
+			!isXTwitterUrl(document.url)
+		) {
 			const previewResult = await generatePreview({
 				title: document.title || "Untitled",
 				text: document.content || "",
@@ -380,7 +386,9 @@ export async function processAndSaveDocument(
 			metaTags.favicon ?? (extraction.extractionMetadata as any)?.favicon,
 		...(processed.tags ? { tags: processed.tags } : {}),
 		// Persist first content image so the listing endpoint can use it
-		...(extraction.images?.length ? { firstContentImage: extraction.images[0] } : {}),
+		...(extraction.images?.length
+			? { firstContentImage: extraction.images[0] }
+			: {}),
 	}
 
 	if (extraction.raw || extraction.images || metaTags.ogImage) {

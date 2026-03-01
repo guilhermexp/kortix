@@ -8,26 +8,25 @@
  * Used by: worker/process-document.ts
  */
 
+import { VECTOR_SIZE } from "../embedding"
+import { generateEmbeddingsBatch } from "../embedding-provider"
+// Lazy-loaded service instances
+import { FileExtractor } from "../extraction/file-extractor"
+import { PDFExtractor } from "../extraction/pdf-extractor"
+import { URLExtractor } from "../extraction/url-extractor"
+import { YouTubeExtractor } from "../extraction/youtube-extractor"
 import type {
 	ExtractionInput,
 	ExtractionResult,
 	ProcessedDocument,
 	ProcessingOptions,
 } from "../interfaces/document-processing"
-import { VECTOR_SIZE } from "../embedding"
-import { generateEmbeddingsBatch } from "../embedding-provider"
-import { withRetry } from "../utils/retry"
-
-// Lazy-loaded service instances
-import { FileExtractor } from "../extraction/file-extractor"
-import { PDFExtractor } from "../extraction/pdf-extractor"
-import { URLExtractor } from "../extraction/url-extractor"
-import { YouTubeExtractor } from "../extraction/youtube-extractor"
 import { PreviewGeneratorService } from "../preview/preview-generator"
 import { ChunkingService } from "../processing/chunking-service"
 import { MetadataExtractor } from "../processing/metadata-extractor"
 import { SummarizationService } from "../processing/summarization-service"
 import { TaggingService } from "../processing/tagging-service"
+import { withRetry } from "../utils/retry"
 
 // ============================================================================
 // Service Singletons (lazy-initialized)
@@ -134,7 +133,8 @@ export async function extractDocument(
 	input: ExtractionInput,
 ): Promise<ExtractionResult> {
 	// Plain text passthrough: if we have content but no URL/file, skip extractors
-	const hasContent = input.originalContent && input.originalContent.trim().length > 0
+	const hasContent =
+		input.originalContent && input.originalContent.trim().length > 0
 	const hasUrl = !!input.url
 	const hasFile = !!input.fileBuffer
 	if (hasContent && !hasUrl && !hasFile) {
@@ -142,9 +142,10 @@ export async function extractDocument(
 		const words = text.split(/\s+/).filter(Boolean)
 		// Try to derive a title from the first line
 		const firstLine = text.split(/\n/)[0]?.trim() ?? ""
-		const title = firstLine.length > 0 && firstLine.length <= 200
-			? firstLine.replace(/^#+\s*/, "")
-			: null
+		const title =
+			firstLine.length > 0 && firstLine.length <= 200
+				? firstLine.replace(/^#+\s*/, "")
+				: null
 
 		return {
 			text,
@@ -167,7 +168,11 @@ export async function extractDocument(
 	// Build ordered list of extractors that can handle this input
 	const candidates: Array<{
 		name: string
-		extractor: { canHandle: (i: ExtractionInput) => boolean; extract: (i: ExtractionInput) => Promise<ExtractionResult>; getPriority: () => number }
+		extractor: {
+			canHandle: (i: ExtractionInput) => boolean
+			extract: (i: ExtractionInput) => Promise<ExtractionResult>
+			getPriority: () => number
+		}
 	}> = []
 
 	for (const [name, extractor] of Object.entries(extractors)) {
@@ -181,7 +186,9 @@ export async function extractDocument(
 	}
 
 	// Sort by priority (highest first)
-	candidates.sort((a, b) => b.extractor.getPriority() - a.extractor.getPriority())
+	candidates.sort(
+		(a, b) => b.extractor.getPriority() - a.extractor.getPriority(),
+	)
 
 	if (candidates.length === 0) {
 		throw new Error("No suitable extractor found for this input")
@@ -191,10 +198,11 @@ export async function extractDocument(
 	const errors: string[] = []
 	for (const { name, extractor } of candidates) {
 		try {
-			const result = await withRetry(
-				() => extractor.extract(input),
-				{ maxAttempts: 3, baseDelay: 1000, maxDelay: 15000 },
-			)
+			const result = await withRetry(() => extractor.extract(input), {
+				maxAttempts: 3,
+				baseDelay: 1000,
+				maxDelay: 15000,
+			})
 			return result
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error)
@@ -203,9 +211,7 @@ export async function extractDocument(
 		}
 	}
 
-	throw new Error(
-		`All extractors failed. Attempted: ${errors.join("; ")}`,
-	)
+	throw new Error(`All extractors failed. Attempted: ${errors.join("; ")}`)
 }
 
 // ============================================================================
@@ -253,9 +259,10 @@ export async function processExtraction(
 				.split(/[.!?]+/)
 				.map((s) => s.trim())
 				.filter((s) => s.length > 20)
-			summary = sentences.length > 0
-				? `${sentences.slice(0, 3).join(". ")}.`
-				: "No summary available."
+			summary =
+				sentences.length > 0
+					? `${sentences.slice(0, 3).join(". ")}.`
+					: "No summary available."
 		}
 	}
 

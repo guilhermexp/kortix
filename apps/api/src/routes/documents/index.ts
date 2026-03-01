@@ -5,10 +5,40 @@
  * can keep importing from "./documents" which resolves to this index.
  */
 
-export { getDocument, updateDocument, deleteDocument, cancelDocument } from "./crud";
-export { addDocument, ensureSpace, checkUrlExists } from "./add";
-export { listDocuments, listDocumentsWithMemories, listDocumentsWithMemoriesByIds } from "./listing";
-export { createBundle, getDocumentChildren, updateBundleParentStatus } from "./bundles";
-export { getDocumentStatus, getQueueMetrics, findDocumentRelatedLinks, migrateMcpDocuments } from "./status";
-export type { MemoryAddInput, ListMemoriesInput, DocumentsQueryInput, DocumentsByIdsInput, BundleCreateInput } from "./utils";
-export { DocumentsByIdsSchema } from "./utils";
+export { addDocument, checkUrlExists, ensureSpace } from "./add"
+export {
+	createBundle,
+	getDocumentChildren,
+	updateBundleParentStatus,
+} from "./bundles"
+export {
+	cancelDocument,
+	deleteDocument,
+	getDocument,
+	updateDocument,
+} from "./crud"
+export {
+	listDocuments,
+	listDocumentsWithMemories,
+	listDocumentsWithMemoriesByIds,
+} from "./listing"
+export {
+	findDocumentRelatedLinks,
+	getDocumentStatus,
+	getQueueMetrics,
+	migrateMcpDocuments,
+} from "./status"
+export type {
+	BundleCreateInput,
+	DocumentsByIdsInput,
+	DocumentsQueryInput,
+	ListMemoriesInput,
+	MemoryAddInput,
+} from "./utils"
+export { DocumentsByIdsSchema } from "./utils"
+export {
+	deleteDocumentAttachment,
+	getDocumentAttachment,
+	listDocumentAttachments,
+	uploadDocumentAttachment,
+} from "./attachments"

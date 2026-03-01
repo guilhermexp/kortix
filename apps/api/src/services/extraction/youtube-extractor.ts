@@ -255,10 +255,7 @@ export class YouTubeExtractor implements IYouTubeExtractor {
 			})
 
 			if (!response.ok) {
-				console.warn(
-					"[YouTubeExtractor] Firecrawl HTTP error",
-					response.status,
-				)
+				console.warn("[YouTubeExtractor] Firecrawl HTTP error", response.status)
 				return null
 			}
 
@@ -298,7 +295,10 @@ export class YouTubeExtractor implements IYouTubeExtractor {
 	}
 
 	private async extractInstagramReel(url: string): Promise<ExtractionResult> {
-		console.info("[YouTubeExtractor] Extracting Instagram Reel via Firecrawl", url)
+		console.info(
+			"[YouTubeExtractor] Extracting Instagram Reel via Firecrawl",
+			url,
+		)
 
 		const firecrawlResult = await this.scrapeWithFirecrawl(url, {
 			includeVideo: true,

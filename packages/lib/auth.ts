@@ -103,7 +103,6 @@ async function tryRefreshSession(): Promise<boolean> {
 			} catch (error) {
 				// Network error - might be temporary
 				lastError = error instanceof Error ? error : new Error("Network error")
-				continue
 			}
 		}
 
@@ -125,7 +124,9 @@ function getJwtExp(token: string): number | null {
 	try {
 		const parts = token.split(".")
 		if (parts.length < 2) return null
-		const payload = JSON.parse(atob(parts[1]?.replace(/-/g, "+").replace(/_/g, "/") ?? ""))
+		const payload = JSON.parse(
+			atob(parts[1]?.replace(/-/g, "+").replace(/_/g, "/") ?? ""),
+		)
 		return typeof payload.exp === "number" ? payload.exp * 1000 : null
 	} catch {
 		return null
@@ -196,7 +197,11 @@ async function request(
 		// Refresh failed - only redirect if we have no token at all
 		// This allows the app to continue working during temporary network issues
 		const currentToken = getStoredToken()
-		if (!currentToken && typeof window !== "undefined" && !path.includes("/auth/")) {
+		if (
+			!currentToken &&
+			typeof window !== "undefined" &&
+			!path.includes("/auth/")
+		) {
 			// No token available - user needs to login
 			window.location.href = "/login"
 		}

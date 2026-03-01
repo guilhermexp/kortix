@@ -558,9 +558,7 @@ function addSaveChatGPTElementBeforeComposerBtn() {
 		}
 
 		const saveChatGPTElement = createChatGPTInputBarElement(async () => {
-			await getRelatedMemoriesForChatGPT(
-				"chatgpt_chat_memories_searched",
-			)
+			await getRelatedMemoriesForChatGPT("chatgpt_chat_memories_searched")
 		})
 
 		saveChatGPTElement.id = `${ELEMENT_IDS.CHATGPT_INPUT_BAR_ELEMENT}-before-composer-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`

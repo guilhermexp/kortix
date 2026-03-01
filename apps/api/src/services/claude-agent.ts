@@ -1,545 +1,541 @@
-import { access } from "node:fs/promises";
-import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { access } from "node:fs/promises"
+import { resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 import {
-  query,
-  type Options,
-  type McpServerConfig,
-} from "@anthropic-ai/claude-agent-sdk";
-import Anthropic from "@anthropic-ai/sdk";
-import type { SupabaseClient } from "@supabase/supabase-js";
+	type McpServerConfig,
+	type Options,
+	query,
+} from "@anthropic-ai/claude-agent-sdk"
+import Anthropic from "@anthropic-ai/sdk"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import {
-  getDefaultProvider,
-  getProviderConfig,
-  type ProviderId,
-} from "../config/providers";
-import { env } from "../env";
-import { createKortixTools } from "./claude-agent-tools";
+	getDefaultProvider,
+	getProviderConfig,
+	type ProviderId,
+} from "../config/providers"
+import { env } from "../env"
+import { createKortixTools } from "./claude-agent-tools"
 
 // Prevent the Claude Agent SDK from detecting a nested session.
 // This MUST happen at module load time (before any query() calls)
 // because the SDK subprocess inherits process.env.
-delete process.env.CLAUDECODE;
+delete process.env.CLAUDECODE
 
 // Content block types for Claude messages
-export type TextBlock = { type: "text"; text: string };
+export type TextBlock = { type: "text"; text: string }
 export type ToolUseBlock = {
-  type: "tool_use";
-  id: string;
-  name: string;
-  input: unknown;
-};
+	type: "tool_use"
+	id: string
+	name: string
+	input: unknown
+}
 export type ToolResultBlock = {
-  type: "tool_result";
-  tool_use_id: string;
-  content: unknown;
-  is_error?: boolean;
-};
+	type: "tool_result"
+	tool_use_id: string
+	content: unknown
+	is_error?: boolean
+}
 
-export type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock;
+export type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock
 
 export type AgentMessage = {
-  role: "user" | "assistant";
-  content: string | ContentBlock[]; // Support both simple text and structured content blocks
-};
+	role: "user" | "assistant"
+	content: string | ContentBlock[] // Support both simple text and structured content blocks
+}
 
 export type AgentContextOptions = {
-  containerTags?: string[];
-  scopedDocumentIds?: string[];
-  canvasId?: string;
-  userId?: string;
-};
+	containerTags?: string[]
+	scopedDocumentIds?: string[]
+	canvasId?: string
+	userId?: string
+}
 
 export type ClaudeAgentOptions = {
-  message: string; // Single user message for this turn
-  sdkSessionId?: string; // SDK session ID to resume (from SDK, not our DB)
-  client: SupabaseClient;
-  orgId: string;
-  systemPrompt?: string;
-  model?: string;
-  provider?: ProviderId;
-  context?: AgentContextOptions;
-  allowedTools?: string[];
-  maxTurns?: number;
-  abortSignal?: AbortSignal;
-};
+	message: string // Single user message for this turn
+	sdkSessionId?: string // SDK session ID to resume (from SDK, not our DB)
+	client: SupabaseClient
+	orgId: string
+	systemPrompt?: string
+	model?: string
+	provider?: ProviderId
+	context?: AgentContextOptions
+	allowedTools?: string[]
+	maxTurns?: number
+	abortSignal?: AbortSignal
+}
 
 export type ClaudeAgentCallbacks = {
-  onEvent?: (event: unknown) => void | Promise<void>;
-};
+	onEvent?: (event: unknown) => void | Promise<void>
+}
 
-type ToolState = "output-available" | "output-error";
+type ToolState = "output-available" | "output-error"
 
-let cachedCliPath: string | null = null;
+let cachedCliPath: string | null = null
 
 async function resolveClaudeCodeCliPath(): Promise<string> {
-  if (cachedCliPath) {
-    return cachedCliPath;
-  }
+	if (cachedCliPath) {
+		return cachedCliPath
+	}
 
-  const moduleDir = fileURLToPath(new URL(".", import.meta.url));
-  const candidateBases = [
-    process.cwd(),
-    resolve(process.cwd(), ".."),
-    moduleDir,
-    resolve(moduleDir, ".."),
-    resolve(moduleDir, "..", ".."),
-    resolve(moduleDir, "..", "..", ".."),
-    resolve(moduleDir, "..", "..", "..", ".."),
-  ];
-  const candidatePaths = Array.from(
-    new Set(
-      candidateBases.map((base) =>
-        resolve(base, "node_modules/@anthropic-ai/claude-agent-sdk/cli.js"),
-      ),
-    ),
-  );
+	const moduleDir = fileURLToPath(new URL(".", import.meta.url))
+	const candidateBases = [
+		process.cwd(),
+		resolve(process.cwd(), ".."),
+		moduleDir,
+		resolve(moduleDir, ".."),
+		resolve(moduleDir, "..", ".."),
+		resolve(moduleDir, "..", "..", ".."),
+		resolve(moduleDir, "..", "..", "..", ".."),
+	]
+	const candidatePaths = Array.from(
+		new Set(
+			candidateBases.map((base) =>
+				resolve(base, "node_modules/@anthropic-ai/claude-agent-sdk/cli.js"),
+			),
+		),
+	)
 
-  const tried: string[] = [];
-  for (const candidate of candidatePaths) {
-    tried.push(candidate);
-    try {
-      await access(candidate);
-      cachedCliPath = candidate;
-      return candidate;
-    } catch {
-      // Continuar verificação em outros caminhos
-    }
-  }
+	const tried: string[] = []
+	for (const candidate of candidatePaths) {
+		tried.push(candidate)
+		try {
+			await access(candidate)
+			cachedCliPath = candidate
+			return candidate
+		} catch {
+			// Continuar verificação em outros caminhos
+		}
+	}
 
-  throw new Error(
-    `[executeClaudeAgent] Claude Code CLI não encontrado. Caminhos verificados: ${tried.join(
-      ", ",
-    )}`,
-  );
+	throw new Error(
+		`[executeClaudeAgent] Claude Code CLI não encontrado. Caminhos verificados: ${tried.join(
+			", ",
+		)}`,
+	)
 }
 
 export type AgentPart =
-  | { type: "text"; text: string }
-  | {
-      type: "tool-searchMemories";
-      state: ToolState;
-      output?: {
-        count?: number;
-        results?: Array<{
-          documentId?: string;
-          title?: string;
-          url?: string;
-          score?: number;
-        }>;
-      };
-      error?: string;
-    }
-  | {
-      type: "tool-generic";
-      toolName: string;
-      state: ToolState;
-      outputText?: string;
-      error?: string;
-    };
+	| { type: "text"; text: string }
+	| {
+			type: "tool-searchMemories"
+			state: ToolState
+			output?: {
+				count?: number
+				results?: Array<{
+					documentId?: string
+					title?: string
+					url?: string
+					score?: number
+				}>
+			}
+			error?: string
+	  }
+	| {
+			type: "tool-generic"
+			toolName: string
+			state: ToolState
+			outputText?: string
+			error?: string
+	  }
 
 function collectTextFromContent(content: unknown): string[] {
-  if (!content) return [];
-  if (typeof content === "string") {
-    return [content];
-  }
-  if (Array.isArray(content)) {
-    const segments: string[] = [];
-    for (const item of content) {
-      if (!item || typeof item !== "object") continue;
-      if ("text" in item && typeof item.text === "string") {
-        segments.push(item.text);
-      }
-      if ("content" in item) {
-        segments.push(...collectTextFromContent((item as any).content));
-      }
-    }
-    return segments;
-  }
-  if (typeof content === "object") {
-    if ("text" in content && typeof (content as any).text === "string") {
-      return [(content as any).text];
-    }
-    if ("content" in content) {
-      return collectTextFromContent((content as any).content);
-    }
-  }
-  return [];
+	if (!content) return []
+	if (typeof content === "string") {
+		return [content]
+	}
+	if (Array.isArray(content)) {
+		const segments: string[] = []
+		for (const item of content) {
+			if (!item || typeof item !== "object") continue
+			if ("text" in item && typeof item.text === "string") {
+				segments.push(item.text)
+			}
+			if ("content" in item) {
+				segments.push(...collectTextFromContent((item as any).content))
+			}
+		}
+		return segments
+	}
+	if (typeof content === "object") {
+		if ("text" in content && typeof (content as any).text === "string") {
+			return [(content as any).text]
+		}
+		if ("content" in content) {
+			return collectTextFromContent((content as any).content)
+		}
+	}
+	return []
 }
 
 export async function executeClaudeAgent(
-  {
-    message,
-    sdkSessionId,
-    client,
-    orgId,
-    systemPrompt,
-    model,
-    provider,
-    context,
-    allowedTools,
-    maxTurns,
-    abortSignal,
-  }: ClaudeAgentOptions,
-  callbacks: ClaudeAgentCallbacks = {},
+	{
+		message,
+		sdkSessionId,
+		client,
+		orgId,
+		systemPrompt,
+		model,
+		provider,
+		context,
+		allowedTools,
+		maxTurns,
+		abortSignal,
+	}: ClaudeAgentOptions,
+	callbacks: ClaudeAgentCallbacks = {},
 ): Promise<{
-  events: unknown[];
-  text: string;
-  parts: AgentPart[];
-  sdkSessionId: string | null; // SDK session ID for future requests
+	events: unknown[]
+	text: string
+	parts: AgentPart[]
+	sdkSessionId: string | null // SDK session ID for future requests
 }> {
-  const sessionMode = sdkSessionId ? "resuming session" : "new session";
+	const sessionMode = sdkSessionId ? "resuming session" : "new session"
 
-  // Get provider configuration
-  const providerId = provider || getDefaultProvider();
-  const providerConfig = getProviderConfig(providerId);
+	// Get provider configuration
+	const providerId = provider || getDefaultProvider()
+	const providerConfig = getProviderConfig(providerId)
 
-  console.log("[executeClaudeAgent] Starting", sessionMode);
-  console.log(
-    "[executeClaudeAgent] Provider:",
-    providerConfig.name,
-    `(${providerId})`,
-  );
+	console.log("[executeClaudeAgent] Starting", sessionMode)
+	console.log(
+		"[executeClaudeAgent] Provider:",
+		providerConfig.name,
+		`(${providerId})`,
+	)
 
-  // Validate baseURL against whitelist to prevent credential leakage
-  const ALLOWED_BASE_URLS = [
-    "https://api.anthropic.com",
-    "https://api.kimi.com/coding",
-  ];
+	// Validate baseURL against whitelist to prevent credential leakage
+	const ALLOWED_BASE_URLS = [
+		"https://api.anthropic.com",
+		"https://api.kimi.com/coding",
+	]
 
-  if (!ALLOWED_BASE_URLS.includes(providerConfig.baseURL)) {
-    throw new Error(`Invalid provider base URL: ${providerConfig.baseURL}`);
-  }
+	if (!ALLOWED_BASE_URLS.includes(providerConfig.baseURL)) {
+		throw new Error(`Invalid provider base URL: ${providerConfig.baseURL}`)
+	}
 
-  // Use provider's default model if no specific model provided
-  const resolvedModel = model || providerConfig.models.default;
+	// Use provider's default model if no specific model provided
+	const resolvedModel = model || providerConfig.models.default
 
-  // Build per-request env to pass to the SDK subprocess (concurrency-safe).
-  // CLAUDECODE is already removed from process.env at module load time.
-  const sdkEnv: Record<string, string | undefined> = {
-    ...process.env,
-    ANTHROPIC_API_KEY: providerConfig.apiKey,
-    ANTHROPIC_AUTH_TOKEN: providerConfig.apiKey,
-    ANTHROPIC_BASE_URL: providerConfig.baseURL,
-    ANTHROPIC_MODEL: resolvedModel,
-    ANTHROPIC_SMALL_FAST_MODEL: providerConfig.models.fast,
-    ANTHROPIC_DEFAULT_SONNET_MODEL: providerConfig.models.balanced,
-    ANTHROPIC_DEFAULT_OPUS_MODEL: providerConfig.models.advanced,
-    ANTHROPIC_DEFAULT_HAIKU_MODEL: providerConfig.models.haiku,
-  };
+	// Build per-request env to pass to the SDK subprocess (concurrency-safe).
+	// CLAUDECODE is already removed from process.env at module load time.
+	const sdkEnv: Record<string, string | undefined> = {
+		...process.env,
+		ANTHROPIC_API_KEY: providerConfig.apiKey,
+		ANTHROPIC_AUTH_TOKEN: providerConfig.apiKey,
+		ANTHROPIC_BASE_URL: providerConfig.baseURL,
+		ANTHROPIC_MODEL: resolvedModel,
+		ANTHROPIC_SMALL_FAST_MODEL: providerConfig.models.fast,
+		ANTHROPIC_DEFAULT_SONNET_MODEL: providerConfig.models.balanced,
+		ANTHROPIC_DEFAULT_OPUS_MODEL: providerConfig.models.advanced,
+		ANTHROPIC_DEFAULT_HAIKU_MODEL: providerConfig.models.haiku,
+	}
 
-  console.log("[executeClaudeAgent] Using base URL:", providerConfig.baseURL);
-  console.log("[executeClaudeAgent] Using model:", resolvedModel);
+	console.log("[executeClaudeAgent] Using base URL:", providerConfig.baseURL)
+	console.log("[executeClaudeAgent] Using model:", resolvedModel)
 
-  try {
-    // Pass message directly as string — the SDK accepts string | AsyncIterable<SDKUserMessage>
-    const prompt = message;
-    const toolsServer = createKortixTools(client, orgId, context);
-    const toolNames =
-      Array.isArray(allowedTools) && allowedTools.length > 0
-        ? allowedTools
-        : undefined;
+	try {
+		// Pass message directly as string — the SDK accepts string | AsyncIterable<SDKUserMessage>
+		const prompt = message
+		const toolsServer = createKortixTools(client, orgId, context)
+		const toolNames =
+			Array.isArray(allowedTools) && allowedTools.length > 0
+				? allowedTools
+				: undefined
 
-    // Explicitly resolve the CLI path to avoid spawning issues in different runtimes
-    const pathToClaudeCodeExecutable = await resolveClaudeCodeCliPath();
-    console.log(
-      "[executeClaudeAgent] Using CLI at:",
-      pathToClaudeCodeExecutable,
-    );
+		// Explicitly resolve the CLI path to avoid spawning issues in different runtimes
+		const pathToClaudeCodeExecutable = await resolveClaudeCodeCliPath()
+		console.log(
+			"[executeClaudeAgent] Using CLI at:",
+			pathToClaudeCodeExecutable,
+		)
 
-    const isNewSession = !sdkSessionId;
+		const isNewSession = !sdkSessionId
 
-    // Debug: Check if CLAUDE.md exists
-    const workingDir = resolve(process.cwd());
-    const claudeMdPath = resolve(workingDir, ".claude", "CLAUDE.md");
-    console.log("[executeClaudeAgent] Working directory:", workingDir);
-    console.log("[executeClaudeAgent] Looking for CLAUDE.md at:", claudeMdPath);
-    try {
-      await access(claudeMdPath);
-      console.log("[executeClaudeAgent] ✓ CLAUDE.md found");
-    } catch {
-      console.warn(
-        "[executeClaudeAgent] ✗ CLAUDE.md NOT found - will use inline fallback",
-      );
-    }
+		// Debug: Check if CLAUDE.md exists
+		const workingDir = resolve(process.cwd())
+		const claudeMdPath = resolve(workingDir, ".claude", "CLAUDE.md")
+		console.log("[executeClaudeAgent] Working directory:", workingDir)
+		console.log("[executeClaudeAgent] Looking for CLAUDE.md at:", claudeMdPath)
+		try {
+			await access(claudeMdPath)
+			console.log("[executeClaudeAgent] ✓ CLAUDE.md found")
+		} catch {
+			console.warn(
+				"[executeClaudeAgent] ✗ CLAUDE.md NOT found - will use inline fallback",
+			)
+		}
 
-    // Configure MCP servers
-    // Note: Sequential thinking server is now DISABLED by default as it requires
-    // an external binary that may not be installed, causing "Stream closed" errors.
-    // To enable: set SEQ_MCP_ENABLED=true and SEQ_MCP_COMMAND to the binary path
-    const mcpServers: Record<string, McpServerConfig> = {
-      "kortix-tools": toolsServer,
-    };
+		// Configure MCP servers
+		// Note: Sequential thinking server is now DISABLED by default as it requires
+		// an external binary that may not be installed, causing "Stream closed" errors.
+		// To enable: set SEQ_MCP_ENABLED=true and SEQ_MCP_COMMAND to the binary path
+		const mcpServers: Record<string, McpServerConfig> = {
+			"kortix-tools": toolsServer,
+		}
 
-    // Only add deepwiki if we want external research capabilities
-    // Disabled by default to reduce potential connection issues
-    if (env.DEEPWIKI_ENABLED === "true") {
-      mcpServers.deepwiki = {
-        type: "http",
-        url: "https://mcp.deepwiki.com/mcp",
-      };
-      console.log("[executeClaudeAgent] Deepwiki MCP server enabled");
-    }
+		// Only add deepwiki if we want external research capabilities
+		// Disabled by default to reduce potential connection issues
+		if (env.DEEPWIKI_ENABLED === "true") {
+			mcpServers.deepwiki = {
+				type: "http",
+				url: "https://mcp.deepwiki.com/mcp",
+			}
+			console.log("[executeClaudeAgent] Deepwiki MCP server enabled")
+		}
 
-    // Only add sequential-thinking if explicitly enabled and configured
-    if (env.SEQ_MCP_ENABLED === "true" && env.SEQ_MCP_COMMAND) {
-      let seqArgs: string[] = [];
-      try {
-        seqArgs = env.SEQ_MCP_ARGS ? JSON.parse(env.SEQ_MCP_ARGS) : [];
-        if (!Array.isArray(seqArgs)) seqArgs = [];
-      } catch {
-        console.warn(
-          "[executeClaudeAgent] Invalid SEQ_MCP_ARGS JSON; ignoring",
-        );
-        seqArgs = [];
-      }
+		// Only add sequential-thinking if explicitly enabled and configured
+		if (env.SEQ_MCP_ENABLED === "true" && env.SEQ_MCP_COMMAND) {
+			let seqArgs: string[] = []
+			try {
+				seqArgs = env.SEQ_MCP_ARGS ? JSON.parse(env.SEQ_MCP_ARGS) : []
+				if (!Array.isArray(seqArgs)) seqArgs = []
+			} catch {
+				console.warn("[executeClaudeAgent] Invalid SEQ_MCP_ARGS JSON; ignoring")
+				seqArgs = []
+			}
 
-      mcpServers["sequential-thinking"] = {
-        command: env.SEQ_MCP_COMMAND,
-        args: seqArgs,
-      };
-      console.log(
-        "[executeClaudeAgent] Sequential thinking MCP server enabled",
-      );
-    }
+			mcpServers["sequential-thinking"] = {
+				command: env.SEQ_MCP_COMMAND,
+				args: seqArgs,
+			}
+			console.log("[executeClaudeAgent] Sequential thinking MCP server enabled")
+		}
 
-    console.log(
-      "[executeClaudeAgent] Active MCP servers:",
-      Object.keys(mcpServers).join(", "),
-    );
+		console.log(
+			"[executeClaudeAgent] Active MCP servers:",
+			Object.keys(mcpServers).join(", "),
+		)
 
-    const queryOptions: Options = {
-      model: resolvedModel,
-      thinking: providerConfig.thinking ? { type: "adaptive" } : { type: "disabled" },
-      mcpServers,
-      env: sdkEnv,
-      disallowedTools: [
-        "Bash",
-        "Grep",
-        "BashOutput",
-        "ExitPlanMode",
-      ],
-      permissionMode: "bypassPermissions",
-      includePartialMessages: Boolean(callbacks.onEvent),
-      allowDangerouslySkipPermissions: true,
-      pathToClaudeCodeExecutable,
-      executable: "node", // Force node runtime — bun fails to spawn the CLI subprocess correctly
-      persistSession: true, // Required for session continuity (continue/resume)
+		const queryOptions: Options = {
+			model: resolvedModel,
+			thinking: providerConfig.thinking
+				? { type: "adaptive" }
+				: { type: "disabled" },
+			mcpServers,
+			env: sdkEnv,
+			disallowedTools: ["Bash", "Grep", "BashOutput", "ExitPlanMode"],
+			permissionMode: "bypassPermissions",
+			includePartialMessages: Boolean(callbacks.onEvent),
+			allowDangerouslySkipPermissions: true,
+			pathToClaudeCodeExecutable,
+			executable: "node", // Force node runtime — bun fails to spawn the CLI subprocess correctly
+			persistSession: true, // Required for session continuity (continue/resume)
 
-      // Enable loading CLAUDE.md from .claude/ directory
-      settingSources: ["project"],
+			// Enable loading CLAUDE.md from .claude/ directory
+			settingSources: ["project"],
 
-      // Set working directory to API root so SDK finds .claude/CLAUDE.md
-      cwd: workingDir,
+			// Set working directory to API root so SDK finds .claude/CLAUDE.md
+			cwd: workingDir,
 
-      stderr: (data: string) => {
-        const output = data.trim();
-        if (output.length > 0) {
-          console.error("[Claude CLI]", output);
-        }
-      },
-    };
+			stderr: (data: string) => {
+				const output = data.trim()
+				if (output.length > 0) {
+					console.error("[Claude CLI]", output)
+				}
+			},
+		}
 
-    // Handle system prompt based on whether it was explicitly provided
-    // When systemPrompt is provided, always use it (even on resume)
-    // Otherwise, let SDK load from .claude/CLAUDE.md on new sessions
-    if (systemPrompt) {
-      queryOptions.systemPrompt = systemPrompt;
-      // Don't use settingSources when we have a custom prompt —
-      // this means no project-level settings (CLAUDE.md, settings.json) will apply
-      queryOptions.settingSources = undefined;
-      console.log(
-        "[executeClaudeAgent] Using custom system prompt - length:",
-        systemPrompt.length,
-        "chars",
-      );
-    } else if (isNewSession) {
-      console.log(
-        "[executeClaudeAgent] New session - SDK will load system prompt from .claude/CLAUDE.md",
-      );
-    } else {
-      console.log(
-        "[executeClaudeAgent] Existing session - reusing stored system prompt from SDK",
-      );
-    }
+		// Handle system prompt based on whether it was explicitly provided
+		// When systemPrompt is provided, always use it (even on resume)
+		// Otherwise, let SDK load from .claude/CLAUDE.md on new sessions
+		if (systemPrompt) {
+			queryOptions.systemPrompt = systemPrompt
+			// Don't use settingSources when we have a custom prompt —
+			// this means no project-level settings (CLAUDE.md, settings.json) will apply
+			queryOptions.settingSources = undefined
+			console.log(
+				"[executeClaudeAgent] Using custom system prompt - length:",
+				systemPrompt.length,
+				"chars",
+			)
+		} else if (isNewSession) {
+			console.log(
+				"[executeClaudeAgent] New session - SDK will load system prompt from .claude/CLAUDE.md",
+			)
+		} else {
+			console.log(
+				"[executeClaudeAgent] Existing session - reusing stored system prompt from SDK",
+			)
+		}
 
-    // Session management: resume specific session or start new
-    if (sdkSessionId) {
-      queryOptions.resume = sdkSessionId;
-      console.log("[executeClaudeAgent] Resuming session:", sdkSessionId);
-    }
-    // else: new session (no continue, no resume)
-    if (toolNames) {
-      queryOptions.allowedTools = toolNames;
-    }
-    if (typeof maxTurns === "number") {
-      queryOptions.maxTurns = maxTurns;
-    }
+		// Session management: resume specific session or start new
+		if (sdkSessionId) {
+			queryOptions.resume = sdkSessionId
+			console.log("[executeClaudeAgent] Resuming session:", sdkSessionId)
+		}
+		// else: new session (no continue, no resume)
+		if (toolNames) {
+			queryOptions.allowedTools = toolNames
+		}
+		if (typeof maxTurns === "number") {
+			queryOptions.maxTurns = maxTurns
+		}
 
-    if (abortSignal) {
-      const sdkAbortController = new AbortController();
-      if (abortSignal.aborted) {
-        sdkAbortController.abort("Request aborted");
-      } else {
-        abortSignal.addEventListener(
-          "abort",
-          () => sdkAbortController.abort("Request aborted"),
-          { once: true },
-        );
-      }
-      queryOptions.abortController = sdkAbortController;
-    }
+		if (abortSignal) {
+			const sdkAbortController = new AbortController()
+			if (abortSignal.aborted) {
+				sdkAbortController.abort("Request aborted")
+			} else {
+				abortSignal.addEventListener(
+					"abort",
+					() => sdkAbortController.abort("Request aborted"),
+					{ once: true },
+				)
+			}
+			queryOptions.abortController = sdkAbortController
+		}
 
-    console.log("[executeClaudeAgent] Query options:", {
-      model: queryOptions.model,
-      sessionMode: queryOptions.resume
-        ? `resume (${queryOptions.resume as string})`
-        : "new session",
-      maxTurns: queryOptions.maxTurns,
-      hasTools: !!queryOptions.mcpServers,
-      message: message.substring(0, 50),
-    });
+		console.log("[executeClaudeAgent] Query options:", {
+			model: queryOptions.model,
+			sessionMode: queryOptions.resume
+				? `resume (${queryOptions.resume as string})`
+				: "new session",
+			maxTurns: queryOptions.maxTurns,
+			hasTools: !!queryOptions.mcpServers,
+			message: message.substring(0, 50),
+		})
 
-    const agentIterator = query({
-      prompt,
-      options: queryOptions,
-    });
+		const agentIterator = query({
+			prompt,
+			options: queryOptions,
+		})
 
-    const onEvent = callbacks.onEvent;
-    const events: unknown[] = [];
-    const eventTypeCounts = new Map<string, number>();
-    let capturedSessionId: string | null = sdkSessionId || null;
-    let sessionIdLogged = false; // Track if we already logged the session ID
+		const onEvent = callbacks.onEvent
+		const events: unknown[] = []
+		const eventTypeCounts = new Map<string, number>()
+		let capturedSessionId: string | null = sdkSessionId || null
+		let sessionIdLogged = false // Track if we already logged the session ID
 
-    for await (const event of agentIterator) {
-      if (event && typeof event === "object" && "type" in event) {
-        const eventType = (event as any).type as string;
-        eventTypeCounts.set(
-          eventType,
-          (eventTypeCounts.get(eventType) || 0) + 1,
-        );
+		for await (const event of agentIterator) {
+			if (event && typeof event === "object" && "type" in event) {
+				const eventType = (event as any).type as string
+				eventTypeCounts.set(
+					eventType,
+					(eventTypeCounts.get(eventType) || 0) + 1,
+				)
 
-        // Capture SDK session ID from events (log only once)
-        if (
-          "session_id" in event &&
-          typeof (event as any).session_id === "string"
-        ) {
-          const newSessionId = (event as any).session_id;
-          if (!capturedSessionId || capturedSessionId !== newSessionId) {
-            capturedSessionId = newSessionId;
-            if (!sessionIdLogged) {
-              console.log(
-                "[executeClaudeAgent] Captured SDK session ID:",
-                capturedSessionId,
-              );
-              sessionIdLogged = true;
-            }
-          }
-        }
+				// Capture SDK session ID from events (log only once)
+				if (
+					"session_id" in event &&
+					typeof (event as any).session_id === "string"
+				) {
+					const newSessionId = (event as any).session_id
+					if (!capturedSessionId || capturedSessionId !== newSessionId) {
+						capturedSessionId = newSessionId
+						if (!sessionIdLogged) {
+							console.log(
+								"[executeClaudeAgent] Captured SDK session ID:",
+								capturedSessionId,
+							)
+							sessionIdLogged = true
+						}
+					}
+				}
 
-        // Log tool usage for visibility
-        if (eventType === "assistant") {
-          const message = (event as any).message;
-          if (message && Array.isArray(message.content)) {
-            for (const block of message.content) {
-              if (block && block.type === "tool_use") {
-                console.log(
-                  `[executeClaudeAgent] 🔧 Tool called: ${block.name}`,
-                  block.input
-                    ? `with input: ${JSON.stringify(block.input).substring(0, 100)}`
-                    : "",
-                );
-              }
-            }
-          }
-        }
+				// Log tool usage for visibility
+				if (eventType === "assistant") {
+					const message = (event as any).message
+					if (message && Array.isArray(message.content)) {
+						for (const block of message.content) {
+							if (block && block.type === "tool_use") {
+								console.log(
+									`[executeClaudeAgent] 🔧 Tool called: ${block.name}`,
+									block.input
+										? `with input: ${JSON.stringify(block.input).substring(0, 100)}`
+										: "",
+								)
+							}
+						}
+					}
+				}
 
-        // Log tool results
-        if (eventType === "user") {
-          const content = (event as any).content;
-          if (Array.isArray(content)) {
-            for (const block of content) {
-              if (block && block.type === "tool_result") {
-                const resultPreview =
-                  typeof block.content === "string"
-                    ? block.content.substring(0, 100)
-                    : JSON.stringify(block.content).substring(0, 100);
-                console.log(
-                  `[executeClaudeAgent] ✅ Tool result: ${block.is_error ? "ERROR" : "SUCCESS"} - ${resultPreview}...`,
-                );
-              }
-            }
-          }
-        }
-      }
-      events.push(event);
-      if (onEvent) {
-        await onEvent(event);
-      }
-    }
+				// Log tool results
+				if (eventType === "user") {
+					const content = (event as any).content
+					if (Array.isArray(content)) {
+						for (const block of content) {
+							if (block && block.type === "tool_result") {
+								const resultPreview =
+									typeof block.content === "string"
+										? block.content.substring(0, 100)
+										: JSON.stringify(block.content).substring(0, 100)
+								console.log(
+									`[executeClaudeAgent] ✅ Tool result: ${block.is_error ? "ERROR" : "SUCCESS"} - ${resultPreview}...`,
+								)
+							}
+						}
+					}
+				}
+			}
+			events.push(event)
+			if (onEvent) {
+				await onEvent(event)
+			}
+		}
 
-    // Log event summary instead of full list
-    const eventSummary = Array.from(eventTypeCounts.entries())
-      .map(([type, count]) => `${type}(${count})`)
-      .join(", ");
-    console.log(
-      `[executeClaudeAgent] Completed with ${events.length} events: ${eventSummary}`,
-    );
+		// Log event summary instead of full list
+		const eventSummary = Array.from(eventTypeCounts.entries())
+			.map(([type, count]) => `${type}(${count})`)
+			.join(", ")
+		console.log(
+			`[executeClaudeAgent] Completed with ${events.length} events: ${eventSummary}`,
+		)
 
-    const { text, parts } = buildAssistantResponse(events);
+		const { text, parts } = buildAssistantResponse(events)
 
-    // Log generated text preview for debugging
-    if (text && text.length > 0) {
-      const preview = text.length > 150 ? `${text.substring(0, 150)}...` : text;
-      console.log(
-        `[executeClaudeAgent] Generated text (${text.length} chars): ${preview}`,
-      );
-    }
+		// Log generated text preview for debugging
+		if (text && text.length > 0) {
+			const preview = text.length > 150 ? `${text.substring(0, 150)}...` : text
+			console.log(
+				`[executeClaudeAgent] Generated text (${text.length} chars): ${preview}`,
+			)
+		}
 
-    return {
-      events,
-      text,
-      parts,
-      sdkSessionId: capturedSessionId,
-    };
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    const errStack = error instanceof Error ? error.stack?.split("\n").slice(0, 5).join("\n") : "";
-    console.error("[executeClaudeAgent] Error message:", errMsg);
-    console.error("[executeClaudeAgent] Error stack:", errStack);
-    // Fallback: use direct Anthropic Messages API when CLI process fails (common under Bun)
-    try {
-      const fallbackClient = new Anthropic({
-        apiKey: providerConfig.apiKey,
-        baseURL: providerConfig.baseURL,
-      });
-      const resp = await fallbackClient.messages.create({
-        model: resolvedModel,
-        max_tokens: 512,
-        messages: [{ role: "user", content: message }],
-      });
-      const txt = resp.content
-        .map((c) => (c.type === "text" ? c.text : ""))
-        .join("")
-        .trim();
-      return {
-        events: [resp],
-        text: txt,
-        parts: txt ? [{ type: "text" as const, text: txt }] : [],
-        sdkSessionId: null,
-      };
-    } catch (fallbackErr) {
-      console.error("[executeClaudeAgent] Fallback failed:", fallbackErr);
-    }
-    throw error;
-  }
+		return {
+			events,
+			text,
+			parts,
+			sdkSessionId: capturedSessionId,
+		}
+	} catch (error) {
+		const errMsg = error instanceof Error ? error.message : String(error)
+		const errStack =
+			error instanceof Error
+				? error.stack?.split("\n").slice(0, 5).join("\n")
+				: ""
+		console.error("[executeClaudeAgent] Error message:", errMsg)
+		console.error("[executeClaudeAgent] Error stack:", errStack)
+		// Fallback: use direct Anthropic Messages API when CLI process fails (common under Bun)
+		try {
+			const fallbackClient = new Anthropic({
+				apiKey: providerConfig.apiKey,
+				baseURL: providerConfig.baseURL,
+			})
+			const resp = await fallbackClient.messages.create({
+				model: resolvedModel,
+				max_tokens: 512,
+				messages: [{ role: "user", content: message }],
+			})
+			const txt = resp.content
+				.map((c) => (c.type === "text" ? c.text : ""))
+				.join("")
+				.trim()
+			return {
+				events: [resp],
+				text: txt,
+				parts: txt ? [{ type: "text" as const, text: txt }] : [],
+				sdkSessionId: null,
+			}
+		} catch (fallbackErr) {
+			console.error("[executeClaudeAgent] Fallback failed:", fallbackErr)
+		}
+		throw error
+	}
 }
 
 /**
  * Helper to check if value is a Record
  */
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+	return typeof value === "object" && value !== null
 }
 
 /**
@@ -547,371 +543,371 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * This handles the SDK's streaming format where events are wrapped
  */
 function unwrapStreamEvents(events: unknown[]): unknown[] {
-  const result: unknown[] = [];
-  const queue: unknown[] = [...events];
+	const result: unknown[] = []
+	const queue: unknown[] = [...events]
 
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (!isRecord(current)) continue;
+	while (queue.length > 0) {
+		const current = queue.shift()
+		if (!isRecord(current)) continue
 
-    const eventType = current.type;
-    if (
-      eventType === "stream_event" &&
-      "event" in current &&
-      isRecord(current.event)
-    ) {
-      // Unwrap the inner event
-      queue.push(current.event);
-      continue;
-    }
+		const eventType = current.type
+		if (
+			eventType === "stream_event" &&
+			"event" in current &&
+			isRecord(current.event)
+		) {
+			// Unwrap the inner event
+			queue.push(current.event)
+			continue
+		}
 
-    result.push(current);
-  }
+		result.push(current)
+	}
 
-  return result;
+	return result
 }
 
 function buildAssistantResponse(events: unknown[]): {
-  text: string;
-  parts: AgentPart[];
+	text: string
+	parts: AgentPart[]
 } {
-  const textChunks: string[] = [];
-  const toolCalls = new Map<
-    string,
-    {
-      name: string;
-    }
-  >();
-  const toolParts: AgentPart[] = [];
+	const textChunks: string[] = []
+	const toolCalls = new Map<
+		string,
+		{
+			name: string
+		}
+	>()
+	const toolParts: AgentPart[] = []
 
-  // First, unwrap stream_events to get actual content
-  const unwrappedEvents = unwrapStreamEvents(events);
+	// First, unwrap stream_events to get actual content
+	const unwrappedEvents = unwrapStreamEvents(events)
 
-  // Debug: count event types (after unwrapping)
-  const eventTypeCounts = new Map<string, number>();
-  for (const event of unwrappedEvents) {
-    if (event && typeof event === "object" && "type" in event) {
-      const type = (event as any).type;
-      eventTypeCounts.set(type, (eventTypeCounts.get(type) || 0) + 1);
-    }
-  }
-  console.log(
-    "[buildAssistantResponse] Event types (after unwrap):",
-    Object.fromEntries(eventTypeCounts),
-  );
+	// Debug: count event types (after unwrapping)
+	const eventTypeCounts = new Map<string, number>()
+	for (const event of unwrappedEvents) {
+		if (event && typeof event === "object" && "type" in event) {
+			const type = (event as any).type
+			eventTypeCounts.set(type, (eventTypeCounts.get(type) || 0) + 1)
+		}
+	}
+	console.log(
+		"[buildAssistantResponse] Event types (after unwrap):",
+		Object.fromEntries(eventTypeCounts),
+	)
 
-  // Track content blocks for tool results (from streaming format)
-  const toolResultBuffers = new Map<
-    number,
-    {
-      toolUseId: string;
-      toolName?: string;
-      buffer: string;
-      isError: boolean;
-    }
-  >();
+	// Track content blocks for tool results (from streaming format)
+	const toolResultBuffers = new Map<
+		number,
+		{
+			toolUseId: string
+			toolName?: string
+			buffer: string
+			isError: boolean
+		}
+	>()
 
-  // DEBUG: Log first 5 events to understand structure
-  console.log("[buildAssistantResponse] First 5 unwrapped events:");
-  for (let i = 0; i < Math.min(5, unwrappedEvents.length); i++) {
-    const e = unwrappedEvents[i];
-    if (e && typeof e === "object") {
-      const ev = e as Record<string, unknown>;
-      console.log(
-        `  Event ${i}: type=${ev.type}`,
-        JSON.stringify(e).substring(0, 300),
-      );
-    }
-  }
+	// DEBUG: Log first 5 events to understand structure
+	console.log("[buildAssistantResponse] First 5 unwrapped events:")
+	for (let i = 0; i < Math.min(5, unwrappedEvents.length); i++) {
+		const e = unwrappedEvents[i]
+		if (e && typeof e === "object") {
+			const ev = e as Record<string, unknown>
+			console.log(
+				`  Event ${i}: type=${ev.type}`,
+				JSON.stringify(e).substring(0, 300),
+			)
+		}
+	}
 
-  // DEBUG: Look for content_block events
-  const contentBlockStarts = unwrappedEvents.filter(
-    (e) =>
-      e && typeof e === "object" && (e as any).type === "content_block_start",
-  );
-  console.log(
-    "[buildAssistantResponse] Found content_block_start events:",
-    contentBlockStarts.length,
-  );
-  for (const cbs of contentBlockStarts) {
-    const cb = (cbs as any).content_block;
-    console.log(
-      "  content_block:",
-      cb ? JSON.stringify(cb).substring(0, 200) : "undefined",
-    );
-  }
+	// DEBUG: Look for content_block events
+	const contentBlockStarts = unwrappedEvents.filter(
+		(e) =>
+			e && typeof e === "object" && (e as any).type === "content_block_start",
+	)
+	console.log(
+		"[buildAssistantResponse] Found content_block_start events:",
+		contentBlockStarts.length,
+	)
+	for (const cbs of contentBlockStarts) {
+		const cb = (cbs as any).content_block
+		console.log(
+			"  content_block:",
+			cb ? JSON.stringify(cb).substring(0, 200) : "undefined",
+		)
+	}
 
-  // Process unwrapped events
-  for (const event of unwrappedEvents) {
-    if (!event || typeof event !== "object") continue;
-    const base = event as Record<string, unknown>;
+	// Process unwrapped events
+	for (const event of unwrappedEvents) {
+		if (!event || typeof event !== "object") continue
+		const base = event as Record<string, unknown>
 
-    // Handle content_block_start - track tool_use and tool_result blocks
-    if (base.type === "content_block_start") {
-      const index = typeof base.index === "number" ? base.index : undefined;
-      const contentBlock = base.content_block as
-        | Record<string, unknown>
-        | undefined;
+		// Handle content_block_start - track tool_use and tool_result blocks
+		if (base.type === "content_block_start") {
+			const index = typeof base.index === "number" ? base.index : undefined
+			const contentBlock = base.content_block as
+				| Record<string, unknown>
+				| undefined
 
-      if (contentBlock && index !== undefined) {
-        const blockType = contentBlock.type;
+			if (contentBlock && index !== undefined) {
+				const blockType = contentBlock.type
 
-        // Track tool_use to get tool names
-        if (blockType === "tool_use" || blockType === "mcp_tool_use") {
-          const id =
-            typeof contentBlock.id === "string" ? contentBlock.id : undefined;
-          const name =
-            typeof contentBlock.name === "string"
-              ? contentBlock.name
-              : (id ?? "tool");
-          if (id) {
-            toolCalls.set(id, { name });
-          }
-        }
+				// Track tool_use to get tool names
+				if (blockType === "tool_use" || blockType === "mcp_tool_use") {
+					const id =
+						typeof contentBlock.id === "string" ? contentBlock.id : undefined
+					const name =
+						typeof contentBlock.name === "string"
+							? contentBlock.name
+							: (id ?? "tool")
+					if (id) {
+						toolCalls.set(id, { name })
+					}
+				}
 
-        // Track tool_result blocks
-        if (blockType === "tool_result" || blockType === "mcp_tool_result") {
-          const toolUseId =
-            typeof contentBlock.tool_use_id === "string"
-              ? contentBlock.tool_use_id
-              : "";
-          const isError = Boolean(contentBlock.is_error);
-          const toolName = toolCalls.get(toolUseId)?.name;
-          const initialContent =
-            "content" in contentBlock
-              ? collectTextFromContent(contentBlock.content).join("")
-              : "";
+				// Track tool_result blocks
+				if (blockType === "tool_result" || blockType === "mcp_tool_result") {
+					const toolUseId =
+						typeof contentBlock.tool_use_id === "string"
+							? contentBlock.tool_use_id
+							: ""
+					const isError = Boolean(contentBlock.is_error)
+					const toolName = toolCalls.get(toolUseId)?.name
+					const initialContent =
+						"content" in contentBlock
+							? collectTextFromContent(contentBlock.content).join("")
+							: ""
 
-          toolResultBuffers.set(index, {
-            toolUseId,
-            toolName,
-            buffer: initialContent,
-            isError,
-          });
+					toolResultBuffers.set(index, {
+						toolUseId,
+						toolName,
+						buffer: initialContent,
+						isError,
+					})
 
-          console.log(
-            "[buildAssistantResponse] Started tracking tool_result:",
-            {
-              index,
-              toolUseId,
-              toolName,
-              isError,
-              initialContentLength: initialContent.length,
-            },
-          );
-        }
-      }
-    }
+					console.log(
+						"[buildAssistantResponse] Started tracking tool_result:",
+						{
+							index,
+							toolUseId,
+							toolName,
+							isError,
+							initialContentLength: initialContent.length,
+						},
+					)
+				}
+			}
+		}
 
-    // Handle content_block_delta - accumulate tool result content
-    if (base.type === "content_block_delta") {
-      const index = typeof base.index === "number" ? base.index : undefined;
-      const delta = base.delta as Record<string, unknown> | undefined;
+		// Handle content_block_delta - accumulate tool result content
+		if (base.type === "content_block_delta") {
+			const index = typeof base.index === "number" ? base.index : undefined
+			const delta = base.delta as Record<string, unknown> | undefined
 
-      if (index !== undefined && toolResultBuffers.has(index) && delta) {
-        const tracker = toolResultBuffers.get(index)!;
-        const deltaText =
-          typeof delta.text === "string"
-            ? delta.text
-            : collectTextFromContent(delta).join("");
-        if (deltaText.length > 0) {
-          tracker.buffer += deltaText;
-        }
-      }
-    }
+			if (index !== undefined && toolResultBuffers.has(index) && delta) {
+				const tracker = toolResultBuffers.get(index)!
+				const deltaText =
+					typeof delta.text === "string"
+						? delta.text
+						: collectTextFromContent(delta).join("")
+				if (deltaText.length > 0) {
+					tracker.buffer += deltaText
+				}
+			}
+		}
 
-    // Handle content_block_stop - finalize tool result
-    if (base.type === "content_block_stop") {
-      const index = typeof base.index === "number" ? base.index : undefined;
+		// Handle content_block_stop - finalize tool result
+		if (base.type === "content_block_stop") {
+			const index = typeof base.index === "number" ? base.index : undefined
 
-      if (index !== undefined && toolResultBuffers.has(index)) {
-        const tracker = toolResultBuffers.get(index)!;
-        const toolName = tracker.toolName ?? tracker.toolUseId ?? "tool";
-        const raw = tracker.buffer;
-        const isError = tracker.isError;
+			if (index !== undefined && toolResultBuffers.has(index)) {
+				const tracker = toolResultBuffers.get(index)!
+				const toolName = tracker.toolName ?? tracker.toolUseId ?? "tool"
+				const raw = tracker.buffer
+				const isError = tracker.isError
 
-        console.log("[buildAssistantResponse] Completed tool_result:", {
-          index,
-          toolName,
-          isError,
-          rawLength: raw.length,
-          rawPreview: raw.substring(0, 200),
-        });
+				console.log("[buildAssistantResponse] Completed tool_result:", {
+					index,
+					toolName,
+					isError,
+					rawLength: raw.length,
+					rawPreview: raw.substring(0, 200),
+				})
 
-        if (toolName === "mcp__kortix-tools__searchDatabase") {
-          toolParts.push(
-            buildSearchMemoriesPart(raw, isError ? raw : undefined),
-          );
-        } else {
-          toolParts.push({
-            type: "tool-generic",
-            toolName,
-            state: isError ? "output-error" : "output-available",
-            outputText: isError ? undefined : raw,
-            error: isError ? raw || "Tool execution failed" : undefined,
-          });
-          console.log(
-            "[buildAssistantResponse] Added tool-generic part for:",
-            toolName,
-          );
-        }
+				if (toolName === "mcp__kortix-tools__searchDatabase") {
+					toolParts.push(
+						buildSearchMemoriesPart(raw, isError ? raw : undefined),
+					)
+				} else {
+					toolParts.push({
+						type: "tool-generic",
+						toolName,
+						state: isError ? "output-error" : "output-available",
+						outputText: isError ? undefined : raw,
+						error: isError ? raw || "Tool execution failed" : undefined,
+					})
+					console.log(
+						"[buildAssistantResponse] Added tool-generic part for:",
+						toolName,
+					)
+				}
 
-        toolResultBuffers.delete(index);
-      }
-    }
+				toolResultBuffers.delete(index)
+			}
+		}
 
-    // Handle assistant events (for text content and tool_use tracking)
-    if (base.type === "assistant") {
-      const message = base.message as Record<string, unknown> | undefined;
-      const content = message?.content;
-      if (Array.isArray(content)) {
-        for (const block of content) {
-          if (!block || typeof block !== "object") continue;
-          const value = block as Record<string, unknown>;
-          const blockType = value.type;
-          if (blockType === "text" && typeof value.text === "string") {
-            textChunks.push(value.text);
-          } else if (blockType === "tool_use" || blockType === "mcp_tool_use") {
-            const id = typeof value.id === "string" ? value.id : undefined;
-            const name =
-              typeof value.name === "string" ? value.name : (id ?? "tool");
-            if (id) {
-              toolCalls.set(id, { name });
-              console.log("[buildAssistantResponse] Registered tool_use:", {
-                id,
-                name,
-              });
-            }
-          }
-        }
-      }
-    }
+		// Handle assistant events (for text content and tool_use tracking)
+		if (base.type === "assistant") {
+			const message = base.message as Record<string, unknown> | undefined
+			const content = message?.content
+			if (Array.isArray(content)) {
+				for (const block of content) {
+					if (!block || typeof block !== "object") continue
+					const value = block as Record<string, unknown>
+					const blockType = value.type
+					if (blockType === "text" && typeof value.text === "string") {
+						textChunks.push(value.text)
+					} else if (blockType === "tool_use" || blockType === "mcp_tool_use") {
+						const id = typeof value.id === "string" ? value.id : undefined
+						const name =
+							typeof value.name === "string" ? value.name : (id ?? "tool")
+						if (id) {
+							toolCalls.set(id, { name })
+							console.log("[buildAssistantResponse] Registered tool_use:", {
+								id,
+								name,
+							})
+						}
+					}
+				}
+			}
+		}
 
-    // Handle user events (tool_result in message.content array)
-    if (base.type === "user") {
-      // The content is nested inside message.content, NOT directly in content
-      const message = base.message as Record<string, unknown> | undefined;
-      const content = message?.content ?? base.content;
-      if (Array.isArray(content)) {
-        for (const block of content) {
-          if (!block || typeof block !== "object") continue;
-          const value = block as Record<string, unknown>;
-          if (value.type === "tool_result") {
-            const toolUseId =
-              typeof value.tool_use_id === "string" ? value.tool_use_id : "";
-            const info = toolCalls.get(toolUseId);
-            const toolName = info?.name ?? toolUseId;
-            const segments = collectTextFromContent(value.content);
-            const raw = segments.join("");
-            const isError = Boolean(value.is_error);
+		// Handle user events (tool_result in message.content array)
+		if (base.type === "user") {
+			// The content is nested inside message.content, NOT directly in content
+			const message = base.message as Record<string, unknown> | undefined
+			const content = message?.content ?? base.content
+			if (Array.isArray(content)) {
+				for (const block of content) {
+					if (!block || typeof block !== "object") continue
+					const value = block as Record<string, unknown>
+					if (value.type === "tool_result") {
+						const toolUseId =
+							typeof value.tool_use_id === "string" ? value.tool_use_id : ""
+						const info = toolCalls.get(toolUseId)
+						const toolName = info?.name ?? toolUseId
+						const segments = collectTextFromContent(value.content)
+						const raw = segments.join("")
+						const isError = Boolean(value.is_error)
 
-            console.log(
-              "[buildAssistantResponse] Tool result from user event:",
-              {
-                toolUseId,
-                toolName,
-                resolvedFromMap: !!info,
-                toolCallsMapSize: toolCalls.size,
-                toolCallsKeys: Array.from(toolCalls.keys()),
-                isError,
-                rawLength: raw.length,
-                rawPreview: raw.substring(0, 100),
-              },
-            );
+						console.log(
+							"[buildAssistantResponse] Tool result from user event:",
+							{
+								toolUseId,
+								toolName,
+								resolvedFromMap: !!info,
+								toolCallsMapSize: toolCalls.size,
+								toolCallsKeys: Array.from(toolCalls.keys()),
+								isError,
+								rawLength: raw.length,
+								rawPreview: raw.substring(0, 100),
+							},
+						)
 
-            if (toolName === "mcp__kortix-tools__searchDatabase") {
-              toolParts.push(
-                buildSearchMemoriesPart(raw, isError ? raw : undefined),
-              );
-            } else {
-              toolParts.push({
-                type: "tool-generic",
-                toolName,
-                state: isError ? "output-error" : "output-available",
-                outputText: isError ? undefined : raw,
-                error: isError ? raw || "Tool execution failed" : undefined,
-              });
-              console.log(
-                "[buildAssistantResponse] Added tool-generic part for:",
-                toolName,
-              );
-            }
-          }
-        }
-      }
-    }
-  }
+						if (toolName === "mcp__kortix-tools__searchDatabase") {
+							toolParts.push(
+								buildSearchMemoriesPart(raw, isError ? raw : undefined),
+							)
+						} else {
+							toolParts.push({
+								type: "tool-generic",
+								toolName,
+								state: isError ? "output-error" : "output-available",
+								outputText: isError ? undefined : raw,
+								error: isError ? raw || "Tool execution failed" : undefined,
+							})
+							console.log(
+								"[buildAssistantResponse] Added tool-generic part for:",
+								toolName,
+							)
+						}
+					}
+				}
+			}
+		}
+	}
 
-  const cleanedText = textChunks.join("").trim();
-  const parts: AgentPart[] = [];
-  if (cleanedText.length > 0) {
-    parts.push({ type: "text", text: cleanedText });
-  }
-  parts.push(...toolParts);
+	const cleanedText = textChunks.join("").trim()
+	const parts: AgentPart[] = []
+	if (cleanedText.length > 0) {
+		parts.push({ type: "text", text: cleanedText })
+	}
+	parts.push(...toolParts)
 
-  return {
-    text: cleanedText,
-    parts,
-  };
+	return {
+		text: cleanedText,
+		parts,
+	}
 }
 
 function buildSearchMemoriesPart(raw: string, error?: string): AgentPart {
-  if (error) {
-    return {
-      type: "tool-searchMemories",
-      state: "output-error",
-      error,
-    };
-  }
+	if (error) {
+		return {
+			type: "tool-searchMemories",
+			state: "output-error",
+			error,
+		}
+	}
 
-  try {
-    const payload = JSON.parse(raw) as {
-      count?: unknown;
-      total?: unknown;
-      returned?: unknown;
-      results?: Array<{
-        documentId?: string;
-        title?: string;
-        url?: string;
-        score?: number;
-      }>;
-    };
-    return {
-      type: "tool-searchMemories",
-      state: "output-available",
-      output: {
-        count:
-          typeof payload.count === "number"
-            ? payload.count
-            : typeof payload.total === "number"
-              ? payload.total
-              : Array.isArray(payload.results)
-                ? payload.results.length
-                : undefined,
-        results: Array.isArray(payload.results)
-          ? payload.results.map((result) => ({
-              documentId:
-                typeof result.documentId === "string"
-                  ? result.documentId
-                  : undefined,
-              title:
-                typeof result.title === "string" ? result.title : undefined,
-              content:
-                typeof (result as Record<string, unknown>)?.content === "string"
-                  ? ((result as Record<string, unknown>).content as string)
-                  : undefined,
-              url: typeof result.url === "string" ? result.url : undefined,
-              score:
-                typeof result.score === "number" ? result.score : undefined,
-            }))
-          : [],
-      },
-    };
-  } catch {
-    return {
-      type: "tool-searchMemories",
-      state: "output-error",
-      error: raw || "Erro ao analisar resultados da busca",
-    };
-  }
+	try {
+		const payload = JSON.parse(raw) as {
+			count?: unknown
+			total?: unknown
+			returned?: unknown
+			results?: Array<{
+				documentId?: string
+				title?: string
+				url?: string
+				score?: number
+			}>
+		}
+		return {
+			type: "tool-searchMemories",
+			state: "output-available",
+			output: {
+				count:
+					typeof payload.count === "number"
+						? payload.count
+						: typeof payload.total === "number"
+							? payload.total
+							: Array.isArray(payload.results)
+								? payload.results.length
+								: undefined,
+				results: Array.isArray(payload.results)
+					? payload.results.map((result) => ({
+							documentId:
+								typeof result.documentId === "string"
+									? result.documentId
+									: undefined,
+							title:
+								typeof result.title === "string" ? result.title : undefined,
+							content:
+								typeof (result as Record<string, unknown>)?.content === "string"
+									? ((result as Record<string, unknown>).content as string)
+									: undefined,
+							url: typeof result.url === "string" ? result.url : undefined,
+							score:
+								typeof result.score === "number" ? result.score : undefined,
+						}))
+					: [],
+			},
+		}
+	} catch {
+		return {
+			type: "tool-searchMemories",
+			state: "output-error",
+			error: raw || "Erro ao analisar resultados da busca",
+		}
+	}
 }

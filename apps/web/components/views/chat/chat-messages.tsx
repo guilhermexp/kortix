@@ -35,6 +35,12 @@ import {
 } from "@/stores"
 import { useGraphHighlights } from "@/stores/highlights"
 import { Spinner } from "../../spinner"
+import {
+	CanvasToolPreview,
+	extractCanvasId,
+	isCanvasPreviewToolName,
+	stripMcpPrefix,
+} from "./canvas-tool-preview"
 import { ChatModeSelector } from "./chat-mode-selector"
 import { useProviderSelection } from "./provider-selector"
 
@@ -3275,6 +3281,55 @@ export function ChatMessages({
 											]
 										}
 
+										if (
+											isGenericToolPart(part) &&
+											isCanvasPreviewToolName(part.toolName)
+										) {
+											const isCanvasSuccess =
+												part.state === "output-available"
+											const canvasIdFromOutput = isCanvasSuccess
+												? extractCanvasId(part.outputText)
+												: null
+											const friendlyName = stripMcpPrefix(
+												part.toolName,
+											)
+												.replace("canvas_", "")
+												.replace(/_/g, " ")
+
+											const isCanvasLoading =
+												part.state === "input-streaming" ||
+												part.state === "input-available"
+											const isCanvasError =
+												part.state === "output-error"
+
+											return [
+												<div
+													key={`canvas-preview-${partKey}`}
+													className="rounded-xl border border-white/10 bg-[#0a0a0a] overflow-hidden px-3 py-2.5"
+												>
+													{isCanvasLoading ? (
+														<span className="flex items-center gap-2 text-xs text-zinc-400">
+															<Spinner className="size-3" />
+															Criando {friendlyName}...
+														</span>
+													) : isCanvasError ? (
+														<div className="text-xs text-red-300">
+															{part.error ?? "Falha ao criar diagrama"}
+														</div>
+													) : canvasIdFromOutput ? (
+														<CanvasToolPreview
+															canvasId={canvasIdFromOutput}
+															toolName={part.toolName}
+														/>
+													) : (
+														<span className="text-xs text-zinc-400">
+															Diagrama criado
+														</span>
+													)}
+												</div>,
+											]
+										}
+
 										if (isGenericToolPart(part)) {
 											const outputSegments = part.outputText
 												? splitTextIntoSegments(part.outputText)
@@ -3418,8 +3473,27 @@ export function ChatMessages({
 										},
 									)
 
+									// Separate canvas preview elements from collapsible steps
+									const canvasPreviewElements: ReactNode[] = []
+									const collapsibleToolElements: ReactNode[] = []
+									for (const el of toolElements) {
+										const key =
+											el &&
+											typeof el === "object" &&
+											"key" in el &&
+											typeof (el as any).key === "string"
+												? (el as any).key
+												: ""
+										if (key.startsWith("canvas-preview-")) {
+											canvasPreviewElements.push(el)
+										} else {
+											collapsibleToolElements.push(el)
+										}
+									}
+
 									const shouldShowSteps =
-										message.role === "assistant" && toolElements.length > 0
+										message.role === "assistant" &&
+										collapsibleToolElements.length > 0
 									const subAgentCount = toolParts.filter(({ part }) =>
 										isGenericToolPart(part)
 											? isSubAgentToolName(part.toolName)
@@ -3428,7 +3502,7 @@ export function ChatMessages({
 									const stepBlock = shouldShowSteps ? (
 										<CollapsibleSteps
 											defaultExpanded={false}
-											stepsCount={toolElements.length}
+											stepsCount={collapsibleToolElements.length}
 										>
 											<div className="space-y-2">
 												{subAgentCount > 0 ? (
@@ -3436,7 +3510,7 @@ export function ChatMessages({
 														{subAgentCount} sub-agents
 													</div>
 												) : null}
-												{toolElements}
+												{collapsibleToolElements}
 											</div>
 										</CollapsibleSteps>
 									) : null
@@ -3457,6 +3531,11 @@ export function ChatMessages({
 									return (
 										<>
 											{stepBlock}
+											{canvasPreviewElements.length > 0 ? (
+												<div className="space-y-2">
+													{canvasPreviewElements}
+												</div>
+											) : null}
 											{responseBlock}
 											{otherElements}
 										</>

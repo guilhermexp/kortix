@@ -76,8 +76,7 @@ export async function withRetry<T>(
 		} catch (error) {
 			lastError = error instanceof Error ? error : new Error(String(error))
 
-			const canRetry =
-				attempt < opts.maxAttempts && opts.isRetryable(lastError)
+			const canRetry = attempt < opts.maxAttempts && opts.isRetryable(lastError)
 
 			if (!canRetry) {
 				throw lastError

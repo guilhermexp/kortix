@@ -660,9 +660,7 @@ async function setupT3AutoFetch() {
 			}
 
 			if (content.length > 2) {
-				await getRelatedMemoriesForT3(
-					"t3_chat_memories_auto_searched",
-				)
+				await getRelatedMemoriesForT3("t3_chat_memories_auto_searched")
 			} else if (content.length === 0) {
 				const icons = document.querySelectorAll(
 					'[id*="sm-t3-input-bar-element"]',

@@ -1,8 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import {
-	buildChatSessionKey,
-	ChatSessionManager,
-} from "./chat-session-manager"
+import { buildChatSessionKey, ChatSessionManager } from "./chat-session-manager"
 
 describe("chat-session-manager", () => {
 	it("builds deterministic keys", () => {

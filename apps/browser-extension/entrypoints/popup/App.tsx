@@ -4,9 +4,9 @@ import "./App.css"
 import { validateAuthToken } from "../../utils/api"
 import {
 	API_ENDPOINTS,
+	getContainerTagForUrl,
 	MESSAGE_TYPES,
 	STORAGE_KEYS,
-	getContainerTagForUrl,
 } from "../../utils/constants"
 import { useProjects, useUserData } from "../../utils/query-hooks"
 
@@ -212,11 +212,7 @@ function App() {
 		return (
 			<div className="w-80 p-0 font-[Space_Grotesk,-apple-system,BlinkMacSystemFont,Segoe_UI,Roboto,sans-serif] bg-black rounded-lg relative overflow-hidden">
 				<div className="flex items-center justify-between gap-3 p-2.5 border-b border-white/10 relative">
-					<img
-						alt="Kortix"
-						className="w-8 h-8 flex-shrink-0"
-						src="/icon.svg"
-					/>
+					<img alt="Kortix" className="w-8 h-8 flex-shrink-0" src="/icon.svg" />
 					<h1 className="m-0 text-lg font-semibold text-white flex-1">
 						Kortix
 					</h1>

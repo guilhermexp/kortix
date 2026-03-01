@@ -1,8 +1,8 @@
 import { saveMemory, searchMemories } from "../utils/api"
 import {
 	CONTEXT_MENU_IDS,
-	MESSAGE_TYPES,
 	getContainerTagForUrl,
+	MESSAGE_TYPES,
 } from "../utils/constants"
 import { captureTwitterTokens } from "../utils/twitter-auth"
 import {
@@ -129,9 +129,7 @@ export default defineBackground(() => {
 			} else if (data.isLink && data.url) {
 				content = data.url
 			} else {
-				content = [data.highlightedText, data.url]
-					.filter(Boolean)
-					.join("\n\n")
+				content = [data.highlightedText, data.url].filter(Boolean).join("\n\n")
 			}
 
 			const metadata: MemoryPayload["metadata"] = {

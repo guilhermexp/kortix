@@ -92,6 +92,11 @@ const envSchema = z.object({
 	COUNCIL_CHAIRMAN_MODEL: z.string().optional(),
 	// Cookie domain for cross-subdomain authentication (e.g., ".kortix.com" for api.kortix.com and app.kortix.com)
 	COOKIE_DOMAIN: z.string().min(1).optional(),
+	// Daytona Sandbox (isolated code execution)
+	DAYTONA_SANDBOX_ENABLED: z.string().optional().default("false"),
+	DAYTONA_API_KEY: z.string().min(1).optional(),
+	DAYTONA_SERVER_URL: z.string().url().optional(),
+	DAYTONA_TARGET: z.string().optional().default("us"),
 })
 
 const parsed = envSchema.safeParse({
@@ -139,6 +144,10 @@ const parsed = envSchema.safeParse({
 	COUNCIL_MODELS: process.env.COUNCIL_MODELS,
 	COUNCIL_CHAIRMAN_MODEL: process.env.COUNCIL_CHAIRMAN_MODEL,
 	COOKIE_DOMAIN: process.env.COOKIE_DOMAIN,
+	DAYTONA_SANDBOX_ENABLED: process.env.DAYTONA_SANDBOX_ENABLED,
+	DAYTONA_API_KEY: process.env.DAYTONA_API_KEY,
+	DAYTONA_SERVER_URL: process.env.DAYTONA_SERVER_URL,
+	DAYTONA_TARGET: process.env.DAYTONA_TARGET,
 })
 
 if (!parsed.success) {

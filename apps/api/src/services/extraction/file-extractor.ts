@@ -183,7 +183,12 @@ export class FileExtractor implements IFileExtractor {
 				options?.fileType || this.detectFileTypeFromBuffer(buffer)
 			const fileName = options?.fileName || "document"
 
-			console.info("Extracting file content", `fileType=${fileType}`, `fileName=${fileName}`, `size=${buffer.length}`)
+			console.info(
+				"Extracting file content",
+				`fileType=${fileType}`,
+				`fileName=${fileName}`,
+				`size=${buffer.length}`,
+			)
 
 			// Extract metadata
 			const metadata = await this.extractMetadata(buffer, options)
@@ -198,9 +203,15 @@ export class FileExtractor implements IFileExtractor {
 					const result = await convertWithMarkItDown(buffer, fileName)
 					text = result.markdown
 					extractionMethod = "markitdown"
-					console.debug("MarkItDown extraction successful", `length=${text.length}`)
+					console.debug(
+						"MarkItDown extraction successful",
+						`length=${text.length}`,
+					)
 				} catch (error) {
-					console.warn("MarkItDown extraction failed, trying fallback", (error as Error).message)
+					console.warn(
+						"MarkItDown extraction failed, trying fallback",
+						(error as Error).message,
+					)
 					// Fall through to fallback
 				}
 			}
@@ -211,7 +222,10 @@ export class FileExtractor implements IFileExtractor {
 					text = await this.extractTextFromBuffer(buffer, fileType)
 					extractionMethod = "direct-text"
 				} catch (error) {
-					console.warn("Direct text extraction failed", (error as Error).message)
+					console.warn(
+						"Direct text extraction failed",
+						(error as Error).message,
+					)
 				}
 			}
 

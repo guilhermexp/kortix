@@ -1,4 +1,9 @@
-# memory-document-upgrade-research
+---
+name: memory-document-upgrade-research
+description: Use when upgrading, reviewing, or transforming memory documents or knowledge base content into updated, actionable, LLM-optimized guides. Triggers on stale documentation, outdated practices, or requests to modernize existing content.
+---
+
+# Memory Document Upgrade Research
 
 Objetivo: transformar uma memória/documento em um guia atualizado, acionável e otimizado para LLM.
 
@@ -21,29 +26,29 @@ Objetivo: transformar uma memória/documento em um guia atualizado, acionável e
 
 Use esta estrutura:
 
-## Visão Geral
+### Visão Geral
 - Resumo curto do tema e objetivo.
 
-## Estado Atual (a partir do conteúdo original)
+### Estado Atual (a partir do conteúdo original)
 - O que existe hoje.
 - Pontos fortes.
 - Lacunas e riscos.
 
-## Guia de Uso (passo a passo)
+### Guia de Uso (passo a passo)
 1. Passo 1
 2. Passo 2
 3. Passo 3
 
-## Melhores Práticas Atuais
+### Melhores Práticas Atuais
 - Lista objetiva com justificativa curta.
 
-## Alternativas e Comparativo
+### Alternativas e Comparativo
 - Opção, custo relativo, quando usar, trade-offs.
 
-## Plano Recomendado
+### Plano Recomendado
 - Recomendação final para melhor resultado.
 
-## Referências
+### Referências
 - Links oficiais, documentação, artigos técnicos relevantes.
 
 ## Regras de qualidade
@@ -59,4 +64,3 @@ Use esta estrutura:
 
 - Sempre que houver conflito entre conteúdo antigo e prática atual, priorizar a prática atual e marcar a divergência.
 - Se houver várias opções equivalentes, sugerir a de melhor relação custo-benefício e explicar.
-

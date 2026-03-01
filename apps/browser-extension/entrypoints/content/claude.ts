@@ -133,9 +133,7 @@ function addKortixIconToClaudeInput() {
 		}
 
 		const kortixIcon = createClaudeInputBarElement(async () => {
-			await getRelatedMemoriesForClaude(
-				"claude_chat_memories_searched",
-			)
+			await getRelatedMemoriesForClaude("claude_chat_memories_searched")
 		})
 
 		kortixIcon.id = `${ELEMENT_IDS.CLAUDE_INPUT_BAR_ELEMENT}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
@@ -617,9 +615,7 @@ async function setupClaudeAutoFetch() {
 			const content = textareaElement.textContent?.trim() || ""
 
 			if (content.length > 2) {
-				await getRelatedMemoriesForClaude(
-					"claude_chat_memories_auto_searched",
-				)
+				await getRelatedMemoriesForClaude("claude_chat_memories_auto_searched")
 			} else if (content.length === 0) {
 				const icons = document.querySelectorAll(
 					'[id*="sm-claude-input-bar-element"]',

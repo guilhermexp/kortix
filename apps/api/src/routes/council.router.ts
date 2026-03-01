@@ -1,6 +1,5 @@
 import { Hono } from "hono"
 import { streamSSE } from "hono/streaming"
-import type { SessionContext } from "../session"
 import {
 	addCouncilAssistantMessage,
 	addCouncilUserMessage,
@@ -19,6 +18,7 @@ import {
 	runCouncilStage3,
 	updateCouncilConversationTitle,
 } from "../services/council"
+import type { SessionContext } from "../session"
 
 export const councilRouter = new Hono<{
 	Variables: { session: SessionContext }
@@ -41,7 +41,11 @@ councilRouter.post("/conversations", async (c) => {
 councilRouter.get("/conversations/:conversationId", async (c) => {
 	const { organizationId, internalUserId } = c.var.session
 	const conversationId = c.req.param("conversationId")
-	const conversation = getCouncilConversation(conversationId, organizationId, internalUserId)
+	const conversation = getCouncilConversation(
+		conversationId,
+		organizationId,
+		internalUserId,
+	)
 	if (!conversation) {
 		return c.json({ error: "Conversation not found" }, 404)
 	}
@@ -51,7 +55,11 @@ councilRouter.get("/conversations/:conversationId", async (c) => {
 councilRouter.post("/conversations/:conversationId/message", async (c) => {
 	const { organizationId, internalUserId } = c.var.session
 	const conversationId = c.req.param("conversationId")
-	const conversation = getCouncilConversation(conversationId, organizationId, internalUserId)
+	const conversation = getCouncilConversation(
+		conversationId,
+		organizationId,
+		internalUserId,
+	)
 	if (!conversation) {
 		return c.json({ error: "Conversation not found" }, 404)
 	}
@@ -74,109 +82,128 @@ councilRouter.post("/conversations/:conversationId/message", async (c) => {
 			content,
 			runSignal,
 		)
-		addCouncilAssistantMessage(conversationId, { stage1, stage2, stage3, metadata })
+		addCouncilAssistantMessage(conversationId, {
+			stage1,
+			stage2,
+			stage3,
+			metadata,
+		})
 		return c.json({ stage1, stage2, stage3, metadata })
 	} finally {
 		endCouncilRun(conversationId)
 	}
 })
 
-councilRouter.post("/conversations/:conversationId/message/stream", async (c) => {
-	const { organizationId, internalUserId } = c.var.session
-	const conversationId = c.req.param("conversationId")
-	const conversation = getCouncilConversation(conversationId, organizationId, internalUserId)
-	if (!conversation) {
-		return c.json({ error: "Conversation not found" }, 404)
-	}
+councilRouter.post(
+	"/conversations/:conversationId/message/stream",
+	async (c) => {
+		const { organizationId, internalUserId } = c.var.session
+		const conversationId = c.req.param("conversationId")
+		const conversation = getCouncilConversation(
+			conversationId,
+			organizationId,
+			internalUserId,
+		)
+		if (!conversation) {
+			return c.json({ error: "Conversation not found" }, 404)
+		}
 
-	const body = await c.req.json<{ content?: string }>()
-	const content = body.content?.trim()
-	if (!content) {
-		return c.json({ error: "Missing or invalid content" }, 400)
-	}
+		const body = await c.req.json<{ content?: string }>()
+		const content = body.content?.trim()
+		if (!content) {
+			return c.json({ error: "Missing or invalid content" }, 400)
+		}
 
-	const isFirstMessage = conversation.messages.length === 0
+		const isFirstMessage = conversation.messages.length === 0
 
-	return streamSSE(c, async (stream) => {
-		const runSignal = beginCouncilRun(conversationId)
-		try {
-			addCouncilUserMessage(conversationId, content)
+		return streamSSE(c, async (stream) => {
+			const runSignal = beginCouncilRun(conversationId)
+			try {
+				addCouncilUserMessage(conversationId, content)
 
-			const titlePromise = isFirstMessage
-				? generateCouncilConversationTitle(content, runSignal).catch(
-						() => "New Conversation",
-					)
-				: null
+				const titlePromise = isFirstMessage
+					? generateCouncilConversationTitle(content, runSignal).catch(
+							() => "New Conversation",
+						)
+					: null
 
-			await stream.writeSSE({ data: JSON.stringify({ type: "stage1_start" }) })
-			const stage1 = await runCouncilStage1(content, runSignal)
-			await stream.writeSSE({
-				data: JSON.stringify({ type: "stage1_complete", data: stage1 }),
-			})
-			await stream.writeSSE({ data: JSON.stringify({ type: "stage2_start" }) })
-			const stage2 = await runCouncilStage2(content, stage1, runSignal)
-			await stream.writeSSE({
-				data: JSON.stringify({
-					type: "stage2_complete",
-					data: stage2.stage2Results,
+				await stream.writeSSE({
+					data: JSON.stringify({ type: "stage1_start" }),
+				})
+				const stage1 = await runCouncilStage1(content, runSignal)
+				await stream.writeSSE({
+					data: JSON.stringify({ type: "stage1_complete", data: stage1 }),
+				})
+				await stream.writeSSE({
+					data: JSON.stringify({ type: "stage2_start" }),
+				})
+				const stage2 = await runCouncilStage2(content, stage1, runSignal)
+				await stream.writeSSE({
+					data: JSON.stringify({
+						type: "stage2_complete",
+						data: stage2.stage2Results,
+						metadata: {
+							label_to_model: stage2.labelToModel,
+							aggregate_rankings: stage2.aggregateRankings,
+						},
+					}),
+				})
+				await stream.writeSSE({
+					data: JSON.stringify({ type: "stage3_start" }),
+				})
+				const stage3 = await runCouncilStage3(
+					content,
+					stage1,
+					stage2.stage2Results,
+					runSignal,
+				)
+				await stream.writeSSE({
+					data: JSON.stringify({ type: "stage3_complete", data: stage3 }),
+				})
+
+				if (titlePromise) {
+					const title = await titlePromise
+					updateCouncilConversationTitle(conversationId, title)
+					await stream.writeSSE({
+						data: JSON.stringify({
+							type: "title_complete",
+							data: { title },
+						}),
+					})
+				}
+
+				addCouncilAssistantMessage(conversationId, {
+					stage1,
+					stage2: stage2.stage2Results,
+					stage3,
 					metadata: {
 						label_to_model: stage2.labelToModel,
 						aggregate_rankings: stage2.aggregateRankings,
 					},
-				}),
-			})
-			await stream.writeSSE({ data: JSON.stringify({ type: "stage3_start" }) })
-			const stage3 = await runCouncilStage3(
-				content,
-				stage1,
-				stage2.stage2Results,
-				runSignal,
-			)
-			await stream.writeSSE({
-				data: JSON.stringify({ type: "stage3_complete", data: stage3 }),
-			})
+				})
 
-			if (titlePromise) {
-				const title = await titlePromise
-				updateCouncilConversationTitle(conversationId, title)
+				await stream.writeSSE({ data: JSON.stringify({ type: "complete" }) })
+			} catch (error) {
+				const isCancelled =
+					error instanceof Error &&
+					error.message.toLowerCase().includes("cancelled")
+				if (isCancelled) {
+					await stream.writeSSE({ data: JSON.stringify({ type: "cancelled" }) })
+					return
+				}
 				await stream.writeSSE({
 					data: JSON.stringify({
-						type: "title_complete",
-						data: { title },
+						type: "error",
+						message:
+							error instanceof Error ? error.message : "Unknown council error",
 					}),
 				})
+			} finally {
+				endCouncilRun(conversationId)
 			}
-
-			addCouncilAssistantMessage(conversationId, {
-				stage1,
-				stage2: stage2.stage2Results,
-				stage3,
-				metadata: {
-					label_to_model: stage2.labelToModel,
-					aggregate_rankings: stage2.aggregateRankings,
-				},
-			})
-
-			await stream.writeSSE({ data: JSON.stringify({ type: "complete" }) })
-		} catch (error) {
-			const isCancelled =
-				error instanceof Error &&
-				error.message.toLowerCase().includes("cancelled")
-			if (isCancelled) {
-				await stream.writeSSE({ data: JSON.stringify({ type: "cancelled" }) })
-				return
-			}
-			await stream.writeSSE({
-				data: JSON.stringify({
-					type: "error",
-					message: error instanceof Error ? error.message : "Unknown council error",
-				}),
-			})
-		} finally {
-			endCouncilRun(conversationId)
-		}
-	})
-})
+		})
+	},
+)
 
 // Backward-compatible shortcut: create conversation + stream message
 councilRouter.post("/stream", async (c) => {
@@ -193,9 +220,10 @@ councilRouter.post("/stream", async (c) => {
 		const runSignal = beginCouncilRun(conversation.id)
 		try {
 			addCouncilUserMessage(conversation.id, query)
-			const titlePromise = generateCouncilConversationTitle(query, runSignal).catch(
-				() => "New Conversation",
-			)
+			const titlePromise = generateCouncilConversationTitle(
+				query,
+				runSignal,
+			).catch(() => "New Conversation")
 
 			await stream.writeSSE({ data: JSON.stringify({ type: "stage1_start" }) })
 			const stage1 = await runCouncilStage1(query, runSignal)
@@ -245,7 +273,10 @@ councilRouter.post("/stream", async (c) => {
 			})
 
 			await stream.writeSSE({
-				data: JSON.stringify({ type: "conversation_created", data: { id: conversation.id } }),
+				data: JSON.stringify({
+					type: "conversation_created",
+					data: { id: conversation.id },
+				}),
 			})
 			await stream.writeSSE({ data: JSON.stringify({ type: "complete" }) })
 		} catch (error) {
@@ -259,7 +290,8 @@ councilRouter.post("/stream", async (c) => {
 			await stream.writeSSE({
 				data: JSON.stringify({
 					type: "error",
-					message: error instanceof Error ? error.message : "Unknown council error",
+					message:
+						error instanceof Error ? error.message : "Unknown council error",
 				}),
 			})
 		} finally {
@@ -271,7 +303,11 @@ councilRouter.post("/stream", async (c) => {
 councilRouter.post("/conversations/:conversationId/cancel", async (c) => {
 	const { organizationId, internalUserId } = c.var.session
 	const conversationId = c.req.param("conversationId")
-	const conversation = getCouncilConversation(conversationId, organizationId, internalUserId)
+	const conversation = getCouncilConversation(
+		conversationId,
+		organizationId,
+		internalUserId,
+	)
 	if (!conversation) {
 		return c.json({ error: "Conversation not found" }, 404)
 	}

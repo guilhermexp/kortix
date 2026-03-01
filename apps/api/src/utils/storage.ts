@@ -7,8 +7,8 @@
  * rate-limit (GitHub 429) or become unavailable.
  */
 
-import { supabaseAdmin } from "../supabase"
 import { env } from "../env"
+import { supabaseAdmin } from "../supabase"
 
 const BUCKET = "document-previews"
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
@@ -65,7 +65,10 @@ export async function persistPreviewImage(
 		}
 
 		// Validate content-type
-		const contentType = response.headers.get("content-type")?.split(";")[0]?.trim()
+		const contentType = response.headers
+			.get("content-type")
+			?.split(";")[0]
+			?.trim()
 		if (!contentType || !ALLOWED_TYPES[contentType]) {
 			return null
 		}

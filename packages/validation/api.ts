@@ -1001,12 +1001,14 @@ export const BundleCreateSchema = z.object({
 export const BundleResponseSchema = z.object({
 	id: z.string(),
 	status: z.string(),
-	children: z.array(z.object({
-		id: z.string(),
-		status: z.string(),
-		url: z.string().nullable().optional(),
-		type: z.string().optional(),
-	})),
+	children: z.array(
+		z.object({
+			id: z.string(),
+			status: z.string(),
+			url: z.string().nullable().optional(),
+			type: z.string().optional(),
+		}),
+	),
 })
 
 // MCP Migration Schemas

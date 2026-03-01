@@ -32,6 +32,7 @@ interface PreviewGeneratorConfig {
 }
 
 type PreviewGenerationOptions = PreviewOptions
+
 import { FaviconExtractor } from "./favicon-extractor"
 import { ImageExtractor } from "./image-extractor"
 
@@ -52,9 +53,7 @@ const DEFAULT_STRATEGY_TIMEOUT = 5000 // 5 seconds per strategy
 /**
  * Service for generating preview images with fallback strategies
  */
-export class PreviewGeneratorService
-	implements IPreviewGeneratorService
-{
+export class PreviewGeneratorService implements IPreviewGeneratorService {
 	private readonly config: PreviewGeneratorConfig
 	private imageExtractor?: ImageExtractor
 	private svgGenerator?: SVGGenerator
@@ -891,4 +890,3 @@ export class PreviewGeneratorService
 		return isHealthy
 	}
 }
-

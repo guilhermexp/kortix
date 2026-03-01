@@ -368,7 +368,11 @@ export async function hybridSearch(
 
 		// Reciprocal Rank Fusion (RRF) for combining results
 		// weightVector applies to vector results (list2), so keyword weight = 1 - weightVector
-		results = reciprocalRankFusion(keywordResults, vectorResults, 1 - weightVector)
+		results = reciprocalRankFusion(
+			keywordResults,
+			vectorResults,
+			1 - weightVector,
+		)
 	}
 
 	// Apply container tags filter if specified

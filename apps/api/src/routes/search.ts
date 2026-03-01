@@ -92,7 +92,9 @@ export async function searchDocuments(
 	const payload = SearchRequestSchema.parse(body)
 	const start = Date.now()
 
-	const queryEmbedding = await generateEmbedding(payload.q, { inputType: "query" })
+	const queryEmbedding = await generateEmbedding(payload.q, {
+		inputType: "query",
+	})
 	const baseLimit = Math.max(50, (payload.limit ?? 10) * 8)
 
 	let chunkRows: ChunkRow[] = []

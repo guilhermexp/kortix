@@ -1,7 +1,7 @@
 import {
 	CanvasResponseSchema,
-	CreateCanvasSchema,
-	UpdateCanvasSchema,
+	type CreateCanvasSchema,
+	type UpdateCanvasSchema,
 } from "@repo/validation/api"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { z } from "zod"
@@ -25,10 +25,14 @@ export class CanvasVersionConflictError extends Error {
 
 function mapCanvasToResponse(canvas: any) {
 	if (!canvas || typeof canvas !== "object") {
-		throw new Error("Canvas data is null or invalid - the canvases table may not exist. Run migration 0015_add_canvases_table.sql")
+		throw new Error(
+			"Canvas data is null or invalid - the canvases table may not exist. Run migration 0015_add_canvases_table.sql",
+		)
 	}
 	if (!canvas.id) {
-		throw new Error("Canvas insert returned empty data - check RLS policies and that the canvases table has all required columns (id, user_id, name, content, created_at, updated_at, version)")
+		throw new Error(
+			"Canvas insert returned empty data - check RLS policies and that the canvases table has all required columns (id, user_id, name, content, created_at, updated_at, version)",
+		)
 	}
 	return CanvasResponseSchema.parse({
 		id: canvas.id,
@@ -41,8 +45,12 @@ function mapCanvasToResponse(canvas: any) {
 			typeof canvas.version === "number" && Number.isFinite(canvas.version)
 				? canvas.version
 				: 1,
-		createdAt: canvas.created_at ? new Date(canvas.created_at).toISOString() : new Date().toISOString(),
-		updatedAt: canvas.updated_at ? new Date(canvas.updated_at).toISOString() : new Date().toISOString(),
+		createdAt: canvas.created_at
+			? new Date(canvas.created_at).toISOString()
+			: new Date().toISOString(),
+		updatedAt: canvas.updated_at
+			? new Date(canvas.updated_at).toISOString()
+			: new Date().toISOString(),
 	})
 }
 
@@ -78,7 +86,7 @@ export async function getCanvas(
 		.select("*")
 		.eq("id", id)
 		.eq("user_id", userId)
-		.single()
+		.maybeSingle()
 
 	if (error) throw error
 	if (!data) throw new Error("Canvas not found")

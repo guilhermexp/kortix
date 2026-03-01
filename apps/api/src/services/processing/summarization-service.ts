@@ -132,13 +132,10 @@ export class SummarizationService implements ISummarizationService {
 		// Handle short content gracefully - use title/description as summary
 		const textLength = extraction.text?.length || 0
 		if (textLength < 100) {
-			console.info(
-				"Content too short for AI summarization, using fallback",
-				{
-					textLength,
-					hasTitle: !!extraction.title,
-				},
-			)
+			console.info("Content too short for AI summarization, using fallback", {
+				textLength,
+				hasTitle: !!extraction.title,
+			})
 
 			// Build a simple summary from available metadata
 			const fallbackSummary = extraction.title

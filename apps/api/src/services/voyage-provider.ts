@@ -154,7 +154,9 @@ export async function generateVoyageEmbeddingsBatch(
 		return results.flat()
 	}
 
-	const normalizedTexts = texts.map((t) => (t ?? "").trim()).filter((t) => t.length > 0)
+	const normalizedTexts = texts
+		.map((t) => (t ?? "").trim())
+		.filter((t) => t.length > 0)
 
 	if (normalizedTexts.length === 0) {
 		return texts.map(() => new Array<number>(VECTOR_SIZE).fill(0))

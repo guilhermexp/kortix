@@ -479,4 +479,3 @@ export class SVGGenerator {
 		// No resources to clean up
 	}
 }
-

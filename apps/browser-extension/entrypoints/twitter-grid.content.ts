@@ -329,7 +329,9 @@ body[data-twc-started] .twc-start {
 		function loadTwcSettings(): void {
 			let loadedSettings: Partial<TwcSettings> = {}
 			try {
-				loadedSettings = JSON.parse(localStorage.getItem("twc-settings") || "{}")
+				loadedSettings = JSON.parse(
+					localStorage.getItem("twc-settings") || "{}",
+				)
 			} catch {
 				localStorage.removeItem("twc-settings")
 			}
@@ -354,7 +356,9 @@ body[data-twc-started] .twc-start {
 		function getTimelineRoot(): HTMLElement | null {
 			// Try multiple aria-label patterns for different X pages/locales
 			return (
-				document.querySelector<HTMLElement>('[aria-label="Timeline: Your Home Timeline"]') ||
+				document.querySelector<HTMLElement>(
+					'[aria-label="Timeline: Your Home Timeline"]',
+				) ||
 				document.querySelector<HTMLElement>('[aria-label="Home timeline"]') ||
 				document.querySelector<HTMLElement>(
 					'[data-testid="primaryColumn"] section > h1 + div[aria-label] > div',
@@ -366,7 +370,9 @@ body[data-twc-started] .twc-start {
 		}
 
 		function getTweetId(tweetEl: HTMLElement): string | null {
-			const link = tweetEl.querySelector<HTMLAnchorElement>('a[href*="/status/"]')
+			const link = tweetEl.querySelector<HTMLAnchorElement>(
+				'a[href*="/status/"]',
+			)
 			if (!link) return null
 			const match = link.href.match(/\/status\/(\d+)/)
 			return match ? match[1] : null
@@ -387,7 +393,9 @@ body[data-twc-started] .twc-start {
 			)
 
 			const filtered = candidates.filter((tweetEl) => {
-				const cell = tweetEl.closest<HTMLElement>("[data-testid='cellInnerDiv']")
+				const cell = tweetEl.closest<HTMLElement>(
+					"[data-testid='cellInnerDiv']",
+				)
 				if (!cell) return false
 				if (cell.querySelector("div[role='progressbar']")) return false
 				return true
@@ -432,20 +440,34 @@ body[data-twc-started] .twc-start {
 		function fixClonedMedia(clone: HTMLElement, original: HTMLElement): void {
 			// 1. Copy background-image ONLY inside media containers.
 			for (const sel of MEDIA_SELECTORS) {
-				const cloneContainers = Array.from(clone.querySelectorAll<HTMLElement>(sel))
-				const origContainers = Array.from(original.querySelectorAll<HTMLElement>(sel))
+				const cloneContainers = Array.from(
+					clone.querySelectorAll<HTMLElement>(sel),
+				)
+				const origContainers = Array.from(
+					original.querySelectorAll<HTMLElement>(sel),
+				)
 
-				for (let c = 0; c < cloneContainers.length && c < origContainers.length; c++) {
-					const cloneDivs = Array.from(cloneContainers[c].querySelectorAll<HTMLElement>("div"))
-					const origDivs = Array.from(origContainers[c].querySelectorAll<HTMLElement>("div"))
+				for (
+					let c = 0;
+					c < cloneContainers.length && c < origContainers.length;
+					c++
+				) {
+					const cloneDivs = Array.from(
+						cloneContainers[c].querySelectorAll<HTMLElement>("div"),
+					)
+					const origDivs = Array.from(
+						origContainers[c].querySelectorAll<HTMLElement>("div"),
+					)
 
 					for (let i = 0; i < cloneDivs.length && i < origDivs.length; i++) {
 						const computed = window.getComputedStyle(origDivs[i])
 						const bg = computed.backgroundImage
 						if (bg && bg !== "none") {
 							cloneDivs[i].style.backgroundImage = bg
-							cloneDivs[i].style.backgroundSize = computed.backgroundSize || "cover"
-							cloneDivs[i].style.backgroundPosition = computed.backgroundPosition || "center"
+							cloneDivs[i].style.backgroundSize =
+								computed.backgroundSize || "cover"
+							cloneDivs[i].style.backgroundPosition =
+								computed.backgroundPosition || "center"
 							cloneDivs[i].style.backgroundRepeat = "no-repeat"
 						}
 
@@ -490,21 +512,28 @@ body[data-twc-started] .twc-start {
 			})
 
 			// 3. Fix profile images — copy background-image for avatar circles.
-			const cloneAvatars = clone.querySelectorAll<HTMLElement>('[data-testid="Tweet-User-Avatar"] div')
-			const origAvatars = original.querySelectorAll<HTMLElement>('[data-testid="Tweet-User-Avatar"] div')
+			const cloneAvatars = clone.querySelectorAll<HTMLElement>(
+				'[data-testid="Tweet-User-Avatar"] div',
+			)
+			const origAvatars = original.querySelectorAll<HTMLElement>(
+				'[data-testid="Tweet-User-Avatar"] div',
+			)
 			for (let i = 0; i < cloneAvatars.length && i < origAvatars.length; i++) {
 				const computed = window.getComputedStyle(origAvatars[i])
 				const bg = computed.backgroundImage
 				if (bg && bg !== "none") {
 					cloneAvatars[i].style.backgroundImage = bg
-					cloneAvatars[i].style.backgroundSize = computed.backgroundSize || "cover"
-					cloneAvatars[i].style.backgroundPosition = computed.backgroundPosition || "center"
+					cloneAvatars[i].style.backgroundSize =
+						computed.backgroundSize || "cover"
+					cloneAvatars[i].style.backgroundPosition =
+						computed.backgroundPosition || "center"
 				}
 			}
 
 			// 4. Fix videos — copy poster + create fallback poster <img>.
 			const cloneVideos = clone.querySelectorAll<HTMLVideoElement>("video")
-			const originalVideos = original.querySelectorAll<HTMLVideoElement>("video")
+			const originalVideos =
+				original.querySelectorAll<HTMLVideoElement>("video")
 			cloneVideos.forEach((video, i) => {
 				const origVideo = originalVideos[i]
 				const posterUrl = origVideo?.poster || video.getAttribute("poster")
@@ -512,12 +541,18 @@ body[data-twc-started] .twc-start {
 
 				video.style.setProperty("object-fit", "cover", "important")
 				video.preload = "none"
-				try { video.pause() } catch {}
+				try {
+					video.pause()
+				} catch {}
 
 				if (posterUrl) {
-					const photoContainer = video.closest('[data-testid="tweetPhoto"]') ||
+					const photoContainer =
+						video.closest('[data-testid="tweetPhoto"]') ||
 						video.closest('[data-testid="videoPlayer"]')
-					if (photoContainer && !photoContainer.querySelector("img.twc-poster")) {
+					if (
+						photoContainer &&
+						!photoContainer.querySelector("img.twc-poster")
+					) {
 						const posterImg = document.createElement("img")
 						posterImg.src = posterUrl
 						posterImg.classList.add("twc-poster")
@@ -530,21 +565,27 @@ body[data-twc-started] .twc-start {
 
 			// 5. Fallback: if tweetPhoto containers have no loaded images at all
 			//    (Twitter lazy-loaded them after cloning), check and inject.
-			clone.querySelectorAll<HTMLElement>('[data-testid="tweetPhoto"]').forEach((tp) => {
-				const video = tp.querySelector("video")
-				const imgs = tp.querySelectorAll<HTMLImageElement>("img")
-				const hasLoadedImg = Array.from(imgs).some(
-					(img) => img.naturalWidth > 0 || img.currentSrc,
-				)
-				if (!hasLoadedImg && video?.poster && !tp.querySelector("img.twc-poster")) {
-					const posterImg = document.createElement("img")
-					posterImg.src = video.poster
-					posterImg.classList.add("twc-poster")
-					posterImg.style.cssText =
-						"position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:1;"
-					tp.prepend(posterImg)
-				}
-			})
+			clone
+				.querySelectorAll<HTMLElement>('[data-testid="tweetPhoto"]')
+				.forEach((tp) => {
+					const video = tp.querySelector("video")
+					const imgs = tp.querySelectorAll<HTMLImageElement>("img")
+					const hasLoadedImg = Array.from(imgs).some(
+						(img) => img.naturalWidth > 0 || img.currentSrc,
+					)
+					if (
+						!hasLoadedImg &&
+						video?.poster &&
+						!tp.querySelector("img.twc-poster")
+					) {
+						const posterImg = document.createElement("img")
+						posterImg.src = video.poster
+						posterImg.classList.add("twc-poster")
+						posterImg.style.cssText =
+							"position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:1;"
+						tp.prepend(posterImg)
+					}
+				})
 		}
 
 		// ================================================================
@@ -554,7 +595,10 @@ body[data-twc-started] .twc-start {
 		// ================================================================
 
 		/** Map from tweet ID → { clone, original } for deferred patching */
-		const pendingMediaSync = new Map<string, { clone: HTMLElement; original: HTMLElement }>()
+		const pendingMediaSync = new Map<
+			string,
+			{ clone: HTMLElement; original: HTMLElement }
+		>()
 		let mediaSyncObserver: MutationObserver | null = null
 
 		function setupMediaSyncObserver(): void {
@@ -565,8 +609,12 @@ body[data-twc-started] .twc-start {
 
 				for (const [tweetId, { clone, original }] of pendingMediaSync) {
 					// Check if the original now has media that the clone is missing
-					const origPhotos = original.querySelectorAll<HTMLElement>('[data-testid="tweetPhoto"]')
-					const clonePhotos = clone.querySelectorAll<HTMLElement>('[data-testid="tweetPhoto"]')
+					const origPhotos = original.querySelectorAll<HTMLElement>(
+						'[data-testid="tweetPhoto"]',
+					)
+					const clonePhotos = clone.querySelectorAll<HTMLElement>(
+						'[data-testid="tweetPhoto"]',
+					)
 
 					let patched = false
 					origPhotos.forEach((origPhoto, idx) => {
@@ -575,7 +623,8 @@ body[data-twc-started] .twc-start {
 
 						// Check if clone is missing images the original now has
 						const origImgs = origPhoto.querySelectorAll<HTMLImageElement>("img")
-						const cloneImgs = clonePhoto.querySelectorAll<HTMLImageElement>("img")
+						const cloneImgs =
+							clonePhoto.querySelectorAll<HTMLImageElement>("img")
 
 						origImgs.forEach((origImg, imgIdx) => {
 							if (!origImg.currentSrc) return
@@ -589,15 +638,21 @@ body[data-twc-started] .twc-start {
 						})
 
 						// Also copy background-images that appeared after clone
-						const origDivs = Array.from(origPhoto.querySelectorAll<HTMLElement>("div"))
-						const cloneDivs = Array.from(clonePhoto.querySelectorAll<HTMLElement>("div"))
+						const origDivs = Array.from(
+							origPhoto.querySelectorAll<HTMLElement>("div"),
+						)
+						const cloneDivs = Array.from(
+							clonePhoto.querySelectorAll<HTMLElement>("div"),
+						)
 						for (let i = 0; i < origDivs.length && i < cloneDivs.length; i++) {
 							const computed = window.getComputedStyle(origDivs[i])
 							const bg = computed.backgroundImage
 							if (bg && bg !== "none" && !cloneDivs[i].style.backgroundImage) {
 								cloneDivs[i].style.backgroundImage = bg
-								cloneDivs[i].style.backgroundSize = computed.backgroundSize || "cover"
-								cloneDivs[i].style.backgroundPosition = computed.backgroundPosition || "center"
+								cloneDivs[i].style.backgroundSize =
+									computed.backgroundSize || "cover"
+								cloneDivs[i].style.backgroundPosition =
+									computed.backgroundPosition || "center"
 								cloneDivs[i].style.backgroundRepeat = "no-repeat"
 								patched = true
 							}
@@ -635,12 +690,16 @@ body[data-twc-started] .twc-start {
 		 * This detects that gap and hides the outermost empty container.
 		 */
 		function cleanEmptyMediaContainers(gridContainer: HTMLElement): void {
-			const items = gridContainer.querySelectorAll<HTMLElement>(`.${GRID_ITEM_CLASS}`)
+			const items = gridContainer.querySelectorAll<HTMLElement>(
+				`.${GRID_ITEM_CLASS}`,
+			)
 			items.forEach((item) => {
 				const article = item.querySelector<HTMLElement>('[data-testid="tweet"]')
 				if (!article) return
 
-				const textEl = article.querySelector<HTMLElement>('[data-testid="tweetText"]')
+				const textEl = article.querySelector<HTMLElement>(
+					'[data-testid="tweetText"]',
+				)
 				const actionBar = article.querySelector<HTMLElement>('[role="group"]')
 				if (!textEl || !actionBar) return
 
@@ -654,7 +713,11 @@ body[data-twc-started] .twc-start {
 				let hasVisualInGap = false
 				article.querySelectorAll<HTMLElement>("img, video").forEach((el) => {
 					const r = el.getBoundingClientRect()
-					if (r.top >= textBottom - 10 && r.bottom <= actionTop + 10 && r.height > 30) {
+					if (
+						r.top >= textBottom - 10 &&
+						r.bottom <= actionTop + 10 &&
+						r.height > 30
+					) {
 						hasVisualInGap = true
 					}
 				})
@@ -665,7 +728,11 @@ body[data-twc-started] .twc-start {
 				const candidates: Array<{ el: HTMLElement; depth: number }> = []
 				article.querySelectorAll<HTMLElement>("div, a").forEach((el) => {
 					const r = el.getBoundingClientRect()
-					if (r.top >= textBottom - 5 && r.bottom <= actionTop + 5 && r.height > 50) {
+					if (
+						r.top >= textBottom - 5 &&
+						r.bottom <= actionTop + 5 &&
+						r.height > 50
+					) {
 						let depth = 0
 						let p: HTMLElement | null = el
 						while (p && p !== article) {
@@ -695,7 +762,9 @@ body[data-twc-started] .twc-start {
 			// 1. Find the React fiber key (changes every page load)
 			const sampleEl = document.querySelector('[data-testid="videoPlayer"]')
 			if (!sampleEl) return
-			const fiberKey = Object.keys(sampleEl).find((k) => k.startsWith("__reactFiber"))
+			const fiberKey = Object.keys(sampleEl).find((k) =>
+				k.startsWith("__reactFiber"),
+			)
 			if (!fiberKey) return
 
 			const mainEl = document.querySelector("main")
@@ -740,7 +809,10 @@ body[data-twc-started] .twc-start {
 						if (!best) {
 							for (const v of variants) {
 								const ct = v.content_type || v.contentType
-								if (ct === "video/mp4" && (!best || (v.bitrate ?? 0) > (best.bitrate ?? 0))) {
+								if (
+									ct === "video/mp4" &&
+									(!best || (v.bitrate ?? 0) > (best.bitrate ?? 0))
+								) {
 									best = v
 								}
 							}
@@ -760,34 +832,39 @@ body[data-twc-started] .twc-start {
 			})
 
 			// 3. Replace cloned videos with native HTML5 players
-			gc.querySelectorAll<HTMLElement>(`.${GRID_ITEM_CLASS}`).forEach((item) => {
-				const video = item.querySelector("video")
-				if (!video) return
-				// Skip if already replaced
-				if (video.dataset.twcPlayable) return
+			gc.querySelectorAll<HTMLElement>(`.${GRID_ITEM_CLASS}`).forEach(
+				(item) => {
+					const video = item.querySelector("video")
+					if (!video) return
+					// Skip if already replaced
+					if (video.dataset.twcPlayable) return
 
-				const timeLink = item.querySelector('a[href*="/status/"] time')
-				const href = (timeLink?.parentElement as HTMLAnchorElement | null)?.href ?? ""
-				const match = href.match(/status\/(\d+)/)
-				if (!match || !videoMap[match[1]]) return
+					const timeLink = item.querySelector('a[href*="/status/"] time')
+					const href =
+						(timeLink?.parentElement as HTMLAnchorElement | null)?.href ?? ""
+					const match = href.match(/status\/(\d+)/)
+					if (!match || !videoMap[match[1]]) return
 
-				const tweetPhoto = item.querySelector<HTMLElement>('[data-testid="tweetPhoto"]')
-				if (!tweetPhoto) return
+					const tweetPhoto = item.querySelector<HTMLElement>(
+						'[data-testid="tweetPhoto"]',
+					)
+					if (!tweetPhoto) return
 
-				const newVideo = document.createElement("video")
-				newVideo.src = videoMap[match[1]].url
-				newVideo.controls = true
-				newVideo.playsInline = true
-				newVideo.preload = "metadata"
-				newVideo.poster = video.poster || ""
-				newVideo.dataset.twcPlayable = "true"
-				newVideo.style.cssText =
-					"width:100%; height:auto; max-height:500px; object-fit:contain; border-radius:12px; background:#000;"
+					const newVideo = document.createElement("video")
+					newVideo.src = videoMap[match[1]].url
+					newVideo.controls = true
+					newVideo.playsInline = true
+					newVideo.preload = "metadata"
+					newVideo.poster = video.poster || ""
+					newVideo.dataset.twcPlayable = "true"
+					newVideo.style.cssText =
+						"width:100%; height:auto; max-height:500px; object-fit:contain; border-radius:12px; background:#000;"
 
-				tweetPhoto.innerHTML = ""
-				tweetPhoto.style.display = "block"
-				tweetPhoto.appendChild(newVideo)
-			})
+					tweetPhoto.innerHTML = ""
+					tweetPhoto.style.display = "block"
+					tweetPhoto.appendChild(newVideo)
+				},
+			)
 		}
 
 		/**
@@ -842,55 +919,62 @@ body[data-twc-started] .twc-start {
 			const EMPTY_SVG =
 				'<g><path d="M4 4.5C4 3.12 5.119 2 6.5 2h11C18.881 2 20 3.12 20 4.5v18.44l-8-5.71-8 5.71V4.5zM6.5 4c-.276 0-.5.22-.5.5v14.56l6-4.29 6 4.29V4.5c0-.28-.224-.5-.5-.5h-11z"></path></g>'
 
-			gc.querySelectorAll<HTMLElement>(`.${GRID_ITEM_CLASS}`).forEach((item) => {
-				const article = item.querySelector("article")
-				if (!article) return
+			gc.querySelectorAll<HTMLElement>(`.${GRID_ITEM_CLASS}`).forEach(
+				(item) => {
+					const article = item.querySelector("article")
+					if (!article) return
 
-				const timeLink = article.querySelector('a[href*="/status/"] time')
-				const href = (timeLink?.parentElement as HTMLAnchorElement | null)?.href ?? ""
-				const m = href.match(/status\/(\d+)/)
-				if (!m) return
-				const tweetId = m[1]
+					const timeLink = article.querySelector('a[href*="/status/"] time')
+					const href =
+						(timeLink?.parentElement as HTMLAnchorElement | null)?.href ?? ""
+					const m = href.match(/status\/(\d+)/)
+					if (!m) return
+					const tweetId = m[1]
 
-				const btn = article.querySelector<HTMLElement>(
-					'[data-testid="removeBookmark"], [data-testid="bookmark"]',
-				)
-				if (!btn || btn.dataset.twcBookmarkProxy) return
+					const btn = article.querySelector<HTMLElement>(
+						'[data-testid="removeBookmark"], [data-testid="bookmark"]',
+					)
+					if (!btn || btn.dataset.twcBookmarkProxy) return
 
-				btn.dataset.twcBookmarkProxy = "true"
-				btn.style.cursor = "pointer"
+					btn.dataset.twcBookmarkProxy = "true"
+					btn.style.cursor = "pointer"
 
-				btn.addEventListener(
-					"click",
-					async (e) => {
-						e.preventDefault()
-						e.stopPropagation()
-						e.stopImmediatePropagation()
+					btn.addEventListener(
+						"click",
+						async (e) => {
+							e.preventDefault()
+							e.stopPropagation()
+							e.stopImmediatePropagation()
 
-						const isBookmarked = btn.getAttribute("data-testid") === "removeBookmark"
-						const success = await callBookmarkAPI(tweetId, isBookmarked ? "remove" : "add")
-						if (success) {
-							const svg = btn.querySelector("svg")
-							if (isBookmarked) {
-								btn.setAttribute("data-testid", "bookmark")
-								btn.setAttribute("aria-label", "Bookmark")
-								if (svg) {
-									svg.innerHTML = EMPTY_SVG
-									svg.style.color = "rgb(113, 118, 123)"
-								}
-							} else {
-								btn.setAttribute("data-testid", "removeBookmark")
-								btn.setAttribute("aria-label", "Bookmarked")
-								if (svg) {
-									svg.innerHTML = FILLED_SVG
-									svg.style.color = "rgb(29, 155, 240)"
+							const isBookmarked =
+								btn.getAttribute("data-testid") === "removeBookmark"
+							const success = await callBookmarkAPI(
+								tweetId,
+								isBookmarked ? "remove" : "add",
+							)
+							if (success) {
+								const svg = btn.querySelector("svg")
+								if (isBookmarked) {
+									btn.setAttribute("data-testid", "bookmark")
+									btn.setAttribute("aria-label", "Bookmark")
+									if (svg) {
+										svg.innerHTML = EMPTY_SVG
+										svg.style.color = "rgb(113, 118, 123)"
+									}
+								} else {
+									btn.setAttribute("data-testid", "removeBookmark")
+									btn.setAttribute("aria-label", "Bookmarked")
+									if (svg) {
+										svg.innerHTML = FILLED_SVG
+										svg.style.color = "rgb(29, 155, 240)"
+									}
 								}
 							}
-						}
-					},
-					true,
-				)
-			})
+						},
+						true,
+					)
+				},
+			)
 		}
 
 		function autoPopulateGrid(limit = 12): void {
@@ -938,11 +1022,19 @@ body[data-twc-started] .twc-start {
 					// images that weren't loaded yet, the observer will patch the
 					// clone when Twitter finishes loading them.
 					if (tweetId) {
-						const clonePhotos = clone.querySelectorAll('[data-testid="tweetPhoto"]')
-						const origPhotos = tweetEl.querySelectorAll('[data-testid="tweetPhoto"]')
+						const clonePhotos = clone.querySelectorAll(
+							'[data-testid="tweetPhoto"]',
+						)
+						const origPhotos = tweetEl.querySelectorAll(
+							'[data-testid="tweetPhoto"]',
+						)
 						const hasMissingMedia = Array.from(clonePhotos).some((cp) => {
-							const imgs = cp.querySelectorAll<HTMLImageElement>("img:not(.twc-poster)")
-							return Array.from(imgs).some((img) => !img.currentSrc && img.naturalWidth === 0)
+							const imgs = cp.querySelectorAll<HTMLImageElement>(
+								"img:not(.twc-poster)",
+							)
+							return Array.from(imgs).some(
+								(img) => !img.currentSrc && img.naturalWidth === 0,
+							)
 						})
 						if (hasMissingMedia && origPhotos.length > 0) {
 							pendingMediaSync.set(tweetId, { clone, original: tweetEl })

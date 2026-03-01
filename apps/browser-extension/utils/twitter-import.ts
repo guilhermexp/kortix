@@ -4,16 +4,16 @@
  */
 
 import { saveAllTweets } from "./api"
-import type { MemoryPayload } from "./types"
 import { createTwitterAPIHeaders, getTwitterTokens } from "./twitter-auth"
 import {
 	BOOKMARKS_URL,
 	buildRequestVariables,
 	extractNextCursor,
 	getAllTweets,
-	tweetToMarkdown,
 	type TwitterAPIResponse,
+	tweetToMarkdown,
 } from "./twitter-utils"
+import type { MemoryPayload } from "./types"
 
 export type ImportProgressCallback = (message: string) => Promise<void>
 
@@ -126,8 +126,7 @@ export class TwitterImporter {
 				}
 				if (
 					response.status === 400 ||
-					(response.status === 403 &&
-						errorText.toLowerCase().includes("bad"))
+					(response.status === 403 && errorText.toLowerCase().includes("bad"))
 				) {
 					throw new Error(
 						`Twitter API returned ${response.status}. The GraphQL query hash may be outdated — please update the extension or report this issue.`,
@@ -147,26 +146,25 @@ export class TwitterImporter {
 			for (const tweet of tweets) {
 				try {
 					const tweetUrl = `https://x.com/${tweet.user.screen_name}/status/${tweet.id_str}`
-					// Pick best preview image: photo > video thumbnail > profile pic
-						const previewImage =
-							tweet.photos?.[0]?.url ||
-							tweet.videos?.[0]?.thumbnail_url ||
-							tweet.user.profile_image_url_https ||
-							""
-						const metadata: MemoryPayload["metadata"] = {
-							sm_source: "consumer",
-							type: "tweet",
-							url: tweetUrl,
-							originalUrl: tweetUrl,
-							tweet_id: tweet.id_str,
-							author: tweet.user.screen_name,
-							created_at: tweet.created_at,
-							likes: tweet.favorite_count,
-							retweets: tweet.retweet_count || 0,
-							sm_internal_group_id: uniqueGroupId,
-							raw_tweet: JSON.stringify(tweet),
-							...(previewImage && { image: previewImage }),
-						}
+					// Pick best preview image: photo > video thumbnail (no avatar fallback)
+					const previewImage =
+						tweet.photos?.[0]?.url ||
+						tweet.videos?.[0]?.thumbnail_url ||
+						""
+					const metadata: MemoryPayload["metadata"] = {
+						sm_source: "consumer",
+						type: "tweet",
+						url: tweetUrl,
+						originalUrl: tweetUrl,
+						tweet_id: tweet.id_str,
+						author: tweet.user.screen_name,
+						created_at: tweet.created_at,
+						likes: tweet.favorite_count,
+						retweets: tweet.retweet_count || 0,
+						sm_internal_group_id: uniqueGroupId,
+						raw_tweet: JSON.stringify(tweet),
+						...(previewImage && { image: previewImage }),
+					}
 					documents.push({
 						containerTags: ["sm_project_twitter_bookmarks"],
 						content: tweetToMarkdown(tweet),

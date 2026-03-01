@@ -61,7 +61,7 @@ describe("Document Connections Integration Tests", () => {
 			spaceId: "space-1",
 			createdAt: "2026-01-01T00:00:00.000Z",
 		})
-		expect((mockSupabase.rpc as any)).toHaveBeenCalledWith(
+		expect(mockSupabase.rpc as any).toHaveBeenCalledWith(
 			"find_similar_documents",
 			{
 				p_document_id: sourceDocumentId,
@@ -94,7 +94,7 @@ describe("Document Connections Integration Tests", () => {
 		})
 
 		expect(result).toEqual([])
-		expect((mockSupabase.rpc as any)).not.toHaveBeenCalled()
+		expect(mockSupabase.rpc as any).not.toHaveBeenCalled()
 	})
 
 	it("creates manual connection with valid documents", async () => {

@@ -53,19 +53,26 @@ featureFlagsRouter.get("/:flagId", async (c) => {
 	}
 })
 
-featureFlagsRouter.post("/", zValidator("json", CreateFlagSchema), async (c) => {
-	const { organizationId } = c.var.session
-	const body = c.req.valid("json")
-	const supabase = createClientForSession(c.var.session)
+featureFlagsRouter.post(
+	"/",
+	zValidator("json", CreateFlagSchema),
+	async (c) => {
+		const { organizationId } = c.var.session
+		const body = c.req.valid("json")
+		const supabase = createClientForSession(c.var.session)
 
-	try {
-		const response = await createFlag(supabase, organizationId, body)
-		return c.json(response, 201)
-	} catch (error) {
-		console.error("Failed to create feature flag", error)
-		return c.json({ error: { message: "Failed to create feature flag" } }, 400)
-	}
-})
+		try {
+			const response = await createFlag(supabase, organizationId, body)
+			return c.json(response, 201)
+		} catch (error) {
+			console.error("Failed to create feature flag", error)
+			return c.json(
+				{ error: { message: "Failed to create feature flag" } },
+				400,
+			)
+		}
+	},
+)
 
 featureFlagsRouter.patch(
 	"/:flagId",
@@ -86,7 +93,10 @@ featureFlagsRouter.patch(
 			return c.json(response)
 		} catch (error) {
 			console.error("Failed to update feature flag", error)
-			return c.json({ error: { message: "Failed to update feature flag" } }, 400)
+			return c.json(
+				{ error: { message: "Failed to update feature flag" } },
+				400,
+			)
 		}
 	},
 )
@@ -137,10 +147,7 @@ featureFlagsRouter.get("/:flagId/audit", async (c) => {
 		if (limit !== undefined) {
 			parsedLimit = Number.parseInt(limit, 10)
 			if (Number.isNaN(parsedLimit) || parsedLimit < 1) {
-				return c.json(
-					{ error: { message: "Invalid limit parameter" } },
-					400,
-				)
+				return c.json({ error: { message: "Invalid limit parameter" } }, 400)
 			}
 			parsedLimit = Math.min(parsedLimit, 1000)
 		}

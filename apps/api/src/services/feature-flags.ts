@@ -381,10 +381,7 @@ export class FeatureFlagService {
 	/**
 	 * Get audit logs for a flag
 	 */
-	async getFlagAuditLogs(
-		flagId: string,
-		limit = 50,
-	): Promise<FlagAuditLog[]> {
+	async getFlagAuditLogs(flagId: string, limit = 50): Promise<FlagAuditLog[]> {
 		const { data, error } = await this.client
 			.from("flag_audit_logs")
 			.select("*")
@@ -405,9 +402,7 @@ export class FeatureFlagService {
 		organizationId: string,
 		context: EvaluationContext,
 	): string {
-		const contextParts: string[] = [
-			`flag:eval:${organizationId}:${flagKey}`,
-		]
+		const contextParts: string[] = [`flag:eval:${organizationId}:${flagKey}`]
 
 		if (context.userId) contextParts.push(`user:${context.userId}`)
 		if (context.userRole) contextParts.push(`role:${context.userRole}`)

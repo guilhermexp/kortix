@@ -101,9 +101,7 @@ async function fetchTweetPreviewImage(
 		const video = data.video as { poster?: string } | undefined
 		if (video?.poster) return video.poster
 
-		const user = data.user as
-			| { profile_image_url_https?: string }
-			| undefined
+		const user = data.user as { profile_image_url_https?: string } | undefined
 		if (user?.profile_image_url_https) {
 			return user.profile_image_url_https.replace("_normal", "_400x400")
 		}
@@ -898,17 +896,122 @@ export class ImageExtractor implements IImageExtractor {
 	private extractImgTags(html: string): string[] {
 		const images: string[] = []
 
-		// Match img tags with src attribute
-		const regex = /<img[^>]+src=["']([^"']+)["']/gi
+		// Match full img tags to inspect attributes
+		const regex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi
 		let match: RegExpExecArray | null
 
 		while ((match = regex.exec(html)) !== null) {
-			if (match[1]) {
-				images.push(match[1])
-			}
+			const src = match[1]
+			if (!src) continue
+
+			// Skip data URLs and SVGs
+			if (src.startsWith("data:")) continue
+			if (src.endsWith(".svg")) continue
+
+			const fullTag = match[0]
+			if (this.isLikelyNonContentImage(src, fullTag)) continue
+
+			images.push(src)
 		}
 
 		return images
+	}
+
+	/**
+	 * Check if an image URL or its HTML attributes suggest it's an icon, logo,
+	 * badge, tracking pixel, or other non-content image.
+	 */
+	private isLikelyNonContentImage(src: string, imgTag?: string): boolean {
+		const lower = src.toLowerCase()
+
+		const nonContentPatterns = [
+			"favicon",
+			"apple-touch-icon",
+			"/icon",
+			"/icons/",
+			"/logo",
+			"/logos/",
+			"/badge",
+			"/badges/",
+			"/sprite",
+			"/sprites/",
+			"/pixel",
+			"/tracking",
+			"/analytics",
+			"/beacon",
+			"/ads/",
+			"/ad-",
+			"/button",
+			"/buttons/",
+			"/widget",
+			"/widgets/",
+			"/avatar",
+			"/avatars/",
+			"/emoji",
+			"/emojis/",
+			"/social/",
+			"/share/",
+			"/rating",
+			"/star",
+			"1x1",
+			"spacer",
+			"transparent",
+			"blank.gif",
+			"blank.png",
+			"pixel.gif",
+			"pixel.png",
+			".ico",
+		]
+
+		if (nonContentPatterns.some((p) => lower.includes(p))) return true
+
+		// Dimensions encoded in URL (e.g., "32x32", "16x16")
+		const sizeInUrl = lower.match(/[\W_](\d+)x(\d+)[\W_.]/)
+		if (sizeInUrl) {
+			const w = Number.parseInt(sizeInUrl[1], 10)
+			const h = Number.parseInt(sizeInUrl[2], 10)
+			if (w <= 96 && h <= 96) return true
+		}
+
+		if (imgTag) {
+			const tagLower = imgTag.toLowerCase()
+
+			const widthMatch = tagLower.match(/\bwidth=["']?(\d+)/)
+			const heightMatch = tagLower.match(/\bheight=["']?(\d+)/)
+			if (widthMatch && heightMatch) {
+				const w = Number.parseInt(widthMatch[1], 10)
+				const h = Number.parseInt(heightMatch[1], 10)
+				if (w <= 96 && h <= 96) return true
+			}
+
+			const classMatch = tagLower.match(/class=["']([^"']+)["']/)
+			if (classMatch) {
+				const cls = classMatch[1]
+				const iconClasses = [
+					"icon",
+					"logo",
+					"avatar",
+					"badge",
+					"emoji",
+					"favicon",
+					"sprite",
+					"social",
+					"rating",
+					"star",
+				]
+				if (iconClasses.some((c) => cls.includes(c))) return true
+			}
+
+			if (
+				tagLower.includes('role="presentation"') ||
+				tagLower.includes('role="none"') ||
+				tagLower.includes("aria-hidden")
+			) {
+				return true
+			}
+		}
+
+		return false
 	}
 
 	// ========================================================================
@@ -1022,4 +1125,3 @@ export class ImageExtractor implements IImageExtractor {
 		// No resources to clean up
 	}
 }
-

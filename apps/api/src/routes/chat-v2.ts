@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { z } from "zod"
 import { env } from "../env"
-import { ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
+import { CANVAS_CONTEXT_PROMPT, ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
 import {
 	buildChatSessionKey,
 	chatSessionManager,
@@ -632,6 +632,10 @@ export async function handleChatV2({
 		)
 	}
 
+	if (canvasId) {
+		instructions.push(CANVAS_CONTEXT_PROMPT)
+	}
+
 	const basePrompt = ENHANCED_SYSTEM_PROMPT
 	const systemPrompt =
 		instructions.length > 0
@@ -668,6 +672,26 @@ export async function handleChatV2({
 		console.log(
 			`[Chat V2] Using context document ${contextDocument.id} - ${contextDocument.content.length} chars`,
 		)
+
+		// Inject attachment metadata if any exist
+		try {
+			const { data: attachments } = await client
+				.from("document_attachments")
+				.select("id, filename, mime_type, size_bytes, content_text")
+				.eq("document_id", contextDocument.id)
+				.eq("org_id", orgId)
+				.order("created_at", { ascending: true })
+
+			if (Array.isArray(attachments) && attachments.length > 0) {
+				const attachmentLines = attachments.map((a) => {
+					const hasText = a.content_text != null && a.content_text.length > 0
+					return `- id: ${a.id}, filename: "${a.filename}", mimeType: "${a.mime_type}", sizeBytes: ${a.size_bytes}, hasText: ${hasText}`
+				})
+				messageForAgent += `\n\n[Anexos do documento]\n${attachmentLines.join("\n")}\nUse readAttachment(attachmentId) para ler o conteúdo.`
+			}
+		} catch (err) {
+			console.error("[Chat V2] Failed to fetch document attachments:", err)
+		}
 	} else if (mentionedDocIds.length > 0) {
 		// Fallback to mentioned documents query if not viewing a specific document
 		try {

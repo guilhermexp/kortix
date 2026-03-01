@@ -39,6 +39,7 @@ import { useChatMentionQueue } from "@/stores"
 import { formatDate, getDocumentSnippet, stripMarkdown } from "../memories"
 import { RelatedDocumentsPanel } from "../memories/related-documents-panel"
 import { LazyImageGallery } from "./lazy-components"
+import { DocumentAttachments } from "./document-attachments"
 import { DocumentProjectTransfer } from "./document-project-transfer"
 
 const _LazyMemoryEntriesSidebar = dynamic(
@@ -863,6 +864,9 @@ export function MemoryEditClient({
 					</Collapsible>
 				</div>
 			)}
+
+			{/* Document attachments */}
+			<DocumentAttachments documentId={document.id} />
 
 			{/* Related documents panel */}
 			<RelatedDocumentsPanel document={document} />

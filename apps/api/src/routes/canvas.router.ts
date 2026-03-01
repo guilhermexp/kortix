@@ -36,11 +36,7 @@ canvasRouter.get(
 		const supabase = createClientForSession(c.var.session)
 
 		try {
-			const canvases = await listCanvases(
-				supabase,
-				userId,
-				projectId,
-			)
+			const canvases = await listCanvases(supabase, userId, projectId)
 			return c.json(canvases)
 		} catch (error) {
 			console.error("Failed to list canvases", error)
@@ -69,16 +65,16 @@ canvasRouter.post("/", zValidator("json", CreateCanvasSchema), async (c) => {
 	const supabase = createClientForSession(c.var.session)
 
 	try {
-		const canvas = await createCanvas(
-			supabase,
-			userId,
-			payload,
-		)
+		const canvas = await createCanvas(supabase, userId, payload)
 		return c.json(canvas, 201)
 	} catch (error) {
-		const detail = error instanceof Error ? error.message : JSON.stringify(error)
+		const detail =
+			error instanceof Error ? error.message : JSON.stringify(error)
 		console.error("Failed to create canvas", { userId, payload, error: detail })
-		return c.json({ error: { message: `Failed to create canvas: ${detail}` } }, 400)
+		return c.json(
+			{ error: { message: `Failed to create canvas: ${detail}` } },
+			400,
+		)
 	}
 })
 
@@ -92,12 +88,7 @@ canvasRouter.patch(
 		const supabase = createClientForSession(c.var.session)
 
 		try {
-			const canvas = await updateCanvas(
-				supabase,
-				id,
-				userId,
-				payload,
-			)
+			const canvas = await updateCanvas(supabase, id, userId, payload)
 			return c.json(canvas)
 		} catch (error) {
 			if (error instanceof CanvasVersionConflictError) {
@@ -125,14 +116,11 @@ canvasRouter.delete("/:id", async (c) => {
 	const supabase = createClientForSession(c.var.session)
 
 	try {
-		const result = await deleteCanvas(
-			supabase,
-			id,
-			userId,
-		)
+		const result = await deleteCanvas(supabase, id, userId)
 		return c.json(result)
 	} catch (error) {
-		const message = error instanceof Error ? error.message : "Failed to delete canvas"
+		const message =
+			error instanceof Error ? error.message : "Failed to delete canvas"
 		if (message === "Canvas not found") {
 			return c.json({ error: { message } }, 404)
 		}

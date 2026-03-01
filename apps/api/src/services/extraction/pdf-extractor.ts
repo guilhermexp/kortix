@@ -94,7 +94,10 @@ export class PDFExtractor implements IPDFExtractor {
 					text = await summarizeBinaryWithGemini(buffer, "application/pdf")
 					extractionMethod = "gemini-vision"
 				} catch (error) {
-					console.warn("Gemini Vision fallback failed", (error as Error).message)
+					console.warn(
+						"Gemini Vision fallback failed",
+						(error as Error).message,
+					)
 				}
 			}
 

@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test"
 import type { ExtractionResult } from "../interfaces"
-import {
-	MetadataExtractor,
-} from "./metadata-extractor"
+import { MetadataExtractor } from "./metadata-extractor"
 
 describe("MetadataExtractor", () => {
 	let service: MetadataExtractor
@@ -355,7 +353,6 @@ describe("MetadataExtractor", () => {
 
 			await expect(service.extract(extraction)).rejects.toThrow()
 		})
-
 	})
 
 	describe("Health Check", () => {

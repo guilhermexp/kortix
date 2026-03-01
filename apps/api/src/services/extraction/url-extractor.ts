@@ -13,10 +13,10 @@
 import { safeFetch } from "../../security/url-validator"
 import type {
 	ExtractionInput,
+	ExtractionRateLimitInfo,
 	ExtractionResult,
 	URLExtractor as IURLExtractor,
 	MetaTags,
-	ExtractionRateLimitInfo,
 	URLExtractorOptions,
 } from "../interfaces"
 
@@ -193,11 +193,15 @@ export class URLExtractor implements IURLExtractor {
 			})
 
 			if (!response.ok) {
-				console.warn("Firecrawl HTTP error, falling back to HTTP fetch", url, response.status)
+				console.warn(
+					"Firecrawl HTTP error, falling back to HTTP fetch",
+					url,
+					response.status,
+				)
 				return this.extractWithHttpFetchFallback(url, options)
 			}
 
-			const data = await response.json() as {
+			const data = (await response.json()) as {
 				success?: boolean
 				data?: {
 					markdown?: string
@@ -213,13 +217,19 @@ export class URLExtractor implements IURLExtractor {
 			}
 
 			if (!data.success || !data.data?.markdown) {
-				console.warn("Firecrawl returned unsuccessful result, falling back", url, data.success)
+				console.warn(
+					"Firecrawl returned unsuccessful result, falling back",
+					url,
+					data.success,
+				)
 				return this.extractWithHttpFetchFallback(url, options)
 			}
 
 			const markdown = this.cleanMarkdownContent(data.data.markdown)
-			const title = data.data.metadata?.title || this.extractTitleFromContent(markdown)
-			const previewImage = data.data.metadata?.ogImage || data.data.metadata?.twitterImage
+			const title =
+				data.data.metadata?.title || this.extractTitleFromContent(markdown)
+			const previewImage =
+				data.data.metadata?.ogImage || data.data.metadata?.twitterImage
 
 			// Extract images from HTML (comprehensive) + markdown (supplemental)
 			const htmlImages = data.data.html
@@ -233,7 +243,12 @@ export class URLExtractor implements IURLExtractor {
 				}
 			}
 
-			console.info("Firecrawl extraction completed", url, `chars=${markdown.length}`, `images=${images.length}`)
+			console.info(
+				"Firecrawl extraction completed",
+				url,
+				`chars=${markdown.length}`,
+				`images=${images.length}`,
+			)
 
 			const metaTags: MetaTags = {
 				title: title || undefined,
@@ -257,7 +272,11 @@ export class URLExtractor implements IURLExtractor {
 				extractionMetadata: { metaTags },
 			}
 		} catch (error) {
-			console.warn("Firecrawl extraction failed, falling back to HTTP fetch", url, error instanceof Error ? error.message : String(error))
+			console.warn(
+				"Firecrawl extraction failed, falling back to HTTP fetch",
+				url,
+				error instanceof Error ? error.message : String(error),
+			)
 			return this.extractWithHttpFetchFallback(url, options)
 		}
 	}
@@ -273,9 +292,9 @@ export class URLExtractor implements IURLExtractor {
 		while ((match = imgRegex.exec(markdown)) !== null) {
 			const src = match[1]
 
-			// Skip data URLs and SVGs
 			if (src.startsWith("data:")) continue
 			if (src.endsWith(".svg")) continue
+			if (this.isLikelyNonContentImage(src)) continue
 
 			if (!images.includes(src)) {
 				images.push(src)
@@ -344,7 +363,11 @@ export class URLExtractor implements IURLExtractor {
 		const images = this.extractImagesFromHtml(html, url)
 		const previewImage = metaTags.ogImage || metaTags.twitterImage
 
-		console.debug("HTTP fetch fallback extraction completed", url, `images=${images.length}`)
+		console.debug(
+			"HTTP fetch fallback extraction completed",
+			url,
+			`images=${images.length}`,
+		)
 
 		return {
 			text: cleanedContent,
@@ -368,19 +391,142 @@ export class URLExtractor implements IURLExtractor {
 	/**
 	 * Extract images from HTML
 	 */
+	/**
+	 * Check if an image URL or its HTML attributes suggest it's an icon, logo,
+	 * badge, tracking pixel, or other non-content image that should be filtered out.
+	 */
+	private isLikelyNonContentImage(
+		src: string,
+		imgTag?: string,
+	): boolean {
+		const lower = src.toLowerCase()
+
+		// URL path patterns common in icons/logos/tracking
+		const nonContentPatterns = [
+			"favicon",
+			"apple-touch-icon",
+			"/icon",
+			"/icons/",
+			"/logo",
+			"/logos/",
+			"/badge",
+			"/badges/",
+			"/sprite",
+			"/sprites/",
+			"/pixel",
+			"/tracking",
+			"/analytics",
+			"/beacon",
+			"/ads/",
+			"/ad-",
+			"/button",
+			"/buttons/",
+			"/widget",
+			"/widgets/",
+			"/avatar",
+			"/avatars/",
+			"/emoji",
+			"/emojis/",
+			"/social/",
+			"/share/",
+			"/rating",
+			"/star",
+			"1x1",
+			"spacer",
+			"transparent",
+			"blank.gif",
+			"blank.png",
+			"pixel.gif",
+			"pixel.png",
+			".ico",
+		]
+
+		if (nonContentPatterns.some((p) => lower.includes(p))) return true
+
+		// Filename-level patterns (check just the filename)
+		try {
+			const pathname = new URL(src, "https://placeholder.com").pathname
+			const filename = pathname.split("/").pop()?.toLowerCase() ?? ""
+			if (
+				filename.startsWith("logo") ||
+				filename.startsWith("icon") ||
+				filename.startsWith("favicon") ||
+				filename.startsWith("badge") ||
+				filename.startsWith("sprite") ||
+				filename === "spacer.gif" ||
+				filename === "pixel.gif"
+			) {
+				return true
+			}
+		} catch {}
+
+		// Dimensions encoded in URL (e.g., "32x32", "16x16", "48x48")
+		const sizeInUrl = lower.match(/[\W_](\d+)x(\d+)[\W_.]/)
+		if (sizeInUrl) {
+			const w = Number.parseInt(sizeInUrl[1], 10)
+			const h = Number.parseInt(sizeInUrl[2], 10)
+			if (w <= 96 && h <= 96) return true
+		}
+
+		// Check HTML attributes if full <img> tag is provided
+		if (imgTag) {
+			const tagLower = imgTag.toLowerCase()
+
+			// Explicit width/height attributes indicating small images
+			const widthMatch = tagLower.match(/\bwidth=["']?(\d+)/)
+			const heightMatch = tagLower.match(/\bheight=["']?(\d+)/)
+			if (widthMatch && heightMatch) {
+				const w = Number.parseInt(widthMatch[1], 10)
+				const h = Number.parseInt(heightMatch[1], 10)
+				if (w <= 96 && h <= 96) return true
+			}
+
+			// CSS class/role hints
+			const classMatch = tagLower.match(/class=["']([^"']+)["']/)
+			if (classMatch) {
+				const cls = classMatch[1]
+				const iconClasses = [
+					"icon",
+					"logo",
+					"avatar",
+					"badge",
+					"emoji",
+					"favicon",
+					"sprite",
+					"social",
+					"rating",
+					"star",
+				]
+				if (iconClasses.some((c) => cls.includes(c))) return true
+			}
+
+			// Role attribute
+			if (
+				tagLower.includes('role="presentation"') ||
+				tagLower.includes('role="none"') ||
+				tagLower.includes("aria-hidden")
+			) {
+				return true
+			}
+		}
+
+		return false
+	}
+
 	private extractImagesFromHtml(html: string, baseUrl: string): string[] {
 		const images: string[] = []
 
-		const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi
+		// Capture full <img> tag to inspect attributes
+		const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi
 		let match
 
 		while ((match = imgRegex.exec(html)) !== null) {
 			const src = match[1]
+			const fullTag = match[0]
 
 			if (src.startsWith("data:")) continue
 			if (src.endsWith(".svg")) continue
-			if (src.includes("1x1")) continue
-			if (src.includes("icon")) continue
+			if (this.isLikelyNonContentImage(src, fullTag)) continue
 
 			try {
 				let absoluteUrl: string

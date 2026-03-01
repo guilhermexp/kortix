@@ -93,7 +93,10 @@ function scheduleNextTick(delayMs: number, reason: string): void {
 
 	const delayChangedMeaningfully =
 		Math.abs(jitteredDelay - lastScheduledDelay) > 2000
-	if (reason === "work" || (delayChangedMeaningfully && reason !== "idle-backoff")) {
+	if (
+		reason === "work" ||
+		(delayChangedMeaningfully && reason !== "idle-backoff")
+	) {
 		console.log(
 			`[ingestion-worker] Next poll in ${Math.round(jitteredDelay / 1000)}s (${reason})`,
 		)
@@ -287,7 +290,12 @@ async function processJob(job: IngestionJobRow): Promise<boolean> {
 
 	try {
 		if (jobType === "reindex-metadata") {
-			await handleReindexMetadata(job.id, job.document_id, job.org_id, job.payload)
+			await handleReindexMetadata(
+				job.id,
+				job.document_id,
+				job.org_id,
+				job.payload,
+			)
 		} else {
 			await hydrateDocument(job.id, job.document_id, job.org_id, job.payload)
 		}
@@ -317,7 +325,10 @@ async function tick() {
 
 	try {
 		if (!circuitBreaker.canMakeRequest()) {
-			nextDelay = Math.max(circuitBreaker.getRemainingBackoff(), currentPollInterval)
+			nextDelay = Math.max(
+				circuitBreaker.getRemainingBackoff(),
+				currentPollInterval,
+			)
 			nextReason = "circuit-open"
 			return
 		}
@@ -386,7 +397,9 @@ async function main() {
 		console.log("[ingestion-worker] Running initial health check...")
 		const isHealthy = await healthCheck()
 		if (!isHealthy) {
-			console.error("[ingestion-worker] Health check failed, starting with circuit breaker open")
+			console.error(
+				"[ingestion-worker] Health check failed, starting with circuit breaker open",
+			)
 		} else {
 			console.log("[ingestion-worker] Health check passed")
 		}

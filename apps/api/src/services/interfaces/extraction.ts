@@ -219,7 +219,6 @@ export interface PDFOptions {
 	timeout?: number
 }
 
-
 /**
  * PDF metadata
  */

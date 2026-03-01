@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto"
-import type { SupabaseClient } from "@supabase/supabase-js"
 import {
 	CanvasCreateViewResultSchema,
-	CanvasToolModeSchema,
+	type CanvasToolModeSchema,
 } from "@repo/validation/api"
-import { z } from "zod"
+import type { SupabaseClient } from "@supabase/supabase-js"
+import type { z } from "zod"
 import { emitCanvasElementsChanged } from "../socket/canvas-collaboration"
 
 type CanvasToolMode = z.infer<typeof CanvasToolModeSchema>
@@ -55,11 +55,28 @@ Supported pseudo-elements:
 - {"type":"delete","ids":"id1,id2"} or {"type":"delete","ids":["id1","id2"]}
 
 All regular Excalidraw elements are accepted (rectangle, ellipse, diamond, text, arrow...).
-Required for drawable elements: type + id + coordinates/sizing.
+Required for drawable elements: type + id + x + y + width + height.
+
+SHAPES WITH LABELS (preferred — auto-centered text inside shape):
+  {"type":"rectangle","id":"r1","x":100,"y":100,"width":200,"height":80,"roundness":{"type":3},"backgroundColor":"#a5d8ff","fillStyle":"solid","label":{"text":"Hello","fontSize":20}}
+  The "label" property is expanded into a properly bound text element automatically.
+  Works on: rectangle, ellipse, diamond.
+
+ARROW BINDINGS with fixedPoint (connect arrows to shape edges):
+  {"type":"arrow","id":"a1","x":300,"y":180,"width":150,"height":0,"points":[[0,0],[150,0]],"endArrowhead":"arrow",
+   "startBinding":{"elementId":"r1","focus":0,"gap":1,"fixedPoint":[1,0.5]},
+   "endBinding":{"elementId":"r2","focus":0,"gap":1,"fixedPoint":[0,0.5]}}
+  fixedPoint coords (normalized 0-1): [0.5,0]=top, [0.5,1]=bottom, [0,0.5]=left, [1,0.5]=right.
+
+RECOMMENDED COLORS (pastel fills on white background):
+  Blue: #a5d8ff, Green: #b2f2bb, Orange: #ffd8a8, Purple: #d0bfff
+  Red: #ffc9c9, Yellow: #fff3bf, Teal: #c3fae8, Pink: #eebefa
+
 Tips:
-- Prefer label on shapes for centered text.
-- Keep minimum fontSize 14.
-- Use cameraUpdate generously for readability.
+- Use "label" on shapes instead of separate text elements.
+- Add roundness: {"type":3} for rounded corners on rectangles.
+- Keep minimum fontSize 14 (16+ recommended for labels).
+- Use cameraUpdate generously for readability (must be 4:3 aspect ratio).
 - Never reuse deleted ids.
 - For "what is on this canvas?" or "summarize the canvas", call canvas_read_scene and summarize from the returned stats/text/elements.
 - You can also call canvas_summarize_scene for a ready-to-use structured summary.
@@ -232,7 +249,10 @@ function sanitizeElement(el: Record<string, unknown>): Record<string, unknown> {
 	if (typeof out.seed !== "number" || !Number.isFinite(out.seed)) {
 		out.seed = Math.floor(Math.random() * 2_147_483_647)
 	}
-	if (typeof out.versionNonce !== "number" || !Number.isFinite(out.versionNonce)) {
+	if (
+		typeof out.versionNonce !== "number" ||
+		!Number.isFinite(out.versionNonce)
+	) {
 		out.versionNonce = Math.floor(Math.random() * 2_147_483_647)
 	}
 	if (typeof out.version !== "number" || out.version < 1) {
@@ -260,14 +280,133 @@ function sanitizeElement(el: Record<string, unknown>): Record<string, unknown> {
 	}
 
 	// Arrow/line elements need points array
-	if ((out.type === "arrow" || out.type === "line") && !Array.isArray(out.points)) {
-		out.points = [[0, 0], [100, 0]]
+	if (
+		(out.type === "arrow" || out.type === "line") &&
+		!Array.isArray(out.points)
+	) {
+		out.points = [
+			[0, 0],
+			[100, 0],
+		]
 	}
 
 	return out
 }
 
-function makeBaseElement(type: string, overrides: Record<string, unknown>): Record<string, unknown> {
+/**
+ * Expand shorthand `label` on container shapes (rectangle, ellipse, diamond)
+ * into proper bound text elements, mimicking what Excalidraw's
+ * convertToExcalidrawElements() does in the browser.
+ */
+function expandLabelsToContainerText(
+	ops: Record<string, unknown>[],
+): Record<string, unknown>[] {
+	const pseudoTypes = new Set(["cameraUpdate", "delete", "restoreCheckpoint"])
+	const containerTypes = new Set(["rectangle", "ellipse", "diamond"])
+	const result: Record<string, unknown>[] = []
+
+	for (const op of ops) {
+		const type = typeof op.type === "string" ? op.type : ""
+		if (pseudoTypes.has(type) || !containerTypes.has(type)) {
+			result.push(op)
+			continue
+		}
+
+		const label = op.label as Record<string, unknown> | undefined
+		if (
+			!label ||
+			typeof label !== "object" ||
+			typeof label.text !== "string" ||
+			!label.text.trim()
+		) {
+			result.push(op)
+			continue
+		}
+
+		const shapeId =
+			typeof op.id === "string" && op.id.trim().length > 0
+				? op.id
+				: makeElementId("shape")
+		const textId = `${shapeId}_label`
+		const text = (label.text as string).trim()
+		const fontSize =
+			typeof label.fontSize === "number" ? label.fontSize : 20
+
+		// Merge text binding into shape's existing boundElements
+		const existingBound = Array.isArray(op.boundElements)
+			? [...(op.boundElements as { id: string; type: string }[])]
+			: []
+		existingBound.push({ id: textId, type: "text" })
+
+		// Shape without label prop, with text binding added
+		const { label: _label, ...shapeProps } = op
+		result.push({
+			...shapeProps,
+			id: shapeId,
+			boundElements: existingBound,
+		})
+
+		// Bound text element — Excalidraw auto-centers text within container
+		const elX = typeof op.x === "number" ? op.x : 0
+		const elY = typeof op.y === "number" ? op.y : 0
+		const elW = typeof op.width === "number" ? op.width : 100
+		const elH = typeof op.height === "number" ? op.height : 100
+
+		result.push({
+			type: "text",
+			id: textId,
+			x: elX + elW / 4,
+			y: elY + elH / 4,
+			width: elW / 2,
+			height: elH / 2,
+			text,
+			originalText: text,
+			fontSize,
+			fontFamily:
+				typeof label.fontFamily === "number" ? label.fontFamily : 1,
+			textAlign:
+				typeof label.textAlign === "string" ? label.textAlign : "center",
+			verticalAlign:
+				typeof label.verticalAlign === "string"
+					? label.verticalAlign
+					: "middle",
+			containerId: shapeId,
+			lineHeight: 1.25,
+			autoResize: true,
+		})
+	}
+
+	return result
+}
+
+/**
+ * Given a radial angle from center → target, compute the optimal
+ * fixedPoint coordinates for start (center) and end (target) bindings.
+ * fixedPoint uses normalized 0-1 coordinates: [0,0]=top-left, [1,1]=bottom-right.
+ */
+function angleToFixedPoints(angle: number): {
+	start: [number, number]
+	end: [number, number]
+} {
+	const cos = Math.cos(angle)
+	const sin = Math.sin(angle)
+
+	if (Math.abs(cos) > Math.abs(sin)) {
+		// Primarily horizontal
+		return cos > 0
+			? { start: [1, 0.5], end: [0, 0.5] } // right → left
+			: { start: [0, 0.5], end: [1, 0.5] } // left → right
+	}
+	// Primarily vertical
+	return sin > 0
+		? { start: [0.5, 1], end: [0.5, 0] } // bottom → top
+		: { start: [0.5, 0], end: [0.5, 1] } // top → bottom
+}
+
+function makeBaseElement(
+	type: string,
+	overrides: Record<string, unknown>,
+): Record<string, unknown> {
 	return {
 		id: makeElementId(type),
 		type,
@@ -299,53 +438,67 @@ function makeBaseElement(type: string, overrides: Record<string, unknown>): Reco
 }
 
 function makeRectangleElement({
+	id,
 	x,
 	y,
 	width,
 	height,
 	backgroundColor = "#1f2937",
 	strokeColor = "#94a3b8",
+	boundElements,
 }: {
+	id?: string
 	x: number
 	y: number
 	width: number
 	height: number
 	backgroundColor?: string
 	strokeColor?: string
+	boundElements?: { id: string; type: string }[]
 }) {
-	return makeBaseElement("rectangle", {
+	const overrides: Record<string, unknown> = {
 		x,
 		y,
 		width,
 		height,
 		backgroundColor,
 		strokeColor,
-	})
+	}
+	if (id) overrides.id = id
+	if (boundElements) overrides.boundElements = boundElements
+	return makeBaseElement("rectangle", overrides)
 }
 
 function makeDiamondElement({
+	id,
 	x,
 	y,
 	width,
 	height,
 	backgroundColor = "#111827",
 	strokeColor = "#94a3b8",
+	boundElements,
 }: {
+	id?: string
 	x: number
 	y: number
 	width: number
 	height: number
 	backgroundColor?: string
 	strokeColor?: string
+	boundElements?: { id: string; type: string }[]
 }) {
-	return makeBaseElement("diamond", {
+	const overrides: Record<string, unknown> = {
 		x,
 		y,
 		width,
 		height,
 		backgroundColor,
 		strokeColor,
-	})
+	}
+	if (id) overrides.id = id
+	if (boundElements) overrides.boundElements = boundElements
+	return makeBaseElement("diamond", overrides)
 }
 
 function makeTextElement({
@@ -364,7 +517,8 @@ function makeTextElement({
 	height?: number
 }) {
 	const estimatedWidth =
-		width ?? Math.max(80, Math.min(480, Math.round(text.length * (fontSize * 0.62))))
+		width ??
+		Math.max(80, Math.min(480, Math.round(text.length * (fontSize * 0.62))))
 	const estimatedHeight = height ?? Math.max(28, Math.round(fontSize * 1.4))
 	return makeBaseElement("text", {
 		x,
@@ -386,19 +540,25 @@ function makeTextElement({
 }
 
 function makeArrowElement({
+	id,
 	x,
 	y,
 	dx,
 	dy,
 	strokeColor = "#64748b",
+	startId,
+	endId,
 }: {
+	id?: string
 	x: number
 	y: number
 	dx: number
 	dy: number
 	strokeColor?: string
+	startId?: string
+	endId?: string
 }) {
-	return makeBaseElement("arrow", {
+	const overrides: Record<string, unknown> = {
 		x,
 		y,
 		width: Math.abs(dx),
@@ -409,12 +569,18 @@ function makeArrowElement({
 			[0, 0],
 			[dx, dy],
 		],
-		startBinding: null,
-		endBinding: null,
+		startBinding: startId
+			? { elementId: startId, focus: 0, gap: 1, fixedPoint: null }
+			: null,
+		endBinding: endId
+			? { elementId: endId, focus: 0, gap: 1, fixedPoint: null }
+			: null,
 		lastCommittedPoint: null,
 		startArrowhead: null,
 		endArrowhead: "arrow",
-	})
+	}
+	if (id) overrides.id = id
+	return makeBaseElement("arrow", overrides)
 }
 
 function centerTextInBox({
@@ -432,7 +598,10 @@ function centerTextInBox({
 	text: string
 	fontSize: number
 }) {
-	const estimatedW = Math.max(80, Math.min(boxW - 16, Math.round(text.length * (fontSize * 0.62))))
+	const estimatedW = Math.max(
+		80,
+		Math.min(boxW - 16, Math.round(text.length * (fontSize * 0.62))),
+	)
 	const estimatedH = Math.max(24, Math.round(fontSize * 1.4))
 	return {
 		x: boxX + Math.max(8, (boxW - estimatedW) / 2),
@@ -586,7 +755,8 @@ export async function applyCanvasCreateView({
 		}
 
 		const currentVersion =
-			typeof canvasRow.version === "number" && Number.isFinite(canvasRow.version)
+			typeof canvasRow.version === "number" &&
+			Number.isFinite(canvasRow.version)
 				? canvasRow.version
 				: 1
 		canvasVersionForError = currentVersion
@@ -613,14 +783,16 @@ export async function applyCanvasCreateView({
 			})
 		}
 
-	let workingDoc: CanvasDocument
-	let effectiveCheckpointId = checkpointId
-	const firstOp = ops[0]
-	const restoreFromOp =
-		firstOp && firstOp.type === "restoreCheckpoint" && typeof firstOp.id === "string"
-			? firstOp.id
-			: undefined
-	const restoreCheckpointId = restoreFromOp ?? checkpointId
+		let workingDoc: CanvasDocument
+		let effectiveCheckpointId = checkpointId
+		const firstOp = ops[0]
+		const restoreFromOp =
+			firstOp &&
+			firstOp.type === "restoreCheckpoint" &&
+			typeof firstOp.id === "string"
+				? firstOp.id
+				: undefined
+		const restoreCheckpointId = restoreFromOp ?? checkpointId
 
 		if (restoreCheckpointId) {
 			const checkpointDoc = await loadCheckpointSnapshot({
@@ -658,118 +830,121 @@ export async function applyCanvasCreateView({
 			workingDoc = parseCanvasDocument(canvasRow.content)
 		}
 
-	const currentElements = [...workingDoc.elements]
-	const byId = new Map<string, SceneElement>()
-	for (const element of currentElements) {
-		if (typeof element.id === "string" && element.id.length > 0) {
-			byId.set(element.id, element)
-		}
-	}
-
-	const deletedIds = new Set<string>()
-	const appliedElementIds: string[] = []
-	let camera: CameraUpdate | undefined
-
-	for (const op of ops) {
-		const type = typeof op.type === "string" ? op.type : ""
-
-		if (type === "restoreCheckpoint") {
-			continue
-		}
-
-		if (type === "cameraUpdate") {
-			camera = {
-				x: typeof op.x === "number" ? op.x : undefined,
-				y: typeof op.y === "number" ? op.y : undefined,
-				width: typeof op.width === "number" ? op.width : undefined,
-				height: typeof op.height === "number" ? op.height : undefined,
+		const currentElements = [...workingDoc.elements]
+		const byId = new Map<string, SceneElement>()
+		for (const element of currentElements) {
+			if (typeof element.id === "string" && element.id.length > 0) {
+				byId.set(element.id, element)
 			}
-			continue
 		}
 
-		if (type === "delete") {
-			const ids = normalizeDeleteIds(op.ids)
-			for (const id of ids) {
-				deletedIds.add(id)
-				byId.delete(id)
+		const deletedIds = new Set<string>()
+		const appliedElementIds: string[] = []
+		let camera: CameraUpdate | undefined
+
+		// Expand label shorthand on shapes into proper bound text elements
+		const expandedOps = expandLabelsToContainerText(ops)
+
+		for (const op of expandedOps) {
+			const type = typeof op.type === "string" ? op.type : ""
+
+			if (type === "restoreCheckpoint") {
+				continue
 			}
-			for (const [id, element] of byId.entries()) {
-				if (
-					typeof element.containerId === "string" &&
-					deletedIds.has(element.containerId)
-				) {
+
+			if (type === "cameraUpdate") {
+				camera = {
+					x: typeof op.x === "number" ? op.x : undefined,
+					y: typeof op.y === "number" ? op.y : undefined,
+					width: typeof op.width === "number" ? op.width : undefined,
+					height: typeof op.height === "number" ? op.height : undefined,
+				}
+				continue
+			}
+
+			if (type === "delete") {
+				const ids = normalizeDeleteIds(op.ids)
+				for (const id of ids) {
 					deletedIds.add(id)
 					byId.delete(id)
 				}
+				for (const [id, element] of byId.entries()) {
+					if (
+						typeof element.containerId === "string" &&
+						deletedIds.has(element.containerId)
+					) {
+						deletedIds.add(id)
+						byId.delete(id)
+					}
+				}
+				continue
 			}
-			continue
+
+			if (!type) {
+				continue
+			}
+			const elementId =
+				typeof op.id === "string" && op.id.trim().length > 0
+					? op.id.trim()
+					: randomUUID()
+			byId.set(elementId, sanitizeElement({ ...op, id: elementId, type }))
+			appliedElementIds.push(elementId)
+			deletedIds.delete(elementId)
 		}
 
-		if (!type) {
-			continue
+		const nextElements = Array.from(byId.values())
+		const nextDoc: CanvasDocument = {
+			elements: nextElements,
+			appState: workingDoc.appState,
+			files: workingDoc.files,
 		}
-		const elementId =
-			typeof op.id === "string" && op.id.trim().length > 0
-				? op.id.trim()
-				: randomUUID()
-		byId.set(elementId, sanitizeElement({ ...op, id: elementId, type }))
-		appliedElementIds.push(elementId)
-		deletedIds.delete(elementId)
-	}
+		const nextVersion = currentVersion + 1
+		const serialized = JSON.stringify(nextDoc)
 
-	const nextElements = Array.from(byId.values())
-	const nextDoc: CanvasDocument = {
-		elements: nextElements,
-		appState: workingDoc.appState,
-		files: workingDoc.files,
-	}
-	const nextVersion = currentVersion + 1
-	const serialized = JSON.stringify(nextDoc)
-
-	const { data: updatedRow, error: updateError } = await client
-		.from("canvases")
-		.update({
-			content: serialized,
-			version: nextVersion,
-			updated_at: new Date().toISOString(),
-		})
-		.eq("id", canvasId)
-		.eq("user_id", userId)
-		.eq("version", currentVersion)
-		.select("id, version")
-		.single()
-
-	if (updateError || !updatedRow) {
-		const { data: latest } = await client
+		const { data: updatedRow, error: updateError } = await client
 			.from("canvases")
-			.select("version")
+			.update({
+				content: serialized,
+				version: nextVersion,
+				updated_at: new Date().toISOString(),
+			})
 			.eq("id", canvasId)
 			.eq("user_id", userId)
-			.maybeSingle()
-		const latestVersion =
-			typeof latest?.version === "number" && Number.isFinite(latest.version)
-				? latest.version
-				: currentVersion
-		await insertCanvasOp({
-			client,
-			canvasId,
-			userId,
-			checkpointId: null,
-			baseVersion: currentVersion,
-			resultVersion: latestVersion,
-			opsJson: input,
-			status: "conflict",
-		})
-		return CanvasCreateViewResultSchema.parse({
-			checkpointId: checkpointId ?? null,
-			canvasId,
-			appliedElementIds: [],
-			deletedElementIds: [],
-			conflictStatus: "stale_base",
-			canvasVersion: latestVersion,
-			message: `Canvas version conflict: expected ${currentVersion}, current ${latestVersion}`,
-		})
-	}
+			.eq("version", currentVersion)
+			.select("id, version")
+			.single()
+
+		if (updateError || !updatedRow) {
+			const { data: latest } = await client
+				.from("canvases")
+				.select("version")
+				.eq("id", canvasId)
+				.eq("user_id", userId)
+				.maybeSingle()
+			const latestVersion =
+				typeof latest?.version === "number" && Number.isFinite(latest.version)
+					? latest.version
+					: currentVersion
+			await insertCanvasOp({
+				client,
+				canvasId,
+				userId,
+				checkpointId: null,
+				baseVersion: currentVersion,
+				resultVersion: latestVersion,
+				opsJson: input,
+				status: "conflict",
+			})
+			return CanvasCreateViewResultSchema.parse({
+				checkpointId: checkpointId ?? null,
+				canvasId,
+				appliedElementIds: [],
+				deletedElementIds: [],
+				conflictStatus: "stale_base",
+				canvasVersion: latestVersion,
+				message: `Canvas version conflict: expected ${currentVersion}, current ${latestVersion}`,
+			})
+		}
 
 		const { data: checkpointRow, error: checkpointError } = await client
 			.from("canvas_checkpoints")
@@ -803,23 +978,23 @@ export async function applyCanvasCreateView({
 				message: "Failed to create canvas checkpoint",
 			})
 		}
-	effectiveCheckpointId = checkpointRow.id
+		effectiveCheckpointId = checkpointRow.id
 
-	await insertCanvasOp({
-		client,
-		canvasId,
-		userId,
-		checkpointId: effectiveCheckpointId,
-		baseVersion: currentVersion,
-		resultVersion: nextVersion,
-		opsJson: input,
-		status: "applied",
-	})
+		await insertCanvasOp({
+			client,
+			canvasId,
+			userId,
+			checkpointId: effectiveCheckpointId,
+			baseVersion: currentVersion,
+			resultVersion: nextVersion,
+			opsJson: input,
+			status: "applied",
+		})
 
-	emitCanvasElementsChanged(canvasId, {
-		elements: nextElements,
-		version: nextVersion,
-	})
+		emitCanvasElementsChanged(canvasId, {
+			elements: nextElements,
+			version: nextVersion,
+		})
 
 		return CanvasCreateViewResultSchema.parse({
 			checkpointId: effectiveCheckpointId,
@@ -835,7 +1010,8 @@ export async function applyCanvasCreateView({
 					: "Canvas updated successfully",
 		})
 	} catch (error) {
-		const message = error instanceof Error ? error.message : "Unknown canvas error"
+		const message =
+			error instanceof Error ? error.message : "Unknown canvas error"
 		await insertCanvasOp({
 			client,
 			canvasId,
@@ -864,7 +1040,8 @@ async function applyCanvasCreateViewWithRetry(
 ) {
 	const maxAttempts = Math.max(1, options?.maxAttempts ?? 3)
 	let attempt = 0
-	let lastResult: Awaited<ReturnType<typeof applyCanvasCreateView>> | null = null
+	let lastResult: Awaited<ReturnType<typeof applyCanvasCreateView>> | null =
+		null
 
 	while (attempt < maxAttempts) {
 		attempt += 1
@@ -908,9 +1085,12 @@ async function loadCanvasRowForTool({
 		.select("id, name, content, preview, version, updated_at")
 		.eq("id", canvasId)
 		.eq("user_id", userId)
-		.single()
+		.maybeSingle()
 
-	if (error || !data) {
+	if (error) {
+		throw new Error(`Canvas query failed: ${error.message}`)
+	}
+	if (!data) {
 		throw new Error("Canvas not found or access denied")
 	}
 
@@ -941,7 +1121,9 @@ export async function getCanvasPreviewForAgent({
 	canvasId: string
 }) {
 	const canvasRow = await loadCanvasRowForTool({ client, userId, canvasId })
-	const parsed = parseDataUrlImage((canvasRow as Record<string, unknown>).preview)
+	const parsed = parseDataUrlImage(
+		(canvasRow as Record<string, unknown>).preview,
+	)
 	const previewText =
 		typeof (canvasRow as Record<string, unknown>).preview === "string"
 			? ((canvasRow as Record<string, unknown>).preview as string)
@@ -954,7 +1136,8 @@ export async function getCanvasPreviewForAgent({
 				? canvasRow.name
 				: "Untitled Canvas",
 		canvasVersion:
-			typeof canvasRow.version === "number" && Number.isFinite(canvasRow.version)
+			typeof canvasRow.version === "number" &&
+			Number.isFinite(canvasRow.version)
 				? canvasRow.version
 				: 1,
 		updatedAt:
@@ -1001,21 +1184,23 @@ export async function readCanvasSceneForAgent({
 		}
 	}
 
-	const normalizedElements = elements.slice(0, Math.max(1, elementLimit)).map((el) => {
-		const bounds = getElementBounds(el)
-		return {
-			id: typeof el.id === "string" ? el.id : undefined,
-			type: typeof el.type === "string" ? el.type : "unknown",
-			text: extractElementText(el),
-			containerId:
-				typeof el.containerId === "string" ? el.containerId : undefined,
-			x: bounds?.x,
-			y: bounds?.y,
-			width: bounds?.width,
-			height: bounds?.height,
-			angle: toFiniteNumber(el.angle) ?? undefined,
-		}
-	})
+	const normalizedElements = elements
+		.slice(0, Math.max(1, elementLimit))
+		.map((el) => {
+			const bounds = getElementBounds(el)
+			return {
+				id: typeof el.id === "string" ? el.id : undefined,
+				type: typeof el.type === "string" ? el.type : "unknown",
+				text: extractElementText(el),
+				containerId:
+					typeof el.containerId === "string" ? el.containerId : undefined,
+				x: bounds?.x,
+				y: bounds?.y,
+				width: bounds?.width,
+				height: bounds?.height,
+				angle: toFiniteNumber(el.angle) ?? undefined,
+			}
+		})
 
 	return {
 		canvasId,
@@ -1024,7 +1209,8 @@ export async function readCanvasSceneForAgent({
 				? canvasRow.name
 				: "Untitled Canvas",
 		canvasVersion:
-			typeof canvasRow.version === "number" && Number.isFinite(canvasRow.version)
+			typeof canvasRow.version === "number" &&
+			Number.isFinite(canvasRow.version)
 				? canvasRow.version
 				: 1,
 		updatedAt:
@@ -1034,10 +1220,8 @@ export async function readCanvasSceneForAgent({
 		stats: {
 			totalElements: elements.length,
 			countByType: byType,
-			textElementCount:
-				byType.text ?? 0,
-			arrowElementCount:
-				(byType.arrow ?? 0) + (byType.line ?? 0),
+			textElementCount: byType.text ?? 0,
+			arrowElementCount: (byType.arrow ?? 0) + (byType.line ?? 0),
 			hasFiles:
 				Boolean(doc.files) &&
 				typeof doc.files === "object" &&
@@ -1090,7 +1274,10 @@ export async function listCanvasCheckpointsForAgent({
 	}
 }
 
-function collectClusterElementIds(rootId: string, elements: SceneElement[]): string[] {
+function collectClusterElementIds(
+	rootId: string,
+	elements: SceneElement[],
+): string[] {
 	const allById = new Map<string, SceneElement>()
 	for (const el of elements) {
 		if (typeof el.id === "string" && el.id.trim().length > 0) {
@@ -1167,7 +1354,10 @@ export async function autoArrangeCanvasForAgent({
 
 	const rootCandidates = elements.filter((el) => {
 		if (typeof el.id !== "string" || el.id.trim().length === 0) return false
-		if (typeof el.containerId === "string" && el.containerId.trim().length > 0) {
+		if (
+			typeof el.containerId === "string" &&
+			el.containerId.trim().length > 0
+		) {
 			return false
 		}
 		const type = typeof el.type === "string" ? el.type : ""
@@ -1206,12 +1396,11 @@ export async function autoArrangeCanvasForAgent({
 				sortKeyX: bounds.minX,
 			}
 		})
-		.filter(
-			(item): item is NonNullable<typeof item> =>
-				item !== null,
-		)
+		.filter((item): item is NonNullable<typeof item> => item !== null)
 		.sort((a, b) =>
-			a.sortKeyY === b.sortKeyY ? a.sortKeyX - b.sortKeyX : a.sortKeyY - b.sortKeyY,
+			a.sortKeyY === b.sortKeyY
+				? a.sortKeyX - b.sortKeyX
+				: a.sortKeyY - b.sortKeyY,
 		)
 
 	const colCount = Math.max(1, Math.min(12, Math.floor(columns || 3)))
@@ -1233,7 +1422,11 @@ export async function autoArrangeCanvasForAgent({
 	const rowOffsets = new Map<number, number>()
 	const colOffsets = new Map<number, number>()
 	let runningY = safePadding
-	for (let row = 0; row <= Math.floor((clusters.length - 1) / colCount); row += 1) {
+	for (
+		let row = 0;
+		row <= Math.floor((clusters.length - 1) / colCount);
+		row += 1
+	) {
 		rowOffsets.set(row, runningY)
 		runningY += (rowHeights.get(row) ?? 0) + safeGapY
 	}
@@ -1349,152 +1542,213 @@ export async function createMindmapCanvasForAgent({
 	}
 
 	const ops: Record<string, unknown>[] = []
-	const centerW = 280
-	const centerH = 90
-	const cx = 760
-	const cy = 520
-	const centerX = cx - centerW / 2
-	const centerY = cy - centerH / 2
-	ops.push(
-		makeRectangleElement({
-			x: centerX,
-			y: centerY,
-			width: centerW,
-			height: centerH,
-			backgroundColor: "#0f172a",
-			strokeColor: "#38bdf8",
-		}),
+
+	// Layout constants
+	const cx = 600
+	const cy = 500
+	const centerW = 240
+	const centerH = 80
+	const branchRadius = 320
+	const branchW = 200
+	const branchH = 60
+	const childW = 180
+	const childH = 50
+	const childGapY = 16
+	const childOffset = 160
+
+	// Pre-generate IDs
+	const centerId = makeElementId("mm_c")
+	const branchIds = normalizedBranches.map((_, i) =>
+		makeElementId(`mm_b${i}`),
 	)
-	const cText = centerTextInBox({
-		boxX: centerX,
-		boxY: centerY,
-		boxW: centerW,
-		boxH: centerH,
-		text: centerLabel,
-		fontSize: 24,
-	})
-	ops.push(
-		makeTextElement({
-			x: cText.x,
-			y: cText.y,
-			width: cText.width,
-			height: cText.height,
-			text: centerLabel,
-			fontSize: 24,
-		}),
+	const branchArrowIds = normalizedBranches.map((_, i) =>
+		makeElementId(`mm_a${i}`),
+	)
+	const childIds = normalizedBranches.map((branch, i) =>
+		branch.children.map((_, j) => makeElementId(`mm_ch${i}_${j}`)),
+	)
+	const childArrowIds = normalizedBranches.map((branch, i) =>
+		branch.children.map((_, j) => makeElementId(`mm_ca${i}_${j}`)),
 	)
 
-	const radiusX = 420
-	const radiusY = 300
+	const pastelColors = [
+		"#a5d8ff",
+		"#b2f2bb",
+		"#ffd8a8",
+		"#d0bfff",
+		"#ffc9c9",
+		"#fff3bf",
+		"#c3fae8",
+		"#eebefa",
+	]
+
+	// Center node — bound to all branch arrows
+	const centerBound = branchArrowIds.map((aid) => ({ id: aid, type: "arrow" }))
+	ops.push({
+		type: "rectangle",
+		id: centerId,
+		x: cx - centerW / 2,
+		y: cy - centerH / 2,
+		width: centerW,
+		height: centerH,
+		roundness: { type: 3 },
+		backgroundColor: "#a5d8ff",
+		fillStyle: "solid",
+		strokeColor: "#1e1e1e",
+		label: { text: centerLabel, fontSize: 22 },
+		boundElements: centerBound,
+	})
+
 	const total = normalizedBranches.length
 	normalizedBranches.forEach((branch, index) => {
-		const angle = (-Math.PI / 2) + (2 * Math.PI * index) / total
-		const bx = cx + Math.cos(angle) * radiusX
-		const by = cy + Math.sin(angle) * radiusY
-		const branchW = 240
-		const branchH = 70
-		const boxX = bx - branchW / 2
-		const boxY = by - branchH / 2
+		const angle = -Math.PI / 2 + (2 * Math.PI * index) / total
+		const bx = cx + Math.cos(angle) * branchRadius
+		const by = cy + Math.sin(angle) * branchRadius
+		const fp = angleToFixedPoints(angle)
 
-		ops.push(
-			makeArrowElement({
-				x: cx,
-				y: cy,
-				dx: bx - cx,
-				dy: by - cy,
-				strokeColor: "#475569",
-			}),
-		)
-		ops.push(
-			makeRectangleElement({
-				x: boxX,
-				y: boxY,
-				width: branchW,
-				height: branchH,
-				backgroundColor: "#111827",
-				strokeColor: "#a78bfa",
-			}),
-		)
-		const bText = centerTextInBox({
-			boxX,
-			boxY,
-			boxW: branchW,
-			boxH: branchH,
-			text: branch.label,
-			fontSize: 18,
+		const branchNodeId = branchIds[index]!
+		const branchArrId = branchArrowIds[index]!
+
+		// Branch node bound elements: incoming arrow + child arrows
+		const branchBound: { id: string; type: string }[] = [
+			{ id: branchArrId, type: "arrow" },
+		]
+		for (const caid of childArrowIds[index]!) {
+			branchBound.push({ id: caid, type: "arrow" })
+		}
+
+		// Arrow: center → branch (with fixedPoint bindings)
+		const dx = bx - cx
+		const dy = by - cy
+		ops.push({
+			type: "arrow",
+			id: branchArrId,
+			x: cx,
+			y: cy,
+			width: Math.abs(dx) || 1,
+			height: Math.abs(dy) || 1,
+			points: [
+				[0, 0],
+				[dx, dy],
+			],
+			endArrowhead: "arrow",
+			startArrowhead: null,
+			startBinding: {
+				elementId: centerId,
+				focus: 0,
+				gap: 1,
+				fixedPoint: fp.start,
+			},
+			endBinding: {
+				elementId: branchNodeId,
+				focus: 0,
+				gap: 1,
+				fixedPoint: fp.end,
+			},
 		})
-		ops.push(
-			makeTextElement({
-				x: bText.x,
-				y: bText.y,
-				width: bText.width,
-				height: bText.height,
-				text: branch.label,
-				fontSize: 18,
-			}),
-		)
 
+		// Branch node (with label)
+		ops.push({
+			type: "rectangle",
+			id: branchNodeId,
+			x: bx - branchW / 2,
+			y: by - branchH / 2,
+			width: branchW,
+			height: branchH,
+			roundness: { type: 3 },
+			backgroundColor: pastelColors[index % pastelColors.length],
+			fillStyle: "solid",
+			strokeColor: "#1e1e1e",
+			label: { text: branch.label, fontSize: 18 },
+			boundElements: branchBound,
+		})
+
+		// Children
 		if (branch.children.length > 0) {
 			const side = Math.cos(angle) >= 0 ? 1 : -1
-			const childW = 210
-			const childH = 56
-			const childGap = 18
-			const startY = by - ((branch.children.length * (childH + childGap) - childGap) / 2)
-			const childColumnX = side > 0 ? boxX + branchW + 140 : boxX - 140 - childW
+			const totalChildH =
+				branch.children.length * (childH + childGapY) - childGapY
+			const startChildY = by - totalChildH / 2
+			const childColumnX =
+				side > 0
+					? bx + branchW / 2 + childOffset
+					: bx - branchW / 2 - childOffset - childW
 
-			branch.children.forEach((child, childIndex) => {
-				const childY = startY + childIndex * (childH + childGap)
-				const anchorX = side > 0 ? boxX + branchW : boxX
-				const anchorY = by
-				const targetX = side > 0 ? childColumnX : childColumnX + childW
-				const targetY = childY + childH / 2
-				ops.push(
-					makeArrowElement({
-						x: anchorX,
-						y: anchorY,
-						dx: targetX - anchorX,
-						dy: targetY - anchorY,
-						strokeColor: "#64748b",
-					}),
-				)
-				ops.push(
-					makeRectangleElement({
-						x: childColumnX,
-						y: childY,
-						width: childW,
-						height: childH,
-						backgroundColor: "#0b1220",
-						strokeColor: "#94a3b8",
-					}),
-				)
-				const childTextBox = centerTextInBox({
-					boxX: childColumnX,
-					boxY: childY,
-					boxW: childW,
-					boxH: childH,
-					text: child,
-					fontSize: 16,
+			branch.children.forEach((child, j) => {
+				const childY = startChildY + j * (childH + childGapY)
+				const cNodeId = childIds[index]![j]!
+				const cArrId = childArrowIds[index]![j]!
+				const childCenterX = childColumnX + childW / 2
+				const childCenterY = childY + childH / 2
+				const cdx = childCenterX - bx
+				const cdy = childCenterY - by
+				const childFp =
+					side > 0
+						? {
+								start: [1, 0.5] as [number, number],
+								end: [0, 0.5] as [number, number],
+							}
+						: {
+								start: [0, 0.5] as [number, number],
+								end: [1, 0.5] as [number, number],
+							}
+
+				// Arrow: branch → child
+				ops.push({
+					type: "arrow",
+					id: cArrId,
+					x: bx,
+					y: by,
+					width: Math.abs(cdx) || 1,
+					height: Math.abs(cdy) || 1,
+					points: [
+						[0, 0],
+						[cdx, cdy],
+					],
+					endArrowhead: "arrow",
+					startArrowhead: null,
+					startBinding: {
+						elementId: branchNodeId,
+						focus: 0,
+						gap: 1,
+						fixedPoint: childFp.start,
+					},
+					endBinding: {
+						elementId: cNodeId,
+						focus: 0,
+						gap: 1,
+						fixedPoint: childFp.end,
+					},
 				})
-				ops.push(
-					makeTextElement({
-						x: childTextBox.x,
-						y: childTextBox.y,
-						width: childTextBox.width,
-						height: childTextBox.height,
-						text: child,
-						fontSize: 16,
-					}),
-				)
+
+				// Child node
+				ops.push({
+					type: "rectangle",
+					id: cNodeId,
+					x: childColumnX,
+					y: childY,
+					width: childW,
+					height: childH,
+					roundness: { type: 3 },
+					backgroundColor: "#f8f9fa",
+					fillStyle: "solid",
+					strokeColor: "#868e96",
+					label: { text: child, fontSize: 16 },
+					boundElements: [{ id: cArrId, type: "arrow" }],
+				})
 			})
 		}
 	})
 
+	// Camera (4:3 aspect ratio)
+	const cameraW = 1200
+	const cameraH = 900
 	ops.push({
 		type: "cameraUpdate",
-		x: 60,
-		y: 120,
-		width: 1400,
-		height: 900,
+		x: cx - cameraW / 2,
+		y: cy - cameraH / 2,
+		width: cameraW,
+		height: cameraH,
 	})
 
 	const result = await applyCanvasCreateViewWithRetry({
@@ -1540,97 +1794,163 @@ export async function createFlowchartCanvasForAgent({
 	}
 
 	const ops: Record<string, unknown>[] = []
-	const startX = 280
-	const startY = 180
-	const boxW = 300
-	const boxH = 88
-	const gap = 80
 	const isVertical = direction !== "horizontal"
+	const boxW = 260
+	const boxH = 80
+	const stepSpacing = isVertical ? boxH + 60 : boxW + 80
+	const startX = 300
+	const startY = title?.trim() ? 200 : 140
 
-	if (title && title.trim().length > 0) {
-		ops.push(
-			makeTextElement({
-				x: startX,
-				y: 60,
-				width: 760,
-				height: 42,
-				text: title.trim(),
-				fontSize: 28,
-			}),
-		)
+	const shapeIds = normalizedSteps.map((_, i) => makeElementId(`fc_${i}`))
+	const arrowIds = normalizedSteps
+		.slice(0, -1)
+		.map((_, i) => makeElementId(`fc_a${i}`))
+
+	const pastelColors = [
+		"#a5d8ff",
+		"#b2f2bb",
+		"#ffd8a8",
+		"#d0bfff",
+		"#ffc9c9",
+		"#fff3bf",
+		"#c3fae8",
+		"#eebefa",
+	]
+
+	// Title
+	if (title?.trim()) {
+		ops.push({
+			type: "text",
+			id: makeElementId("fc_title"),
+			x: startX,
+			y: startY - 60,
+			width: boxW,
+			height: 36,
+			text: title.trim(),
+			originalText: title.trim(),
+			fontSize: 24,
+			fontFamily: 1,
+			textAlign: "center",
+			verticalAlign: "middle",
+			lineHeight: 1.25,
+			autoResize: true,
+		})
 	}
 
-	type NodeAnchor = { x: number; y: number; boxX: number; boxY: number }
-	const anchors: NodeAnchor[] = []
+	// Steps — shapes with label (expanded to bound text by applyCanvasCreateView)
+	normalizedSteps.forEach((step, i) => {
+		const boxX = isVertical ? startX : startX + i * stepSpacing
+		const boxY = isVertical ? startY + i * stepSpacing : startY
+		const isDecision =
+			/\b(decisão|decision|if|else|aprovar|approve|validar|validate)\b/i.test(
+				step,
+			)
 
-	normalizedSteps.forEach((step, index) => {
-		const boxX = isVertical ? startX : startX + index * (boxW + gap)
-		const boxY = isVertical ? startY + index * (boxH + gap) : startY
-		const isDecision = /\b(decisão|decision|if|else|aprovar|approve|validar|validate)\b/i.test(
-			step,
-		)
-		ops.push(
-			isDecision
-				? makeDiamondElement({
-						x: boxX,
-						y: boxY,
-						width: boxW,
-						height: boxH,
-						backgroundColor: "#111827",
-						strokeColor: "#f59e0b",
-					})
-				: makeRectangleElement({
-						x: boxX,
-						y: boxY,
-						width: boxW,
-						height: boxH,
-						backgroundColor: index === 0 ? "#0f172a" : "#111827",
-						strokeColor: index === 0 ? "#22d3ee" : "#94a3b8",
-					}),
-		)
-		const textBox = centerTextInBox({
-			boxX,
-			boxY,
-			boxW,
-			boxH,
-			text: step,
-			fontSize: 18,
-		})
-		ops.push(
-			makeTextElement({
-				x: textBox.x,
-				y: textBox.y,
-				width: textBox.width,
-				height: textBox.height,
-				text: step,
-				fontSize: 18,
-			}),
-		)
-		anchors.push({
-			x: boxX + boxW / 2,
-			y: boxY + boxH / 2,
-			boxX,
-			boxY,
+		// Arrow bindings for this shape
+		const shapeBound: { id: string; type: string }[] = []
+		if (i > 0) shapeBound.push({ id: arrowIds[i - 1]!, type: "arrow" })
+		if (i < arrowIds.length)
+			shapeBound.push({ id: arrowIds[i]!, type: "arrow" })
+
+		ops.push({
+			type: isDecision ? "diamond" : "rectangle",
+			id: shapeIds[i],
+			x: boxX,
+			y: boxY,
+			width: boxW,
+			height: boxH,
+			roundness: isDecision ? null : { type: 3 },
+			backgroundColor: pastelColors[i % pastelColors.length],
+			fillStyle: "solid",
+			strokeColor: "#1e1e1e",
+			label: { text: step, fontSize: 18 },
+			boundElements: shapeBound,
 		})
 	})
 
-	for (let i = 0; i < anchors.length - 1; i += 1) {
-		const from = anchors[i]!
-		const to = anchors[i + 1]!
-		ops.push(
-			makeArrowElement({
-				x: from.x,
-				y: from.y,
-				dx: to.x - from.x,
-				dy: to.y - from.y,
-				strokeColor: "#64748b",
-			}),
-		)
+	// Arrows between consecutive steps with fixedPoint bindings
+	for (let i = 0; i < normalizedSteps.length - 1; i++) {
+		if (isVertical) {
+			const ax = startX + boxW / 2
+			const ay = startY + i * stepSpacing + boxH
+			const ady = stepSpacing - boxH
+			ops.push({
+				type: "arrow",
+				id: arrowIds[i],
+				x: ax,
+				y: ay,
+				width: 1,
+				height: ady,
+				points: [
+					[0, 0],
+					[0, ady],
+				],
+				endArrowhead: "arrow",
+				startArrowhead: null,
+				startBinding: {
+					elementId: shapeIds[i]!,
+					focus: 0,
+					gap: 1,
+					fixedPoint: [0.5, 1],
+				},
+				endBinding: {
+					elementId: shapeIds[i + 1]!,
+					focus: 0,
+					gap: 1,
+					fixedPoint: [0.5, 0],
+				},
+			})
+		} else {
+			const ax = startX + i * stepSpacing + boxW
+			const ay = startY + boxH / 2
+			const adx = stepSpacing - boxW
+			ops.push({
+				type: "arrow",
+				id: arrowIds[i],
+				x: ax,
+				y: ay,
+				width: adx,
+				height: 1,
+				points: [
+					[0, 0],
+					[adx, 0],
+				],
+				endArrowhead: "arrow",
+				startArrowhead: null,
+				startBinding: {
+					elementId: shapeIds[i]!,
+					focus: 0,
+					gap: 1,
+					fixedPoint: [1, 0.5],
+				},
+				endBinding: {
+					elementId: shapeIds[i + 1]!,
+					focus: 0,
+					gap: 1,
+					fixedPoint: [0, 0.5],
+				},
+			})
+		}
 	}
 
-	const width = isVertical ? 1000 : Math.max(1200, startX + normalizedSteps.length * (boxW + gap))
-	const height = isVertical ? Math.max(900, startY + normalizedSteps.length * (boxH + gap)) : 720
-	ops.push({ type: "cameraUpdate", x: 80, y: 40, width, height })
+	// Camera (4:3 aspect ratio)
+	const totalSteps = normalizedSteps.length
+	let cameraW: number
+	let cameraH: number
+	if (isVertical) {
+		cameraH = Math.max(600, startY + totalSteps * stepSpacing + 60)
+		cameraW = Math.round(cameraH * (4 / 3))
+	} else {
+		cameraW = Math.max(800, startX + totalSteps * stepSpacing + 60)
+		cameraH = Math.round(cameraW * (3 / 4))
+	}
+	ops.push({
+		type: "cameraUpdate",
+		x: startX - (cameraW - boxW) / 2,
+		y: startY - 80,
+		width: cameraW,
+		height: cameraH,
+	})
 
 	const result = await applyCanvasCreateView({
 		client,
@@ -1677,7 +1997,9 @@ export async function summarizeCanvasSceneForAgent({
 	const inferredKind = (() => {
 		if (
 			scene.stats.arrowElementCount >= 2 &&
-			/\b(start|end|process|step|aprovar|validar|fluxo|workflow)\b/i.test(textCorpus)
+			/\b(start|end|process|step|aprovar|validar|fluxo|workflow)\b/i.test(
+				textCorpus,
+			)
 		) {
 			return "flowchart/workflow"
 		}
@@ -1687,7 +2009,11 @@ export async function summarizeCanvasSceneForAgent({
 		) {
 			return "mindmap"
 		}
-		if ((scene.stats.countByType.rectangle ?? 0) + (scene.stats.countByType.diamond ?? 0) >= 3) {
+		if (
+			(scene.stats.countByType.rectangle ?? 0) +
+				(scene.stats.countByType.diamond ?? 0) >=
+			3
+		) {
 			return "diagram"
 		}
 		return "freeform canvas"

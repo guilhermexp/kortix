@@ -1,8 +1,8 @@
+import { createClient } from "@supabase/supabase-js"
 import type { Server as HTTPServer } from "http"
 import { Server, type Server as SocketIOServer } from "socket.io"
-import { createClient } from "@supabase/supabase-js"
-import { extractAccessToken } from "../session"
 import { env } from "../env"
+import { extractAccessToken } from "../session"
 import { parseCookies } from "../utils/cookies"
 
 interface User {
@@ -29,24 +29,28 @@ export function emitCanvasElementsChanged(
 		return
 	}
 	if (!canvasId || !Array.isArray(payload.elements)) {
-		console.warn("[Canvas WS] Invalid emit args:", { canvasId, elementsIsArray: Array.isArray(payload.elements) })
+		console.warn("[Canvas WS] Invalid emit args:", {
+			canvasId,
+			elementsIsArray: Array.isArray(payload.elements),
+		})
 		return
 	}
 	const roomId = `canvas_${canvasId}`
 	const room = canvasIo.sockets.adapter.rooms.get(roomId)
 	const socketCount = room?.size ?? 0
-	console.log(`[Canvas WS] Emitting elements-changed to ${roomId} (${socketCount} sockets, ${payload.elements.length} elements, v${payload.version})`)
+	console.log(
+		`[Canvas WS] Emitting elements-changed to ${roomId} (${socketCount} sockets, ${payload.elements.length} elements, v${payload.version})`,
+	)
 	canvasIo.to(roomId).emit("elements-changed", payload)
 }
 
 export function setupCanvasCollaboration(httpServer: HTTPServer) {
 	const io = new Server(httpServer, {
 		cors: {
-			origin:
-				process.env.ALLOWED_ORIGINS?.split(",") || [
-					"http://localhost:3000",
-					"http://localhost:3001",
-				],
+			origin: process.env.ALLOWED_ORIGINS?.split(",") || [
+				"http://localhost:3000",
+				"http://localhost:3001",
+			],
 			credentials: true,
 		},
 	})
@@ -55,16 +59,13 @@ export function setupCanvasCollaboration(httpServer: HTTPServer) {
 	// Authentication middleware - verify JWT before allowing connection
 	io.use(async (socket, next) => {
 		try {
-			const cookies = parseCookies(
-				socket.handshake.headers.cookie ?? "",
-			)
+			const cookies = parseCookies(socket.handshake.headers.cookie ?? "")
 			const accessToken = extractAccessToken(
 				new Request("http://localhost", {
 					headers: {
-						authorization:
-							socket.handshake.auth?.token
-								? `Bearer ${socket.handshake.auth.token}`
-								: "",
+						authorization: socket.handshake.auth?.token
+							? `Bearer ${socket.handshake.auth.token}`
+							: "",
 						cookie: socket.handshake.headers.cookie ?? "",
 					},
 				}),
@@ -76,18 +77,14 @@ export function setupCanvasCollaboration(httpServer: HTTPServer) {
 			}
 
 			// Verify the token with Supabase
-			const supabase = createClient(
-				env.SUPABASE_URL,
-				env.SUPABASE_ANON_KEY,
-				{
-					auth: { persistSession: false },
-					global: {
-						headers: {
-							Authorization: `Bearer ${accessToken}`,
-						},
+			const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+				auth: { persistSession: false },
+				global: {
+					headers: {
+						Authorization: `Bearer ${accessToken}`,
 					},
 				},
-			)
+			})
 
 			const {
 				data: { user },
@@ -123,18 +120,14 @@ export function setupCanvasCollaboration(httpServer: HTTPServer) {
 				const authenticatedUserId = socket.data.userId
 
 				// Verify user has access to this canvas
-				const supabase = createClient(
-					env.SUPABASE_URL,
-					env.SUPABASE_ANON_KEY,
-					{
-						auth: { persistSession: false },
-						global: {
-							headers: {
-								Authorization: `Bearer ${socket.data.accessToken}`,
-							},
+				const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+					auth: { persistSession: false },
+					global: {
+						headers: {
+							Authorization: `Bearer ${socket.data.accessToken}`,
 						},
 					},
-				)
+				})
 
 				const { data: canvas, error: canvasError } = await supabase
 					.from("canvases")
@@ -144,7 +137,9 @@ export function setupCanvasCollaboration(httpServer: HTTPServer) {
 					.maybeSingle()
 
 				if (canvasError || !canvas) {
-					return socket.emit("error", { message: "Canvas not found or access denied" })
+					return socket.emit("error", {
+						message: "Canvas not found or access denied",
+					})
 				}
 
 				const roomId = `canvas_${canvasId}`
@@ -174,18 +169,13 @@ export function setupCanvasCollaboration(httpServer: HTTPServer) {
 				)
 				socket.emit("room-users", users)
 
-				console.log(
-					`User ${authenticatedUserId} joined canvas ${canvasId}`,
-				)
+				console.log(`User ${authenticatedUserId} joined canvas ${canvasId}`)
 			},
 		)
 
 		socket.on(
 			"cursor-move",
-			(data: {
-				canvasId: string
-				cursor: { x: number; y: number }
-			}) => {
+			(data: { canvasId: string; cursor: { x: number; y: number } }) => {
 				if (
 					!data ||
 					typeof data.canvasId !== "string" ||
@@ -218,24 +208,21 @@ export function setupCanvasCollaboration(httpServer: HTTPServer) {
 			},
 		)
 
-		socket.on(
-			"leave-canvas",
-			({ canvasId }: { canvasId: string }) => {
-				if (!canvasId || typeof canvasId !== "string") return
-				const userId = socket.data.userId
-				const roomId = `canvas_${canvasId}`
-				const room = rooms.get(roomId)
-				if (room) {
-					room.delete(userId)
-					if (room.size === 0) {
-						rooms.delete(roomId)
-					}
+		socket.on("leave-canvas", ({ canvasId }: { canvasId: string }) => {
+			if (!canvasId || typeof canvasId !== "string") return
+			const userId = socket.data.userId
+			const roomId = `canvas_${canvasId}`
+			const room = rooms.get(roomId)
+			if (room) {
+				room.delete(userId)
+				if (room.size === 0) {
+					rooms.delete(roomId)
 				}
-				socket.leave(roomId)
-				socket.to(roomId).emit("user-left", userId)
-				console.log(`User ${userId} left canvas ${canvasId}`)
-			},
-		)
+			}
+			socket.leave(roomId)
+			socket.to(roomId).emit("user-left", userId)
+			console.log(`User ${userId} left canvas ${canvasId}`)
+		})
 
 		socket.on("disconnect", () => {
 			console.log("Client disconnected:", socket.id)

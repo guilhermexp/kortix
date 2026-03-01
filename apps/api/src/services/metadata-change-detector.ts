@@ -132,9 +132,7 @@ const DEFAULT_OPTIONS: Required<Omit<ChangeDetectionOptions, "autoReindex">> = {
 /**
  * Service for detecting metadata changes and triggering reindexing
  */
-export class MetadataChangeDetector
-	implements MetadataChangeDetectorService
-{
+export class MetadataChangeDetector implements MetadataChangeDetectorService {
 	private readonly defaultOptions: Required<
 		Omit<ChangeDetectionOptions, "autoReindex">
 	>

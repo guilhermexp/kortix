@@ -3,7 +3,8 @@ import { z } from "zod"
 import { ErrorHandler } from "../services/error-handler"
 import { EventStorageService } from "../services/event-storage"
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const UUID_RE =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function validateConversationId(conversationId: unknown): string {
 	if (!conversationId || typeof conversationId !== "string") {

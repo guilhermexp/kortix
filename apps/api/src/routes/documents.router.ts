@@ -23,19 +23,23 @@ import {
 	cancelDocument,
 	checkUrlExists,
 	createBundle,
+	deleteDocumentAttachment,
 	DocumentsByIdsSchema,
 	deleteDocument,
 	ensureSpace,
 	findDocumentRelatedLinks,
 	getDocument,
+	getDocumentAttachment,
 	getDocumentChildren,
 	getDocumentStatus,
 	getQueueMetrics,
+	listDocumentAttachments,
 	listDocuments,
 	listDocumentsWithMemories,
 	listDocumentsWithMemoriesByIds,
 	migrateMcpDocuments,
 	updateDocument,
+	uploadDocumentAttachment,
 } from "./documents"
 
 export const documentsRouter = new Hono<{
@@ -141,9 +145,7 @@ documentsRouter.post("/", zValidator("json", MemoryCreateSchema), async (c) => {
 // Batch add documents (e.g. Twitter bookmarks import)
 const BatchDocumentsSchema = z.object({
 	documents: z.array(MemoryCreateSchema).min(1).max(100),
-	metadata: z
-		.record(z.string(), z.unknown())
-		.optional(),
+	metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 documentsRouter.post(
@@ -570,7 +572,11 @@ documentsRouter.get("/:id/children", async (c) => {
 	const supabase = createClientForSession(c.var.session)
 
 	try {
-		const children = await getDocumentChildren(supabase, organizationId, parentId)
+		const children = await getDocumentChildren(
+			supabase,
+			organizationId,
+			parentId,
+		)
 		return c.json({ children })
 	} catch (error) {
 		console.error("Failed to fetch document children", error)
@@ -578,9 +584,7 @@ documentsRouter.get("/:id/children", async (c) => {
 			{
 				error: {
 					message:
-						error instanceof Error
-							? error.message
-							: "Failed to fetch children",
+						error instanceof Error ? error.message : "Failed to fetch children",
 				},
 			},
 			500,
@@ -750,6 +754,125 @@ documentsRouter.post("/:id/related-links", async (c) => {
 	}
 })
 
+// --- Document Attachments ---
+
+// Upload attachment
+documentsRouter.post("/:id/attachments", async (c) => {
+	const { organizationId, internalUserId } = c.var.session
+	const documentId = c.req.param("id")
+	const supabase = createClientForSession(c.var.session)
+
+	try {
+		const body = await c.req.parseBody()
+		const file = body.file
+
+		if (!file || !(file instanceof File)) {
+			return c.json({ error: { message: "No file uploaded" } }, 400)
+		}
+
+		const MAX_SIZE_BYTES = 50 * 1024 * 1024 // 50MB
+		if (file.size > MAX_SIZE_BYTES) {
+			return c.json({ error: { message: "File too large (max 50MB)" } }, 413)
+		}
+
+		const attachment = await uploadDocumentAttachment(supabase, {
+			organizationId,
+			userId: internalUserId,
+			documentId,
+			file,
+		})
+		return c.json(attachment, 201)
+	} catch (error) {
+		const statusCode = (error as any)?.status ?? 500
+		console.error("Failed to upload attachment", error)
+		return c.json(
+			{
+				error: {
+					message:
+						error instanceof Error
+							? error.message
+							: "Failed to upload attachment",
+				},
+			},
+			statusCode,
+		)
+	}
+})
+
+// List attachments
+documentsRouter.get("/:id/attachments", async (c) => {
+	const { organizationId } = c.var.session
+	const documentId = c.req.param("id")
+	const supabase = createClientForSession(c.var.session)
+
+	try {
+		const attachments = await listDocumentAttachments(
+			supabase,
+			organizationId,
+			documentId,
+		)
+		return c.json({ attachments })
+	} catch (error) {
+		console.error("Failed to list attachments", error)
+		return c.json(
+			{ error: { message: "Failed to list attachments" } },
+			500,
+		)
+	}
+})
+
+// Get single attachment (with download URL)
+documentsRouter.get("/:id/attachments/:attachmentId", async (c) => {
+	const { organizationId } = c.var.session
+	const documentId = c.req.param("id")
+	const attachmentId = c.req.param("attachmentId")
+	const supabase = createClientForSession(c.var.session)
+
+	try {
+		const attachment = await getDocumentAttachment(
+			supabase,
+			organizationId,
+			documentId,
+			attachmentId,
+		)
+		if (!attachment) {
+			return c.json({ error: { message: "Attachment not found" } }, 404)
+		}
+		return c.json(attachment)
+	} catch (error) {
+		console.error("Failed to get attachment", error)
+		return c.json(
+			{ error: { message: "Failed to get attachment" } },
+			500,
+		)
+	}
+})
+
+// Delete attachment
+documentsRouter.delete("/:id/attachments/:attachmentId", async (c) => {
+	const { organizationId } = c.var.session
+	const documentId = c.req.param("id")
+	const attachmentId = c.req.param("attachmentId")
+	const supabase = createClientForSession(c.var.session)
+
+	try {
+		await deleteDocumentAttachment(
+			supabase,
+			organizationId,
+			documentId,
+			attachmentId,
+		)
+		return c.body(null, 204)
+	} catch (error) {
+		const statusCode = (error as any)?.status ?? 500
+		console.error("Failed to delete attachment", error)
+		return c.json(
+			{ error: { message: "Failed to delete attachment" } },
+			statusCode,
+		)
+	}
+})
+
 // Delete document
 documentsRouter.delete("/:id", async (c) => {
 	const { organizationId } = c.var.session
@@ -774,4 +897,3 @@ documentsRouter.delete("/:id", async (c) => {
 		return c.json({ error: { message: "Failed to delete document" } }, 400)
 	}
 })
-

@@ -1,8 +1,4 @@
-import {
-	DOMAINS,
-	ELEMENT_IDS,
-	MESSAGE_TYPES,
-} from "../../utils/constants"
+import { DOMAINS, ELEMENT_IDS, MESSAGE_TYPES } from "../../utils/constants"
 import { createTwitterImportButton, DOMUtils } from "../../utils/ui-components"
 
 export function initializeTwitter() {

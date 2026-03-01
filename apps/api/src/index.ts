@@ -51,8 +51,8 @@ console.warn = (...args: unknown[]) => {
 	if (level >= 2) originalWarn(...args)
 }
 
-import { serve } from "@hono/node-server"
 import { createServer } from "node:http"
+import { serve } from "@hono/node-server"
 import { zValidator } from "@hono/zod-validator"
 import { Hono } from "hono"
 import { cors } from "hono/cors"
@@ -96,8 +96,8 @@ import {
 	startDocumentTimeoutMonitor,
 	stopDocumentTimeoutMonitor,
 } from "./services/document-timeout-monitor"
-import { setupCanvasCollaboration } from "./socket/canvas-collaboration"
 import type { SessionContext } from "./session"
+import { setupCanvasCollaboration } from "./socket/canvas-collaboration"
 
 const app = new Hono<{ Variables: { session: SessionContext } }>()
 
@@ -258,10 +258,14 @@ app.get("/debug/agent", async (c) => {
 
 	// Check node availability
 	try {
-		const nodeVersion = execSync("node --version", { timeout: 5000 }).toString().trim()
+		const nodeVersion = execSync("node --version", { timeout: 5000 })
+			.toString()
+			.trim()
 		checks.nodeAvailable = true
 		checks.nodeVersion = nodeVersion
-		checks.nodePath = execSync("which node", { timeout: 5000 }).toString().trim()
+		checks.nodePath = execSync("which node", { timeout: 5000 })
+			.toString()
+			.trim()
 	} catch (e) {
 		checks.nodeAvailable = false
 		checks.nodeError = e instanceof Error ? e.message : String(e)
@@ -269,7 +273,9 @@ app.get("/debug/agent", async (c) => {
 
 	// Check bun availability
 	try {
-		checks.bunVersion = execSync("bun --version", { timeout: 5000 }).toString().trim()
+		checks.bunVersion = execSync("bun --version", { timeout: 5000 })
+			.toString()
+			.trim()
 	} catch {
 		checks.bunVersion = "not available"
 	}
@@ -289,7 +295,10 @@ app.get("/debug/agent", async (c) => {
 		const candidatePaths = Array.from(
 			new Set(
 				candidateBases.map((base) =>
-					resolvePath(base, "node_modules/@anthropic-ai/claude-agent-sdk/cli.js"),
+					resolvePath(
+						base,
+						"node_modules/@anthropic-ai/claude-agent-sdk/cli.js",
+					),
 				),
 			),
 		)
@@ -332,7 +341,9 @@ app.get("/debug/agent", async (c) => {
 			const result = execSync(`node -e "require('${cliPath}')" 2>&1 || true`, {
 				timeout: 5000,
 				env: { ...process.env, CLAUDECODE: undefined },
-			}).toString().trim()
+			})
+				.toString()
+				.trim()
 			checks.cliLoadTest = result || "loaded OK (no output)"
 		}
 	} catch (e) {
@@ -343,7 +354,9 @@ app.get("/debug/agent", async (c) => {
 	if (c.req.query("test") === "true") {
 		try {
 			const { query: sdkQuery } = await import("@anthropic-ai/claude-agent-sdk")
-			const { getDefaultProvider, getProviderConfig } = await import("./config/providers")
+			const { getDefaultProvider, getProviderConfig } = await import(
+				"./config/providers"
+			)
 
 			const providerId = getDefaultProvider()
 			const providerConfig = getProviderConfig(providerId)
@@ -371,7 +384,8 @@ app.get("/debug/agent", async (c) => {
 					permissionMode: "bypassPermissions",
 					allowDangerouslySkipPermissions: true,
 					persistSession: false,
-					systemPrompt: "You are a test. Reply with exactly 'OK' and nothing else.",
+					systemPrompt:
+						"You are a test. Reply with exactly 'OK' and nothing else.",
 					cwd: process.cwd(),
 					stderr: (data: string) => {
 						stderrOutput.push(data.trim())
@@ -380,7 +394,10 @@ app.get("/debug/agent", async (c) => {
 			})
 
 			const timeout = new Promise((_, reject) =>
-				setTimeout(() => reject(new Error("SDK query timed out after 30s")), 30000)
+				setTimeout(
+					() => reject(new Error("SDK query timed out after 30s")),
+					30000,
+				),
 			)
 
 			try {
@@ -397,7 +414,10 @@ app.get("/debug/agent", async (c) => {
 
 			checks.sdkQueryEvents = events.length
 			checks.sdkQueryEventTypes = events
-				.filter((e): e is Record<string, unknown> => !!e && typeof e === "object" && "type" in e)
+				.filter(
+					(e): e is Record<string, unknown> =>
+						!!e && typeof e === "object" && "type" in e,
+				)
 				.map((e) => e.type)
 			checks.sdkStderr = stderrOutput.filter((s) => s.length > 0).slice(0, 10)
 
@@ -406,11 +426,19 @@ app.get("/debug/agent", async (c) => {
 			for (const event of events) {
 				if (event && typeof event === "object" && "type" in event) {
 					const ev = event as Record<string, unknown>
-					if (ev.type === "assistant" && ev.message && typeof ev.message === "object") {
+					if (
+						ev.type === "assistant" &&
+						ev.message &&
+						typeof ev.message === "object"
+					) {
 						const msg = ev.message as Record<string, unknown>
 						if (Array.isArray(msg.content)) {
 							for (const block of msg.content) {
-								if (block && typeof block === "object" && (block as any).type === "text") {
+								if (
+									block &&
+									typeof block === "object" &&
+									(block as any).type === "text"
+								) {
 									textBlocks.push((block as any).text)
 								}
 							}
@@ -420,7 +448,8 @@ app.get("/debug/agent", async (c) => {
 			}
 			checks.sdkQueryText = textBlocks.join("") || null
 		} catch (e) {
-			checks.sdkTestError = e instanceof Error ? `${e.message}\n${e.stack}` : String(e)
+			checks.sdkTestError =
+				e instanceof Error ? `${e.message}\n${e.stack}` : String(e)
 		}
 	}
 
@@ -526,7 +555,6 @@ app.post(
 // MCP Routes
 registerMcpRoutes(app)
 
-
 // ============================================
 // Protected Routes (require auth)
 // ============================================
@@ -603,19 +631,14 @@ const httpServer = createServer((req, res) => {
 				const pump = () => {
 					reader
 						.read()
-						.then(
-							({
-								done,
-								value,
-							}: ReadableStreamReadResult<Uint8Array>) => {
-								if (done) {
-									res.end()
-									return
-								}
-								res.write(value)
-								pump()
-							},
-						)
+						.then(({ done, value }: ReadableStreamReadResult<Uint8Array>) => {
+							if (done) {
+								res.end()
+								return
+							}
+							res.write(value)
+							pump()
+						})
 						.catch((err: unknown) => {
 							console.error("[HTTP] Stream read error:", err)
 							res.end()

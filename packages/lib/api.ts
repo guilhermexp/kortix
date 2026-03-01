@@ -1,12 +1,15 @@
 import { createFetch, createSchema } from "@better-fetch/fetch"
 import { z } from "zod"
 import {
+	CanvasResponseSchema,
 	ConnectionResponseSchema,
+	CreateCanvasSchema,
 	CreateProjectSchema,
 	DeleteProjectResponseSchema,
 	DeleteProjectSchema,
 	DocumentsWithMemoriesQuerySchema,
 	DocumentsWithMemoriesResponseSchema,
+	ListCanvasesResponseSchema,
 	ListMemoriesResponseSchema,
 	ListProjectsResponseSchema,
 	MemoryAddSchema,
@@ -18,11 +21,8 @@ import {
 	SearchResponseSchema,
 	type SearchResult,
 	SettingsRequestSchema,
-	UpdateProjectSchema,
-	CanvasResponseSchema,
-	CreateCanvasSchema,
-	ListCanvasesResponseSchema,
 	UpdateCanvasSchema,
+	UpdateProjectSchema,
 } from "../validation/api"
 import {
 	CreateConnectionResponseSchema,

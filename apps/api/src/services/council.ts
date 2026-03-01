@@ -1,5 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises"
 import { existsSync, readFileSync } from "node:fs"
+import { mkdir, writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { env } from "../env"
 import { openRouterChat } from "./openrouter"
@@ -64,8 +64,7 @@ const DEFAULT_CHAIRMAN_MODEL = "google/gemini-3-pro-preview"
 const TITLE_MODEL = "google/gemini-2.5-flash"
 
 const councilModels = (
-	env.COUNCIL_MODELS
-		?.split(",")
+	env.COUNCIL_MODELS?.split(",")
 		.map((entry) => entry.trim())
 		.filter((entry) => entry.length > 0) ?? DEFAULT_COUNCIL_MODELS
 ).slice(0, 8)
@@ -86,7 +85,10 @@ function nowIso(): string {
 	return new Date().toISOString()
 }
 
-function createConversationRecord(orgId: string, userId: string): CouncilConversation {
+function createConversationRecord(
+	orgId: string,
+	userId: string,
+): CouncilConversation {
 	return {
 		id: crypto.randomUUID(),
 		created_at: nowIso(),
@@ -112,7 +114,9 @@ function hydrateFromDisk() {
 	}
 }
 
-function stripMetadataForStorage(conversation: CouncilConversation): CouncilConversation {
+function stripMetadataForStorage(
+	conversation: CouncilConversation,
+): CouncilConversation {
 	return {
 		...conversation,
 		messages: conversation.messages.map((msg) => {
@@ -153,7 +157,9 @@ async function persistNow() {
 	try {
 		await mkdir(DATA_DIR, { recursive: true })
 		const payload = {
-			conversations: Array.from(conversations.values()).map(stripMetadataForStorage),
+			conversations: Array.from(conversations.values()).map(
+				stripMetadataForStorage,
+			),
 		}
 		await writeFile(DATA_FILE, JSON.stringify(payload, null, 2), "utf-8")
 	} catch (error) {
@@ -234,17 +240,14 @@ async function queryCouncilModel(
 	signal?: AbortSignal,
 ): Promise<string | null> {
 	assertNotAborted(signal)
-	const response = await openRouterChat(
-		[{ role: "user", content: prompt }],
-		{
-			model,
-			temperature: 0.2,
-			maxTokens: 4_096,
-			timeoutMs: 120_000,
-			reasoningEffort: "low",
-			signal,
-		},
-	)
+	const response = await openRouterChat([{ role: "user", content: prompt }], {
+		model,
+		temperature: 0.2,
+		maxTokens: 4_096,
+		timeoutMs: 120_000,
+		reasoningEffort: "low",
+		signal,
+	})
 	assertNotAborted(signal)
 	return response
 }
@@ -282,7 +285,9 @@ export async function runCouncilStage2(
 	}>
 }> {
 	assertNotAborted(signal)
-	const labels = stage1Results.map((_, index) => String.fromCharCode(65 + index))
+	const labels = stage1Results.map((_, index) =>
+		String.fromCharCode(65 + index),
+	)
 	const labelToModel: Record<string, string> = {}
 
 	for (const [index, result] of stage1Results.entries()) {
@@ -336,7 +341,11 @@ export async function runCouncilStage3(
 
 	const chairmanPrompt = `You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question, and then ranked each other's responses.\n\nOriginal Question: ${userQuery}\n\nSTAGE 1 - Individual Responses:\n${stage1Text}\n\nSTAGE 2 - Peer Rankings:\n${stage2Text}\n\nYour task as Chairman is to synthesize all of this information into a single, comprehensive, accurate answer to the user's original question. Consider:\n- The individual responses and their insights\n- The peer rankings and what they reveal about response quality\n- Any patterns of agreement or disagreement\n\nProvide a clear, well-reasoned final answer that represents the council's collective wisdom:`
 
-	const response = await queryCouncilModel(chairmanModel, chairmanPrompt, signal)
+	const response = await queryCouncilModel(
+		chairmanModel,
+		chairmanPrompt,
+		signal,
+	)
 	assertNotAborted(signal)
 	return {
 		model: chairmanModel,
@@ -374,11 +383,8 @@ export async function runCouncilQuery(
 	}
 }> {
 	const stage1 = await runCouncilStage1(query, signal)
-	const { stage2Results, labelToModel, aggregateRankings } = await runCouncilStage2(
-		query,
-		stage1,
-		signal,
-	)
+	const { stage2Results, labelToModel, aggregateRankings } =
+		await runCouncilStage2(query, stage1, signal)
 	const stage3 = await runCouncilStage3(query, stage1, stage2Results, signal)
 
 	return {
@@ -411,7 +417,10 @@ export function cancelCouncilRun(conversationId: string): boolean {
 	return true
 }
 
-export function createCouncilConversation(orgId: string, userId: string): CouncilConversation {
+export function createCouncilConversation(
+	orgId: string,
+	userId: string,
+): CouncilConversation {
 	evictStaleConversations()
 	const conversation = createConversationRecord(orgId, userId)
 	conversations.set(conversation.id, conversation)
@@ -419,7 +428,10 @@ export function createCouncilConversation(orgId: string, userId: string): Counci
 	return structuredClone(conversation)
 }
 
-export function listCouncilConversations(orgId: string, userId: string): Array<{
+export function listCouncilConversations(
+	orgId: string,
+	userId: string,
+): Array<{
 	id: string
 	created_at: string
 	title: string
@@ -429,7 +441,8 @@ export function listCouncilConversations(orgId: string, userId: string): Array<{
 	return Array.from(conversations.values())
 		.filter((c) => c.owner_org_id === orgId && c.owner_user_id === userId)
 		.map((conversation) => {
-			const lastMessage = conversation.messages[conversation.messages.length - 1]
+			const lastMessage =
+				conversation.messages[conversation.messages.length - 1]
 			return {
 				id: conversation.id,
 				created_at: conversation.created_at,
@@ -558,7 +571,9 @@ function handleProcessExit() {
 		const fs = require("node:fs") as typeof import("node:fs")
 		fs.mkdirSync(DATA_DIR, { recursive: true })
 		const payload = {
-			conversations: Array.from(conversations.values()).map(stripMetadataForStorage),
+			conversations: Array.from(conversations.values()).map(
+				stripMetadataForStorage,
+			),
 		}
 		fs.writeFileSync(DATA_FILE, JSON.stringify(payload, null, 2), "utf-8")
 	} catch {

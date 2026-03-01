@@ -1,96 +1,96 @@
 {
-  "prompts": {
-    "summary": {
-      "system": "You are an assistant that summarizes content for the Kortix application. Respond in English.",
-      "format_instruction": "ALWAYS respond in Markdown format with ## HEADERS for each section. Use EXACTLY this format:",
-      "sections": {
-        "executive": "## Executive Summary\n2 to 3 direct sentences about the main topic.",
-        "key_points": "## Key Points\nList 6 to 10 bullets with relevant facts, insights, or arguments. For each cited item (project, tool, company, person, technology, platform, or product), add 2-3 context sentences explaining what it is, key differentiator, and practical usage. Include a Markdown link in the same bullet. If an exact URL is not available in content, include a reliable discovery link (e.g., GitHub Search or official site).",
-        "use_cases": "## Use Cases\nGenerate 3 to 6 bullets with practical applications, scenarios, or use examples."
-      },
-      "context": {
-        "detected_title": "Detected title: {{title}}",
-        "source": "Source: {{url}}"
-      },
-      "footer": "IMPORTANT RULES:\n1. ALWAYS use ## headers to separate each section\n2. DO NOT write everything in a single paragraph\n3. DO NOT include introductory texts like 'Here is the summary'\n4. Be direct and objective\n5. Whenever content mentions project/tool/company/person/platform/product/technology, include a Markdown link in the same bullet\n6. Avoid duplication: do not repeat equivalent bullets or sentences\n\nContent to summarize:\n\n{{content}}"
-    },
-    "deepAnalysis": {
-      "system": "You are an analytical assistant for Kortix that creates structured Markdown summaries. Respond in English. ALWAYS use ## headers to separate sections.",
-      "url_based": {
-        "intro": "Analyze the content from this URL: {{url}}",
-        "format": "Respond in Markdown format using REQUIRED ## headers for each section:",
-        "sections": {
-          "executive": "## Executive Summary\n2-3 direct sentences about the main topic, context, and relevance.",
-          "key_points": "## Key Points\n- List 6-10 bullets with concepts, facts, data, or important insights\n- For each cited item (project, tool, company, person, technology, platform, or product), add 2-3 context sentences explaining what it is, key differentiator, and practical usage\n- Whenever you cite a project, tool, company, person, technology, platform, or product, include a Markdown link in the same bullet\n- If an exact URL is not available in content, include a reliable discovery link (e.g., GitHub Search or official site)",
-          "technologies": "## Technologies and Tools\n- List mentioned languages, frameworks, libraries, or architectures",
-          "use_cases": "## Use Cases\n- List practical applications, scenarios, or use examples",
-          "context_title": "**Title:** {{title}}"
-        },
-        "footer": "**RULES:**\n1. ALWAYS use ## before each section title\n2. NEVER write everything in a single paragraph\n3. NEVER start with 'Here is' or 'Following is the summary'\n4. Be objective and direct\n5. Always include Markdown links for cited items (projects, tools, companies, people, platforms, technologies, products)\n6. Avoid duplicate bullets and sentences"
-      },
-      "text_based": {
-        "intro": "Analyze the content and respond in STRUCTURED Markdown with ## headers for each section:",
-        "sections": {
-          "executive": "## Executive Summary\n2-3 direct sentences about the main topic, context, and relevance.",
-          "key_points": "## Key Points\nList 6-10 bullets with:\n- Core concepts, ideas, or arguments\n- Important facts, data, or statistics\n- Relevant insights or conclusions\n- For each cited item (project, tool, company, person, technology, platform, or product), add 2-3 context sentences explaining what it is, key differentiator, and practical usage\n- Whenever you cite a project, tool, company, person, technology, platform, or product, include a Markdown link in the same bullet\n- If an exact URL is not available in content, include a reliable discovery link (e.g., GitHub Search or official site)",
-          "technologies": "## Technologies and Tools\nIf applicable, list:\n- Programming languages or mentioned frameworks\n- Relevant libraries, APIs, or dependencies\n- Architecture or design patterns",
-          "use_cases": "## Use Cases\nList bullets with practical applications, scenarios, or use examples.\nIf there are no clear cases, write: `- (no use cases identified)`",
-          "additional_context": "## Additional Context\nIf relevant, mention:\n- Cited authors, organizations, or sources (with links)\n- Publication or update date (if available)\n- Target audience or use case"
-        },
-        "context": {
-          "title": "**Title:** {{title}}",
-          "source": "**Source:** {{url}}"
-        },
-        "footer": "**MANDATORY RULES:**\n1. ALWAYS use ## before each section title (## Executive Summary, ## Key Points, etc.)\n2. NEVER write everything in a single paragraph - separate into clear sections\n3. NEVER start with phrases like 'Here is' or 'Following is the summary'\n4. Be objective, analytical, and direct\n5. Always include Markdown links for cited items (projects, tools, companies, people, platforms, technologies, products)\n6. Avoid duplicate bullets and sentences\n\n---\n\nContent to analyze:\n\n{{content}}"
-      }
-    },
-    "youtube": {
-      "intro": "Analyze this YouTube video and create a STRUCTURED summary in English using ## Markdown headers.",
-      "sections": {
-        "executive": "## Executive Summary\nWrite 2-3 sentences about the main topic and general context of the video.",
-        "main_points": "## Main Points\nList 6-10 bullet points with:\n- Important topics discussed\n- Key insights and conclusions\n- Relevant data, statistics, or facts\n- For each cited item (project, tool, company, person, technology, platform, or product), add 2-3 context sentences explaining what it is, key differentiator, and practical usage\n- Whenever you cite a project, tool, company, person, technology, platform, or product, include a Markdown link in the same bullet\n- If an exact URL is not available in content, include a reliable discovery link (e.g., GitHub Search or official site)",
-        "use_cases": "## Use Cases\nIf applicable, list practical applications, scenarios, or use examples mentioned in the video.",
-        "visual_context": "## Visual Context\nIf relevant, describe:\n- Important visual elements (charts, demos, slides)\n- Presenters or people who appear"
-      },
-      "footer": "**RULES:**\n1. ALWAYS use ## before each section title\n2. NEVER write everything in a single paragraph\n3. NEVER start with 'Here is' or 'Following is the summary'\n4. Be objective and detailed\n5. Always include Markdown links for cited items (projects, tools, companies, people, platforms, technologies, products)\n6. Avoid duplicate bullets and sentences"
-    },
-    "fileProcessing": {
-      "image": {
-        "intro": "You are an assistant that describes images for Kortix.",
-        "instructions": "Provide a detailed description of the image, highlight objects, present text (perform OCR), and general context.\nList important insights in bullet points.\nWhenever content mentions a project, tool, company, person, technology, platform, or product, include Markdown links (or a reliable discovery link when an exact URL is unavailable).",
-        "filename": "File name: {{filename}}"
-      },
-      "audio": {
-        "intro": "You are an assistant that analyzes audio files for Kortix.",
-        "instructions": "Generate a detailed summary of the content, including main topics and action points.\nTranscribe important excerpts and identify who speaks when possible.\nWhenever content mentions a project, tool, company, person, technology, platform, or product, include Markdown links (or a reliable discovery link when an exact URL is unavailable).",
-        "filename": "File name: {{filename}}"
-      },
-      "video": {
-        "intro": "You are an assistant that analyzes videos for Kortix.",
-        "instructions": "Describe the video narrative, identify characters, relevant actions, and context.\nAlso provide bullet points with important events and any notable instructions/dialogues.\nWhenever content mentions a project, tool, company, person, technology, platform, or product, include Markdown links (or a reliable discovery link when an exact URL is unavailable).",
-        "filename": "File name: {{filename}}"
-      },
-      "document": {
-        "intro": "You are an assistant that processes documents for Kortix.",
-        "instructions": "Extract the main content in structured Markdown with headings, paragraphs, and lists.\nInclude an initial summary (3-5 sentences) and then highlight key points in bullet points.\nWhenever content mentions a project, tool, company, person, technology, platform, or product, include Markdown links (or a reliable discovery link when an exact URL is unavailable).",
-        "filename": "File name: {{filename}}"
-      }
-    }
-  },
-  "fallbackMessages": {
-    "noUseCases": "- (no use cases identified)",
-    "limitedInfo": "- (limited information to highlight)",
-    "urlAnalysisFailed": "URL-based analysis returned empty, trying text fallback",
-    "youtubeSummaryEmpty": "YouTube video analysis returned empty or very short result"
-  },
-  "sectionHeaders": {
-    "executive": "## Executive Summary",
-    "keyPoints": "## Key Points",
-    "useCases": "## Use Cases",
-    "source": "## Source",
-    "technologies": "## Technologies and Tools",
-    "additionalContext": "## Additional Context",
-    "visualContext": "## Visual Context",
-    "mainPoints": "## Main Points"
-  }
+	"prompts": {
+		"summary": {
+			"system": "You are an assistant that summarizes content for the Kortix application. Respond in English.",
+			"format_instruction": "ALWAYS respond in Markdown format with ## HEADERS for each section. Use EXACTLY this format:",
+			"sections": {
+				"executive": "## Executive Summary\n2 to 3 direct sentences about the main topic.",
+				"key_points": "## Key Points\nList 6 to 10 bullets with relevant facts, insights, or arguments. For each cited item (project, tool, company, person, technology, platform, or product), add 2-3 context sentences explaining what it is, key differentiator, and practical usage. Include a Markdown link in the same bullet. If an exact URL is not available in content, include a reliable discovery link (e.g., GitHub Search or official site).",
+				"use_cases": "## Use Cases\nGenerate 3 to 6 bullets with practical applications, scenarios, or use examples."
+			},
+			"context": {
+				"detected_title": "Detected title: {{title}}",
+				"source": "Source: {{url}}"
+			},
+			"footer": "IMPORTANT RULES:\n1. ALWAYS use ## headers to separate each section\n2. DO NOT write everything in a single paragraph\n3. DO NOT include introductory texts like 'Here is the summary'\n4. Be direct and objective\n5. Whenever content mentions project/tool/company/person/platform/product/technology, include a Markdown link in the same bullet\n6. Avoid duplication: do not repeat equivalent bullets or sentences\n\nContent to summarize:\n\n{{content}}"
+		},
+		"deepAnalysis": {
+			"system": "You are an analytical assistant for Kortix that creates structured Markdown summaries. Respond in English. ALWAYS use ## headers to separate sections.",
+			"url_based": {
+				"intro": "Analyze the content from this URL: {{url}}",
+				"format": "Respond in Markdown format using REQUIRED ## headers for each section:",
+				"sections": {
+					"executive": "## Executive Summary\n2-3 direct sentences about the main topic, context, and relevance.",
+					"key_points": "## Key Points\n- List 6-10 bullets with concepts, facts, data, or important insights\n- For each cited item (project, tool, company, person, technology, platform, or product), add 2-3 context sentences explaining what it is, key differentiator, and practical usage\n- Whenever you cite a project, tool, company, person, technology, platform, or product, include a Markdown link in the same bullet\n- If an exact URL is not available in content, include a reliable discovery link (e.g., GitHub Search or official site)",
+					"technologies": "## Technologies and Tools\n- List mentioned languages, frameworks, libraries, or architectures",
+					"use_cases": "## Use Cases\n- List practical applications, scenarios, or use examples",
+					"context_title": "**Title:** {{title}}"
+				},
+				"footer": "**RULES:**\n1. ALWAYS use ## before each section title\n2. NEVER write everything in a single paragraph\n3. NEVER start with 'Here is' or 'Following is the summary'\n4. Be objective and direct\n5. Always include Markdown links for cited items (projects, tools, companies, people, platforms, technologies, products)\n6. Avoid duplicate bullets and sentences"
+			},
+			"text_based": {
+				"intro": "Analyze the content and respond in STRUCTURED Markdown with ## headers for each section:",
+				"sections": {
+					"executive": "## Executive Summary\n2-3 direct sentences about the main topic, context, and relevance.",
+					"key_points": "## Key Points\nList 6-10 bullets with:\n- Core concepts, ideas, or arguments\n- Important facts, data, or statistics\n- Relevant insights or conclusions\n- For each cited item (project, tool, company, person, technology, platform, or product), add 2-3 context sentences explaining what it is, key differentiator, and practical usage\n- Whenever you cite a project, tool, company, person, technology, platform, or product, include a Markdown link in the same bullet\n- If an exact URL is not available in content, include a reliable discovery link (e.g., GitHub Search or official site)",
+					"technologies": "## Technologies and Tools\nIf applicable, list:\n- Programming languages or mentioned frameworks\n- Relevant libraries, APIs, or dependencies\n- Architecture or design patterns",
+					"use_cases": "## Use Cases\nList bullets with practical applications, scenarios, or use examples.\nIf there are no clear cases, write: `- (no use cases identified)`",
+					"additional_context": "## Additional Context\nIf relevant, mention:\n- Cited authors, organizations, or sources (with links)\n- Publication or update date (if available)\n- Target audience or use case"
+				},
+				"context": {
+					"title": "**Title:** {{title}}",
+					"source": "**Source:** {{url}}"
+				},
+				"footer": "**MANDATORY RULES:**\n1. ALWAYS use ## before each section title (## Executive Summary, ## Key Points, etc.)\n2. NEVER write everything in a single paragraph - separate into clear sections\n3. NEVER start with phrases like 'Here is' or 'Following is the summary'\n4. Be objective, analytical, and direct\n5. Always include Markdown links for cited items (projects, tools, companies, people, platforms, technologies, products)\n6. Avoid duplicate bullets and sentences\n\n---\n\nContent to analyze:\n\n{{content}}"
+			}
+		},
+		"youtube": {
+			"intro": "Analyze this YouTube video and create a STRUCTURED summary in English using ## Markdown headers.",
+			"sections": {
+				"executive": "## Executive Summary\nWrite 2-3 sentences about the main topic and general context of the video.",
+				"main_points": "## Main Points\nList 6-10 bullet points with:\n- Important topics discussed\n- Key insights and conclusions\n- Relevant data, statistics, or facts\n- For each cited item (project, tool, company, person, technology, platform, or product), add 2-3 context sentences explaining what it is, key differentiator, and practical usage\n- Whenever you cite a project, tool, company, person, technology, platform, or product, include a Markdown link in the same bullet\n- If an exact URL is not available in content, include a reliable discovery link (e.g., GitHub Search or official site)",
+				"use_cases": "## Use Cases\nIf applicable, list practical applications, scenarios, or use examples mentioned in the video.",
+				"visual_context": "## Visual Context\nIf relevant, describe:\n- Important visual elements (charts, demos, slides)\n- Presenters or people who appear"
+			},
+			"footer": "**RULES:**\n1. ALWAYS use ## before each section title\n2. NEVER write everything in a single paragraph\n3. NEVER start with 'Here is' or 'Following is the summary'\n4. Be objective and detailed\n5. Always include Markdown links for cited items (projects, tools, companies, people, platforms, technologies, products)\n6. Avoid duplicate bullets and sentences"
+		},
+		"fileProcessing": {
+			"image": {
+				"intro": "You are an assistant that describes images for Kortix.",
+				"instructions": "Provide a detailed description of the image, highlight objects, present text (perform OCR), and general context.\nList important insights in bullet points.\nWhenever content mentions a project, tool, company, person, technology, platform, or product, include Markdown links (or a reliable discovery link when an exact URL is unavailable).",
+				"filename": "File name: {{filename}}"
+			},
+			"audio": {
+				"intro": "You are an assistant that analyzes audio files for Kortix.",
+				"instructions": "Generate a detailed summary of the content, including main topics and action points.\nTranscribe important excerpts and identify who speaks when possible.\nWhenever content mentions a project, tool, company, person, technology, platform, or product, include Markdown links (or a reliable discovery link when an exact URL is unavailable).",
+				"filename": "File name: {{filename}}"
+			},
+			"video": {
+				"intro": "You are an assistant that analyzes videos for Kortix.",
+				"instructions": "Describe the video narrative, identify characters, relevant actions, and context.\nAlso provide bullet points with important events and any notable instructions/dialogues.\nWhenever content mentions a project, tool, company, person, technology, platform, or product, include Markdown links (or a reliable discovery link when an exact URL is unavailable).",
+				"filename": "File name: {{filename}}"
+			},
+			"document": {
+				"intro": "You are an assistant that processes documents for Kortix.",
+				"instructions": "Extract the main content in structured Markdown with headings, paragraphs, and lists.\nInclude an initial summary (3-5 sentences) and then highlight key points in bullet points.\nWhenever content mentions a project, tool, company, person, technology, platform, or product, include Markdown links (or a reliable discovery link when an exact URL is unavailable).",
+				"filename": "File name: {{filename}}"
+			}
+		}
+	},
+	"fallbackMessages": {
+		"noUseCases": "- (no use cases identified)",
+		"limitedInfo": "- (limited information to highlight)",
+		"urlAnalysisFailed": "URL-based analysis returned empty, trying text fallback",
+		"youtubeSummaryEmpty": "YouTube video analysis returned empty or very short result"
+	},
+	"sectionHeaders": {
+		"executive": "## Executive Summary",
+		"keyPoints": "## Key Points",
+		"useCases": "## Use Cases",
+		"source": "## Source",
+		"technologies": "## Technologies and Tools",
+		"additionalContext": "## Additional Context",
+		"visualContext": "## Visual Context",
+		"mainPoints": "## Main Points"
+	}
 }

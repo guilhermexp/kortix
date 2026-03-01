@@ -1,111 +1,111 @@
 // Use central helpers to avoid model ID mismatches
 
 import {
-  AI_GENERATION_CONFIG,
-  CONTENT_PATTERNS,
-  isGitHubUrl,
-  isHtmlContent,
-  isPdfContent,
-  TEXT_LIMITS,
-} from "../config/constants";
+	AI_GENERATION_CONFIG,
+	CONTENT_PATTERNS,
+	isGitHubUrl,
+	isHtmlContent,
+	isPdfContent,
+	TEXT_LIMITS,
+} from "../config/constants"
 import {
-  buildSummaryPrompt,
-  buildTextAnalysisPrompt,
-  buildUrlAnalysisPrompt as buildUrlAnalysisPromptI18n,
-  getFallbackMessage,
-  getSectionHeader,
-} from "../i18n";
-import { grokChat } from "./grok";
+	buildSummaryPrompt,
+	buildTextAnalysisPrompt,
+	buildUrlAnalysisPrompt as buildUrlAnalysisPromptI18n,
+	getFallbackMessage,
+	getSectionHeader,
+} from "../i18n"
+import { grokChat } from "./grok"
 import {
-  sanitizeSummaryMarkdown,
-  summarizeWithGrok,
-} from "./summarizer-fallback";
+	sanitizeSummaryMarkdown,
+	summarizeWithGrok,
+} from "./summarizer-fallback"
 
-const _googleClient = null; // Disable Gemini for summaries/tags; use Grok
+const _googleClient = null // Disable Gemini for summaries/tags; use Grok
 
 export async function generateSummary(
-  text: string,
-  context?: { title?: string | null; url?: string | null },
+	text: string,
+	context?: { title?: string | null; url?: string | null },
 ): Promise<string | null> {
-  const trimmed = text.trim();
-  if (!trimmed) return null;
-  console.log("[Summarizer] Using Grok (summary)", {
-    hasUrl: Boolean(context?.url),
-  });
-  const viaOpenRouter = await summarizeWithGrok(trimmed, context);
-  return viaOpenRouter || buildFallbackSummary(trimmed, context);
+	const trimmed = text.trim()
+	if (!trimmed) return null
+	console.log("[Summarizer] Using Grok (summary)", {
+		hasUrl: Boolean(context?.url),
+	})
+	const viaOpenRouter = await summarizeWithGrok(trimmed, context)
+	return viaOpenRouter || buildFallbackSummary(trimmed, context)
 }
 
 function _buildPrompt(
-  snippet: string,
-  context?: { title?: string | null; url?: string | null },
+	snippet: string,
+	context?: { title?: string | null; url?: string | null },
 ) {
-  return buildSummaryPrompt(snippet, context);
+	return buildSummaryPrompt(snippet, context)
 }
 
 function buildFallbackSummary(
-  text: string,
-  context?: { title?: string | null; url?: string | null },
+	text: string,
+	context?: { title?: string | null; url?: string | null },
 ) {
-  const sentences = text
-    .replace(/\s+/g, " ")
-    .split(/[.!?]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+	const sentences = text
+		.replace(/\s+/g, " ")
+		.split(/[.!?]+/)
+		.map((s) => s.trim())
+		.filter(Boolean)
 
-  const executive = sentences.slice(
-    0,
-    AI_GENERATION_CONFIG.FALLBACK.EXECUTIVE_SENTENCES,
-  );
-  const remaining = sentences.slice(
-    AI_GENERATION_CONFIG.FALLBACK.EXECUTIVE_SENTENCES,
-  );
+	const executive = sentences.slice(
+		0,
+		AI_GENERATION_CONFIG.FALLBACK.EXECUTIVE_SENTENCES,
+	)
+	const remaining = sentences.slice(
+		AI_GENERATION_CONFIG.FALLBACK.EXECUTIVE_SENTENCES,
+	)
 
-  const points = remaining
-    .slice(0, AI_GENERATION_CONFIG.FALLBACK.MAX_KEY_POINTS)
-    .map((sentence) => `- ${sentence}`);
+	const points = remaining
+		.slice(0, AI_GENERATION_CONFIG.FALLBACK.MAX_KEY_POINTS)
+		.map((sentence) => `- ${sentence}`)
 
-  const useCases: string[] = [];
-  if (remaining.length === 0) {
-    useCases.push(getFallbackMessage("noUseCases"));
-  } else {
-    const actionCandidates = remaining
-      .filter((sentence) => CONTENT_PATTERNS.ACTION_VERBS_PT.test(sentence))
-      .slice(0, AI_GENERATION_CONFIG.FALLBACK.MAX_USE_CASES);
-    if (actionCandidates.length > 0) {
-      for (const candidate of actionCandidates) {
-        useCases.push(`- ${candidate}`);
-      }
-    } else {
-      useCases.push(getFallbackMessage("noUseCases"));
-    }
-  }
+	const useCases: string[] = []
+	if (remaining.length === 0) {
+		useCases.push(getFallbackMessage("noUseCases"))
+	} else {
+		const actionCandidates = remaining
+			.filter((sentence) => CONTENT_PATTERNS.ACTION_VERBS_PT.test(sentence))
+			.slice(0, AI_GENERATION_CONFIG.FALLBACK.MAX_USE_CASES)
+		if (actionCandidates.length > 0) {
+			for (const candidate of actionCandidates) {
+				useCases.push(`- ${candidate}`)
+			}
+		} else {
+			useCases.push(getFallbackMessage("noUseCases"))
+		}
+	}
 
-  const parts: string[] = [getSectionHeader("executive")];
-  if (executive.length > 0) {
-    for (const sentence of executive) {
-      parts.push(`- ${sentence}`);
-    }
-  } else {
-    parts.push(`- ${text.slice(0, TEXT_LIMITS.FALLBACK_SUMMARY_PREVIEW)}`);
-  }
+	const parts: string[] = [getSectionHeader("executive")]
+	if (executive.length > 0) {
+		for (const sentence of executive) {
+			parts.push(`- ${sentence}`)
+		}
+	} else {
+		parts.push(`- ${text.slice(0, TEXT_LIMITS.FALLBACK_SUMMARY_PREVIEW)}`)
+	}
 
-  parts.push(`\n${getSectionHeader("keyPoints")}`);
-  if (points.length > 0) {
-    parts.push(...points);
-  } else {
-    parts.push(getFallbackMessage("limitedInfo"));
-  }
+	parts.push(`\n${getSectionHeader("keyPoints")}`)
+	if (points.length > 0) {
+		parts.push(...points)
+	} else {
+		parts.push(getFallbackMessage("limitedInfo"))
+	}
 
-  parts.push(`\n${getSectionHeader("useCases")}`);
-  parts.push(...useCases);
+	parts.push(`\n${getSectionHeader("useCases")}`)
+	parts.push(...useCases)
 
-  if (context?.url) {
-    parts.push(`\n${getSectionHeader("source")}`);
-    parts.push(`- ${context.url}`);
-  }
+	if (context?.url) {
+		parts.push(`\n${getSectionHeader("source")}`)
+		parts.push(`- ${context.url}`)
+	}
 
-  return ensureUseCasesSection(parts.join("\n"));
+	return ensureUseCasesSection(parts.join("\n"))
 }
 
 /**
@@ -114,139 +114,139 @@ function buildFallbackSummary(
  * Caso contrário, analisa o texto extraído
  */
 export async function generateDeepAnalysis(
-  text: string,
-  context?: {
-    title?: string | null;
-    url?: string | null;
-    contentType?: string | null;
-  },
+	text: string,
+	context?: {
+		title?: string | null
+		url?: string | null
+		contentType?: string | null
+	},
 ): Promise<string | null> {
-  const trimmed = text.trim();
-  if (!trimmed) return null;
+	const trimmed = text.trim()
+	if (!trimmed) return null
 
-  console.log("[Summarizer] Using Grok (deep analysis)", {
-    hasUrl: Boolean(context?.url),
-  });
-  const viaOpenRouter = await summarizeWithGrok(trimmed, context);
-  return viaOpenRouter || buildFallbackSummary(trimmed, context);
+	console.log("[Summarizer] Using Grok (deep analysis)", {
+		hasUrl: Boolean(context?.url),
+	})
+	const viaOpenRouter = await summarizeWithGrok(trimmed, context)
+	return viaOpenRouter || buildFallbackSummary(trimmed, context)
 }
 
 /**
  * Análise usando o texto extraído (fallback ou quando não tem URL)
  */
 async function _generateTextBasedAnalysis(
-  text: string,
-  context?: {
-    title?: string | null;
-    url?: string | null;
-    contentType?: string | null;
-  },
-  _model?: any,
+	text: string,
+	context?: {
+		title?: string | null
+		url?: string | null
+		contentType?: string | null
+	},
+	_model?: any,
 ): Promise<string | null> {
-  const trimmed = text.trim();
-  if (!trimmed) return null;
+	const trimmed = text.trim()
+	if (!trimmed) return null
 
-  try {
-    const viaOpenRouter = await summarizeWithGrok(trimmed, context);
-    if (viaOpenRouter?.trim()) {
-      return ensureUseCasesSection(viaOpenRouter);
-    }
-  } catch {}
-  return buildFallbackSummary(trimmed, context);
+	try {
+		const viaOpenRouter = await summarizeWithGrok(trimmed, context)
+		if (viaOpenRouter?.trim()) {
+			return ensureUseCasesSection(viaOpenRouter)
+		}
+	} catch {}
+	return buildFallbackSummary(trimmed, context)
 }
 
 /**
  * Prompt simplificado para análise via URL (Gemini lê diretamente)
  */
 function _buildUrlAnalysisPrompt(context: {
-  title?: string | null;
-  url?: string | null;
-  contentType?: string | null;
+	title?: string | null
+	url?: string | null
+	contentType?: string | null
 }) {
-  if (!context.url) {
-    throw new Error("URL is required for URL analysis prompt");
-  }
+	if (!context.url) {
+		throw new Error("URL is required for URL analysis prompt")
+	}
 
-  const isGitHub = isGitHubUrl(context.url);
+	const isGitHub = isGitHubUrl(context.url)
 
-  return buildUrlAnalysisPromptI18n(context.url, {
-    title: context.title,
-    isGitHub,
-  });
+	return buildUrlAnalysisPromptI18n(context.url, {
+		title: context.title,
+		isGitHub,
+	})
 }
 
 function _buildDeepAnalysisPrompt(
-  snippet: string,
-  context?: {
-    title?: string | null;
-    url?: string | null;
-    contentType?: string | null;
-  },
+	snippet: string,
+	context?: {
+		title?: string | null
+		url?: string | null
+		contentType?: string | null
+	},
 ) {
-  const isGitHub = isGitHubUrl(context?.url);
-  const isPDF = isPdfContent(context?.contentType);
-  const isWebPage = isHtmlContent(context?.contentType, context?.url);
+	const isGitHub = isGitHubUrl(context?.url)
+	const isPDF = isPdfContent(context?.contentType)
+	const isWebPage = isHtmlContent(context?.contentType, context?.url)
 
-  return buildTextAnalysisPrompt(snippet, {
-    title: context?.title,
-    url: context?.url,
-    isGitHub,
-    isPDF,
-    isWebPage,
-  });
+	return buildTextAnalysisPrompt(snippet, {
+		title: context?.title,
+		url: context?.url,
+		isGitHub,
+		isPDF,
+		isWebPage,
+	})
 }
 
 export async function summarizeYoutubeVideo(
-  url: string,
+	url: string,
 ): Promise<string | null> {
-  try {
-    // Import fetchYouTubeTranscriptFallback dynamically to avoid circular dependency
-    const { fetchYouTubeTranscriptFallback } = await import("./markitdown");
+	try {
+		// Import fetchYouTubeTranscriptFallback dynamically to avoid circular dependency
+		const { fetchYouTubeTranscriptFallback } = await import("./markitdown")
 
-    // 1) Try to get transcript directly from YouTube timedtext API first
-    // This is more reliable than MarkItDown for YouTube videos
-    const transcriptResult = await fetchYouTubeTranscriptFallback(url);
+		// 1) Try to get transcript directly from YouTube timedtext API first
+		// This is more reliable than MarkItDown for YouTube videos
+		const transcriptResult = await fetchYouTubeTranscriptFallback(url)
 
-    let text = "";
-    let title: string | null = null;
+		let text = ""
+		let title: string | null = null
 
-    if (transcriptResult?.markdown) {
-      text = transcriptResult.markdown.trim();
-      title = transcriptResult.metadata?.title || null;
-      console.log(
-        "[summarizeYoutubeVideo] Using transcript from timedtext API",
-        {
-          length: text.length,
-          title,
-        },
-      );
-    }
+		if (transcriptResult?.markdown) {
+			text = transcriptResult.markdown.trim()
+			title = transcriptResult.metadata?.title || null
+			console.log(
+				"[summarizeYoutubeVideo] Using transcript from timedtext API",
+				{
+					length: text.length,
+					title,
+				},
+			)
+		}
 
-    // If no transcript or too short, we can't generate a good summary
-    // Don't fallback to MarkItDown for YouTube as it only extracts page footer
-    if (!text || text.length < 200) {
-      console.warn("[summarizeYoutubeVideo] No valid transcript available", {
-        hasText: !!text,
-        length: text?.length || 0,
-      });
-      return null;
-    }
+		// If no transcript or too short, we can't generate a good summary
+		// Don't fallback to MarkItDown for YouTube as it only extracts page footer
+		if (!text || text.length < 200) {
+			console.warn("[summarizeYoutubeVideo] No valid transcript available", {
+				hasText: !!text,
+				length: text?.length || 0,
+			})
+			return null
+		}
 
-    // 2) Summarize with Grok (X-AI direct) - use longer timeout for YouTube videos (transcripts can be long)
-    const viaGrok = await summarizeWithGrok(
-      text,
-      {
-        title,
-        url,
-        contentType: "video/youtube",
-      },
-      { timeoutMs: 30_000 }, // 30 seconds for YouTube videos
-    );
-    return viaGrok ? ensureUseCasesSection(viaGrok) : null;
-  } catch (error) {
-    console.error("summarizeYoutubeVideo (text+Grok) failed:", error);
-    return null;
-  }
+		// 2) Summarize with Grok (X-AI direct) - use longer timeout for YouTube videos (transcripts can be long)
+		const viaGrok = await summarizeWithGrok(
+			text,
+			{
+				title,
+				url,
+				contentType: "video/youtube",
+			},
+			{ timeoutMs: 30_000 }, // 30 seconds for YouTube videos
+		)
+		return viaGrok ? ensureUseCasesSection(viaGrok) : null
+	} catch (error) {
+		console.error("summarizeYoutubeVideo (text+Grok) failed:", error)
+		return null
+	}
 }
 
 /**
@@ -254,164 +254,163 @@ export async function summarizeYoutubeVideo(
  * Fallback: simple keyword extraction from title + text.
  */
 export async function generateCategoryTags(
-  text: string,
-  context?: { title?: string | null; url?: string | null },
-  opts?: { maxTags?: number; locale?: "pt-BR" | "en-US" },
+	text: string,
+	context?: { title?: string | null; url?: string | null },
+	opts?: { maxTags?: number; locale?: "pt-BR" | "en-US" },
 ): Promise<string[]> {
-  const MAX_TAGS = Math.max(3, Math.min(opts?.maxTags ?? 6, 12));
-  const trimmed = (context?.title ? `${context.title}\n` : "") + (text || "");
-  const snippet = trimmed.slice(0, TEXT_LIMITS.ANALYSIS_MAX_CHARS);
+	const MAX_TAGS = Math.max(3, Math.min(opts?.maxTags ?? 6, 12))
+	const trimmed = (context?.title ? `${context.title}\n` : "") + (text || "")
+	const snippet = trimmed.slice(0, TEXT_LIMITS.ANALYSIS_MAX_CHARS)
 
-  const fallback = (): string[] => {
-    try {
-      const source = (context?.title ? `${context.title}. ` : "") + snippet;
-      const words = source
-        .toLowerCase()
-        .replace(/[^a-zà-ú0-9\s_-]/gi, " ")
-        .split(/\s+/)
-        .filter((w) => w.length >= 4 && w.length <= 28);
-      const stop = new Set([
-        "sobre",
-        "with",
-        "para",
-        "from",
-        "this",
-        "that",
-        "como",
-        "onde",
-        "quando",
-        "porque",
-        "the",
-        "and",
-        "for",
-        "com",
-        "uma",
-        "não",
-        "dos",
-        "das",
-        "nos",
-        "nas",
-        "entre",
-        "sobre",
-        "mais",
-        "less",
-        "http",
-        "https",
-        "www",
-        "github",
-        "readme",
-        "document",
-        "summary",
-        "resumo",
-        "executivo",
-        "executive",
-        "overview",
-        "introduction",
-        "intro",
-        "video",
-        "image",
-        "webpage",
-        "pagina",
-        "página",
-        "file",
-      ]);
-      const freq = new Map<string, number>();
-      for (const w of words) {
-        if (stop.has(w)) continue;
-        freq.set(w, (freq.get(w) || 0) + 1);
-      }
-      const sorted = Array.from(freq.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([w]) => w);
-      const uniq: string[] = [];
-      for (const w of sorted) {
-        if (uniq.includes(w)) continue;
-        // Favor multiword tags by merging common pairs appearing in title
-        uniq.push(w);
-        if (uniq.length >= MAX_TAGS) break;
-      }
-      return uniq.map((t) => t.trim()).filter(Boolean);
-    } catch {
-      return [];
-    }
-  };
+	const fallback = (): string[] => {
+		try {
+			const source = (context?.title ? `${context.title}. ` : "") + snippet
+			const words = source
+				.toLowerCase()
+				.replace(/[^a-zà-ú0-9\s_-]/gi, " ")
+				.split(/\s+/)
+				.filter((w) => w.length >= 4 && w.length <= 28)
+			const stop = new Set([
+				"sobre",
+				"with",
+				"para",
+				"from",
+				"this",
+				"that",
+				"como",
+				"onde",
+				"quando",
+				"porque",
+				"the",
+				"and",
+				"for",
+				"com",
+				"uma",
+				"não",
+				"dos",
+				"das",
+				"nos",
+				"nas",
+				"entre",
+				"sobre",
+				"mais",
+				"less",
+				"http",
+				"https",
+				"www",
+				"github",
+				"readme",
+				"document",
+				"summary",
+				"resumo",
+				"executivo",
+				"executive",
+				"overview",
+				"introduction",
+				"intro",
+				"video",
+				"image",
+				"webpage",
+				"pagina",
+				"página",
+				"file",
+			])
+			const freq = new Map<string, number>()
+			for (const w of words) {
+				if (stop.has(w)) continue
+				freq.set(w, (freq.get(w) || 0) + 1)
+			}
+			const sorted = Array.from(freq.entries())
+				.sort((a, b) => b[1] - a[1])
+				.map(([w]) => w)
+			const uniq: string[] = []
+			for (const w of sorted) {
+				if (uniq.includes(w)) continue
+				// Favor multiword tags by merging common pairs appearing in title
+				uniq.push(w)
+				if (uniq.length >= MAX_TAGS) break
+			}
+			return uniq.map((t) => t.trim()).filter(Boolean)
+		} catch {
+			return []
+		}
+	}
 
-  try {
-    const langHint =
-      opts?.locale === "en-US" ? "English" : "Portuguese (pt-BR)";
-    const prompt = [
-      `Generate between 3 and ${MAX_TAGS} short, descriptive tags for the content below.`,
-      "- Output only the tags, comma-separated.",
-      "- No #, no sentences, all lowercase.",
-      "- Use topical/category terms, not IDs.",
-      context?.title ? `Title: ${context.title}` : null,
-      "\nContent:",
-      snippet,
-      "\nRespond ONLY with the tags.",
-      `Language: ${langHint}`,
-    ]
-      .filter(Boolean)
-      .join("\n");
+	try {
+		const langHint = opts?.locale === "en-US" ? "English" : "Portuguese (pt-BR)"
+		const prompt = [
+			`Generate between 3 and ${MAX_TAGS} short, descriptive tags for the content below.`,
+			"- Output only the tags, comma-separated.",
+			"- No #, no sentences, all lowercase.",
+			"- Use topical/category terms, not IDs.",
+			context?.title ? `Title: ${context.title}` : null,
+			"\nContent:",
+			snippet,
+			"\nRespond ONLY with the tags.",
+			`Language: ${langHint}`,
+		]
+			.filter(Boolean)
+			.join("\n")
 
-    const raw =
-      (
-        await grokChat(
-          [
-            { role: "system", content: "You generate concise topical tags." },
-            { role: "user", content: prompt },
-          ],
-          { maxTokens: 160, timeoutMs: 8_000 },
-        )
-      )?.trim() || "";
-    if (!raw) return fallback();
+		const raw =
+			(
+				await grokChat(
+					[
+						{ role: "system", content: "You generate concise topical tags." },
+						{ role: "user", content: prompt },
+					],
+					{ maxTokens: 160, timeoutMs: 8_000 },
+				)
+			)?.trim() || ""
+		if (!raw) return fallback()
 
-    // Accept comma, newline, or bullet separated
-    const parts = raw
-      .replace(/^[-*•]\s*/gm, "")
-      .split(/[,\n]+/)
-      .map((s) => s.toLowerCase().trim())
-      .map((s) => s.replace(/^#+/, "").trim())
-      .map((s) => s.replace(/\s{2,}/g, " "))
-      .filter(Boolean);
+		// Accept comma, newline, or bullet separated
+		const parts = raw
+			.replace(/^[-*•]\s*/gm, "")
+			.split(/[,\n]+/)
+			.map((s) => s.toLowerCase().trim())
+			.map((s) => s.replace(/^#+/, "").trim())
+			.map((s) => s.replace(/\s{2,}/g, " "))
+			.filter(Boolean)
 
-    // Helper to validate tags
-    const isValidTag = (tag: string): boolean => {
-      if (!tag || tag.length < 2 || tag.length > 30) return false;
-      // Reject tags that look like URL parts or repo namespaces
-      if (tag.startsWith("/") || tag.endsWith(":") || tag.endsWith("/"))
-        return false;
-      // Reject tags with only special characters
-      if (/^[^a-z0-9]+$/i.test(tag)) return false;
-      // Reject common URL/path fragments
-      if (
-        /^(http|https|www|com|org|io|github|google|hugging|huggingface)$/i.test(
-          tag,
-        )
-      )
-        return false;
-      // Reject tags containing URL patterns
-      if (/^[a-z0-9-]+\.(com|org|io|net|co|ai)$/i.test(tag)) return false;
-      return true;
-    };
+		// Helper to validate tags
+		const isValidTag = (tag: string): boolean => {
+			if (!tag || tag.length < 2 || tag.length > 30) return false
+			// Reject tags that look like URL parts or repo namespaces
+			if (tag.startsWith("/") || tag.endsWith(":") || tag.endsWith("/"))
+				return false
+			// Reject tags with only special characters
+			if (/^[^a-z0-9]+$/i.test(tag)) return false
+			// Reject common URL/path fragments
+			if (
+				/^(http|https|www|com|org|io|github|google|hugging|huggingface)$/i.test(
+					tag,
+				)
+			)
+				return false
+			// Reject tags containing URL patterns
+			if (/^[a-z0-9-]+\.(com|org|io|net|co|ai)$/i.test(tag)) return false
+			return true
+		}
 
-    // Deduplicate, validate, and clamp
-    const uniq: string[] = [];
-    for (const p of parts) {
-      if (!p) continue;
-      if (!isValidTag(p)) continue;
-      if (uniq.includes(p)) continue;
-      uniq.push(p);
-      if (uniq.length >= MAX_TAGS) break;
-    }
+		// Deduplicate, validate, and clamp
+		const uniq: string[] = []
+		for (const p of parts) {
+			if (!p) continue
+			if (!isValidTag(p)) continue
+			if (uniq.includes(p)) continue
+			uniq.push(p)
+			if (uniq.length >= MAX_TAGS) break
+		}
 
-    return uniq.length > 0 ? uniq : fallback();
-  } catch (err) {
-    console.warn(
-      "generateCategoryTags via Grok failed; using heuristic fallback",
-      err,
-    );
-    return fallback();
-  }
+		return uniq.length > 0 ? uniq : fallback()
+	} catch (err) {
+		console.warn(
+			"generateCategoryTags via Grok failed; using heuristic fallback",
+			err,
+		)
+		return fallback()
+	}
 }
 
 /**
@@ -419,8 +418,8 @@ export async function generateCategoryTags(
  * Se o modelo não incluir, adicionamos um bloco padrão vazio.
  */
 function ensureUseCasesSection(markdown: string): string {
-  const hasUseCases = CONTENT_PATTERNS.USE_CASES_SECTION.test(markdown);
-  if (hasUseCases) return sanitizeSummaryMarkdown(markdown);
-  const appendix = `\n\n${getSectionHeader("useCases")}\n${getFallbackMessage("noUseCases")}\n`;
-  return sanitizeSummaryMarkdown(markdown.trimEnd() + appendix);
+	const hasUseCases = CONTENT_PATTERNS.USE_CASES_SECTION.test(markdown)
+	if (hasUseCases) return sanitizeSummaryMarkdown(markdown)
+	const appendix = `\n\n${getSectionHeader("useCases")}\n${getFallbackMessage("noUseCases")}\n`
+	return sanitizeSummaryMarkdown(markdown.trimEnd() + appendix)
 }

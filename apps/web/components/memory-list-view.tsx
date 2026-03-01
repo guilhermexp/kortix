@@ -250,6 +250,12 @@ const isLikelyIconAsset = (value?: string | null): boolean => {
 	)
 }
 
+/** Detect Twitter/X profile image URLs (avatars) — not suitable as document preview */
+const isTwitterProfileImage = (value?: string | null): boolean => {
+	if (!value) return false
+	return value.includes("pbs.twimg.com/profile_images")
+}
+
 export const getDocumentPreview = (
 	document: DocumentWithMemories,
 ): PreviewData | null => {
@@ -382,8 +388,10 @@ export const getDocumentPreview = (
 		return undefined
 	})()
 
-	// Pick first valid URL from priority chain
-	const previewImage = [
+	// For tweets: also exclude Twitter profile images (avatars) — show tweet embed instead
+	const isTweetDocument = normalizedType === "tweet" || (metadata as any)?.type === "tweet"
+
+	const candidates = [
 		firstMemoryImage,
 		documentPreviewImage,
 		ogImage,
@@ -398,23 +406,16 @@ export const getDocumentPreview = (
 		firecrawlScreenshot,
 		firstMetadataImage,
 		extractionMetaImages,
-	].find((url) => isValidPreviewUrl(url) && !isLikelyIconAsset(url)) ??
-		[
-			firstMemoryImage,
-			documentPreviewImage,
-			ogImage,
-			twitterImage,
-			metadataImage,
-			extractionImage,
-			firecrawlImage,
-			rawDirectImage,
-			firstExtractionImage,
-			firstFirecrawlImage,
-			firstRawImage,
-			firecrawlScreenshot,
-			firstMetadataImage,
-			extractionMetaImages,
-		].find(isValidPreviewUrl) ??
+	]
+
+	// Pick first valid URL from priority chain
+	const previewImage = candidates.find((url) =>
+		isValidPreviewUrl(url) && !isLikelyIconAsset(url) && !(isTweetDocument && isTwitterProfileImage(url))
+	) ??
+		(isTweetDocument
+			? candidates.find((url) => isValidPreviewUrl(url) && !isTwitterProfileImage(url))
+			: candidates.find(isValidPreviewUrl)
+		) ??
 		null
 
 	// --- Image-type documents ---
@@ -991,6 +992,12 @@ const MasonryCard = memo(
 		const displayText = getDocumentSnippet(document)
 		const markdownContent = (document as any).content || document.summary || null
 		const isTextNote = document.type === "text" && !hasPreviewImage && !!markdownContent
+
+		// Tweet embed preview: show rendered tweet card when no real image available
+		const rawDoc = asRecord((document as any).raw)
+		const rawTweet = rawDoc?.tweet
+		const isTweet = document.type === "tweet" || (document.metadata as any)?.type === "tweet"
+		const isTweetPreview = isTweet && !!rawTweet && !hasPreviewImage
 		const cleanedTitle = (() => {
 			const raw = document.title || ""
 			const isData = raw.startsWith("data:")
@@ -1344,6 +1351,15 @@ const MasonryCard = memo(
 								)}
 								{/* Gradient overlay for text readability */}
 								<div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/60 to-transparent" />
+							</div>
+						) : isTweetPreview ? (
+							/* Tweet embed preview for bookmarks without images */
+							<div className="relative w-full overflow-hidden" data-theme="dark">
+								<div className="max-h-[280px] overflow-hidden relative [&_.react-tweet-theme]:!p-0 [&_.react-tweet-theme]:!m-0">
+									<TweetCard data={rawTweet as any} />
+									{/* Gradient fade-out at bottom */}
+									<div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+								</div>
 							</div>
 						) : isTextNote ? (
 							/* Markdown content preview for text/note documents */

@@ -30,16 +30,37 @@ const DEFAULT_CONFIG: CircuitBreakerConfig = {
 
 /** Error patterns indicating systemic failures (not document-specific) */
 const SYSTEMIC_ERROR_PATTERNS = [
-	"rate limit", "rate_limit", "quota exceeded", "too many requests",
-	"429", "503", "502", "500",
-	"unauthorized", "authentication", "invalid api key", "api key",
-	"forbidden", "401", "403",
-	"service unavailable", "temporarily unavailable",
-	"internal server error", "server error",
-	"timeout", "ECONNREFUSED", "ETIMEDOUT", "fetch failed",
-	"connection refused", "network error",
-	"gemini", "openai", "anthropic",
-	"model not found", "resource exhausted", "billing",
+	"rate limit",
+	"rate_limit",
+	"quota exceeded",
+	"too many requests",
+	"429",
+	"503",
+	"502",
+	"500",
+	"unauthorized",
+	"authentication",
+	"invalid api key",
+	"api key",
+	"forbidden",
+	"401",
+	"403",
+	"service unavailable",
+	"temporarily unavailable",
+	"internal server error",
+	"server error",
+	"timeout",
+	"ECONNREFUSED",
+	"ETIMEDOUT",
+	"fetch failed",
+	"connection refused",
+	"network error",
+	"gemini",
+	"openai",
+	"anthropic",
+	"model not found",
+	"resource exhausted",
+	"billing",
 ]
 
 // ============================================================================
@@ -94,14 +115,23 @@ export class WorkerCircuitBreaker {
 		this.lastFailureTime = Date.now()
 
 		const msg = error instanceof Error ? error.message : String(error)
-		const isConnectionError = ["timeout", "connection", "ECONNREFUSED", "fetch failed", "522", "Connection terminated"]
-			.some((p) => msg.includes(p))
+		const isConnectionError = [
+			"timeout",
+			"connection",
+			"ECONNREFUSED",
+			"fetch failed",
+			"522",
+			"Connection terminated",
+		].some((p) => msg.includes(p))
 
-		if (isConnectionError && this.consecutiveDbFailures >= this.config.failureThreshold) {
+		if (
+			isConnectionError &&
+			this.consecutiveDbFailures >= this.config.failureThreshold
+		) {
 			this.openCircuit()
 			console.error(
 				`[circuit-breaker] OPEN after ${this.consecutiveDbFailures} DB failures. ` +
-				`Retry in ${Math.round(this.currentBackoff / 1000)}s. Error: ${msg}`,
+					`Retry in ${Math.round(this.currentBackoff / 1000)}s. Error: ${msg}`,
 			)
 		}
 	}
@@ -149,7 +179,10 @@ export class WorkerCircuitBreaker {
 	/** Get remaining time until circuit breaker retry */
 	getRemainingBackoff(): number {
 		if (this.state !== "open") return 0
-		return Math.max(this.currentBackoff - (Date.now() - this.lastFailureTime), 0)
+		return Math.max(
+			this.currentBackoff - (Date.now() - this.lastFailureTime),
+			0,
+		)
 	}
 
 	getState(): string {
