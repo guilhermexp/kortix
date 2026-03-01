@@ -730,7 +730,7 @@ export async function applyCanvasCreateView({
 			.select("id, user_id, project_id, content, version")
 			.eq("id", canvasId)
 			.eq("user_id", userId)
-			.single()
+			.maybeSingle()
 
 		if (canvasError || !canvasRow) {
 			await insertCanvasOp({

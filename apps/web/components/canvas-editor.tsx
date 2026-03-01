@@ -1,5 +1,7 @@
 "use client"
 
+// Must run before any Excalidraw import to patch Worker for Turbopack dev mode
+import "@/lib/patch-excalidraw-worker"
 import "@excalidraw/excalidraw/index.css"
 import { useAuth } from "@lib/auth-context"
 import { cn } from "@lib/utils"

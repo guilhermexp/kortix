@@ -127,8 +127,9 @@ export async function updateCanvas(
 			.select("version")
 			.eq("id", id)
 			.eq("user_id", userId)
-			.single()
+			.maybeSingle()
 		if (currentError) throw currentError
+		if (!current) throw new Error("Canvas not found")
 		const currentVersion =
 			typeof current?.version === "number" && Number.isFinite(current.version)
 				? current.version
@@ -157,7 +158,7 @@ export async function updateCanvas(
 	if (payload.baseVersion !== undefined) {
 		query = query.eq("version", payload.baseVersion)
 	}
-	const { data, error } = await query.select("*").single()
+	const { data, error } = await query.select("*").maybeSingle()
 
 	if (error) throw error
 	if (!data) {
