@@ -6,8 +6,8 @@ type ChatMessage = {
 }
 
 /**
- * Direct Grok (X-AI) API client.
- * Calls https://api.x.ai/v1/chat/completions without OpenRouter intermediary.
+ * Grok chat client routed via OpenRouter.
+ * Uses OpenRouter as gateway for X-AI models to avoid direct XAI credit limits.
  */
 export async function grokChat(
 	messages: ChatMessage[],
@@ -19,30 +19,43 @@ export async function grokChat(
 		signal?: AbortSignal
 	},
 ): Promise<string | null> {
-	const apiKey = env.XAI_API_KEY || process.env.XAI_API_KEY
+	const apiKey = env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY
 	if (!apiKey) {
-		console.warn("[Grok] XAI_API_KEY not configured")
+		console.warn("[Grok] OPENROUTER_API_KEY not configured")
 		return null
 	}
 
-	const model = options?.model || env.XAI_MODEL || "grok-4-1-fast-non-reasoning"
+	const model =
+		options?.model ||
+		env.XAI_MODEL ||
+		env.OPENROUTER_MODEL ||
+		"x-ai/grok-4.1-fast"
 	const temperature = options?.temperature ?? 0.2
 	const maxTokens = options?.maxTokens ?? 1024
 	const timeoutMs = options?.timeoutMs ?? 12_000
 
 	try {
-		const res = await fetch("https://api.x.ai/v1/chat/completions", {
+		const headers: Record<string, string> = {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${apiKey}`,
+		}
+		if (env.OPENROUTER_SITE_URL) {
+			headers["HTTP-Referer"] = env.OPENROUTER_SITE_URL
+		}
+		if (env.OPENROUTER_SITE_NAME) {
+			headers["X-Title"] = env.OPENROUTER_SITE_NAME
+		}
+
+		const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
 			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${apiKey}`,
-			},
+			headers,
 			body: JSON.stringify({
 				model,
 				messages,
 				temperature,
 				max_tokens: maxTokens,
 				stream: false,
+				reasoning: { effort: "none" },
 			}),
 			signal: options?.signal
 				? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)])
