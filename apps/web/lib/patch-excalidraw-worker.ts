@@ -50,4 +50,19 @@ if (
 	Object.defineProperty(PatchedWorker, "name", { value: "Worker" })
 
 	window.Worker = PatchedWorker
+
+	// Suppress Excalidraw's noisy "Failed to use workers for subsetting" error.
+	// This is a harmless dev-only issue: Turbopack resolves import.meta.url to
+	// a format the Worker can't use, so Excalidraw falls back to the main thread
+	// (which works fine). The console.error fires on every font load and is noise.
+	const originalConsoleError = console.error
+	console.error = function (...args: unknown[]) {
+		if (
+			typeof args[0] === "string" &&
+			args[0].includes("Failed to use workers for subsetting")
+		) {
+			return
+		}
+		return originalConsoleError.apply(console, args)
+	}
 }

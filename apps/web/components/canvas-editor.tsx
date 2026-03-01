@@ -213,6 +213,109 @@ function computeSceneBounds(elements: readonly any[]) {
 	return { minX, minY, maxX, maxY }
 }
 
+const CONTAINER_TYPES = new Set(["rectangle", "ellipse", "diamond", "frame", "image"])
+
+/**
+ * Groups elements for progressive animation.
+ * Order: containers + their bound text → standalone text → arrows/lines → others
+ */
+function groupAndSortElements(elements: any[]): any[][] {
+	const containerIds = new Set<string>()
+	const boundTextIds = new Set<string>()
+	const groups: any[][] = []
+
+	// First pass: identify containers and their bound text
+	for (const el of elements) {
+		if (CONTAINER_TYPES.has(el.type)) {
+			containerIds.add(el.id)
+		}
+		if (el.containerId && typeof el.containerId === "string") {
+			boundTextIds.add(el.id)
+		}
+	}
+
+	// Group 1: containers + their bound text labels (appear together)
+	for (const el of elements) {
+		if (!containerIds.has(el.id)) continue
+		const group = [el]
+		for (const child of elements) {
+			if (child.containerId === el.id) {
+				group.push(child)
+			}
+		}
+		groups.push(group)
+	}
+
+	// Group 2: standalone text (not bound to a container)
+	for (const el of elements) {
+		if (el.type === "text" && !boundTextIds.has(el.id)) {
+			groups.push([el])
+		}
+	}
+
+	// Group 3: arrows and lines (depend on shapes for bindings)
+	for (const el of elements) {
+		if (el.type === "arrow" || el.type === "line") {
+			groups.push([el])
+		}
+	}
+
+	// Group 4: anything else not yet included
+	const includedIds = new Set(groups.flat().map((e) => e.id))
+	for (const el of elements) {
+		if (!includedIds.has(el.id)) {
+			groups.push([el])
+		}
+	}
+
+	return groups
+}
+
+/**
+ * Incrementally renders element groups with delay for a "building" animation.
+ */
+async function runProgressiveAnimation(
+	api: ExcalidrawImperativeAPI,
+	existingElements: readonly any[],
+	finalElements: any[],
+	delayMs: number,
+	signal: AbortSignal,
+): Promise<number> {
+	const existingIds = new Set(existingElements.map((e) => e.id))
+	const newElements = finalElements.filter((e) => !existingIds.has(e.id))
+
+	if (newElements.length === 0) return 0
+
+	const groups = groupAndSortElements(newElements)
+	const accumulated = [...existingElements]
+
+	for (let i = 0; i < groups.length; i++) {
+		if (signal.aborted) break
+		accumulated.push(...groups[i]!)
+		api.updateScene({ elements: [...accumulated] as any })
+
+		if (i < groups.length - 1) {
+			await new Promise<void>((resolve, reject) => {
+				const timer = setTimeout(resolve, delayMs)
+				signal.addEventListener(
+					"abort",
+					() => {
+						clearTimeout(timer)
+						reject(new DOMException("Aborted", "AbortError"))
+					},
+					{ once: true },
+				)
+			}).catch((err) => {
+				if (err instanceof DOMException && err.name === "AbortError") return
+				throw err
+			})
+		}
+	}
+
+	// suppression count: covers onChange events from each updateScene + internal recalculations
+	return groups.length * 2 + 10
+}
+
 export function CanvasEditor({
 	initialData,
 	canvasId,
@@ -250,6 +353,8 @@ export function CanvasEditor({
 	const isBootstrapping = useRef(true)
 	const hasLocalChangesRef = useRef(false)
 	const lastRemoteUpdateRef = useRef(0)
+	const progressiveAnimationRef = useRef(false)
+	const animationAbortRef = useRef<AbortController | null>(null)
 	const canvasVersionRef = useRef(
 		typeof initialVersion === "number" && Number.isFinite(initialVersion)
 			? initialVersion
@@ -713,25 +818,83 @@ export function CanvasEditor({
 		newSocket.on(
 			"elements-changed",
 			(payload: any[] | { elements: any[]; version?: number }) => {
-			if (!isBootstrapping.current && excalidrawAPIRef.current) {
-				const elements = Array.isArray(payload)
-					? payload
-					: Array.isArray(payload?.elements)
-						? payload.elements
-						: null
-				if (!elements) return
-				if (
-					!Array.isArray(payload) &&
-					typeof payload?.version === "number" &&
-					Number.isFinite(payload.version)
-				) {
-					canvasVersionRef.current = payload.version
+				if (!isBootstrapping.current && excalidrawAPIRef.current) {
+					const elements = Array.isArray(payload)
+						? payload
+						: Array.isArray(payload?.elements)
+							? payload.elements
+							: null
+					if (!elements) return
+
+					const isAgentUpdate =
+						!Array.isArray(payload) &&
+						typeof payload?.version === "number" &&
+						Number.isFinite(payload.version)
+
+					if (isAgentUpdate) {
+						canvasVersionRef.current = payload.version!
+					}
+
+					lastRemoteUpdateRef.current = Date.now()
+
+					if (isAgentUpdate) {
+						// Cancel any in-flight animation
+						if (animationAbortRef.current) {
+							animationAbortRef.current.abort()
+						}
+						const abortController = new AbortController()
+						animationAbortRef.current = abortController
+
+						const api = excalidrawAPIRef.current
+						const existingSnapshot = [...api.getSceneElements()]
+
+						progressiveAnimationRef.current = true
+						suppressOnChangeCountRef.current = 10
+						applyingRemoteElementsRef.current = true
+
+						void (async () => {
+							try {
+								const suppressCount = await runProgressiveAnimation(
+									api,
+									existingSnapshot,
+									elements,
+									120,
+									abortController.signal,
+								)
+								suppressOnChangeCountRef.current = Math.max(
+									suppressOnChangeCountRef.current,
+									suppressCount,
+								)
+							} finally {
+								// Always apply final complete state for consistency
+								suppressOnChangeCountRef.current = Math.max(
+									suppressOnChangeCountRef.current,
+									10,
+								)
+								applyingRemoteElementsRef.current = true
+								api.updateScene({ elements })
+								progressiveAnimationRef.current = false
+								lastRemoteUpdateRef.current = Date.now()
+
+								// Scroll to fit content after animation
+								try {
+									api.scrollToContent(undefined, {
+										fitToContent: true,
+										animate: true,
+										duration: 400,
+									})
+								} catch {
+									// scrollToContent may not exist on all API versions
+								}
+							}
+						})()
+					} else {
+						// Peer collaboration — instant update
+						suppressOnChangeCountRef.current = 10
+						applyingRemoteElementsRef.current = true
+						excalidrawAPIRef.current.updateScene({ elements })
+					}
 				}
-				lastRemoteUpdateRef.current = Date.now()
-				suppressOnChangeCountRef.current = 10
-				applyingRemoteElementsRef.current = true
-				excalidrawAPIRef.current.updateScene({ elements })
-			}
 			},
 		)
 
@@ -739,6 +902,10 @@ export function CanvasEditor({
 
 		return () => {
 			socketMountedRef.current = false
+			if (animationAbortRef.current) {
+				animationAbortRef.current.abort()
+				animationAbortRef.current = null
+			}
 			newSocket.emit("leave-canvas", { canvasId, userId: user.id })
 			newSocket.close()
 			socketRef.current = null

@@ -234,14 +234,15 @@ function sanitizeElement(el: Record<string, unknown>): Record<string, unknown> {
 	const out = { ...defaults, ...el }
 
 	// Normalize fontFamily: Excalidraw expects numeric IDs (1=Virgil, 2=Helvetica, 3=Cascadia, 5=Excalifont)
+	// Default to 2 (Helvetica/sans-serif) for clean, readable text
 	if ("fontFamily" in el) {
 		const ff = el.fontFamily
 		if (typeof ff === "string") {
-			out.fontFamily = FONT_FAMILY_MAP[ff.toLowerCase()] ?? 1
+			out.fontFamily = FONT_FAMILY_MAP[ff.toLowerCase()] ?? 2
 		} else if (typeof ff === "number" && [1, 2, 3, 4, 5].includes(ff)) {
 			// valid numeric ID — keep as is
 		} else {
-			out.fontFamily = 1
+			out.fontFamily = 2
 		}
 	}
 
@@ -267,7 +268,7 @@ function sanitizeElement(el: Record<string, unknown>): Record<string, unknown> {
 	// Text elements need additional required fields
 	if (out.type === "text") {
 		if (typeof out.fontSize !== "number") out.fontSize = 20
-		if (typeof out.fontFamily !== "number") out.fontFamily = 1
+		if (typeof out.fontFamily !== "number") out.fontFamily = 2
 		if (typeof out.textAlign !== "string") out.textAlign = "left"
 		if (typeof out.verticalAlign !== "string") out.verticalAlign = "top"
 		if (typeof out.lineHeight !== "number") out.lineHeight = 1.25
