@@ -248,6 +248,8 @@ export function CanvasEditor({
 	const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([])
 	const [collaborators, setCollaborators] = useState<Map<string, Collaborator>>(new Map())
 	const isBootstrapping = useRef(true)
+	const hasLocalChangesRef = useRef(false)
+	const lastRemoteUpdateRef = useRef(0)
 	const canvasVersionRef = useRef(
 		typeof initialVersion === "number" && Number.isFinite(initialVersion)
 			? initialVersion
@@ -308,7 +310,7 @@ export function CanvasEditor({
 								parsed = latest.data.content
 							}
 							if (parsed && excalidrawAPIRef.current) {
-								suppressOnChangeCountRef.current = 3
+								suppressOnChangeCountRef.current = 10
 								applyingRemoteElementsRef.current = true
 								excalidrawAPIRef.current.updateScene({
 									elements: Array.isArray(parsed.elements) ? parsed.elements : [],
@@ -322,6 +324,8 @@ export function CanvasEditor({
 								canvasVersionRef.current = latest.data.version
 							}
 						}
+						// Conflict resolved — don't fall through to the error log
+						return
 					}
 					console.error("Failed to save canvas", response.error)
 					return
@@ -357,7 +361,7 @@ export function CanvasEditor({
 		) {
 			return false
 		}
-		suppressOnChangeCountRef.current = Math.max(suppressOnChangeCountRef.current, 3)
+		suppressOnChangeCountRef.current = Math.max(suppressOnChangeCountRef.current, 10)
 		applyingRemoteElementsRef.current = true
 		api.updateScene({
 			appState: {
@@ -369,14 +373,15 @@ export function CanvasEditor({
 		return true
 	}, [forceDarkMode])
 
-	// Debounced auto-save
+	// Debounced auto-save — only fires for local user changes
 	useEffect(() => {
 		if (saveTimeoutRef.current) {
 			clearTimeout(saveTimeoutRef.current)
 		}
 
 		saveTimeoutRef.current = setTimeout(() => {
-			if (excalidrawAPI) {
+			if (excalidrawAPI && hasLocalChangesRef.current) {
+				hasLocalChangesRef.current = false
 				saveCanvas()
 			}
 		}, 3000) // Auto-save after 3 seconds of inactivity
@@ -722,7 +727,8 @@ export function CanvasEditor({
 				) {
 					canvasVersionRef.current = payload.version
 				}
-				suppressOnChangeCountRef.current = 3
+				lastRemoteUpdateRef.current = Date.now()
+				suppressOnChangeCountRef.current = 10
 				applyingRemoteElementsRef.current = true
 				excalidrawAPIRef.current.updateScene({ elements })
 			}
@@ -766,7 +772,16 @@ export function CanvasEditor({
 				return
 			}
 
-			// Bump scene version to trigger auto-save
+			// Ignore changes triggered within 5s of a remote update — these are
+			// Excalidraw internal recalculations (arrow routing, binding tweaks)
+			// that would overwrite the agent's correct layout if saved.
+			const timeSinceRemote = Date.now() - lastRemoteUpdateRef.current
+			if (timeSinceRemote < 5000) {
+				return
+			}
+
+			// Real local change — bump scene version to trigger auto-save
+			hasLocalChangesRef.current = true
 			sceneVersionRef.current += 1
 
 			if (socketRef.current) {

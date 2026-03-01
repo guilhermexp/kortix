@@ -54,7 +54,7 @@ canvasRouter.get("/:id", async (c) => {
 		const canvas = await getCanvas(supabase, id, userId)
 		return c.json(canvas)
 	} catch (error) {
-		console.error("Failed to get canvas", error)
+		console.error("Failed to get canvas", id, error)
 		return c.json({ error: { message: "Failed to get canvas" } }, 404)
 	}
 })
