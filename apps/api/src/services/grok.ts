@@ -7,7 +7,7 @@ type ChatMessage = {
 
 /**
  * Grok chat client routed via OpenRouter.
- * Uses OpenRouter as gateway for X-AI models to avoid direct XAI credit limits.
+ * Uses OpenRouter as the only gateway for Grok models.
  */
 export async function grokChat(
 	messages: ChatMessage[],
@@ -27,7 +27,6 @@ export async function grokChat(
 
 	const model =
 		options?.model ||
-		env.XAI_MODEL ||
 		env.OPENROUTER_MODEL ||
 		"x-ai/grok-4.1-fast"
 	const temperature = options?.temperature ?? 0.2

@@ -232,7 +232,7 @@ export async function summarizeYoutubeVideo(
 			return null
 		}
 
-		// 2) Summarize with Grok (X-AI direct) - use longer timeout for YouTube videos (transcripts can be long)
+		// 2) Summarize with Grok via OpenRouter - use longer timeout for YouTube videos (transcripts can be long)
 		const viaGrok = await summarizeWithGrok(
 			text,
 			{

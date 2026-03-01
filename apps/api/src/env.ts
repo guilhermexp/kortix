@@ -43,10 +43,7 @@ const envSchema = z.object({
 				.map((origin) => origin.trim())
 				.filter((origin) => origin.length > 0),
 		),
-	// Grok / X-AI (primary LLM provider)
-	XAI_API_KEY: z.string().min(1).optional(),
-	XAI_MODEL: z.string().optional(),
-	// OpenRouter (fallback / council provider)
+	// OpenRouter (primary gateway for Grok and council provider)
 	OPENROUTER_API_KEY: z.string().min(1).optional(),
 	OPENROUTER_SITE_URL: z.string().url().optional(),
 	OPENROUTER_SITE_NAME: z.string().min(1).optional(),
@@ -125,8 +122,6 @@ const parsed = envSchema.safeParse({
 	RESEND_API_KEY: process.env.RESEND_API_KEY,
 	RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
 	ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
-	XAI_API_KEY: process.env.XAI_API_KEY,
-	XAI_MODEL: process.env.XAI_MODEL,
 	OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 	OPENROUTER_SITE_URL: process.env.OPENROUTER_SITE_URL,
 	OPENROUTER_SITE_NAME: process.env.OPENROUTER_SITE_NAME,
