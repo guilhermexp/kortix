@@ -68,6 +68,9 @@ export default function CanvasListPage() {
 			return response.data
 		},
 		enabled: !!user,
+		refetchInterval: 5000,
+		refetchIntervalInBackground: true,
+		refetchOnWindowFocus: true,
 	})
 
 	const handleCreateCanvas = async () => {
@@ -209,22 +212,30 @@ export default function CanvasListPage() {
 							>
 									<Link
 										href={`/canvas/${canvas.id}`}
-										className="group block relative aspect-video rounded-xl border border-border/60 hover:border-foreground/20 transition-all overflow-hidden bg-[#08090c] hover:shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+										className="group block relative aspect-video rounded-lg border border-border/35 hover:border-foreground/25 transition-all overflow-hidden bg-[#08090c] hover:shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
 									>
-										<div className="absolute inset-0 flex items-center justify-center">
+										<div className="absolute inset-0">
 											{canvas.preview ? (
-												<img
-													src={canvas.preview}
-													alt={canvas.name}
-													className="w-full h-full object-contain p-0"
-												/>
+												<>
+													<img
+														src={canvas.preview}
+														alt=""
+														aria-hidden="true"
+														className="absolute inset-0 h-full w-full object-cover scale-110 blur-xl opacity-35"
+													/>
+													<img
+														src={canvas.preview}
+														alt={canvas.name}
+														className="relative h-full w-full object-contain"
+													/>
+												</>
 											) : (
 												<div className="w-full h-full bg-background/30 flex items-center justify-center">
 													<span className="text-4xl select-none">✏️</span>
 												</div>
 											)}
 										</div>
-										<div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/95 via-black/60 to-transparent">
+										<div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 via-black/45 to-transparent">
 											<h3 className="font-medium text-foreground truncate">
 												{canvas.name}
 											</h3>

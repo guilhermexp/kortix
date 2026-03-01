@@ -1,7 +1,7 @@
 # Arquitetura do Kortix
 
 > 📊 Análise completa da arquitetura do sistema Kortix
-> 🗓️ Última atualização: 22 de Fevereiro de 2026
+> 🗓️ Última atualização: 01 de Março de 2026
 > 👤 Revisado por: Senior Architect (Claude Sonnet 4.5)
 
 ## 📋 Índice
@@ -39,13 +39,20 @@ O **Kortix** é uma plataforma de gerenciamento de memórias e conhecimento pess
 
 | Métrica | Valor |
 |---------|-------|
-| **Apps** | 3 (Web, API, Browser Extension) |
+| **Apps** | 4 (Web, API, Browser Extension, MarkItDown) |
 | **Packages Compartilhados** | 4 (@repo/ui, @repo/lib, @repo/hooks, @repo/validation) |
-| **Linhas de Código (Backend)** | ~45K |
-| **Linhas de Código (Frontend)** | ~327K |
-| **Rotas API** | 28 módulos principais |
-| **Serviços Backend** | 36 serviços |
+| **Arquivos de Rotas API (TS)** | 39 (sem arquivos `*.test.ts`) |
+| **Arquivos de Serviços API (TS)** | 60 (sem arquivos `*.test.ts`) |
+| **Arquivos de componentes Web (TS/TSX)** | 141 |
+| **Arquivos de testes mapeados** | 33 (`api`: 28, `web`: 3, `packages`: 2) |
 | **Runtime** | Node.js 20+ / Bun 1.2+ |
+
+### Estado Validado em 01/03/2026
+
+- `bun run test`: passando em todo o monorepo (API, Web e packages)
+- `bun run build`: build de produção da Web concluída com sucesso
+- `bun run check-types`: sem tarefas executadas (pipeline de tipagem precisa ajuste)
+- Build Web com warning de `metadataBase` não configurado
 
 ---
 

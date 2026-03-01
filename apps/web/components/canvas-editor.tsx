@@ -92,6 +92,7 @@ interface Collaborator {
 const CANVAS_DARK_BG_SOURCE = "#ffffff"
 const CANVAS_DARK_BG_VISUAL = "#111111"
 const CANVAS_LIGHT_BACKGROUND = "#f5f6f8"
+const CANVAS_PREVIEW_DEBOUNCE_MS = 3500
 
 function stripMarkdownText(raw: string) {
 	return raw
@@ -415,7 +416,7 @@ export function CanvasEditor({
 			} catch (error) {
 				console.warn("Canvas preview autosave failed", error)
 			}
-		}, 10000) // Generate preview after 10 seconds of inactivity
+		}, CANVAS_PREVIEW_DEBOUNCE_MS) // Generate preview shortly after inactivity
 
 		return () => {
 			if (previewTimeoutRef.current) {

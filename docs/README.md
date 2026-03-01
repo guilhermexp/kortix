@@ -49,6 +49,16 @@ Guia prático do comportamento mais recente de busca:
 - ✅ Fallback sem acentos (diacríticos)
 - ✅ Correções de UX: limpeza imediata da busca e normalização de projeto legado
 
+### 4. [APP_ANALYSIS_2026-03-01.md](./APP_ANALYSIS_2026-03-01.md)
+**Análise Técnica Validada (01/03/2026)**
+
+Relatório com verificação prática da saúde do monorepo:
+
+- ✅ Resultado de testes (`bun run test`)
+- ✅ Resultado de build (`bun run build`)
+- ✅ Pontos de atenção detectados na build/CI local
+- ✅ Métricas reais de estrutura (rotas, serviços, testes)
+
 ## 🎯 Como Usar Esta Documentação
 
 ### Para Desenvolvedores
@@ -85,7 +95,6 @@ Guia prático do comportamento mais recente de busca:
    Frontend                Backend
    Next.js 16             Hono + Bun
    React 19               PostgreSQL
-   ~327K LOC              ~45K LOC
         │                       │
         └───────────┬───────────┘
                     │
@@ -101,13 +110,13 @@ Guia prático do comportamento mais recente de busca:
 
 | Métrica | Valor |
 |---------|-------|
-| **Total LOC** | ~372K |
-| **Apps** | 3 (Web, API, Extension) |
+| **Apps** | 4 (`web`, `api`, `browser-extension`, `markitdown`) |
 | **Packages** | 4 Shared Packages |
-| **Rotas API** | 28 módulos |
-| **Serviços** | 36 serviços |
+| **Arquivos de Rotas API (TS)** | 39 |
+| **Arquivos de Serviços API (TS)** | 60 |
+| **Testes mapeados** | 33 (`api`: 28, `web`: 3, `packages`: 2) |
 | **Tech Stack** | Next.js 16, Hono, Bun, Supabase |
-| **Qualidade** | 8.5/10 |
+| **Status de Qualidade (01/03/2026)** | Build e testes passando |
 
 ## 🛠️ Tecnologias Principais
 
@@ -143,15 +152,14 @@ Guia prático do comportamento mais recente de busca:
 7. **Cloud Sync**: Google Drive, Notion, etc.
 8. **I18n**: Português e Inglês
 
-## ⚡ Performance
+## ⚡ Verificação Operacional
 
-| Métrica | Target | Atual |
-|---------|--------|-------|
-| **TTFB** | < 200ms | ~150ms ✅ |
-| **FCP** | < 1.5s | ~1.2s ✅ |
-| **LCP** | < 2.5s | ~2.0s ✅ |
-| **API p95** | < 500ms | ~300ms ✅ |
-| **Search** | < 200ms | ~150ms ✅ |
+| Verificação | Resultado |
+|------------|-----------|
+| **Testes do monorepo** | ✅ Passando (`turbo run test`) |
+| **Build de produção (web)** | ✅ Passando (`next build --webpack`) |
+| **Type-check via turbo** | ⚠️ `check-types` sem tasks configuradas |
+| **Perf tests de metadata search (API)** | ⚠️ 16 cenários marcados como `skip` |
 
 ## 🔒 Segurança
 
@@ -178,11 +186,11 @@ Guia prático do comportamento mais recente de busca:
 
 ### Curto Prazo (1-2 semanas)
 1. ⚠️ Implementar observabilidade (Sentry + OpenTelemetry)
-2. ⚠️ Adicionar testes unitários (coverage: 35% → 70%)
-3. ⚠️ Documentar APIs (OpenAPI/Swagger)
+2. ⚠️ Corrigir pipeline de tipagem (`check-types`) para executar de fato no CI
+3. ⚠️ Reativar/rodar os testes de performance atualmente em `skip`
 
 ### Médio Prazo (1 mês)
-4. Migrar para Drizzle ORM (migrations versionadas)
+4. Documentar APIs (OpenAPI/Swagger)
 5. Implementar CI/CD completo
 6. Migrar rate limiting para Redis
 
@@ -205,6 +213,10 @@ Guia prático do comportamento mais recente de busca:
   - Diagramas C4 completos
   - Análise de dependências
   - Recomendações práticas
+- **v1.1.0** (01/03/2026): atualização pós-análise operacional
+  - Métricas estruturais validadas no código atual
+  - Resultado de build/test documentado
+  - Relatório técnico de saúde adicionado
 
 ## 🤝 Contribuindo
 
@@ -221,5 +233,5 @@ Para dúvidas sobre a arquitetura, entre em contato com a equipe de engenharia.
 
 ---
 
-**Última atualização**: 22 de Fevereiro de 2026
+**Última atualização**: 01 de Março de 2026
 **Mantido por**: Equipe Kortix + Senior Architect (Claude Sonnet 4.5)
