@@ -46,6 +46,8 @@ export function updateTwitterImportUI(message: {
 	type: string
 	importedMessage?: string
 	totalImported?: number
+	totalSkipped?: number
+	totalFailed?: number
 }) {
 	const importButton = document.getElementById(
 		ELEMENT_IDS.TWITTER_IMPORT_BUTTON,
@@ -63,9 +65,26 @@ export function updateTwitterImportUI(message: {
 	}
 
 	if (message.type === MESSAGE_TYPES.IMPORT_DONE) {
+		const created = message.totalImported ?? 0
+		const skipped = message.totalSkipped ?? 0
+
+		let statusText: string
+		let statusColor: string
+
+		if (created === 0 && skipped > 0) {
+			statusText = `All ${skipped} tweets were already saved`
+			statusColor = "#d97706" // amber
+		} else if (created > 0 && skipped > 0) {
+			statusText = `✓ ${created} new tweets imported, ${skipped} already saved`
+			statusColor = "#059669" // green
+		} else {
+			statusText = `✓ ${created} new tweets imported`
+			statusColor = "#059669" // green
+		}
+
 		importButton.innerHTML = `
 			<img src="${iconUrl}" width="20" height="20" alt="Save to Memory" style="border-radius: 4px;" />
-			<span style="font-weight: 500; font-size: 14px; color: #059669;">✓ Imported ${message.totalImported} tweets!</span>
+			<span style="font-weight: 500; font-size: 14px; color: ${statusColor};">${statusText}</span>
 		`
 
 		setTimeout(() => {
@@ -74,7 +93,7 @@ export function updateTwitterImportUI(message: {
 				<span style="font-weight: 500; font-size: 14px;">Import Bookmarks</span>
 			`
 			importButton.style.cursor = "pointer"
-		}, 3000)
+		}, 5000)
 	}
 }
 

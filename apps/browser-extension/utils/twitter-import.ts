@@ -15,9 +15,16 @@ import {
 } from "./twitter-utils"
 import type { MemoryPayload } from "./types"
 
+export interface ImportResult {
+	created: number
+	skipped: number
+	failed: number
+	total: number
+}
+
 export type ImportProgressCallback = (message: string) => Promise<void>
 
-export type ImportCompleteCallback = (totalImported: number) => Promise<void>
+export type ImportCompleteCallback = (result: ImportResult) => Promise<void>
 
 export interface TwitterImportConfig {
 	onProgress: ImportProgressCallback
@@ -67,9 +74,15 @@ export class TwitterImporter {
 
 		this.importInProgress = true
 		const uniqueGroupId = crypto.randomUUID()
+		const initialResult: ImportResult = {
+			created: 0,
+			skipped: 0,
+			failed: 0,
+			total: 0,
+		}
 
 		try {
-			await this.batchImportAll("", 0, uniqueGroupId)
+			await this.batchImportAll("", initialResult, uniqueGroupId)
 			this.rateLimiter.reset()
 		} catch (error) {
 			await this.config.onError(error as Error)
@@ -81,17 +94,14 @@ export class TwitterImporter {
 	/**
 	 * Recursive function to import all bookmarks with pagination
 	 * @param cursor - Pagination cursor for Twitter API
-	 * @param totalImported - Number of tweets imported so far
+	 * @param cumulativeResult - Accumulated import results across pages
 	 */
 	private async batchImportAll(
 		cursor = "",
-		totalImported = 0,
+		cumulativeResult: ImportResult,
 		uniqueGroupId = "twitter_bookmarks",
 	): Promise<void> {
 		try {
-			// Use a local variable to track imported count
-			let importedCount = totalImported
-
 			// Get authentication tokens
 			const tokens = await getTwitterTokens()
 			if (!tokens) {
@@ -122,7 +132,11 @@ export class TwitterImporter {
 
 				if (response.status === 429) {
 					await this.rateLimiter.handleRateLimit(this.config.onProgress)
-					return this.batchImportAll(cursor, totalImported, uniqueGroupId)
+					return this.batchImportAll(
+						cursor,
+						cumulativeResult,
+						uniqueGroupId,
+					)
 				}
 				if (
 					response.status === 400 ||
@@ -171,21 +185,41 @@ export class TwitterImporter {
 						metadata,
 						customId: tweet.id_str,
 					})
-					importedCount++
-					await this.config.onProgress(
-						`Imported ${importedCount} tweets, so far...`,
-					)
 				} catch (error) {
 					console.error("Error importing tweet:", error)
 				}
 			}
 
+			// Save batch and parse response to count actual results
 			try {
 				if (documents.length > 0) {
-					await saveAllTweets(documents)
+					await this.config.onProgress(
+						`Saving ${documents.length} tweets...`,
+					)
+					const batchResponse = await saveAllTweets(documents)
+
+					for (const result of batchResponse.results) {
+						cumulativeResult.total++
+						if (result.status === "created") {
+							cumulativeResult.created++
+						} else if (result.status === "skipped") {
+							cumulativeResult.skipped++
+						} else {
+							cumulativeResult.failed++
+						}
+					}
+
+					const parts: string[] = []
+					if (cumulativeResult.created > 0) {
+						parts.push(`${cumulativeResult.created} new`)
+					}
+					if (cumulativeResult.skipped > 0) {
+						parts.push(`${cumulativeResult.skipped} already saved`)
+					}
+					await this.config.onProgress(
+						`Imported ${parts.join(", ")} tweets so far...`,
+					)
 				}
-				console.log("Tweets saved")
-				console.log("Documents:", documents)
 			} catch (error) {
 				console.error("Error saving tweets batch:", error)
 				await this.config.onError(error as Error)
@@ -197,14 +231,15 @@ export class TwitterImporter {
 				data.data?.bookmark_timeline_v2?.timeline?.instructions
 			const nextCursor = extractNextCursor(instructions || [])
 
-			console.log("Next cursor:", nextCursor)
-			console.log("Tweets length:", tweets.length)
-
 			if (nextCursor && tweets.length > 0) {
 				await new Promise((resolve) => setTimeout(resolve, 1000)) // Rate limiting
-				await this.batchImportAll(nextCursor, importedCount, uniqueGroupId)
+				await this.batchImportAll(
+					nextCursor,
+					cumulativeResult,
+					uniqueGroupId,
+				)
 			} else {
-				await this.config.onComplete(importedCount)
+				await this.config.onComplete(cumulativeResult)
 			}
 		} catch (error) {
 			console.error("Batch import error:", error)

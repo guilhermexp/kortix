@@ -17,6 +17,8 @@ export interface ExtensionMessage {
 	state?: ToastState
 	importedMessage?: string
 	totalImported?: number
+	totalSkipped?: number
+	totalFailed?: number
 	actionSource?: string
 }
 
@@ -151,4 +153,22 @@ export interface Project {
 
 export interface ProjectsResponse {
 	projects: Project[]
+}
+
+/**
+ * Batch document creation result (from POST /v3/documents/batch)
+ */
+export interface BatchDocumentResult {
+	status: "created" | "skipped" | "failed"
+	document?: { id: string; status: string }
+	error?: string
+	code?: string
+	existingDocumentId?: string
+	index?: number
+}
+
+export interface BatchDocumentsResponse {
+	results: BatchDocumentResult[]
+	total: number
+	successCount: number
 }

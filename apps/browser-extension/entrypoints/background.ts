@@ -6,6 +6,7 @@ import {
 } from "../utils/constants"
 import { captureTwitterTokens } from "../utils/twitter-auth"
 import {
+	type ImportResult,
 	type TwitterImportConfig,
 	TwitterImporter,
 } from "../utils/twitter-import"
@@ -93,9 +94,9 @@ export default defineBackground(() => {
 	}
 
 	/**
-	 * Send import completion message
+	 * Send import completion message with breakdown
 	 */
-	const sendImportDoneMessage = async (totalImported: number) => {
+	const sendImportDoneMessage = async (result: ImportResult) => {
 		const tabs = await browser.tabs.query({
 			active: true,
 			currentWindow: true,
@@ -103,7 +104,9 @@ export default defineBackground(() => {
 		if (tabs.length > 0 && tabs[0].id) {
 			await browser.tabs.sendMessage(tabs[0].id, {
 				type: MESSAGE_TYPES.IMPORT_DONE,
-				totalImported,
+				totalImported: result.created,
+				totalSkipped: result.skipped,
+				totalFailed: result.failed,
 			})
 		}
 	}

@@ -4,6 +4,7 @@
 import { API_ENDPOINTS, STORAGE_KEYS } from "./constants"
 import {
 	AuthenticationError,
+	type BatchDocumentsResponse,
 	KortixAPIError,
 	type MemoryPayload,
 	type Project,
@@ -217,31 +218,23 @@ export async function searchMemories(query: string): Promise<unknown> {
 }
 
 /**
- * Save tweet to Kortix API (specific for Twitter imports)
+ * Save tweets to Kortix API in batch (specific for Twitter imports)
  */
 export async function saveAllTweets(
 	documents: MemoryPayload[],
-): Promise<unknown> {
-	try {
-		const response = await makeAuthenticatedRequest<unknown>(
-			"/v3/documents/batch",
-			{
-				method: "POST",
-				body: JSON.stringify({
-					documents,
-					metadata: {
-						sm_source: "consumer",
-						sm_internal_group_id: "twitter_bookmarks",
-					},
-				}),
-			},
-		)
-		return response
-	} catch (error) {
-		if (error instanceof KortixAPIError && error.statusCode === 409) {
-			// Skip if already exists (409 Conflict)
-			return
-		}
-		throw error
-	}
+): Promise<BatchDocumentsResponse> {
+	const response = await makeAuthenticatedRequest<BatchDocumentsResponse>(
+		"/v3/documents/batch",
+		{
+			method: "POST",
+			body: JSON.stringify({
+				documents,
+				metadata: {
+					sm_source: "consumer",
+					sm_internal_group_id: "twitter_bookmarks",
+				},
+			}),
+		},
+	)
+	return response
 }
