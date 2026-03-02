@@ -1,7 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { z } from "zod"
 import { env } from "../env"
-import { CANVAS_CONTEXT_PROMPT, ENHANCED_SYSTEM_PROMPT } from "../prompts/chat"
+import {
+	CANVAS_AGENT_SYSTEM_PROMPT,
+	CANVAS_CONTEXT_PROMPT,
+	ENHANCED_SYSTEM_PROMPT,
+} from "../prompts/chat"
 import {
 	buildChatSessionKey,
 	chatSessionManager,
@@ -53,6 +57,7 @@ const legacyChatRequestSchema = z.object({
 type MetadataPayload = {
 	projectId?: string
 	canvasId?: string
+	agentProfile?: "default" | "canvas"
 	documentId?: string
 	expandContext?: boolean
 	forceRawDocs?: boolean
@@ -64,6 +69,24 @@ type MetadataPayload = {
 		content: string | null
 	}
 }
+
+type AgentProfile = "default" | "canvas"
+
+const CANVAS_ALLOWED_TOOLS = [
+	"mcp__kortix-tools__canvas_read_me",
+	"mcp__kortix-tools__canvas_read_scene",
+	"mcp__kortix-tools__canvas_summarize_scene",
+	"mcp__kortix-tools__canvas_create_flowchart",
+	"mcp__kortix-tools__canvas_create_mindmap",
+	"mcp__kortix-tools__canvas_create_view",
+	"mcp__kortix-tools__canvas_auto_arrange",
+	"mcp__kortix-tools__canvas_list_checkpoints",
+	"mcp__kortix-tools__canvas_restore_checkpoint",
+	"mcp__kortix-tools__canvas_clear",
+	"mcp__kortix-tools__canvas_get_preview",
+	"mcp__kortix-tools__searchDatabase",
+	"mcp__kortix-tools__readAttachment",
+] as const
 
 // Agent markdown persistence removed — documents should only be
 // created/edited via explicit user-requested tool calls.
@@ -101,6 +124,15 @@ function flattenToolContent(content: unknown): string {
 		}
 	}
 	return ""
+}
+
+function resolveAgentProfile(
+	metadata: MetadataPayload,
+	canvasId: string | undefined,
+): AgentProfile {
+	if (metadata.agentProfile === "canvas") return "canvas"
+	if (canvasId) return "canvas"
+	return "default"
 }
 
 type ToolEventState =
@@ -570,6 +602,8 @@ export async function handleChatV2({
 		}
 		return undefined
 	})()
+	const agentProfile = resolveAgentProfile(metadata, canvasId)
+	const isCanvasAgent = agentProfile === "canvas"
 	const preferredTone =
 		typeof metadata.preferredTone === "string"
 			? metadata.preferredTone.trim()
@@ -636,11 +670,18 @@ export async function handleChatV2({
 		instructions.push(CANVAS_CONTEXT_PROMPT)
 	}
 
-	const basePrompt = ENHANCED_SYSTEM_PROMPT
+	const basePrompt = isCanvasAgent
+		? CANVAS_AGENT_SYSTEM_PROMPT
+		: ENHANCED_SYSTEM_PROMPT
 	const systemPrompt =
 		instructions.length > 0
 			? `${basePrompt}\n\n${instructions.join("\n")}`
 			: basePrompt
+
+	const allowedTools =
+		isCanvasAgent && env.CANVAS_AGENT_TOOLS_ENABLED === "true"
+			? [...CANVAS_ALLOWED_TOOLS]
+			: undefined
 
 	// If a provider is specified, let executeClaudeAgent decide the model from provider config
 	// Otherwise use the model from payload or fallback to env.CHAT_MODEL
@@ -1004,6 +1045,7 @@ export async function handleChatV2({
 							model: resolvedModel,
 							provider: payload.provider, // Pass provider selection
 							context: toolContext,
+							allowedTools,
 							maxTurns,
 							abortSignal: sessionAbortController.signal,
 						},

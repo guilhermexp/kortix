@@ -2253,6 +2253,7 @@ export function ChatMessages({
 			}
 			if (canvasId && canvasId.trim().length > 0) {
 				metadata.canvasId = canvasId.trim()
+				metadata.agentProfile = "canvas"
 			}
 			if (documentId && documentId.trim().length > 0) {
 				metadata.documentId = documentId.trim()

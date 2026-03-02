@@ -11,6 +11,7 @@ Documentar como o `@anthropic-ai/claude-agent-sdk` foi integrado no Kortix, com 
 
 ### Backend (onde o SDK roda)
 - Entrada HTTP principal: `POST /chat/v2`
+- Controle de sessão ativa: `POST /chat/v2/cancel` e `POST /chat/v2/is-active`
 - Handler: `apps/api/src/routes/chat-v2.ts`
 - Execução SDK: `apps/api/src/services/claude-agent.ts` (`executeClaudeAgent`)
 - Ferramentas MCP expostas ao agente: `apps/api/src/services/claude-agent-tools.ts`
@@ -25,6 +26,7 @@ Documentar como o `@anthropic-ai/claude-agent-sdk` foi integrado no Kortix, com 
 
 ## Fluxo ponta a ponta (resumo)
 1. Frontend monta payload (`message`, `sdkSessionId`, `metadata`, `scopedDocumentIds`, `provider`) em `ChatMessages`.
+   - Atualmente o `provider` disponível no fluxo de UI é `kimi`.
 2. Backend (`chat-v2`) interpreta metadata (projeto, documento, canvas, menções) e monta:
    - `systemPrompt` contextual
    - `toolContext` (tags, docs escopados, `canvasId`, `userId`)
@@ -44,7 +46,7 @@ Arquivo: `apps/api/src/services/claude-agent.ts`
 Pontos importantes:
 - Remove `process.env.CLAUDECODE` no load do módulo para evitar sessão aninhada do SDK.
 - Resolve dinamicamente o caminho do `cli.js` do SDK.
-- Configura variáveis de provider por request (`ANTHROPIC_*`) com suporte a providers alternativos (ex.: Kimi).
+- Configura variáveis de provider por request (`ANTHROPIC_*`), com provider atual da aplicação: `kimi`.
 - Sobe MCP servers, sempre incluindo `kortix-tools`.
 - Usa `permissionMode: "bypassPermissions"` + `allowDangerouslySkipPermissions: true`.
 - Desabilita ferramentas locais perigosas via `disallowedTools` (`Bash`, `Grep`, etc.).
@@ -64,7 +66,9 @@ Ferramentas principais:
   - `canvas_create_view`, `canvas_read_scene`, `canvas_summarize_scene`,
   - `canvas_create_flowchart`, `canvas_create_mindmap`, `canvas_auto_arrange`,
   - `canvas_restore_checkpoint`, `canvas_clear`, `canvas_get_preview`, etc.
-- Sandbox opcional (Daytona), condicionado por env.
+- Sandbox opcional (Daytona), condicionado por env:
+  - `sandbox_create`, `sandbox_execute`, `sandbox_destroy`,
+  - `sandbox_upload_file`, `sandbox_download_file`, `sandbox_list_files`, `sandbox_git_clone`.
 
 Detalhe crítico para Canvas:
 - Se não existir `canvasId` no contexto, o backend pode auto-criar canvas para tools de escrita (`ensureCanvasForWrite`), desde que tenha `userId`.
@@ -93,6 +97,7 @@ O handler:
 ### Protocolo de stream para UI
 No `chat-v2`, eventos internos do SDK são transformados em linhas JSON:
 - `session_started` / `session_finished`
+- `session_aborted`
 - `assistant_delta` (texto incremental)
 - `thinking`, `thinking_delta`, `thinking_done`
 - `tool_event` (início, sucesso, erro)
@@ -158,5 +163,6 @@ Comportamento:
 
 ## Observações práticas
 - Existe rota legada `/chat` (`apps/api/src/routes/chat.ts`) também usando `executeClaudeAgent`, mas o fluxo moderno e com sessão/streaming completo está em `/chat/v2`.
+- Além do stream principal, o router expõe endpoints de controle de sessão em `/chat/v2/cancel` e `/chat/v2/is-active`.
+- O seletor de provider no frontend está consolidado em `kimi` no estado atual.
 - A UI de tools no frontend trata explicitamente tools de canvas para renderização diferenciada (preview e CTA para abrir canvas).
-
