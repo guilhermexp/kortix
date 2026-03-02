@@ -445,9 +445,44 @@ function formatToolLabel(type: string): string {
 		.replace(/^mcp__/, "")
 		.replace(/__/g, " ")
 		.replace(/_/g, " ")
+		.replace(/^kortix-tools\s+/i, "")
 		.trim()
 	if (!raw) return "command"
 	return raw
+}
+
+function toFriendlyToolLabel(type: string): string {
+	const normalized = type.trim().toLowerCase()
+	switch (normalized) {
+		case "mcp__kortix-tools__canvas_read_me":
+			return "Guia do canvas"
+		case "mcp__kortix-tools__canvas_read_scene":
+			return "Ler canvas"
+		case "mcp__kortix-tools__canvas_summarize_scene":
+			return "Resumir canvas"
+		case "mcp__kortix-tools__canvas_create_flowchart":
+			return "Criar fluxograma"
+		case "mcp__kortix-tools__canvas_create_mindmap":
+			return "Criar mapa mental"
+		case "mcp__kortix-tools__canvas_create_view":
+			return "Criar/editar diagrama"
+		case "mcp__kortix-tools__canvas_auto_arrange":
+			return "Organizar canvas"
+		case "mcp__kortix-tools__canvas_list_checkpoints":
+			return "Listar checkpoints"
+		case "mcp__kortix-tools__canvas_restore_checkpoint":
+			return "Restaurar checkpoint"
+		case "mcp__kortix-tools__canvas_clear":
+			return "Limpar canvas"
+		case "mcp__kortix-tools__canvas_get_preview":
+			return "Gerar pré-visualização"
+		case "mcp__kortix-tools__searchdatabase":
+			return "Buscar na base"
+		case "mcp__kortix-tools__readattachment":
+			return "Ler anexo"
+		default:
+			return formatToolLabel(type)
+	}
 }
 
 function isSubAgentToolName(toolName: string): boolean {
@@ -485,7 +520,8 @@ function ToolCard({
 	const isLoading = state === "input-streaming" || state === "input-available"
 	const isError = state === "output-error"
 	const durationLabel = formatDuration(durationMs)
-	const toolLabel = title ?? formatToolLabel(type)
+	const rawToolLabel = title ?? type
+	const toolLabel = toFriendlyToolLabel(rawToolLabel)
 
 	const resolvedLoading =
 		typeof loadingMessage === "string" ? (
@@ -509,10 +545,10 @@ function ToolCard({
 	const shouldRenderContent = hasContent || isError
 
 	return (
-		<div className="rounded-xl border border-white/10 bg-[#0a0a0a] overflow-hidden">
+		<div className="rounded-xl border border-white/10 bg-[#101216] overflow-hidden">
 			<div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
 				<span className="text-xs text-zinc-400 truncate">
-					{isLoading ? "Running" : "Ran"} command: {toolLabel}
+					{isLoading ? "Executando" : "Concluído"}: {toolLabel}
 				</span>
 				{durationLabel && (
 					<span className="text-[11px] text-zinc-500 tabular-nums">{durationLabel}</span>
@@ -525,7 +561,7 @@ function ToolCard({
 							{errorMessage ?? "Falha ao executar a ferramenta"}
 						</div>
 					) : (
-						<div className="rounded-md border border-white/10 bg-[#0e0f10] px-3 py-2 text-zinc-200">
+						<div className="rounded-md border border-white/10 bg-transparent px-3 py-2 text-zinc-200">
 							{outputNode}
 						</div>
 					)}
@@ -557,9 +593,12 @@ function ThinkingStep({
 	}, [isStreaming])
 
 	return (
-		<div className="space-y-1" data-collapsible-steps="true">
+		<div
+			className="rounded-xl border border-white/10 bg-[#101216] overflow-hidden"
+			data-collapsible-steps="true"
+		>
 			<button
-				className="group w-full flex items-center justify-between rounded-md px-2 py-0.5 text-xs hover:bg-muted/50 transition-colors"
+				className="group w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-white/5 transition-colors"
 				onClick={() => setExpanded((v) => !v)}
 				type="button"
 			>
@@ -585,7 +624,9 @@ function ThinkingStep({
 				/>
 			</button>
 			{expanded && thinkingText.length > 0 ? (
-				<div className="px-2 text-sm text-zinc-400 whitespace-pre-wrap">{thinkingText}</div>
+				<div className="border-t border-white/10 px-3 py-2 text-sm text-zinc-400 whitespace-pre-wrap">
+					{thinkingText}
+				</div>
 			) : null}
 		</div>
 	)
@@ -3304,30 +3345,27 @@ export function ChatMessages({
 												part.state === "output-error"
 
 											return [
-												<div
+												<ToolCard
+													durationMs={part.durationMs}
+													errorMessage={part.error ?? "Falha ao criar diagrama"}
 													key={`canvas-preview-${partKey}`}
-													className="rounded-xl border border-white/10 bg-[#0a0a0a] overflow-hidden px-3 py-2.5"
-												>
-													{isCanvasLoading ? (
-														<span className="flex items-center gap-2 text-xs text-zinc-400">
-															<Spinner className="size-3" />
-															Criando {friendlyName}...
+													loadingMessage={`Criando ${friendlyName}...`}
+													state={part.state}
+													successMessage={
+														<span className="text-xs text-zinc-300">
+															Diagrama criado
 														</span>
-													) : isCanvasError ? (
-														<div className="text-xs text-red-300">
-															{part.error ?? "Falha ao criar diagrama"}
-														</div>
-													) : canvasIdFromOutput ? (
+													}
+													title={part.toolName}
+													type={buildToolType(part.toolName, part.toolUseId)}
+												>
+													{!isCanvasLoading && !isCanvasError && canvasIdFromOutput ? (
 														<CanvasToolPreview
 															canvasId={canvasIdFromOutput}
 															toolName={part.toolName}
 														/>
-													) : (
-														<span className="text-xs text-zinc-400">
-															Diagrama criado
-														</span>
-													)}
-												</div>,
+													) : null}
+												</ToolCard>,
 											]
 										}
 

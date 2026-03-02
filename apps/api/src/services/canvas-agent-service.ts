@@ -201,6 +201,8 @@ const FONT_FAMILY_MAP: Record<string, number> = {
 	excalifont: 5,
 }
 
+const DEFAULT_TEXT_FONT_FAMILY = 2 // Excalidraw "Normal" font
+
 /**
  * Sanitize element properties that could crash Excalidraw on the frontend.
  * Ensures all required Excalidraw fields are present with valid defaults,
@@ -268,7 +270,9 @@ function sanitizeElement(el: Record<string, unknown>): Record<string, unknown> {
 	// Text elements need additional required fields
 	if (out.type === "text") {
 		if (typeof out.fontSize !== "number") out.fontSize = 20
-		if (typeof out.fontFamily !== "number") out.fontFamily = 2
+		// Force generated text to use "Normal" font family for consistency.
+		out.fontFamily = DEFAULT_TEXT_FONT_FAMILY
+		out.fontStyle = "normal"
 		if (typeof out.textAlign !== "string") out.textAlign = "left"
 		if (typeof out.verticalAlign !== "string") out.verticalAlign = "top"
 		if (typeof out.lineHeight !== "number") out.lineHeight = 1.25
@@ -364,7 +368,9 @@ function expandLabelsToContainerText(
 			originalText: text,
 			fontSize,
 			fontFamily:
-				typeof label.fontFamily === "number" ? label.fontFamily : 1,
+				typeof label.fontFamily === "number"
+					? label.fontFamily
+					: DEFAULT_TEXT_FONT_FAMILY,
 			textAlign:
 				typeof label.textAlign === "string" ? label.textAlign : "center",
 			verticalAlign:
@@ -528,7 +534,7 @@ function makeTextElement({
 		height: estimatedHeight,
 		text,
 		fontSize,
-		fontFamily: 3,
+		fontFamily: DEFAULT_TEXT_FONT_FAMILY,
 		textAlign: "center",
 		verticalAlign: "middle",
 		containerId: null,
@@ -1830,7 +1836,7 @@ export async function createFlowchartCanvasForAgent({
 			text: title.trim(),
 			originalText: title.trim(),
 			fontSize: 24,
-			fontFamily: 1,
+			fontFamily: DEFAULT_TEXT_FONT_FAMILY,
 			textAlign: "center",
 			verticalAlign: "middle",
 			lineHeight: 1.25,
