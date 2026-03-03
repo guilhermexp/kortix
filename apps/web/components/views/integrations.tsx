@@ -246,7 +246,7 @@ export function IntegrationsView() {
 				connectedAt?: string | null
 			}
 		},
-		staleTime: 5 * 60 * 1000,
+		staleTime: 30_000,
 	})
 
 	const nlmDisconnectMutation = useMutation({
@@ -350,9 +350,10 @@ export function IntegrationsView() {
 			}
 
 			if (connected) {
-				toast.success("NotebookLM connected!")
-				queryClient.invalidateQueries({ queryKey: ["notebooklm-status"] })
+				// Force refetch status so the card updates immediately
+				await queryClient.refetchQueries({ queryKey: ["notebooklm-status"] })
 				queryClient.invalidateQueries({ queryKey: ["connections"] })
+				toast.success("NotebookLM connected!")
 			} else {
 				toast.error("Connection timed out. Make sure the Kortix extension is installed and you're logged into NotebookLM.")
 			}
@@ -948,8 +949,9 @@ export function IntegrationsView() {
 								Connect NotebookLM
 							</Button>
 							<p className="text-xs text-foreground dark:text-foreground dark:text-white/40 text-center">
-								Opens a popup window for Google login. You&apos;ll need to paste
-								your session cookies after logging in.
+								{nlmConnecting
+									? "Waiting for connection... Log into NotebookLM in the popup."
+									: "Opens NotebookLM for login. The Kortix extension captures your session automatically."}
 							</p>
 						</div>
 					)}
