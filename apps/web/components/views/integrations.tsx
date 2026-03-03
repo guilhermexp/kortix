@@ -27,8 +27,6 @@ import { GoogleDrive, Notion, OneDrive } from "@ui/assets/icons"
 import {
 	Check,
 	Copy,
-	ExternalLink,
-	Loader,
 	Smartphone,
 	Trash2,
 } from "lucide-react"
@@ -843,18 +841,35 @@ export function IntegrationsView() {
 				</div>
 			</div>
 
-			{/* NotebookLM Integration */}
-			<div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
-				<div className="p-4 sm:p-5">
-					<div className="flex items-start gap-3 mb-3">
-						<div className="p-2 bg-purple-500/20 rounded-lg flex-shrink-0">
+			{/* NotebookLM — same visual pattern as other connectors */}
+			{nlmLoading ? (
+				<motion.div
+					animate={{ opacity: 1 }}
+					className="p-3 bg-white/5 rounded-lg"
+					initial={{ opacity: 0 }}
+				>
+					<Skeleton className="h-12 w-full bg-white/10" />
+				</motion.div>
+			) : (
+				<motion.div
+					animate={{ opacity: 1, y: 0 }}
+					className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+					initial={{ opacity: 0, y: 20 }}
+				>
+					<div className="flex items-center gap-3 flex-1">
+						<motion.div
+							animate={{ rotate: 0, opacity: 1 }}
+							className="flex-shrink-0"
+							initial={{ rotate: -180, opacity: 0 }}
+							transition={{ delay: 0.2 }}
+						>
 							<svg
-								className="h-5 w-5 text-purple-400"
+								className="h-8 w-8 text-purple-400"
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
 							>
-								<title>NotebookLM Icon</title>
+								<title>NotebookLM</title>
 								<path
 									d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
 									strokeLinecap="round"
@@ -862,47 +877,47 @@ export function IntegrationsView() {
 									strokeWidth={2}
 								/>
 							</svg>
-						</div>
+						</motion.div>
 						<div className="flex-1 min-w-0">
-							<h3 className="text-foreground dark:text-white font-semibold text-base mb-1">
-								Google NotebookLM
-							</h3>
-							<p className="text-foreground dark:text-white/70 text-sm leading-relaxed">
-								Connect your NotebookLM account to sync projects, generate
-								podcasts, videos, reports, and more from your saved content.
-							</p>
-						</div>
-					</div>
-
-					{nlmLoading ? (
-						<Skeleton className="h-14 w-full bg-white/10 rounded-lg" />
-					) : nlmStatus?.connected ? (
-						<motion.div
-							animate={{ opacity: 1 }}
-							className="p-3 bg-white/5 rounded-lg border border-white/10"
-							initial={{ opacity: 0 }}
-						>
-							<div className="flex items-center justify-between">
-								<div className="flex items-center gap-3">
-									<div className="flex items-center gap-2">
-										<div className="w-2 h-2 rounded-full bg-green-400" />
-										<span className="text-sm text-green-400 font-medium">
+							<div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+								<p className="font-medium text-foreground dark:text-foreground dark:text-white text-sm">
+									Google NotebookLM
+								</p>
+								{nlmStatus?.connected ? (
+									<div className="flex items-center gap-1">
+										<div className="w-2 h-2 bg-green-400 rounded-full" />
+										<span className="text-xs text-green-400 font-medium">
 											Connected
 										</span>
 									</div>
-									{nlmStatus.email && (
-										<span className="text-xs text-foreground dark:text-foreground dark:text-white/50">
-											{nlmStatus.email}
+								) : (
+									<div className="hidden sm:flex items-center gap-1">
+										<div className="w-2 h-2 bg-gray-400 rounded-full" />
+										<span className="text-xs text-gray-400 font-medium">
+											Disconnected
 										</span>
-									)}
-									{typeof nlmStatus.notebookCount === "number" && (
-										<span className="text-xs text-foreground dark:text-foreground dark:text-white/40">
-											{nlmStatus.notebookCount} notebooks
-										</span>
-									)}
-								</div>
+									</div>
+								)}
+							</div>
+							<p className="text-xs text-foreground dark:text-foreground dark:text-white/60 mt-0.5">
+								Sync projects, generate podcasts, videos, reports and more
+							</p>
+							{nlmStatus?.connected && nlmStatus.email && (
+								<p className="text-xs text-foreground dark:text-foreground dark:text-white/50 mt-1">
+									{nlmStatus.email}
+								</p>
+							)}
+						</div>
+					</div>
+
+					<div className="flex items-center justify-end gap-2 sm:flex-shrink-0">
+						{nlmStatus?.connected ? (
+							<motion.div
+								whileHover={{ scale: 1.05 }}
+								whileTap={{ scale: 0.95 }}
+							>
 								<Button
-									className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+									className="text-foreground dark:text-foreground dark:text-white/70 hover:text-red-400 hover:bg-red-500/10 w-full sm:w-auto"
 									disabled={nlmDisconnectMutation.isPending}
 									onClick={() => {
 										if (nlmStatus.connectionId) {
@@ -912,51 +927,38 @@ export function IntegrationsView() {
 									size="sm"
 									variant="ghost"
 								>
-									<Trash2 className="h-4 w-4" />
+									<Trash2 className="h-4 w-4 sm:mr-2" />
+									<span className="hidden sm:inline">Disconnect</span>
 								</Button>
-							</div>
-							<div className="mt-2 flex flex-wrap gap-1.5">
-								{[
-									"Podcasts",
-									"Videos",
-									"Reports",
-									"Infographics",
-									"Mind Maps",
-									"Chat",
-								].map((feature) => (
-									<span
-										className="px-2 py-0.5 text-[10px] bg-purple-500/10 text-purple-400 rounded border border-purple-500/20"
-										key={feature}
-									>
-										{feature}
+							</motion.div>
+						) : (
+							<div className="flex items-center justify-between gap-2 w-full sm:w-auto">
+								<div className="sm:hidden flex items-center gap-1">
+									<div className="w-2 h-2 bg-gray-400 rounded-full" />
+									<span className="text-xs text-gray-400 font-medium">
+										Disconnected
 									</span>
-								))}
+								</div>
+								<motion.div
+									className="flex-shrink-0"
+									whileHover={{ scale: 1.02 }}
+									whileTap={{ scale: 0.98 }}
+								>
+									<Button
+										className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border-blue-600/30 min-w-[80px] disabled:cursor-not-allowed"
+										disabled={nlmConnecting}
+										onClick={handleNlmConnect}
+										size="sm"
+										variant="outline"
+									>
+										{nlmConnecting ? "Connecting..." : "Connect"}
+									</Button>
+								</motion.div>
 							</div>
-						</motion.div>
-					) : (
-						<div className="space-y-2">
-							<Button
-								className="w-full bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border-purple-500/30"
-								disabled={nlmConnecting}
-								onClick={handleNlmConnect}
-								variant="secondary"
-							>
-								{nlmConnecting ? (
-									<Loader className="h-4 w-4 animate-spin mr-2" />
-								) : (
-									<ExternalLink className="h-4 w-4 mr-2" />
-								)}
-								Connect NotebookLM
-							</Button>
-							<p className="text-xs text-foreground dark:text-foreground dark:text-white/40 text-center">
-								{nlmConnecting
-									? "Waiting for connection... Log into NotebookLM in the popup."
-									: "Opens NotebookLM for login. The Kortix extension captures your session automatically."}
-							</p>
-						</div>
-					)}
-				</div>
-			</div>
+						)}
+					</div>
+				</motion.div>
+			)}
 
 			<div className="p-3">
 				<p className="text-foreground dark:text-foreground dark:text-white/70 text-sm leading-relaxed text-center">
