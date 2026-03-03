@@ -2518,27 +2518,27 @@ export function ChatMessages({
 
 	const mentionProjects = useMemo(() => {
 		const q = mentionQuery.trim().toLowerCase()
-		const counts = new Map<string, number>()
-		let total = 0
-		for (const doc of canvasDocs) {
-			if (mentionedDocIds.includes(doc.id)) continue
-			total += 1
-			if (doc.containerTag) {
-				counts.set(doc.containerTag, (counts.get(doc.containerTag) ?? 0) + 1)
-			}
-		}
+		const totalCount = projects.reduce(
+			(sum, p) => sum + (p.documentCount ?? 0),
+			0,
+		)
 		const base = [
-			{ id: "__ALL__", name: "All Projects", containerTag: null, count: total },
+			{
+				id: "__ALL__",
+				name: "All Projects",
+				containerTag: null,
+				count: totalCount,
+			},
 			...projects.map((projectItem) => ({
 				id: projectItem.id,
 				name: projectItem.name,
 				containerTag: projectItem.containerTag,
-				count: counts.get(projectItem.containerTag) ?? 0,
+				count: projectItem.documentCount ?? 0,
 			})),
 		]
 		if (!q) return base
 		return base.filter((item) => item.name.toLowerCase().includes(q))
-	}, [canvasDocs, mentionedDocIds, mentionQuery, projects])
+	}, [mentionQuery, projects])
 
 	useEffect(() => {
 		if (!effectiveOpen) return
