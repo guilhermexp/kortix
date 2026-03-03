@@ -160,6 +160,34 @@ export function createToast(state: ToastState): HTMLElement {
 }
 
 /**
+ * Shared pill-button style for overlay buttons
+ */
+const PILL_BUTTON_STYLE = `
+    background: #0a0a0a;
+    color: #e5e5e5;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 50px;
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+`
+
+function addPillHoverEffect(el: HTMLElement) {
+	el.addEventListener("mouseenter", () => {
+		el.style.opacity = "0.8"
+		el.style.boxShadow = "0 4px 12px rgba(0,0,0,0.6)"
+	})
+	el.addEventListener("mouseleave", () => {
+		el.style.opacity = "1"
+		el.style.boxShadow = "0 2px 8px rgba(0,0,0,0.4)"
+	})
+}
+
+/**
  * Creates the Twitter import button
  * @param onClick - Click handler for the button
  * @returns HTMLElement - The button element
@@ -172,17 +200,7 @@ export function createTwitterImportButton(onClick: () => void): HTMLElement {
     top: 10px;
     right: 10px;
     z-index: 2147483646;
-    background: #0a0a0a;
-    color: #e5e5e5;
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 50px;
-    padding: 10px 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    ${PILL_BUTTON_STYLE}
   `
 
 	const iconUrl = browser.runtime.getURL("/icon-16.png")
@@ -191,16 +209,35 @@ export function createTwitterImportButton(onClick: () => void): HTMLElement {
     <span style="font-weight: 500; font-size: 12px;">Import Bookmarks</span>
   `
 
-	button.addEventListener("mouseenter", () => {
-		button.style.opacity = "0.8"
-		button.style.boxShadow = "0 4px 12px rgba(0,0,0,0.6)"
-	})
+	addPillHoverEffect(button)
+	button.addEventListener("click", onClick)
 
-	button.addEventListener("mouseleave", () => {
-		button.style.opacity = "1"
-		button.style.boxShadow = "0 2px 8px rgba(0,0,0,0.4)"
-	})
+	return button
+}
 
+/**
+ * Creates the "Save Current Page" overlay button
+ * @param onClick - Click handler for the button
+ * @returns HTMLElement - The button element
+ */
+export function createSavePageButton(onClick: () => void): HTMLElement {
+	const button = document.createElement("div")
+	button.id = ELEMENT_IDS.SAVE_PAGE_BUTTON
+	button.style.cssText = `
+    position: fixed;
+    top: 10px;
+    right: 200px;
+    z-index: 2147483646;
+    ${PILL_BUTTON_STYLE}
+  `
+
+	const iconUrl = browser.runtime.getURL("/icon-16.png")
+	button.innerHTML = `
+    <img src="${iconUrl}" width="20" height="20" alt="Save Page" style="border-radius: 4px;" />
+    <span style="font-weight: 500; font-size: 12px;">Save Page</span>
+  `
+
+	addPillHoverEffect(button)
 	button.addEventListener("click", onClick)
 
 	return button

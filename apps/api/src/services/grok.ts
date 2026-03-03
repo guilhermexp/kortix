@@ -31,7 +31,7 @@ export async function grokChat(
 		"x-ai/grok-4.1-fast"
 	const temperature = options?.temperature ?? 0.2
 	const maxTokens = options?.maxTokens ?? 1024
-	const timeoutMs = options?.timeoutMs ?? 12_000
+	const timeoutMs = options?.timeoutMs ?? 25_000
 
 	try {
 		const headers: Record<string, string> = {
@@ -71,7 +71,12 @@ export async function grokChat(
 		const content: string | undefined = data?.choices?.[0]?.message?.content
 		return typeof content === "string" ? content.trim() : null
 	} catch (err) {
-		console.warn("[Grok] request failed", err)
+		const isTimeout =
+			err instanceof DOMException && err.name === "TimeoutError"
+		console.warn(
+			`[Grok] request failed (${isTimeout ? `timeout after ${timeoutMs}ms` : "network error"})`,
+			isTimeout ? "" : err,
+		)
 		return null
 	}
 }

@@ -18,6 +18,7 @@ const VOYAGE_API_URL = "https://api.302.ai/v1/embeddings"
 const VOYAGE_MODEL = "voyage-3-large"
 const _VOYAGE_DIMENSION = 1024 // Native dimension for voyage-3-large
 const MAX_BATCH_SIZE = 128 // Maximum texts per request
+const REQUEST_TIMEOUT_MS = 30_000 // 30 seconds per request
 
 // ============================================================================
 // Types
@@ -88,6 +89,7 @@ export async function generateVoyageEmbedding(
 				Authorization: `Bearer ${apiKey}`,
 			},
 			body: JSON.stringify(requestBody),
+			signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 		})
 
 		if (!response.ok) {
@@ -177,6 +179,7 @@ export async function generateVoyageEmbeddingsBatch(
 				Authorization: `Bearer ${apiKey}`,
 			},
 			body: JSON.stringify(requestBody),
+			signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 		})
 
 		if (!response.ok) {

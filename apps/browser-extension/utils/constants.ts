@@ -27,6 +27,7 @@ export const STORAGE_KEYS = {
 	TWITTER_AUTH_TOKEN: "twitter-auth-token",
 	DEFAULT_PROJECT: "sm-default-project",
 	AUTO_SEARCH_ENABLED: "sm-auto-search-enabled",
+	SAVE_PAGE_BUTTON_ENABLED: "sm-save-page-button-enabled",
 } as const
 
 /**
@@ -36,6 +37,7 @@ export const ELEMENT_IDS = {
 	TWITTER_IMPORT_BUTTON: "sm-twitter-import-button",
 	KORTIX_TOAST: "sm-toast",
 	KORTIX_SAVE_BUTTON: "sm-save-button",
+	SAVE_PAGE_BUTTON: "sm-save-page-button",
 	SAVE_TWEET_ELEMENT: "sm-save-tweet-element",
 	CHATGPT_INPUT_BAR_ELEMENT: "sm-chatgpt-input-bar-element",
 	CLAUDE_INPUT_BAR_ELEMENT: "sm-claude-input-bar-element",

@@ -49,7 +49,7 @@ export async function summarizeWithGrok(
 				},
 				{ role: "user", content: textPrompt },
 			],
-			{ maxTokens: 800, timeoutMs: options?.timeoutMs ?? 12_000 },
+			{ maxTokens: 800, timeoutMs: options?.timeoutMs ?? 25_000 },
 		)
 		if (answer?.trim()) {
 			console.log("[Grok] Text-based summary generated successfully")
@@ -78,7 +78,7 @@ export async function summarizeWithGrok(
 				},
 				{ role: "user", content: urlPrompt },
 			],
-			{ maxTokens: 800, timeoutMs: options?.timeoutMs ?? 12_000 },
+			{ maxTokens: 800, timeoutMs: options?.timeoutMs ?? 25_000 },
 		)
 		if (answer?.trim()) {
 			console.log("[Grok] URL-based summary generated successfully")

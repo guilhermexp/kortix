@@ -45,6 +45,8 @@ function App() {
 		"save",
 	)
 	const [autoSearchEnabled, setAutoSearchEnabled] = useState<boolean>(false)
+	const [savePageButtonEnabled, setSavePageButtonEnabled] =
+		useState<boolean>(false)
 	const [authInvalidated, setAuthInvalidated] = useState<boolean>(false)
 	const [xGridActive, setXGridActive] = useState<boolean>(false)
 	const [xGridLoading, setXGridLoading] = useState<boolean>(false)
@@ -63,6 +65,7 @@ function App() {
 				const result = await chrome.storage.local.get([
 					STORAGE_KEYS.BEARER_TOKEN,
 					STORAGE_KEYS.AUTO_SEARCH_ENABLED,
+					STORAGE_KEYS.SAVE_PAGE_BUTTON_ENABLED,
 				])
 				const hasToken = !!result[STORAGE_KEYS.BEARER_TOKEN]
 
@@ -90,6 +93,10 @@ function App() {
 				const autoSearchSetting =
 					result[STORAGE_KEYS.AUTO_SEARCH_ENABLED] ?? false
 				setAutoSearchEnabled(Boolean(autoSearchSetting))
+
+				const savePageBtnSetting =
+					result[STORAGE_KEYS.SAVE_PAGE_BUTTON_ENABLED] ?? false
+				setSavePageButtonEnabled(Boolean(savePageBtnSetting))
 			} catch (error) {
 				console.error("Error checking auth status:", error)
 				setUserSignedIn(false)
@@ -186,6 +193,17 @@ function App() {
 			setAutoSearchEnabled(enabled)
 		} catch (error) {
 			console.error("Error updating auto search setting:", error)
+		}
+	}
+
+	const handleSavePageButtonToggle = async (enabled: boolean) => {
+		try {
+			await chrome.storage.local.set({
+				[STORAGE_KEYS.SAVE_PAGE_BUTTON_ENABLED]: enabled,
+			})
+			setSavePageButtonEnabled(enabled)
+		} catch (error) {
+			console.error("Error updating save page button setting:", error)
 		}
 	}
 
@@ -455,6 +473,37 @@ function App() {
 												No email found
 											</div>
 										)}
+									</div>
+								</div>
+
+								{/* Overlay Section */}
+								<div>
+									<h3 className="text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
+										Overlay
+									</h3>
+									<div className="p-3.5 bg-white/5 rounded-xl border border-white/10">
+										<div className="flex items-center justify-between gap-3">
+											<div className="flex flex-col flex-1 min-w-0">
+												<span className="text-sm font-medium text-white leading-tight">
+													Save Page Button
+												</span>
+												<span className="text-[11px] text-white/40 leading-tight mt-1">
+													Show a floating button on all pages to quickly save
+													the current page
+												</span>
+											</div>
+											<label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+												<input
+													checked={savePageButtonEnabled}
+													className="sr-only peer"
+													onChange={(e) =>
+														handleSavePageButtonToggle(e.target.checked)
+													}
+													type="checkbox"
+												/>
+												<div className="w-10 h-[22px] bg-white/10 rounded-full peer peer-checked:after:translate-x-[18px] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white/40 after:rounded-full after:h-[18px] after:w-[18px] after:transition-all peer-checked:bg-white peer-checked:after:bg-black" />
+											</label>
+										</div>
 									</div>
 								</div>
 

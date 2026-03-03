@@ -1,5 +1,5 @@
-import { DOMAINS, MESSAGE_TYPES } from "../../utils/constants"
-import { DOMUtils } from "../../utils/ui-components"
+import { DOMAINS, ELEMENT_IDS, MESSAGE_TYPES, STORAGE_KEYS } from "../../utils/constants"
+import { createSavePageButton, DOMUtils } from "../../utils/ui-components"
 import { initializeChatGPT } from "./chatgpt"
 import { initializeClaude } from "./claude"
 import {
@@ -125,6 +125,38 @@ export default defineContentScript({
 		initializeClaude()
 		initializeT3()
 		initializeTwitter()
+
+		// Save Page overlay button — visible on all pages when toggle is on
+		const addSavePageButton = () => {
+			if (DOMUtils.elementExists(ELEMENT_IDS.SAVE_PAGE_BUTTON)) return
+			const btn = createSavePageButton(() => saveMemory())
+			document.body.appendChild(btn)
+		}
+
+		const removeSavePageButton = () => {
+			DOMUtils.removeElement(ELEMENT_IDS.SAVE_PAGE_BUTTON)
+		}
+
+		// Check initial state and show/hide button
+		chrome.storage.local
+			.get(STORAGE_KEYS.SAVE_PAGE_BUTTON_ENABLED)
+			.then((result) => {
+				if (result[STORAGE_KEYS.SAVE_PAGE_BUTTON_ENABLED]) {
+					addSavePageButton()
+				}
+			})
+
+		// React to toggle changes from popup in real-time
+		chrome.storage.onChanged.addListener((changes, area) => {
+			if (area !== "local") return
+			const change = changes[STORAGE_KEYS.SAVE_PAGE_BUTTON_ENABLED]
+			if (!change) return
+			if (change.newValue) {
+				addSavePageButton()
+			} else {
+				removeSavePageButton()
+			}
+		})
 
 		// Start observing for dynamic changes
 		if (document.readyState === "loading") {

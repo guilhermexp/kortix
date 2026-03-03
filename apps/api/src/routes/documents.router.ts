@@ -170,40 +170,48 @@ documentsRouter.post(
 			await ensureSpace(supabase, organizationId, tag)
 		}
 
-		const results = await Promise.allSettled(
-			documents.map(async (doc) => {
-				const mergedMetadata = {
-					...(batchMetadata ?? {}),
-					...(doc.metadata ?? {}),
-				}
-				const payload = { ...doc, metadata: mergedMetadata }
-				return addDocument({
+		// Process documents sequentially to prevent race condition where parallel
+		// addDocument calls all pass the duplicate check before any INSERT completes
+		const output: Array<{
+			status: "created" | "skipped" | "failed"
+			document?: Awaited<ReturnType<typeof addDocument>>
+			error?: string
+			code?: string
+			existingDocumentId?: string
+			index?: number
+		}> = []
+
+		for (let i = 0; i < documents.length; i++) {
+			const doc = documents[i]
+			const mergedMetadata = {
+				...(batchMetadata ?? {}),
+				...(doc.metadata ?? {}),
+			}
+			const payload = { ...doc, metadata: mergedMetadata }
+			try {
+				const result = await addDocument({
 					organizationId,
 					userId: internalUserId,
 					payload,
 					client: supabase,
 				})
-			}),
-		)
-
-		const output = results.map((r, i) => {
-			if (r.status === "fulfilled") {
-				return { status: "created" as const, document: r.value }
+				output.push({ status: "created", document: result })
+			} catch (e) {
+				const err = e as Error & {
+					status?: number
+					code?: string
+					existingDocumentId?: string
+				}
+				const isDuplicate = err.status === 409
+				output.push({
+					status: isDuplicate ? "skipped" : "failed",
+					error: err.message,
+					code: err.code,
+					existingDocumentId: err.existingDocumentId,
+					index: i,
+				})
 			}
-			const err = r.reason as Error & {
-				status?: number
-				code?: string
-				existingDocumentId?: string
-			}
-			const isDuplicate = err.status === 409
-			return {
-				status: isDuplicate ? ("skipped" as const) : ("failed" as const),
-				error: err.message,
-				code: err.code,
-				existingDocumentId: err.existingDocumentId,
-				index: i,
-			}
-		})
+		}
 
 		const successCount = output.filter(
 			(r) => r.status === "created" || r.status === "skipped",

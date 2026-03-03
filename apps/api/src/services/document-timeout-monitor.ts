@@ -169,7 +169,7 @@ async function checkStuckDocuments(): Promise<void> {
 				"processing",
 				"indexing",
 			])
-			.lt("updated_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+			.lt("updated_at", new Date(Date.now() - 10 * 60 * 1000).toISOString())
 			.select("id")
 
 		if (error) {
@@ -303,7 +303,7 @@ export async function manualCheckStuckDocuments(): Promise<number> {
 			"processing",
 			"indexing",
 		])
-		.lt("updated_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+		.lt("updated_at", new Date(Date.now() - 10 * 60 * 1000).toISOString())
 		.select("id")
 
 	if (error) {
