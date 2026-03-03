@@ -40,6 +40,7 @@ export default defineConfig({
 			"*://chat.openai.com/*",
 			"*://claude.ai/*",
 			"*://t3.chat/*",
+			"*://notebooklm.google.com/*",
 		],
 		web_accessible_resources: [
 			{

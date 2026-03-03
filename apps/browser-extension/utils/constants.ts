@@ -128,6 +128,8 @@ export const MESSAGE_TYPES = {
 	CAPTURE_PROMPT: "sm-capture-prompt",
 	TOGGLE_X_GRID: "sm-toggle-x-grid",
 	GET_X_GRID_STATE: "sm-get-x-grid-state",
+	NLM_START_CAPTURE: "sm-nlm-start-capture",
+	NLM_CONNECTED: "NLM_CONNECTED",
 } as const
 
 export const CONTEXT_MENU_IDS = {

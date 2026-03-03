@@ -56,8 +56,25 @@ export default defineContentScript({
 			})
 		}
 
+		// Listen for NLM_START_CAPTURE from the Kortix web app via postMessage
+		window.addEventListener("message", (event) => {
+			if (event.data?.type === "KORTIX_NLM_START_CAPTURE") {
+				browser.runtime.sendMessage({
+					type: MESSAGE_TYPES.NLM_START_CAPTURE,
+				}).catch((err) => {
+					console.error("[NLM] Failed to relay start capture:", err)
+				})
+			}
+		})
+
 		// Setup global event listeners
 		browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+			// NotebookLM connected notification from background
+			if (message.type === MESSAGE_TYPES.NLM_CONNECTED) {
+				window.postMessage({ type: "KORTIX_NLM_CONNECTED", data: message.data }, "*")
+				return
+			}
+
 			if (message.action === MESSAGE_TYPES.SHOW_TOAST) {
 				DOMUtils.showToast(message.state)
 			} else if (message.action === MESSAGE_TYPES.SAVE_MEMORY) {

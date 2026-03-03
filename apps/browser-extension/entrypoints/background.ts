@@ -4,6 +4,10 @@ import {
 	getContainerTagForUrl,
 	MESSAGE_TYPES,
 } from "../utils/constants"
+import {
+	captureNotebookLMCookies,
+	startNlmCapture,
+} from "../utils/notebooklm-auth"
 import { captureTwitterTokens } from "../utils/twitter-auth"
 import {
 	type ImportResult,
@@ -60,6 +64,16 @@ export default defineBackground(() => {
 			return {}
 		},
 		{ urls: ["*://x.com/*", "*://twitter.com/*"] },
+		["requestHeaders", "extraHeaders"],
+	)
+
+	// Intercept NotebookLM requests to capture Google session cookies.
+	browser.webRequest.onBeforeSendHeaders.addListener(
+		(details) => {
+			captureNotebookLMCookies(details)
+			return {}
+		},
+		{ urls: ["*://notebooklm.google.com/*"] },
 		["requestHeaders", "extraHeaders"],
 	)
 
@@ -189,6 +203,17 @@ export default defineBackground(() => {
 	 */
 	browser.runtime.onMessage.addListener(
 		(message: ExtensionMessage, _sender, sendResponse) => {
+			// Handle NotebookLM capture start
+			if (message.type === MESSAGE_TYPES.NLM_START_CAPTURE) {
+				startNlmCapture()
+					.then(() => sendResponse({ success: true }))
+					.catch((error) => {
+						console.error("[NLM] Failed to start capture:", error)
+						sendResponse({ success: false })
+					})
+				return true
+			}
+
 			// Handle Twitter import request
 			if (message.type === MESSAGE_TYPES.BATCH_IMPORT_ALL) {
 				const importConfig: TwitterImportConfig = {

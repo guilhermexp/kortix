@@ -268,6 +268,9 @@ export function IntegrationsView() {
 	const handleNlmConnect = async () => {
 		setNlmConnecting(true)
 		try {
+			// Tell the browser extension to start capturing NLM cookies
+			window.postMessage({ type: "KORTIX_NLM_START_CAPTURE" }, "*")
+
 			// Open NotebookLM in a popup for the user to login
 			const popup = window.open(
 				"https://notebooklm.google.com/",
@@ -280,46 +283,79 @@ export function IntegrationsView() {
 				return
 			}
 
-			// Show instruction toast
 			toast.info(
-				"Log into Google NotebookLM in the popup window. After login, click 'Capture Session' below.",
-				{ duration: 15000 },
+				"Log into NotebookLM in the popup window. Connection will happen automatically.",
+				{ duration: 10000 },
 			)
 
-			// Wait for user to signal they're done (we'll use a prompt approach)
-			// The actual cookie capture will happen via a separate mechanism
-			// For now, provide instructions for manual cookie paste
-			const cookieString = window.prompt(
-				"After logging into NotebookLM, paste your cookies here.\n\n" +
-				"To get cookies: Open DevTools (F12) → Console → type: document.cookie → Copy the result.",
-			)
+			// Wait for the extension to capture cookies and send to API.
+			// We listen for the NLM_CONNECTED postMessage from the content script,
+			// or poll the status endpoint as fallback.
+			const connected = await new Promise<boolean>((resolve) => {
+				let resolved = false
+				const cleanup = () => {
+					if (resolved) return
+					resolved = true
+					window.removeEventListener("message", messageHandler)
+					clearInterval(pollInterval)
+					clearTimeout(timeout)
+				}
+
+				// Listen for direct notification from extension
+				const messageHandler = (event: MessageEvent) => {
+					if (event.data?.type === "KORTIX_NLM_CONNECTED") {
+						cleanup()
+						resolve(true)
+					}
+				}
+				window.addEventListener("message", messageHandler)
+
+				// Poll status endpoint as fallback (every 3s)
+				const pollInterval = setInterval(async () => {
+					try {
+						const res = await $fetch("@get/notebooklm/status")
+						const data = res.data as { connected?: boolean } | undefined
+						if (data?.connected) {
+							cleanup()
+							resolve(true)
+						}
+					} catch {
+						// Ignore poll errors
+					}
+				}, 3000)
+
+				// Timeout after 2 minutes
+				const timeout = setTimeout(() => {
+					cleanup()
+					resolve(false)
+				}, 120000)
+
+				// Also check if popup was closed without connecting
+				const popupCheck = setInterval(() => {
+					if (popup.closed && !resolved) {
+						clearInterval(popupCheck)
+						// Give 5s grace period for the extension to finish
+						setTimeout(() => {
+							if (!resolved) {
+								cleanup()
+								resolve(false)
+							}
+						}, 5000)
+					}
+				}, 1000)
+			})
 
 			if (popup && !popup.closed) {
 				popup.close()
 			}
 
-			if (!cookieString || cookieString.trim().length < 10) {
-				toast.error("No cookies provided. Connection cancelled.")
-				return
+			if (connected) {
+				toast.success("NotebookLM connected!")
+				queryClient.invalidateQueries({ queryKey: ["notebooklm-status"] })
+				queryClient.invalidateQueries({ queryKey: ["connections"] })
+			} else {
+				toast.error("Connection timed out. Make sure the Kortix extension is installed and you're logged into NotebookLM.")
 			}
-
-			// Send cookies to backend for validation
-			const response = await $fetch("@post/notebooklm/auth", {
-				body: { cookies: cookieString.trim() },
-			})
-
-			if (response.error) {
-				throw new Error(
-					(response.error as { message?: string })?.message ||
-						"Authentication failed",
-				)
-			}
-
-			toast.success("NotebookLM connected!", {
-				description: `Found ${(response.data as { notebookCount?: number })?.notebookCount ?? 0} notebooks`,
-			})
-			queryClient.invalidateQueries({ queryKey: ["notebooklm-status"] })
-			queryClient.invalidateQueries({ queryKey: ["connections"] })
 		} catch (error) {
 			toast.error("Failed to connect NotebookLM", {
 				description: error instanceof Error ? error.message : "Unknown error",
