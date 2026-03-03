@@ -4,7 +4,7 @@ import {
 	getContainerTagForUrl,
 	MESSAGE_TYPES,
 } from "../utils/constants"
-import { captureAndSendNlmCookies } from "../utils/notebooklm-auth"
+import { captureNlmCookies } from "../utils/notebooklm-auth"
 import { captureTwitterTokens } from "../utils/twitter-auth"
 import {
 	type ImportResult,
@@ -191,9 +191,9 @@ export default defineBackground(() => {
 	 */
 	browser.runtime.onMessage.addListener(
 		(message: ExtensionMessage, _sender, sendResponse) => {
-			// Handle NotebookLM cookie capture
+			// Handle NotebookLM cookie capture — just return cookies, web app calls API
 			if (message.type === MESSAGE_TYPES.NLM_START_CAPTURE) {
-				captureAndSendNlmCookies()
+				captureNlmCookies()
 					.then((result) => sendResponse(result))
 					.catch((error) => {
 						console.error("[NLM] Cookie capture failed:", error)

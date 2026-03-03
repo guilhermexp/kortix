@@ -266,7 +266,7 @@ export function IntegrationsView() {
 	const handleNlmConnect = async () => {
 		setNlmConnecting(true)
 		try {
-			// Open NotebookLM in a popup for the user to login
+			// Open NotebookLM in a popup so the user is logged in
 			const popup = window.open(
 				"https://notebooklm.google.com/",
 				"notebooklm-login",
@@ -278,52 +278,40 @@ export function IntegrationsView() {
 				return
 			}
 
-			// Tell the browser extension to capture cookies and send to API.
-			// The extension will respond via postMessage when done.
-			let connected = false
-			let extensionError: string | null = null
-
-			const extensionResult = await new Promise<{ success: boolean; error?: string }>((resolve) => {
+			// Ask the extension to capture NLM cookies (extension only reads cookies,
+			// does NOT call the API — the web app does that with its own session)
+			const extensionResult = await new Promise<{
+				success: boolean
+				cookies?: string
+				error?: string
+			}>((resolve) => {
 				const handler = (event: MessageEvent) => {
-					if (event.data?.type === "KORTIX_NLM_CONNECTED") {
+					if (event.data?.type === "KORTIX_NLM_COOKIES") {
 						window.removeEventListener("message", handler)
-						resolve({ success: true })
+						resolve({
+							success: true,
+							cookies: event.data?.data?.cookies,
+						})
 					} else if (event.data?.type === "KORTIX_NLM_ERROR") {
 						window.removeEventListener("message", handler)
-						resolve({ success: false, error: event.data?.data?.error })
+						resolve({
+							success: false,
+							error: event.data?.data?.error,
+						})
 					}
 				}
 				window.addEventListener("message", handler)
 
-				// Timeout after 30s if extension doesn't respond
 				setTimeout(() => {
 					window.removeEventListener("message", handler)
-					resolve({ success: false, error: "Extension did not respond. Is the Kortix extension installed?" })
+					resolve({
+						success: false,
+						error: "Extension did not respond. Is the Kortix extension installed?",
+					})
 				}, 30000)
 
-				// Trigger the capture
 				window.postMessage({ type: "KORTIX_NLM_START_CAPTURE" }, "*")
 			})
-
-			if (extensionResult.success) {
-				connected = true
-			} else {
-				extensionError = extensionResult.error || "Unknown extension error"
-				// Fallback: poll status in case extension succeeded but messaging failed
-				for (let i = 0; i < 5; i++) {
-					await new Promise((r) => setTimeout(r, 2000))
-					try {
-						const res = await $fetch("@get/notebooklm/status")
-						const data = res.data as { connected?: boolean } | undefined
-						if (data?.connected) {
-							connected = true
-							break
-						}
-					} catch {
-						// ignore
-					}
-				}
-			}
 
 			// Close popup
 			try {
@@ -332,19 +320,38 @@ export function IntegrationsView() {
 				// cross-origin close can fail silently
 			}
 
-			if (connected) {
-				await queryClient.refetchQueries({ queryKey: ["notebooklm-status"] })
-				queryClient.invalidateQueries({ queryKey: ["connections"] })
-				toast.success("NotebookLM connected!")
-			} else {
-				toast.error("Failed to connect NotebookLM", {
-					description: extensionError || "Make sure the Kortix extension is installed and you're logged into NotebookLM.",
+			if (!extensionResult.success || !extensionResult.cookies) {
+				toast.error("Failed to capture cookies", {
+					description:
+						extensionResult.error ||
+						"Make sure the Kortix extension is installed and you're logged into NotebookLM.",
 					duration: 10000,
 				})
+				return
 			}
+
+			// Web app calls the API directly (already authenticated via session)
+			const res = await $fetch("@post/notebooklm/auth", {
+				body: { cookies: extensionResult.cookies },
+			})
+
+			if (res.error) {
+				toast.error("Failed to connect NotebookLM", {
+					description: res.error.message || "Authentication failed",
+					duration: 10000,
+				})
+				return
+			}
+
+			await queryClient.refetchQueries({
+				queryKey: ["notebooklm-status"],
+			})
+			queryClient.invalidateQueries({ queryKey: ["connections"] })
+			toast.success("NotebookLM connected!")
 		} catch (error) {
 			toast.error("Failed to connect NotebookLM", {
-				description: error instanceof Error ? error.message : "Unknown error",
+				description:
+					error instanceof Error ? error.message : "Unknown error",
 			})
 		} finally {
 			setNlmConnecting(false)

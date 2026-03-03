@@ -1,18 +1,20 @@
 /**
  * NotebookLM Authentication Module
  * Uses chrome.cookies API to read Google session cookies
- * and sends them to the Kortix API for connection.
+ * and returns them to the caller (web app).
+ *
+ * The web app is responsible for sending the cookies to the Kortix API
+ * (it already has a valid session — no need for extension to authenticate).
  */
-import { makeAuthenticatedRequest } from "./api"
-import { API_ENDPOINTS } from "./constants"
 
 /**
- * Capture NotebookLM cookies and send to Kortix API.
+ * Capture NotebookLM cookies and return them.
  * Uses chrome.cookies.getAll() to get all cookies (including HttpOnly)
- * for notebooklm.google.com, then posts to our auth endpoint.
+ * for notebooklm.google.com.
  */
-export async function captureAndSendNlmCookies(): Promise<{
+export async function captureNlmCookies(): Promise<{
 	success: boolean
+	cookies?: string
 	error?: string
 }> {
 	try {
@@ -26,7 +28,10 @@ export async function captureAndSendNlmCookies(): Promise<{
 
 		if (!cookies.length) {
 			console.warn("[NLM] No cookies found for notebooklm.google.com")
-			return { success: false, error: "No Google cookies found. Are you logged in?" }
+			return {
+				success: false,
+				error: "No Google cookies found. Are you logged in to NotebookLM?",
+			}
 		}
 
 		// Build cookie header string: "name=value; name2=value2; ..."
@@ -34,55 +39,12 @@ export async function captureAndSendNlmCookies(): Promise<{
 			.map((c) => `${c.name}=${c.value}`)
 			.join("; ")
 
-		console.log(`[NLM] Captured ${cookies.length} cookies, sending to API...`)
+		console.log(`[NLM] Captured ${cookies.length} cookies`)
 
-		// Use the shared authenticated request (handles token refresh on 401)
-		const data = await makeAuthenticatedRequest<{ data: unknown }>(
-			"/v3/notebooklm/auth",
-			{
-				method: "POST",
-				body: JSON.stringify({ cookies: cookieString }),
-			},
-		)
-
-		console.log("[NLM] Connected successfully:", data)
-
-		// Notify all Kortix tabs
-		await notifyKortixTabs(data.data)
-
-		return { success: true }
+		return { success: true, cookies: cookieString }
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : String(error)
-		console.error("[NLM] captureAndSendNlmCookies failed:", msg)
+		console.error("[NLM] captureNlmCookies failed:", msg)
 		return { success: false, error: msg }
-	}
-}
-
-/**
- * Notify Kortix web app tabs that NotebookLM was connected.
- */
-async function notifyKortixTabs(data: unknown): Promise<void> {
-	try {
-		const tabs = await browser.tabs.query({})
-		const kortixHost = new URL(API_ENDPOINTS.KORTIX_WEB).hostname
-
-		for (const tab of tabs) {
-			if (!tab.id || !tab.url) continue
-			try {
-				const tabHost = new URL(tab.url).hostname
-				if (tabHost === kortixHost || tabHost === "localhost") {
-					browser.tabs.sendMessage(tab.id, {
-						type: "NLM_CONNECTED",
-						data,
-					}).catch(() => {
-						// Tab might not have content script loaded
-					})
-				}
-			} catch {
-				// Invalid URL
-			}
-		}
-	} catch (error) {
-		console.error("[NLM] Failed to notify Kortix tabs:", error)
 	}
 }

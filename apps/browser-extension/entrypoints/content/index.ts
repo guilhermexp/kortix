@@ -56,19 +56,18 @@ export default defineContentScript({
 			})
 		}
 
-		// Listen for NLM_START_CAPTURE from the Kortix web app via postMessage
+		// Listen for NLM_START_CAPTURE from the Kortix web app via postMessage.
+		// Extension only captures cookies and returns them — web app calls the API.
 		window.addEventListener("message", async (event) => {
 			if (event.data?.type === "KORTIX_NLM_START_CAPTURE") {
 				try {
-					// browser.runtime.sendMessage returns a Promise in WXT (webextension-polyfill)
-					// Do NOT use callback pattern — it's silently ignored
 					const response = await browser.runtime.sendMessage({
 						type: MESSAGE_TYPES.NLM_START_CAPTURE,
 					})
 					window.postMessage(
 						{
 							type: response?.success
-								? "KORTIX_NLM_CONNECTED"
+								? "KORTIX_NLM_COOKIES"
 								: "KORTIX_NLM_ERROR",
 							data: response,
 						},
@@ -94,12 +93,6 @@ export default defineContentScript({
 
 		// Setup global event listeners
 		browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-			// NotebookLM connected notification from background
-			if (message.type === MESSAGE_TYPES.NLM_CONNECTED) {
-				window.postMessage({ type: "KORTIX_NLM_CONNECTED", data: message.data }, "*")
-				return
-			}
-
 			if (message.action === MESSAGE_TYPES.SHOW_TOAST) {
 				DOMUtils.showToast(message.state)
 			} else if (message.action === MESSAGE_TYPES.SAVE_MEMORY) {
