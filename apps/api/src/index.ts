@@ -89,6 +89,7 @@ import { projectsRouter } from "./routes/projects.router"
 import { searchRouter } from "./routes/search.router"
 import { settingsRouter } from "./routes/settings.router"
 import { skillsRouter } from "./routes/skills.router"
+import { notebookLmRouter } from "./routes/notebooklm.router"
 import { getWaitlistStatus } from "./routes/waitlist"
 
 // Services
@@ -575,6 +576,7 @@ app.route("/v3/skills", skillsRouter)
 app.route("/v3/conversations", conversationsRouter)
 app.route("/v3/council", councilRouter)
 app.route("/v3/canvas", canvasRouter)
+app.route("/v3/notebooklm", notebookLmRouter)
 app.route("/chat", chatRouter)
 
 // Waitlist status (simple inline)

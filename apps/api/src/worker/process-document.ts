@@ -11,6 +11,7 @@
  */
 
 import { ensureSpace, updateBundleParentStatus } from "../routes/documents"
+import { syncDocumentToNotebookLM } from "../services/notebooklm/sync"
 import { extractTweetId } from "../routes/documents/utils"
 import {
 	extractDocument,
@@ -191,7 +192,7 @@ export async function processAndSaveDocument(
 	const { data: document, error: docError } = await supabaseAdmin
 		.from("documents")
 		.select(
-			"content, metadata, user_id, title, url, source, type, raw, processing_metadata, parent_id",
+			"content, metadata, user_id, title, url, source, type, raw, processing_metadata, parent_id, space_id",
 		)
 		.eq("id", documentId)
 		.maybeSingle()
@@ -487,6 +488,27 @@ export async function processAndSaveDocument(
 						: String(parentError),
 			})
 		}
+	}
+
+	// 14. Sync to NotebookLM (async, non-blocking)
+	if (finalUpdate.status === "done" && spaceId) {
+		syncDocumentToNotebookLM({
+			supabase: supabaseAdmin,
+			organizationId: orgId,
+			spaceId,
+			document: {
+				id: documentId,
+				title: (finalUpdate.title as string) ?? document.title ?? null,
+				url: document.url ?? null,
+				content:
+					(finalUpdate.content as string) ?? document.content ?? null,
+				type: document.type ?? "text",
+			},
+		}).catch((err) => {
+			console.warn(`${logPrefix} NotebookLM sync failed (non-blocking)`, {
+				error: err instanceof Error ? err.message : String(err),
+			})
+		})
 	}
 
 	console.info(`${logPrefix} Done`, {

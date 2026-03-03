@@ -27,6 +27,7 @@ import {
 	listFiles,
 	uploadFile,
 } from "./daytona-sandbox"
+import { NotebookLMClient } from "./notebooklm"
 import { executeStructuredSearch } from "./search-tool"
 
 type ToolContext = {
@@ -67,6 +68,18 @@ export function createKortixTools(
 				DAYTONA_TARGET: env.DAYTONA_TARGET,
 			}
 		: null
+
+	// NotebookLM: lazily initialized when first tool is called
+	let nlmClient: NotebookLMClient | null | undefined
+	async function getNlmClient(): Promise<NotebookLMClient | null> {
+		if (nlmClient !== undefined) return nlmClient
+		try {
+			nlmClient = await NotebookLMClient.fromConnection(client, orgId)
+		} catch {
+			nlmClient = null
+		}
+		return nlmClient
+	}
 
 	const cache = getCacheService()
 	const CACHE_TTL = 3600 // 1 hour
@@ -1601,6 +1614,305 @@ export function createKortixTools(
 						),
 					]
 				: []),
+
+			// ─── NotebookLM tools (available when user has NotebookLM connected) ───
+			tool(
+				"notebooklm_chat",
+				"Ask a question to Google NotebookLM about the sources in a linked notebook. Returns an AI-generated answer with citations. Use this when the user wants insights from their NotebookLM notebooks, or when you need a second perspective on their saved content. Requires NotebookLM to be connected.",
+				{
+					notebookId: z
+						.string()
+						.describe(
+							"The NotebookLM notebook ID to query. If unknown, use notebooklm_list_notebooks first.",
+						),
+					question: z
+						.string()
+						.min(1)
+						.describe("The question to ask about the notebook's sources"),
+					sourceIds: z
+						.array(z.string())
+						.optional()
+						.describe(
+							"Specific source IDs to limit the query to. Omit to query all sources.",
+						),
+				},
+				async ({ notebookId, question, sourceIds }) => {
+					try {
+						const nlm = await getNlmClient()
+						if (!nlm) {
+							return {
+								content: [
+									{
+										type: "text",
+										text: "NotebookLM is not connected. The user needs to connect it in Settings → Integrations.",
+									},
+								],
+								isError: true as const,
+							}
+						}
+						const result = await nlm.chat.ask(notebookId, question, {
+							sourceIds,
+						})
+						return {
+							content: [
+								{ type: "text", text: JSON.stringify(result, null, 2) },
+							],
+						}
+					} catch (error) {
+						const message =
+							error instanceof Error ? error.message : "Unknown error"
+						return {
+							content: [
+								{ type: "text", text: `notebooklm_chat failed: ${message}` },
+							],
+							isError: true as const,
+						}
+					}
+				},
+			),
+
+			tool(
+				"notebooklm_list_notebooks",
+				"List all notebooks in the user's NotebookLM account. Use this to discover available notebooks before performing other NotebookLM operations. Requires NotebookLM to be connected.",
+				{},
+				async () => {
+					try {
+						const nlm = await getNlmClient()
+						if (!nlm) {
+							return {
+								content: [
+									{
+										type: "text",
+										text: "NotebookLM is not connected. The user needs to connect it in Settings → Integrations.",
+									},
+								],
+								isError: true as const,
+							}
+						}
+						const notebooks = await nlm.notebooks.list()
+						return {
+							content: [
+								{ type: "text", text: JSON.stringify(notebooks, null, 2) },
+							],
+						}
+					} catch (error) {
+						const message =
+							error instanceof Error ? error.message : "Unknown error"
+						return {
+							content: [
+								{
+									type: "text",
+									text: `notebooklm_list_notebooks failed: ${message}`,
+								},
+							],
+							isError: true as const,
+						}
+					}
+				},
+			),
+
+			tool(
+				"notebooklm_generate_artifact",
+				"Generate an artifact in NotebookLM: audio overview (podcast), video, report, infographic, slide deck, or mind map. The artifact is generated from the notebook's sources. Returns a task ID for polling. Requires NotebookLM to be connected.",
+				{
+					notebookId: z.string().describe("The NotebookLM notebook ID"),
+					type: z
+						.enum([
+							"audio",
+							"video",
+							"report",
+							"infographic",
+							"slide_deck",
+							"mind_map",
+						])
+						.describe(
+							"Type of artifact to generate. 'audio' creates a podcast-style discussion, 'report' creates a briefing doc or study guide, 'video' creates an explainer video.",
+						),
+					sourceIds: z
+						.array(z.string())
+						.optional()
+						.describe("Specific source IDs to use. Omit to use all sources."),
+					instructions: z
+						.string()
+						.optional()
+						.describe(
+							"Custom instructions for the artifact generation (e.g. 'Focus on the business strategy aspects').",
+						),
+				},
+				async ({ notebookId, type, sourceIds, instructions }) => {
+					try {
+						const nlm = await getNlmClient()
+						if (!nlm) {
+							return {
+								content: [
+									{
+										type: "text",
+										text: "NotebookLM is not connected. The user needs to connect it in Settings → Integrations.",
+									},
+								],
+								isError: true as const,
+							}
+						}
+
+						let status
+						switch (type) {
+							case "audio":
+								status = await nlm.artifacts.generateAudio(notebookId, {
+									sourceIds,
+									instructions,
+								})
+								break
+							case "video":
+								status = await nlm.artifacts.generateVideo(notebookId, {
+									sourceIds,
+									instructions,
+								})
+								break
+							case "report":
+								status = await nlm.artifacts.generateReport(notebookId, {
+									sourceIds,
+									prompt: instructions,
+								})
+								break
+							case "infographic":
+								status = await nlm.artifacts.generateInfographic(notebookId, {
+									sourceIds,
+									instructions,
+								})
+								break
+							case "slide_deck":
+								status = await nlm.artifacts.generateSlideDeck(notebookId, {
+									sourceIds,
+									instructions,
+								})
+								break
+							case "mind_map":
+								status = await nlm.artifacts.generateMindMap(
+									notebookId,
+									sourceIds,
+								)
+								break
+						}
+
+						return {
+							content: [
+								{
+									type: "text",
+									text: JSON.stringify(
+										{
+											...status,
+											message: `${type} generation started. It may take a few minutes.`,
+										},
+										null,
+										2,
+									),
+								},
+							],
+						}
+					} catch (error) {
+						const message =
+							error instanceof Error ? error.message : "Unknown error"
+						return {
+							content: [
+								{
+									type: "text",
+									text: `notebooklm_generate_artifact failed: ${message}`,
+								},
+							],
+							isError: true as const,
+						}
+					}
+				},
+			),
+
+			tool(
+				"notebooklm_add_source",
+				"Add a URL or text as a source to a NotebookLM notebook. Use this to push content from Kortix to NotebookLM. Requires NotebookLM to be connected.",
+				{
+					notebookId: z.string().describe("The NotebookLM notebook ID"),
+					type: z
+						.enum(["url", "text"])
+						.describe(
+							"Type of source: 'url' for a web page/YouTube, 'text' for pasted text",
+						),
+					url: z
+						.string()
+						.optional()
+						.describe("URL to add (required when type='url')"),
+					title: z
+						.string()
+						.optional()
+						.describe("Title for text source (required when type='text')"),
+					content: z
+						.string()
+						.optional()
+						.describe(
+							"Content for text source (required when type='text')",
+						),
+				},
+				async ({ notebookId, type, url, title, content }) => {
+					try {
+						const nlm = await getNlmClient()
+						if (!nlm) {
+							return {
+								content: [
+									{
+										type: "text",
+										text: "NotebookLM is not connected. The user needs to connect it in Settings → Integrations.",
+									},
+								],
+								isError: true as const,
+							}
+						}
+
+						let source
+						if (type === "url" && url) {
+							source = await nlm.sources.addUrl(notebookId, url)
+						} else if (type === "text" && title && content) {
+							source = await nlm.sources.addText(notebookId, title, content)
+						} else {
+							return {
+								content: [
+									{
+										type: "text",
+										text: "Invalid parameters: provide 'url' for URL type, or 'title' + 'content' for text type.",
+									},
+								],
+								isError: true as const,
+							}
+						}
+
+						return {
+							content: [
+								{
+									type: "text",
+									text: JSON.stringify(
+										{
+											...source,
+											message:
+												"Source added successfully. It may take a moment to process.",
+										},
+										null,
+										2,
+									),
+								},
+							],
+						}
+					} catch (error) {
+						const message =
+							error instanceof Error ? error.message : "Unknown error"
+						return {
+							content: [
+								{
+									type: "text",
+									text: `notebooklm_add_source failed: ${message}`,
+								},
+							],
+							isError: true as const,
+						}
+					}
+				},
+			),
 		],
 	})
 }

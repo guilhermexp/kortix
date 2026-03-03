@@ -24,7 +24,14 @@ import { Skeleton } from "@repo/ui/components/skeleton"
 import type { ConnectionResponseSchema } from "@repo/validation/api"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { GoogleDrive, Notion, OneDrive } from "@ui/assets/icons"
-import { Check, Copy, Smartphone, Trash2 } from "lucide-react"
+import {
+	Check,
+	Copy,
+	ExternalLink,
+	Loader,
+	Smartphone,
+	Trash2,
+} from "lucide-react"
 import { motion } from "motion/react"
 import Image from "next/image"
 import { useEffect, useId, useState } from "react"
@@ -98,6 +105,7 @@ export function IntegrationsView() {
 	const [isProUser, setIsProUser] = useState(false)
 	const [selectedShortcutType, setSelectedShortcutType] =
 		useState<ShortcutType | null>(null)
+	const [nlmConnecting, setNlmConnecting] = useState(false)
 	const apiKeyId = useId()
 
 	const appOrigin = APP_URL.replace(/\/$/, "")
@@ -220,6 +228,106 @@ export function IntegrationsView() {
 			})
 		},
 	})
+
+	// NotebookLM connection status
+	const {
+		data: nlmStatus,
+		isLoading: nlmLoading,
+	} = useQuery({
+		queryKey: ["notebooklm-status"],
+		queryFn: async () => {
+			const response = await $fetch("@get/notebooklm/status")
+			if (response.error) throw new Error(response.error?.message || "Failed")
+			return response.data as {
+				connected: boolean
+				connectionId?: string
+				email?: string | null
+				notebookCount?: number | null
+				connectedAt?: string | null
+			}
+		},
+		staleTime: 5 * 60 * 1000,
+	})
+
+	const nlmDisconnectMutation = useMutation({
+		mutationFn: async (connectionId: string) => {
+			await $fetch(`@delete/connections/${connectionId}`)
+		},
+		onSuccess: () => {
+			toast.success("NotebookLM disconnected")
+			queryClient.invalidateQueries({ queryKey: ["notebooklm-status"] })
+			queryClient.invalidateQueries({ queryKey: ["connections"] })
+		},
+		onError: (error) => {
+			toast.error("Failed to disconnect", {
+				description: error instanceof Error ? error.message : "Unknown error",
+			})
+		},
+	})
+
+	const handleNlmConnect = async () => {
+		setNlmConnecting(true)
+		try {
+			// Open NotebookLM in a popup for the user to login
+			const popup = window.open(
+				"https://notebooklm.google.com/",
+				"notebooklm-login",
+				"width=800,height=700,left=200,top=100",
+			)
+
+			if (!popup) {
+				toast.error("Popup blocked. Please allow popups for this site.")
+				return
+			}
+
+			// Show instruction toast
+			toast.info(
+				"Log into Google NotebookLM in the popup window. After login, click 'Capture Session' below.",
+				{ duration: 15000 },
+			)
+
+			// Wait for user to signal they're done (we'll use a prompt approach)
+			// The actual cookie capture will happen via a separate mechanism
+			// For now, provide instructions for manual cookie paste
+			const cookieString = window.prompt(
+				"After logging into NotebookLM, paste your cookies here.\n\n" +
+				"To get cookies: Open DevTools (F12) → Console → type: document.cookie → Copy the result.",
+			)
+
+			if (popup && !popup.closed) {
+				popup.close()
+			}
+
+			if (!cookieString || cookieString.trim().length < 10) {
+				toast.error("No cookies provided. Connection cancelled.")
+				return
+			}
+
+			// Send cookies to backend for validation
+			const response = await $fetch("@post/notebooklm/auth", {
+				body: { cookies: cookieString.trim() },
+			})
+
+			if (response.error) {
+				throw new Error(
+					(response.error as { message?: string })?.message ||
+						"Authentication failed",
+				)
+			}
+
+			toast.success("NotebookLM connected!", {
+				description: `Found ${(response.data as { notebookCount?: number })?.notebookCount ?? 0} notebooks`,
+			})
+			queryClient.invalidateQueries({ queryKey: ["notebooklm-status"] })
+			queryClient.invalidateQueries({ queryKey: ["connections"] })
+		} catch (error) {
+			toast.error("Failed to connect NotebookLM", {
+				description: error instanceof Error ? error.message : "Unknown error",
+			})
+		} finally {
+			setNlmConnecting(false)
+		}
+	}
 
 	const createApiKeyMutation = useMutation({
 		mutationFn: async () => {
@@ -693,6 +801,120 @@ export function IntegrationsView() {
 									</motion.div>
 								)
 							})}
+						</div>
+					)}
+				</div>
+			</div>
+
+			{/* NotebookLM Integration */}
+			<div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+				<div className="p-4 sm:p-5">
+					<div className="flex items-start gap-3 mb-3">
+						<div className="p-2 bg-purple-500/20 rounded-lg flex-shrink-0">
+							<svg
+								className="h-5 w-5 text-purple-400"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<title>NotebookLM Icon</title>
+								<path
+									d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									strokeWidth={2}
+								/>
+							</svg>
+						</div>
+						<div className="flex-1 min-w-0">
+							<h3 className="text-foreground dark:text-white font-semibold text-base mb-1">
+								Google NotebookLM
+							</h3>
+							<p className="text-foreground dark:text-white/70 text-sm leading-relaxed">
+								Connect your NotebookLM account to sync projects, generate
+								podcasts, videos, reports, and more from your saved content.
+							</p>
+						</div>
+					</div>
+
+					{nlmLoading ? (
+						<Skeleton className="h-14 w-full bg-white/10 rounded-lg" />
+					) : nlmStatus?.connected ? (
+						<motion.div
+							animate={{ opacity: 1 }}
+							className="p-3 bg-white/5 rounded-lg border border-white/10"
+							initial={{ opacity: 0 }}
+						>
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-3">
+									<div className="flex items-center gap-2">
+										<div className="w-2 h-2 rounded-full bg-green-400" />
+										<span className="text-sm text-green-400 font-medium">
+											Connected
+										</span>
+									</div>
+									{nlmStatus.email && (
+										<span className="text-xs text-foreground dark:text-foreground dark:text-white/50">
+											{nlmStatus.email}
+										</span>
+									)}
+									{typeof nlmStatus.notebookCount === "number" && (
+										<span className="text-xs text-foreground dark:text-foreground dark:text-white/40">
+											{nlmStatus.notebookCount} notebooks
+										</span>
+									)}
+								</div>
+								<Button
+									className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+									disabled={nlmDisconnectMutation.isPending}
+									onClick={() => {
+										if (nlmStatus.connectionId) {
+											nlmDisconnectMutation.mutate(nlmStatus.connectionId)
+										}
+									}}
+									size="sm"
+									variant="ghost"
+								>
+									<Trash2 className="h-4 w-4" />
+								</Button>
+							</div>
+							<div className="mt-2 flex flex-wrap gap-1.5">
+								{[
+									"Podcasts",
+									"Videos",
+									"Reports",
+									"Infographics",
+									"Mind Maps",
+									"Chat",
+								].map((feature) => (
+									<span
+										className="px-2 py-0.5 text-[10px] bg-purple-500/10 text-purple-400 rounded border border-purple-500/20"
+										key={feature}
+									>
+										{feature}
+									</span>
+								))}
+							</div>
+						</motion.div>
+					) : (
+						<div className="space-y-2">
+							<Button
+								className="w-full bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border-purple-500/30"
+								disabled={nlmConnecting}
+								onClick={handleNlmConnect}
+								variant="secondary"
+							>
+								{nlmConnecting ? (
+									<Loader className="h-4 w-4 animate-spin mr-2" />
+								) : (
+									<ExternalLink className="h-4 w-4 mr-2" />
+								)}
+								Connect NotebookLM
+							</Button>
+							<p className="text-xs text-foreground dark:text-foreground dark:text-white/40 text-center">
+								Opens a popup window for Google login. You&apos;ll need to paste
+								your session cookies after logging in.
+							</p>
 						</div>
 					)}
 				</div>

@@ -143,6 +143,7 @@ export const ConnectionProviderEnum = z.enum([
 	"notion",
 	"google-drive",
 	"onedrive",
+	"notebooklm",
 ])
 export type ConnectionProvider = z.infer<typeof ConnectionProviderEnum>
 
