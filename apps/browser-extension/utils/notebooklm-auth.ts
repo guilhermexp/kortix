@@ -82,7 +82,7 @@ export async function captureAndSendNlmCookies(): Promise<{
  */
 async function notifyKortixTabs(data: unknown): Promise<void> {
 	try {
-		const tabs = await chrome.tabs.query({})
+		const tabs = await browser.tabs.query({})
 		const kortixHost = new URL(API_ENDPOINTS.KORTIX_WEB).hostname
 
 		for (const tab of tabs) {
@@ -90,7 +90,7 @@ async function notifyKortixTabs(data: unknown): Promise<void> {
 			try {
 				const tabHost = new URL(tab.url).hostname
 				if (tabHost === kortixHost || tabHost === "localhost") {
-					chrome.tabs.sendMessage(tab.id, {
+					browser.tabs.sendMessage(tab.id, {
 						type: "NLM_CONNECTED",
 						data,
 					}).catch(() => {
