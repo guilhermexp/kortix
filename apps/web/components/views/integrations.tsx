@@ -281,74 +281,51 @@ export function IntegrationsView() {
 				return
 			}
 
-			toast.info(
-				"Log into NotebookLM in the popup window. Connection will happen automatically.",
-				{ duration: 10000 },
-			)
+			// Poll every 2s until connected or timeout (90s)
+			let connected = false
+			for (let i = 0; i < 45; i++) {
+				await new Promise((r) => setTimeout(r, 2000))
 
-			// Wait for the extension to capture cookies and send to API.
-			// We listen for the NLM_CONNECTED postMessage from the content script,
-			// or poll the status endpoint as fallback.
-			const connected = await new Promise<boolean>((resolve) => {
-				let resolved = false
-				const cleanup = () => {
-					if (resolved) return
-					resolved = true
-					window.removeEventListener("message", messageHandler)
-					clearInterval(pollInterval)
-					clearTimeout(timeout)
+				// Check via extension message
+				try {
+					const res = await $fetch("@get/notebooklm/status")
+					const data = res.data as { connected?: boolean } | undefined
+					if (data?.connected) {
+						connected = true
+						break
+					}
+				} catch {
+					// ignore
 				}
 
-				// Listen for direct notification from extension
-				const messageHandler = (event: MessageEvent) => {
-					if (event.data?.type === "KORTIX_NLM_CONNECTED") {
-						cleanup()
-						resolve(true)
-					}
-				}
-				window.addEventListener("message", messageHandler)
-
-				// Poll status endpoint as fallback (every 3s)
-				const pollInterval = setInterval(async () => {
-					try {
-						const res = await $fetch("@get/notebooklm/status")
-						const data = res.data as { connected?: boolean } | undefined
-						if (data?.connected) {
-							cleanup()
-							resolve(true)
-						}
-					} catch {
-						// Ignore poll errors
-					}
-				}, 3000)
-
-				// Timeout after 2 minutes
-				const timeout = setTimeout(() => {
-					cleanup()
-					resolve(false)
-				}, 120000)
-
-				// Also check if popup was closed without connecting
-				const popupCheck = setInterval(() => {
-					if (popup.closed && !resolved) {
-						clearInterval(popupCheck)
-						// Give 5s grace period for the extension to finish
-						setTimeout(() => {
-							if (!resolved) {
-								cleanup()
-								resolve(false)
+				// If user closed the popup manually, give a few more tries then stop
+				if (popup.closed && i > 3) {
+					// 3 more polls after popup closes
+					for (let j = 0; j < 3; j++) {
+						await new Promise((r) => setTimeout(r, 2000))
+						try {
+							const res = await $fetch("@get/notebooklm/status")
+							const data = res.data as { connected?: boolean } | undefined
+							if (data?.connected) {
+								connected = true
+								break
 							}
-						}, 5000)
+						} catch {
+							// ignore
+						}
 					}
-				}, 1000)
-			})
+					break
+				}
+			}
 
-			if (popup && !popup.closed) {
-				popup.close()
+			// Close popup
+			try {
+				if (popup && !popup.closed) popup.close()
+			} catch {
+				// cross-origin close can fail silently
 			}
 
 			if (connected) {
-				// Force refetch status so the card updates immediately
 				await queryClient.refetchQueries({ queryKey: ["notebooklm-status"] })
 				queryClient.invalidateQueries({ queryKey: ["connections"] })
 				toast.success("NotebookLM connected!")
