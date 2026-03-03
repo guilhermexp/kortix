@@ -4,10 +4,7 @@ import {
 	getContainerTagForUrl,
 	MESSAGE_TYPES,
 } from "../utils/constants"
-import {
-	captureNotebookLMCookies,
-	startNlmCapture,
-} from "../utils/notebooklm-auth"
+import { captureAndSendNlmCookies } from "../utils/notebooklm-auth"
 import { captureTwitterTokens } from "../utils/twitter-auth"
 import {
 	type ImportResult,
@@ -67,15 +64,6 @@ export default defineBackground(() => {
 		["requestHeaders", "extraHeaders"],
 	)
 
-	// Intercept NotebookLM requests to capture Google session cookies.
-	browser.webRequest.onBeforeSendHeaders.addListener(
-		(details) => {
-			captureNotebookLMCookies(details)
-			return {}
-		},
-		{ urls: ["*://notebooklm.google.com/*"] },
-		["requestHeaders", "extraHeaders"],
-	)
 
 	// Handle context menu clicks.
 	browser.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -203,13 +191,13 @@ export default defineBackground(() => {
 	 */
 	browser.runtime.onMessage.addListener(
 		(message: ExtensionMessage, _sender, sendResponse) => {
-			// Handle NotebookLM capture start
+			// Handle NotebookLM cookie capture
 			if (message.type === MESSAGE_TYPES.NLM_START_CAPTURE) {
-				startNlmCapture()
-					.then(() => sendResponse({ success: true }))
+				captureAndSendNlmCookies()
+					.then((result) => sendResponse(result))
 					.catch((error) => {
-						console.error("[NLM] Failed to start capture:", error)
-						sendResponse({ success: false })
+						console.error("[NLM] Cookie capture failed:", error)
+						sendResponse({ success: false, error: String(error) })
 					})
 				return true
 			}

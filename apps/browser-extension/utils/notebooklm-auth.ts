@@ -1,82 +1,49 @@
 /**
  * NotebookLM Authentication Module
- * Captures cookies from notebooklm.google.com via webRequest
+ * Uses chrome.cookies API to read Google session cookies
  * and sends them to the Kortix API for connection.
- *
- * Same pattern as twitter-auth.ts.
  */
 import { API_ENDPOINTS, STORAGE_KEYS } from "./constants"
 
-const NLM_COOKIE_KEY = "nlm-cookie-header"
-const NLM_CAPTURING_KEY = "nlm-capturing"
-
 /**
- * Capture NotebookLM cookies from web request headers.
- * Called by the webRequest.onBeforeSendHeaders listener in background.ts.
+ * Capture NotebookLM cookies and send to Kortix API.
+ * Uses chrome.cookies.getAll() to get all cookies (including HttpOnly)
+ * for notebooklm.google.com, then posts to our auth endpoint.
  */
-export function captureNotebookLMCookies(
-	details: chrome.webRequest.WebRequestDetails & {
-		requestHeaders?: chrome.webRequest.HttpHeader[]
-	},
-): boolean {
-	if (!details.url.includes("notebooklm.google.com")) return false
-
-	const cookieHeader = details.requestHeaders?.find(
-		(header) => header.name.toLowerCase() === "cookie",
-	)
-
-	if (!cookieHeader?.value || cookieHeader.value.length < 20) return false
-
-	// Store the full Cookie header (includes HttpOnly cookies)
-	chrome.storage.session.set({ [NLM_COOKIE_KEY]: cookieHeader.value })
-
-	// If we're in "capturing" mode, auto-send to API
-	chrome.storage.session.get([NLM_CAPTURING_KEY], (result) => {
-		if (result[NLM_CAPTURING_KEY]) {
-			sendNlmCookiesToApi(cookieHeader.value).catch((err) => {
-				console.error("[NLM] Failed to auto-send cookies:", err)
-			})
-		}
-	})
-
-	return true
-}
-
-/**
- * Start capturing mode — the next NLM cookie capture will be sent to API.
- */
-export async function startNlmCapture(): Promise<void> {
-	await chrome.storage.session.set({ [NLM_CAPTURING_KEY]: true })
-
-	// If we already have captured cookies, send them immediately
-	const result = await chrome.storage.session.get([NLM_COOKIE_KEY])
-	const existing = result[NLM_COOKIE_KEY] as string | undefined
-	if (existing && existing.length > 20) {
-		await sendNlmCookiesToApi(existing)
-	}
-}
-
-/**
- * Stop capturing mode.
- */
-export async function stopNlmCapture(): Promise<void> {
-	await chrome.storage.session.set({ [NLM_CAPTURING_KEY]: false })
-}
-
-/**
- * Send captured NLM cookies to the Kortix API for validation and storage.
- */
-async function sendNlmCookiesToApi(cookieString: string): Promise<boolean> {
+export async function captureAndSendNlmCookies(): Promise<{
+	success: boolean
+	error?: string
+}> {
 	try {
+		// Small delay to let the NLM popup load and set any cookies
+		await new Promise((r) => setTimeout(r, 2000))
+
+		// Get ALL cookies for notebooklm.google.com (includes .google.com parent cookies)
+		const cookies = await chrome.cookies.getAll({
+			url: "https://notebooklm.google.com",
+		})
+
+		if (!cookies.length) {
+			console.warn("[NLM] No cookies found for notebooklm.google.com")
+			return { success: false, error: "No Google cookies found. Are you logged in?" }
+		}
+
+		// Build cookie header string: "name=value; name2=value2; ..."
+		const cookieString = cookies
+			.map((c) => `${c.name}=${c.value}`)
+			.join("; ")
+
+		console.log(`[NLM] Captured ${cookies.length} cookies, sending to API...`)
+
 		// Get bearer token for authenticated API call
 		const tokenResult = await chrome.storage.local.get([STORAGE_KEYS.BEARER_TOKEN])
 		const bearerToken = tokenResult[STORAGE_KEYS.BEARER_TOKEN] as string | undefined
 
 		if (!bearerToken) {
-			console.warn("[NLM] No bearer token — user not logged into Kortix")
-			return false
+			return { success: false, error: "Not logged into Kortix" }
 		}
 
+		// Send cookies to Kortix API
 		const response = await fetch(
 			`${API_ENDPOINTS.KORTIX_API}/v3/notebooklm/auth`,
 			{
@@ -93,22 +60,20 @@ async function sendNlmCookiesToApi(cookieString: string): Promise<boolean> {
 		if (!response.ok) {
 			const text = await response.text()
 			console.error("[NLM] Auth API error:", response.status, text)
-			return false
+			return { success: false, error: `API error: ${response.status}` }
 		}
 
 		const data = await response.json()
 		console.log("[NLM] Connected successfully:", data)
 
-		// Stop capturing mode
-		await stopNlmCapture()
+		// Notify all Kortix tabs
+		await notifyKortixTabs(data.data)
 
-		// Notify all Kortix tabs that NLM is connected
-		notifyKortixTabs(data.data)
-
-		return true
+		return { success: true }
 	} catch (error) {
-		console.error("[NLM] Failed to send cookies to API:", error)
-		return false
+		const msg = error instanceof Error ? error.message : String(error)
+		console.error("[NLM] captureAndSendNlmCookies failed:", msg)
+		return { success: false, error: msg }
 	}
 }
 
