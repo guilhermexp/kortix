@@ -266,9 +266,6 @@ export function IntegrationsView() {
 	const handleNlmConnect = async () => {
 		setNlmConnecting(true)
 		try {
-			// Tell the browser extension to start capturing NLM cookies
-			window.postMessage({ type: "KORTIX_NLM_START_CAPTURE" }, "*")
-
 			// Open NotebookLM in a popup for the user to login
 			const popup = window.open(
 				"https://notebooklm.google.com/",
@@ -281,40 +278,50 @@ export function IntegrationsView() {
 				return
 			}
 
-			// Poll every 2s until connected or timeout (90s)
+			// Tell the browser extension to capture cookies and send to API.
+			// The extension will respond via postMessage when done.
 			let connected = false
-			for (let i = 0; i < 45; i++) {
-				await new Promise((r) => setTimeout(r, 2000))
+			let extensionError: string | null = null
 
-				// Check via extension message
-				try {
-					const res = await $fetch("@get/notebooklm/status")
-					const data = res.data as { connected?: boolean } | undefined
-					if (data?.connected) {
-						connected = true
-						break
+			const extensionResult = await new Promise<{ success: boolean; error?: string }>((resolve) => {
+				const handler = (event: MessageEvent) => {
+					if (event.data?.type === "KORTIX_NLM_CONNECTED") {
+						window.removeEventListener("message", handler)
+						resolve({ success: true })
+					} else if (event.data?.type === "KORTIX_NLM_ERROR") {
+						window.removeEventListener("message", handler)
+						resolve({ success: false, error: event.data?.data?.error })
 					}
-				} catch {
-					// ignore
 				}
+				window.addEventListener("message", handler)
 
-				// If user closed the popup manually, give a few more tries then stop
-				if (popup.closed && i > 3) {
-					// 3 more polls after popup closes
-					for (let j = 0; j < 3; j++) {
-						await new Promise((r) => setTimeout(r, 2000))
-						try {
-							const res = await $fetch("@get/notebooklm/status")
-							const data = res.data as { connected?: boolean } | undefined
-							if (data?.connected) {
-								connected = true
-								break
-							}
-						} catch {
-							// ignore
+				// Timeout after 30s if extension doesn't respond
+				setTimeout(() => {
+					window.removeEventListener("message", handler)
+					resolve({ success: false, error: "Extension did not respond. Is the Kortix extension installed?" })
+				}, 30000)
+
+				// Trigger the capture
+				window.postMessage({ type: "KORTIX_NLM_START_CAPTURE" }, "*")
+			})
+
+			if (extensionResult.success) {
+				connected = true
+			} else {
+				extensionError = extensionResult.error || "Unknown extension error"
+				// Fallback: poll status in case extension succeeded but messaging failed
+				for (let i = 0; i < 5; i++) {
+					await new Promise((r) => setTimeout(r, 2000))
+					try {
+						const res = await $fetch("@get/notebooklm/status")
+						const data = res.data as { connected?: boolean } | undefined
+						if (data?.connected) {
+							connected = true
+							break
 						}
+					} catch {
+						// ignore
 					}
-					break
 				}
 			}
 
@@ -330,7 +337,10 @@ export function IntegrationsView() {
 				queryClient.invalidateQueries({ queryKey: ["connections"] })
 				toast.success("NotebookLM connected!")
 			} else {
-				toast.error("Connection timed out. Make sure the Kortix extension is installed and you're logged into NotebookLM.")
+				toast.error("Failed to connect NotebookLM", {
+					description: extensionError || "Make sure the Kortix extension is installed and you're logged into NotebookLM.",
+					duration: 10000,
+				})
 			}
 		} catch (error) {
 			toast.error("Failed to connect NotebookLM", {

@@ -59,11 +59,18 @@ export default defineContentScript({
 		// Listen for NLM_START_CAPTURE from the Kortix web app via postMessage
 		window.addEventListener("message", (event) => {
 			if (event.data?.type === "KORTIX_NLM_START_CAPTURE") {
-				browser.runtime.sendMessage({
-					type: MESSAGE_TYPES.NLM_START_CAPTURE,
-				}).catch((err) => {
-					console.error("[NLM] Failed to relay start capture:", err)
-				})
+				browser.runtime.sendMessage(
+					{ type: MESSAGE_TYPES.NLM_START_CAPTURE },
+					(response) => {
+						// Forward the result back to the page
+						window.postMessage({
+							type: response?.success
+								? "KORTIX_NLM_CONNECTED"
+								: "KORTIX_NLM_ERROR",
+							data: response,
+						}, "*")
+					},
+				)
 			}
 		})
 
