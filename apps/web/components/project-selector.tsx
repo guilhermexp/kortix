@@ -190,9 +190,14 @@ export function ProjectSelector({ className }: ProjectSelectorProps = {}) {
 													type="button"
 												>
 													<FolderIcon className="h-3.5 w-3.5 text-muted-foreground" />
-													<span className="text-xs font-medium text-foreground truncate max-w-32">
+													<span className="text-xs font-medium text-foreground truncate max-w-28">
 														{projectName}
 													</span>
+													{typeof project.documentCount === "number" && (
+														<span className="text-[10px] tabular-nums text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full leading-none">
+															{project.documentCount}
+														</span>
+													)}
 												</button>
 											<div className="flex items-center gap-1">
 												<DropdownMenu>
