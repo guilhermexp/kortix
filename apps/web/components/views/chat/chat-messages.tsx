@@ -2166,7 +2166,7 @@ export function ChatMessages({
 	// Expanded context toggle (increases search result limits)
 	const [expandContext, _setExpandContext] = useState<boolean>(false)
 	const [projects, setProjects] = useState<
-		Array<{ id: string; name: string; containerTag: string }>
+		Array<{ id: string; name: string; containerTag: string; documentCount?: number }>
 	>([])
 	const [loadingProjects, setLoadingProjects] = useState(false)
 	const { isOpen } = useChatOpen()
@@ -2191,6 +2191,7 @@ export function ChatMessages({
 						id: String(p.id),
 						name: String(p.name ?? "Untitled Project"),
 						containerTag: String(p.containerTag),
+						documentCount: typeof p.documentCount === "number" ? p.documentCount : undefined,
 					})),
 				)
 			} catch {
