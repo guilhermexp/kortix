@@ -126,8 +126,12 @@ export default defineContentScript({
 		initializeT3()
 		initializeTwitter()
 
-		// Save Page overlay button — visible on all pages when toggle is on
+		// Save Page overlay button — visible on all pages except Kortix app and Twitter
+		const isSavePageExcluded =
+			DOMUtils.isOnDomain(DOMAINS.KORTIX) || DOMUtils.isOnDomain(DOMAINS.TWITTER)
+
 		const addSavePageButton = () => {
+			if (isSavePageExcluded) return
 			if (DOMUtils.elementExists(ELEMENT_IDS.SAVE_PAGE_BUTTON)) return
 			const btn = createSavePageButton(() => saveMemory())
 			document.body.appendChild(btn)

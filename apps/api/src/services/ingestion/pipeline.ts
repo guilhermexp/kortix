@@ -251,18 +251,10 @@ export async function processExtraction(
 			const result = await procs.summarization.summarizeExtraction(extraction)
 			summary = result.summary
 		} catch (error) {
-			console.warn("[pipeline] Summarization failed, using fallback", {
+			console.warn("[pipeline] Summarization failed", {
 				error: error instanceof Error ? error.message : String(error),
 			})
-			// Fallback: first few sentences
-			const sentences = extraction.text
-				.split(/[.!?]+/)
-				.map((s) => s.trim())
-				.filter((s) => s.length > 20)
-			summary =
-				sentences.length > 0
-					? `${sentences.slice(0, 3).join(". ")}.`
-					: "No summary available."
+			summary = undefined
 		}
 	}
 
@@ -295,7 +287,7 @@ export async function processExtraction(
 	return {
 		content: extraction.text,
 		chunks: chunksWithEmbeddings,
-		summary: summary ?? "",
+		summary: summary ?? undefined,
 		tags,
 		metadata: {
 			extractionResult: extraction,

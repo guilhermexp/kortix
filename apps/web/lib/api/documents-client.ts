@@ -76,3 +76,22 @@ export async function getDocumentStatus(id: string) {
 		throw error
 	}
 }
+
+export async function regenerateSummary(id: string) {
+	try {
+		const response = await $fetch("@post/documents/:id/regenerate-summary", {
+			params: { id },
+		})
+
+		if (response.error) {
+			throw new Error(
+				response.error?.message || "Failed to regenerate summary",
+			)
+		}
+
+		return response.data
+	} catch (error) {
+		console.error("Error regenerating summary:", error)
+		throw error
+	}
+}

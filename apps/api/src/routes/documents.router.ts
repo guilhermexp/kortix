@@ -547,6 +547,86 @@ documentsRouter.post("/resume-all", async (c) => {
 	}
 })
 
+// Regenerate summary for a document
+documentsRouter.post("/:id/regenerate-summary", async (c) => {
+	const { organizationId } = c.var.session
+	const documentId = c.req.param("id")
+	const supabase = createClientForSession(c.var.session)
+
+	try {
+		// 1. Fetch document
+		const { data: doc, error } = await supabase
+			.from("documents")
+			.select("id, content, title, url, source, metadata")
+			.eq("id", documentId)
+			.eq("org_id", organizationId)
+			.single()
+
+		if (error || !doc) {
+			return c.json({ error: { message: "Document not found" } }, 404)
+		}
+
+		if (!doc.content) {
+			return c.json(
+				{ error: { message: "Document has no content to summarize" } },
+				400,
+			)
+		}
+
+		// 2. Generate summary
+		const { generateSummary } = await import("../services/summarizer")
+		const summary = await generateSummary(doc.content, {
+			title: doc.title,
+			url: doc.url,
+		})
+
+		if (!summary) {
+			return c.json(
+				{
+					error: {
+						message:
+							"Summary generation failed — check provider credits",
+					},
+				},
+				502,
+			)
+		}
+
+		// 3. Update document
+		const existingMetadata =
+			(doc.metadata as Record<string, unknown>) || {}
+		const { error: updateError } = await supabase
+			.from("documents")
+			.update({
+				summary,
+				metadata: {
+					...existingMetadata,
+					summaryFailed: false,
+					summaryRegeneratedAt: new Date().toISOString(),
+				},
+				updated_at: new Date().toISOString(),
+			})
+			.eq("id", documentId)
+
+		if (updateError) throw updateError
+
+		return c.json({ summary, documentId }, 200)
+	} catch (error) {
+		console.error("Failed to regenerate summary", error)
+		return c.json(
+			{
+				error: {
+					message:
+						error instanceof Error
+							? error.message
+							: "Failed to regenerate summary",
+				},
+			},
+			500,
+		)
+	}
+})
+
 // Get single document
 documentsRouter.get("/:id", async (c) => {
 	const { organizationId } = c.var.session

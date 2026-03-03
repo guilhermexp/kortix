@@ -92,6 +92,10 @@ export class SummarizationService implements ISummarizationService {
 				config,
 			)
 
+			if (!summary) {
+				throw new Error("Summarization failed: provider returned no result")
+			}
+
 			// Validate summary quality
 			const quality = this.assessSummaryQuality(summary, safeContent)
 
@@ -169,8 +173,7 @@ export class SummarizationService implements ISummarizationService {
 	private async generateSummaryWithFallback(
 		content: string,
 		config: Required<SummarizationOptions>,
-	): Promise<string> {
-		// Try primary provider
+	): Promise<string | null> {
 		try {
 			const summary = await this.generateWithProvider(content, config)
 			if (summary && this.isValidSummary(summary)) {
@@ -182,9 +185,7 @@ export class SummarizationService implements ISummarizationService {
 			})
 		}
 
-		// Fallback to extractive summary
-		console.info("Using extractive summary fallback")
-		return this.generateExtractiveSummary(content, config)
+		return null
 	}
 
 	/**

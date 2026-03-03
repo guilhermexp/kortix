@@ -1,5 +1,15 @@
 import { env } from "../env"
 
+export class GrokApiError extends Error {
+	constructor(
+		public readonly statusCode: number,
+		public readonly body: string,
+	) {
+		super(`[Grok] HTTP ${statusCode}: ${body}`)
+		this.name = "GrokApiError"
+	}
+}
+
 type ChatMessage = {
 	role: "system" | "user" | "assistant"
 	content: string
@@ -64,7 +74,7 @@ export async function grokChat(
 		if (!res.ok) {
 			const text = await res.text()
 			console.warn("[Grok] HTTP", res.status, res.statusText, text)
-			return null
+			throw new GrokApiError(res.status, text)
 		}
 
 		const data = (await res.json()) as any

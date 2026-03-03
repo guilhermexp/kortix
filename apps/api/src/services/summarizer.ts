@@ -1,7 +1,6 @@
 // Use central helpers to avoid model ID mismatches
 
 import {
-	AI_GENERATION_CONFIG,
 	CONTENT_PATTERNS,
 	isGitHubUrl,
 	isHtmlContent,
@@ -33,7 +32,7 @@ export async function generateSummary(
 		hasUrl: Boolean(context?.url),
 	})
 	const viaOpenRouter = await summarizeWithGrok(trimmed, context)
-	return viaOpenRouter || buildFallbackSummary(trimmed, context)
+	return viaOpenRouter
 }
 
 function _buildPrompt(
@@ -41,71 +40,6 @@ function _buildPrompt(
 	context?: { title?: string | null; url?: string | null },
 ) {
 	return buildSummaryPrompt(snippet, context)
-}
-
-function buildFallbackSummary(
-	text: string,
-	context?: { title?: string | null; url?: string | null },
-) {
-	const sentences = text
-		.replace(/\s+/g, " ")
-		.split(/[.!?]+/)
-		.map((s) => s.trim())
-		.filter(Boolean)
-
-	const executive = sentences.slice(
-		0,
-		AI_GENERATION_CONFIG.FALLBACK.EXECUTIVE_SENTENCES,
-	)
-	const remaining = sentences.slice(
-		AI_GENERATION_CONFIG.FALLBACK.EXECUTIVE_SENTENCES,
-	)
-
-	const points = remaining
-		.slice(0, AI_GENERATION_CONFIG.FALLBACK.MAX_KEY_POINTS)
-		.map((sentence) => `- ${sentence}`)
-
-	const useCases: string[] = []
-	if (remaining.length === 0) {
-		useCases.push(getFallbackMessage("noUseCases"))
-	} else {
-		const actionCandidates = remaining
-			.filter((sentence) => CONTENT_PATTERNS.ACTION_VERBS_PT.test(sentence))
-			.slice(0, AI_GENERATION_CONFIG.FALLBACK.MAX_USE_CASES)
-		if (actionCandidates.length > 0) {
-			for (const candidate of actionCandidates) {
-				useCases.push(`- ${candidate}`)
-			}
-		} else {
-			useCases.push(getFallbackMessage("noUseCases"))
-		}
-	}
-
-	const parts: string[] = [getSectionHeader("executive")]
-	if (executive.length > 0) {
-		for (const sentence of executive) {
-			parts.push(`- ${sentence}`)
-		}
-	} else {
-		parts.push(`- ${text.slice(0, TEXT_LIMITS.FALLBACK_SUMMARY_PREVIEW)}`)
-	}
-
-	parts.push(`\n${getSectionHeader("keyPoints")}`)
-	if (points.length > 0) {
-		parts.push(...points)
-	} else {
-		parts.push(getFallbackMessage("limitedInfo"))
-	}
-
-	parts.push(`\n${getSectionHeader("useCases")}`)
-	parts.push(...useCases)
-
-	if (context?.url) {
-		parts.push(`\n${getSectionHeader("source")}`)
-		parts.push(`- ${context.url}`)
-	}
-
-	return ensureUseCasesSection(parts.join("\n"))
 }
 
 /**
@@ -128,7 +62,7 @@ export async function generateDeepAnalysis(
 		hasUrl: Boolean(context?.url),
 	})
 	const viaOpenRouter = await summarizeWithGrok(trimmed, context)
-	return viaOpenRouter || buildFallbackSummary(trimmed, context)
+	return viaOpenRouter
 }
 
 /**
@@ -152,7 +86,7 @@ async function _generateTextBasedAnalysis(
 			return ensureUseCasesSection(viaOpenRouter)
 		}
 	} catch {}
-	return buildFallbackSummary(trimmed, context)
+	return null
 }
 
 /**

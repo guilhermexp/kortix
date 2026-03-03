@@ -61,7 +61,7 @@ import { toast } from "sonner"
 import type { z } from "zod"
 import { $fetch } from "@lib/api"
 import { analytics } from "@/lib/analytics"
-import { cancelDocument } from "@/lib/api/documents-client"
+import { cancelDocument, regenerateSummary } from "@/lib/api/documents-client"
 import { useProject } from "@/stores"
 import { DocumentProjectTransfer } from "./editor/document-project-transfer"
 import { MarkdownContent } from "./markdown-content"
@@ -863,6 +863,33 @@ const MasonryCard = memo(
 			}
 		}
 
+		// Summary regeneration
+		const [isRegenerating, setIsRegenerating] = useState(false)
+		const summaryFailed =
+			isDone &&
+			!document.summary &&
+			(document.metadata as Record<string, unknown>)?.summaryFailed === true
+
+		const handleRegenerateSummary = async (e: React.MouseEvent) => {
+			e.stopPropagation()
+			setIsRegenerating(true)
+			try {
+				await regenerateSummary(document.id)
+				toast.success("Resumo gerado com sucesso")
+				queryClient.invalidateQueries({
+					queryKey: ["documents-with-memories", selectedProject],
+					exact: false,
+				})
+			} catch (error) {
+				toast.error("Falha ao gerar resumo", {
+					description:
+						error instanceof Error ? error.message : String(error),
+				})
+			} finally {
+				setIsRegenerating(false)
+			}
+		}
+
 		const [stickyPreview, setStickyPreview] = useState<PreviewData | null>(null)
 		const [imageLoaded, setImageLoaded] = useState(false)
 		const [imageError, setImageError] = useState(false)
@@ -1592,6 +1619,29 @@ const MasonryCard = memo(
 									<span className="px-2 py-0.5 rounded text-[10px] bg-red-500/20 text-red-400 border border-red-500/30">
 										Failed
 									</span>
+								</div>
+							)}
+
+							{/* Summary failed — show retry button */}
+							{summaryFailed && (
+								<div className="mt-2 flex items-center gap-2">
+									<span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30">
+										Resumo indisponível
+									</span>
+									<Button
+										disabled={isRegenerating}
+										onClick={handleRegenerateSummary}
+										size="sm"
+										variant="ghost"
+										className="h-6 px-2 text-[10px]"
+									>
+										{isRegenerating ? (
+											<Loader className="h-3 w-3 animate-spin mr-1" />
+										) : (
+											<RefreshCw className="h-3 w-3 mr-1" />
+										)}
+										Tentar novamente
+									</Button>
 								</div>
 							)}
 						</div>

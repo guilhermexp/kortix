@@ -86,8 +86,8 @@ export interface Chunk {
 export interface ProcessedDocument {
 	/** Full document content */
 	content: string
-	/** AI-generated summary */
-	summary: string
+	/** AI-generated summary (undefined when summarization failed) */
+	summary: string | undefined
 	/** Text chunks with embeddings */
 	chunks: Chunk[]
 	/** Document-level embedding (optional) */

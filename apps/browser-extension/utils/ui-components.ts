@@ -220,25 +220,85 @@ export function createTwitterImportButton(onClick: () => void): HTMLElement {
  * @param onClick - Click handler for the button
  * @returns HTMLElement - The button element
  */
-export function createSavePageButton(onClick: () => void): HTMLElement {
+export function createSavePageButton(onClick: () => Promise<void>): HTMLElement {
 	const button = document.createElement("div")
 	button.id = ELEMENT_IDS.SAVE_PAGE_BUTTON
+
+	// Inject keyframe for spinner if not present
+	if (!document.getElementById("kortix-save-page-styles")) {
+		const style = document.createElement("style")
+		style.id = "kortix-save-page-styles"
+		style.textContent = `
+      @keyframes kortix-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    `
+		document.head.appendChild(style)
+	}
+
 	button.style.cssText = `
     position: fixed;
-    top: 10px;
-    right: 200px;
-    z-index: 2147483646;
-    ${PILL_BUTTON_STYLE}
+    bottom: 16px;
+    right: 16px;
+    z-index: 2147483647;
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: rgb(0, 0, 0);
+    opacity: 0.7;
+    transition: opacity 0.2s, transform 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
   `
 
 	const iconUrl = browser.runtime.getURL("/icon-16.png")
-	button.innerHTML = `
-    <img src="${iconUrl}" width="20" height="20" alt="Save Page" style="border-radius: 4px;" />
-    <span style="font-weight: 500; font-size: 12px;">Save Page</span>
-  `
+	const idleIcon = `<img src="${iconUrl}" width="20" height="20" alt="Save Page" style="border-radius: 4px;" />`
+	const spinnerIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="animation: kortix-spin 0.8s linear infinite;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round"/></svg>`
+	const checkIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`
 
-	addPillHoverEffect(button)
-	button.addEventListener("click", onClick)
+	button.innerHTML = idleIcon
+	let busy = false
+
+	button.addEventListener("mouseenter", () => {
+		if (!busy) {
+			button.style.opacity = "1"
+			button.style.transform = "scale(1.1)"
+		}
+	})
+	button.addEventListener("mouseleave", () => {
+		if (!busy) {
+			button.style.opacity = "0.7"
+			button.style.transform = "scale(1)"
+		}
+	})
+
+	button.addEventListener("click", async () => {
+		if (busy) return
+		busy = true
+		button.style.cursor = "default"
+		button.style.opacity = "1"
+		button.innerHTML = spinnerIcon
+
+		try {
+			await onClick()
+			button.innerHTML = checkIcon
+			button.style.borderColor = "rgba(34, 197, 94, 0.4)"
+		} catch {
+			button.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/></svg>`
+			button.style.borderColor = "rgba(239, 68, 68, 0.4)"
+		}
+
+		setTimeout(() => {
+			button.innerHTML = idleIcon
+			button.style.cursor = "pointer"
+			button.style.opacity = "0.7"
+			button.style.borderColor = "rgba(255, 255, 255, 0.2)"
+			busy = false
+		}, 2000)
+	})
 
 	return button
 }

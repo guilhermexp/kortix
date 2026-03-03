@@ -199,10 +199,10 @@ export async function addDocument({
 	}
 
 	// Deduplicate: check for existing documents with same URL or content hash
-	// For URLs: check by URL
+	// For URLs (including documents with metadata.url like tweets): check by URL
 	// For text: check by content hash (if content is short enough to be exact match)
 	const shouldCheckDuplicates =
-		isUrl || (initialContent && initialContent.length < 1000)
+		isUrl || !!inferredUrl || (initialContent && initialContent.length < 1000)
 
 	if (shouldCheckDuplicates) {
 		let existing: {
@@ -211,8 +211,8 @@ export async function addDocument({
 			space_id: string | null
 		} | null = null
 
-		if (isUrl && inferredUrl) {
-			// Check by URL
+		if (inferredUrl) {
+			// Check by URL (covers both direct URLs and documents with metadata.url like tweets)
 			const { data: urlDoc, error: urlError } = await client
 				.from("documents")
 				.select("id, status, space_id")
@@ -406,7 +406,7 @@ export async function addDocument({
 			insertError.message.includes("duplicate")
 		) {
 			// Document was created by another request - try to find it
-			if (isUrl && inferredUrl) {
+			if (inferredUrl) {
 				const { data: existing } = await client
 					.from("documents")
 					.select("id, status")

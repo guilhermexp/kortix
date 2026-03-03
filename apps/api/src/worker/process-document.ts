@@ -350,7 +350,11 @@ export async function processAndSaveDocument(
 
 	if (extraction.text) finalUpdate.content = extraction.text
 	if (extraction.title) finalUpdate.title = extraction.title
-	if (processed.summary) finalUpdate.summary = processed.summary
+	if (processed.summary) {
+		finalUpdate.summary = processed.summary
+	} else {
+		finalUpdate.summary = null
+	}
 	// Use preview from earlier step
 	if (previewUrl) finalUpdate.preview_image = previewUrl
 	// Fallback: use Firecrawl OG image as preview
@@ -389,6 +393,13 @@ export async function processAndSaveDocument(
 		...(extraction.images?.length
 			? { firstContentImage: extraction.images[0] }
 			: {}),
+		// Mark summary failure for frontend retry
+		...(processed.summary
+			? { summaryFailed: false }
+			: {
+					summaryFailed: true,
+					summaryFailedAt: new Date().toISOString(),
+				}),
 	}
 
 	if (extraction.raw || extraction.images || metaTags.ogImage) {
