@@ -3,7 +3,8 @@
  * Uses chrome.cookies API to read Google session cookies
  * and sends them to the Kortix API for connection.
  */
-import { API_ENDPOINTS, STORAGE_KEYS } from "./constants"
+import { makeAuthenticatedRequest } from "./api"
+import { API_ENDPOINTS } from "./constants"
 
 /**
  * Capture NotebookLM cookies and send to Kortix API.
@@ -35,35 +36,15 @@ export async function captureAndSendNlmCookies(): Promise<{
 
 		console.log(`[NLM] Captured ${cookies.length} cookies, sending to API...`)
 
-		// Get bearer token for authenticated API call
-		const tokenResult = await chrome.storage.local.get([STORAGE_KEYS.BEARER_TOKEN])
-		const bearerToken = tokenResult[STORAGE_KEYS.BEARER_TOKEN] as string | undefined
-
-		if (!bearerToken) {
-			return { success: false, error: "Not logged into Kortix" }
-		}
-
-		// Send cookies to Kortix API
-		const response = await fetch(
-			`${API_ENDPOINTS.KORTIX_API}/v3/notebooklm/auth`,
+		// Use the shared authenticated request (handles token refresh on 401)
+		const data = await makeAuthenticatedRequest<{ data: unknown }>(
+			"/v3/notebooklm/auth",
 			{
 				method: "POST",
-				credentials: "omit",
-				headers: {
-					Authorization: `Bearer ${bearerToken}`,
-					"Content-Type": "application/json",
-				},
 				body: JSON.stringify({ cookies: cookieString }),
 			},
 		)
 
-		if (!response.ok) {
-			const text = await response.text()
-			console.error("[NLM] Auth API error:", response.status, text)
-			return { success: false, error: `API error: ${response.status}` }
-		}
-
-		const data = await response.json()
 		console.log("[NLM] Connected successfully:", data)
 
 		// Notify all Kortix tabs

@@ -64,7 +64,7 @@ async function tryRefreshToken(): Promise<string | null> {
 /**
  * Make authenticated API request with automatic token refresh on 401
  */
-async function makeAuthenticatedRequest<T>(
+export async function makeAuthenticatedRequest<T>(
 	endpoint: string,
 	options: RequestInit = {},
 ): Promise<T> {
