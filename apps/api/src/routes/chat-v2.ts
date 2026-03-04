@@ -70,8 +70,48 @@ type MetadataPayload = {
 	}
 }
 
+// ─── Multi-Agent Architecture ───────────────────────────────────────────
+//
+// The chat endpoint uses TWO agent profiles with distinct behaviors:
+//
+// 1. "default" — Analista Pessoal de Documentos (list + detail pages)
+//    - System prompt: ENHANCED_SYSTEM_PROMPT (focused on document analysis)
+//    - Tools: searchDatabase, readAttachment, sandbox_*, notebooklm_*
+//    - Behavior: searches user's documents first, compares, recommends
+//    - NO canvas tools (prevents confusion outside canvas context)
+//
+// 2. "canvas" — Canvas Visual Assistant (canvas page)
+//    - System prompt: CANVAS_AGENT_SYSTEM_PROMPT (focused on visual output)
+//    - Tools: canvas_*, searchDatabase, readAttachment
+//    - Behavior: reads canvas first, creates diagrams proactively
+//    - NO sandbox/notebooklm tools (focused on visual creation)
+//
+// Profile is resolved by: metadata.agentProfile or presence of canvasId
+// ────────────────────────────────────────────────────────────────────────
+
 type AgentProfile = "default" | "canvas"
 
+// Tools allowed for the default profile (list + document detail pages)
+// Excludes canvas tools — those only make sense in the canvas context
+const DEFAULT_ALLOWED_TOOLS = [
+	"mcp__kortix-tools__searchDatabase",
+	"mcp__kortix-tools__readAttachment",
+	// Sandbox tools (conditionally registered, but allowed if present)
+	"mcp__kortix-tools__sandbox_create",
+	"mcp__kortix-tools__sandbox_execute",
+	"mcp__kortix-tools__sandbox_destroy",
+	"mcp__kortix-tools__sandbox_upload_file",
+	"mcp__kortix-tools__sandbox_download_file",
+	"mcp__kortix-tools__sandbox_list_files",
+	"mcp__kortix-tools__sandbox_git_clone",
+	// NotebookLM tools
+	"mcp__kortix-tools__notebooklm_chat",
+	"mcp__kortix-tools__notebooklm_list_notebooks",
+	"mcp__kortix-tools__notebooklm_generate_artifact",
+	"mcp__kortix-tools__notebooklm_add_source",
+] as const
+
+// Tools allowed for the canvas profile
 const CANVAS_ALLOWED_TOOLS = [
 	"mcp__kortix-tools__canvas_read_me",
 	"mcp__kortix-tools__canvas_read_scene",
@@ -126,6 +166,10 @@ function flattenToolContent(content: unknown): string {
 	return ""
 }
 
+/** Resolve which agent profile to use based on request context.
+ *  - Canvas page sends canvasId or agentProfile="canvas" → canvas profile
+ *  - List page / document detail page → default profile (document analyst)
+ */
 function resolveAgentProfile(
 	metadata: MetadataPayload,
 	canvasId: string | undefined,
@@ -681,7 +725,7 @@ export async function handleChatV2({
 	const allowedTools =
 		isCanvasAgent && env.CANVAS_AGENT_TOOLS_ENABLED === "true"
 			? [...CANVAS_ALLOWED_TOOLS]
-			: undefined
+			: [...DEFAULT_ALLOWED_TOOLS]
 
 	// If a provider is specified, let executeClaudeAgent decide the model from provider config
 	// Otherwise use the model from payload or fallback to env.CHAT_MODEL
