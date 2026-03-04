@@ -1,6 +1,5 @@
 export {
 	addDocumentJob,
-	cleanQueue,
 	type DocumentJobData,
 	documentQueue,
 	getQueueStats,

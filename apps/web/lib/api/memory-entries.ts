@@ -72,28 +72,6 @@ export async function createMemoryEntry(params: {
 }
 
 /**
- * Update a memory entry's content
- */
-export async function updateMemoryEntry(params: {
-	id: string
-	content?: string
-	title?: string
-}): Promise<void> {
-	try {
-		await $fetch("@patch/documents/:id", {
-			params: { id: params.id },
-			body: {
-				content: params.content,
-				title: params.title,
-			},
-		})
-	} catch (error) {
-		console.error("Error updating memory entry:", error)
-		throw error
-	}
-}
-
-/**
  * Delete a memory entry
  */
 export async function deleteMemoryEntry(id: string): Promise<void> {

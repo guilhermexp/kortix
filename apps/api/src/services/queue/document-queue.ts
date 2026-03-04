@@ -120,14 +120,3 @@ export async function resumeQueue(): Promise<void> {
 		console.log("[document-queue] Queue resumed")
 	}
 }
-
-/**
- * Clean old jobs from the queue
- */
-export async function cleanQueue(gracePeriod = 3600000): Promise<void> {
-	if (documentQueue) {
-		await documentQueue.clean(gracePeriod, 1000, "completed")
-		await documentQueue.clean(gracePeriod * 24, 1000, "failed")
-		console.log("[document-queue] Queue cleaned")
-	}
-}

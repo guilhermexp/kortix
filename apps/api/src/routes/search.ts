@@ -4,6 +4,9 @@ import { env } from "../env"
 import { generateEmbedding } from "../services/embedding-provider"
 import { rerankSearchResults } from "../services/rerank"
 
+const DOCUMENT_SELECT_FIELDS =
+	"id, title, type, content, summary, metadata, url, created_at, updated_at, status" as const
+
 type DocumentRow = {
 	id: string
 	title: string | null
@@ -11,6 +14,7 @@ type DocumentRow = {
 	content: string | null
 	summary: string | null
 	metadata: Record<string, unknown> | null
+	url: string | null
 	created_at: string
 	updated_at: string | null
 	status: string | null
@@ -120,9 +124,7 @@ export async function searchDocuments(
 
 			const { data: docsData } = await client
 				.from("documents")
-				.select(
-					"id, title, type, content, summary, metadata, url, created_at, updated_at, status",
-				)
+				.select(DOCUMENT_SELECT_FIELDS)
 				.in("id", documentIds)
 
 			const docsMap = new Map((docsData || []).map((doc: any) => [doc.id, doc]))
@@ -302,7 +304,6 @@ export async function searchDocuments(
 	// generic queries like "what do I have in this project?"
 	if (results.length === 0) {
 		try {
-			const containerTagsFilter = payload.containerTags ?? []
 			let docsData: DocumentRow[] | null = null
 
 			if (containerTagsFilter.length > 0) {
@@ -320,9 +321,7 @@ export async function searchDocuments(
 				if (spaceIds.length > 0) {
 					const { data } = await client
 						.from("documents")
-						.select(
-							"id, title, type, content, summary, metadata, url, created_at, updated_at, status",
-						)
+						.select(DOCUMENT_SELECT_FIELDS)
 						.eq("org_id", orgId)
 						.in("space_id", spaceIds)
 						.order("created_at", { ascending: false })
@@ -335,9 +334,7 @@ export async function searchDocuments(
 				// Fallback to recent docs without mapping (global)
 				const { data } = await client
 					.from("documents")
-					.select(
-						"id, title, type, content, summary, metadata, url, created_at, updated_at, status",
-					)
+					.select(DOCUMENT_SELECT_FIELDS)
 					.eq("org_id", orgId)
 					.order("created_at", { ascending: false })
 					.limit(Math.max(20, payload.limit ?? 10))
@@ -361,7 +358,9 @@ export async function searchDocuments(
 				}))
 				searchPath = "broad_recent"
 			}
-		} catch {}
+		} catch (err) {
+			console.warn("Search fallback failed", err)
+		}
 	}
 	const response = SearchResponseSchema.parse({
 		results,
@@ -381,7 +380,9 @@ export async function searchDocuments(
 			timingMs: response.timing,
 			sample: topTitles,
 		})
-	} catch {}
+	} catch (err) {
+		console.warn("Search telemetry failed", err)
+	}
 
 	return response
 }

@@ -91,42 +91,43 @@ type MetadataPayload = {
 
 type AgentProfile = "default" | "canvas"
 
+const mcpTool = (name: string) => `mcp__kortix-tools__${name}` as const
+
+const SHARED_TOOLS = [mcpTool("searchDatabase"), mcpTool("readAttachment")]
+
 // Tools allowed for the default profile (list + document detail pages)
-// Excludes canvas tools — those only make sense in the canvas context
 const DEFAULT_ALLOWED_TOOLS = [
-	"mcp__kortix-tools__searchDatabase",
-	"mcp__kortix-tools__readAttachment",
-	// Sandbox tools (conditionally registered, but allowed if present)
-	"mcp__kortix-tools__sandbox_create",
-	"mcp__kortix-tools__sandbox_execute",
-	"mcp__kortix-tools__sandbox_destroy",
-	"mcp__kortix-tools__sandbox_upload_file",
-	"mcp__kortix-tools__sandbox_download_file",
-	"mcp__kortix-tools__sandbox_list_files",
-	"mcp__kortix-tools__sandbox_git_clone",
+	...SHARED_TOOLS,
+	// Sandbox tools
+	mcpTool("sandbox_create"),
+	mcpTool("sandbox_execute"),
+	mcpTool("sandbox_destroy"),
+	mcpTool("sandbox_upload_file"),
+	mcpTool("sandbox_download_file"),
+	mcpTool("sandbox_list_files"),
+	mcpTool("sandbox_git_clone"),
 	// NotebookLM tools
-	"mcp__kortix-tools__notebooklm_chat",
-	"mcp__kortix-tools__notebooklm_list_notebooks",
-	"mcp__kortix-tools__notebooklm_generate_artifact",
-	"mcp__kortix-tools__notebooklm_add_source",
-] as const
+	mcpTool("notebooklm_chat"),
+	mcpTool("notebooklm_list_notebooks"),
+	mcpTool("notebooklm_generate_artifact"),
+	mcpTool("notebooklm_add_source"),
+]
 
 // Tools allowed for the canvas profile
 const CANVAS_ALLOWED_TOOLS = [
-	"mcp__kortix-tools__canvas_read_me",
-	"mcp__kortix-tools__canvas_read_scene",
-	"mcp__kortix-tools__canvas_summarize_scene",
-	"mcp__kortix-tools__canvas_create_flowchart",
-	"mcp__kortix-tools__canvas_create_mindmap",
-	"mcp__kortix-tools__canvas_create_view",
-	"mcp__kortix-tools__canvas_auto_arrange",
-	"mcp__kortix-tools__canvas_list_checkpoints",
-	"mcp__kortix-tools__canvas_restore_checkpoint",
-	"mcp__kortix-tools__canvas_clear",
-	"mcp__kortix-tools__canvas_get_preview",
-	"mcp__kortix-tools__searchDatabase",
-	"mcp__kortix-tools__readAttachment",
-] as const
+	mcpTool("canvas_read_me"),
+	mcpTool("canvas_read_scene"),
+	mcpTool("canvas_summarize_scene"),
+	mcpTool("canvas_create_flowchart"),
+	mcpTool("canvas_create_mindmap"),
+	mcpTool("canvas_create_view"),
+	mcpTool("canvas_auto_arrange"),
+	mcpTool("canvas_list_checkpoints"),
+	mcpTool("canvas_restore_checkpoint"),
+	mcpTool("canvas_clear"),
+	mcpTool("canvas_get_preview"),
+	...SHARED_TOOLS,
+]
 
 // Agent markdown persistence removed — documents should only be
 // created/edited via explicit user-requested tool calls.
@@ -724,8 +725,8 @@ export async function handleChatV2({
 
 	const allowedTools =
 		isCanvasAgent && env.CANVAS_AGENT_TOOLS_ENABLED === "true"
-			? [...CANVAS_ALLOWED_TOOLS]
-			: [...DEFAULT_ALLOWED_TOOLS]
+			? CANVAS_ALLOWED_TOOLS
+			: DEFAULT_ALLOWED_TOOLS
 
 	// If a provider is specified, let executeClaudeAgent decide the model from provider config
 	// Otherwise use the model from payload or fallback to env.CHAT_MODEL

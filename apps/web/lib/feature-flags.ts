@@ -4,7 +4,6 @@ import type {
 	EvaluationContext,
 	EvaluationResult,
 	FeatureFlag,
-	FlagAuditLog,
 	UpdateFlagInput,
 } from "@repo/validation/feature-flags"
 
@@ -32,10 +31,6 @@ interface UpdateFlagResponse {
 interface DeleteFlagResponse {
 	success: boolean
 	flagId: string
-}
-
-interface FetchAuditLogResponse {
-	auditLogs: FlagAuditLog[]
 }
 
 /**
@@ -222,37 +217,3 @@ export async function deleteFlag(flagId: string): Promise<void> {
 	}
 }
 
-/**
- * Fetch audit log for a feature flag
- */
-export async function fetchFlagAuditLog(
-	flagId: string,
-	limit?: number,
-): Promise<FlagAuditLog[]> {
-	try {
-		const url = new URL(
-			`${BACKEND_URL.replace(/\/$/, "")}/v3/feature-flags/${encodeURIComponent(flagId)}/audit`,
-		)
-		if (limit) {
-			url.searchParams.set("limit", limit.toString())
-		}
-
-		const response = await fetch(url.toString(), {
-			method: "GET",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			credentials: "include",
-		})
-
-		if (!response.ok) {
-			throw new Error(`Failed to fetch audit log: ${response.statusText}`)
-		}
-
-		const data = (await response.json()) as FetchAuditLogResponse
-		return data.auditLogs
-	} catch (error) {
-		console.error("Error fetching flag audit log:", error)
-		throw error
-	}
-}

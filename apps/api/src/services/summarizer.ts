@@ -1,26 +1,6 @@
-// Use central helpers to avoid model ID mismatches
-
-import {
-	CONTENT_PATTERNS,
-	isGitHubUrl,
-	isHtmlContent,
-	isPdfContent,
-	TEXT_LIMITS,
-} from "../config/constants"
-import {
-	buildSummaryPrompt,
-	buildTextAnalysisPrompt,
-	buildUrlAnalysisPrompt as buildUrlAnalysisPromptI18n,
-	getFallbackMessage,
-	getSectionHeader,
-} from "../i18n"
+import { TEXT_LIMITS } from "../config/constants"
 import { grokChat } from "./grok"
-import {
-	sanitizeSummaryMarkdown,
-	summarizeWithGrok,
-} from "./summarizer-fallback"
-
-const _googleClient = null // Disable Gemini for summaries/tags; use Grok
+import { summarizeWithGrok } from "./summarizer-fallback"
 
 export async function generateSummary(
 	text: string,
@@ -28,163 +8,11 @@ export async function generateSummary(
 ): Promise<string | null> {
 	const trimmed = text.trim()
 	if (!trimmed) return null
-	console.log("[Summarizer] Using Grok (summary)", {
-		hasUrl: Boolean(context?.url),
-	})
-	const viaOpenRouter = await summarizeWithGrok(trimmed, context)
-	return viaOpenRouter
-}
-
-function _buildPrompt(
-	snippet: string,
-	context?: { title?: string | null; url?: string | null },
-) {
-	return buildSummaryPrompt(snippet, context)
+	return summarizeWithGrok(trimmed, context)
 }
 
 /**
- * Gera análise profunda do conteúdo usando Gemini 1.5 Flash
- * Se tiver URL, usa urlContext para o Gemini ler diretamente
- * Caso contrário, analisa o texto extraído
- */
-export async function generateDeepAnalysis(
-	text: string,
-	context?: {
-		title?: string | null
-		url?: string | null
-		contentType?: string | null
-	},
-): Promise<string | null> {
-	const trimmed = text.trim()
-	if (!trimmed) return null
-
-	console.log("[Summarizer] Using Grok (deep analysis)", {
-		hasUrl: Boolean(context?.url),
-	})
-	const viaOpenRouter = await summarizeWithGrok(trimmed, context)
-	return viaOpenRouter
-}
-
-/**
- * Análise usando o texto extraído (fallback ou quando não tem URL)
- */
-async function _generateTextBasedAnalysis(
-	text: string,
-	context?: {
-		title?: string | null
-		url?: string | null
-		contentType?: string | null
-	},
-	_model?: any,
-): Promise<string | null> {
-	const trimmed = text.trim()
-	if (!trimmed) return null
-
-	try {
-		const viaOpenRouter = await summarizeWithGrok(trimmed, context)
-		if (viaOpenRouter?.trim()) {
-			return ensureUseCasesSection(viaOpenRouter)
-		}
-	} catch {}
-	return null
-}
-
-/**
- * Prompt simplificado para análise via URL (Gemini lê diretamente)
- */
-function _buildUrlAnalysisPrompt(context: {
-	title?: string | null
-	url?: string | null
-	contentType?: string | null
-}) {
-	if (!context.url) {
-		throw new Error("URL is required for URL analysis prompt")
-	}
-
-	const isGitHub = isGitHubUrl(context.url)
-
-	return buildUrlAnalysisPromptI18n(context.url, {
-		title: context.title,
-		isGitHub,
-	})
-}
-
-function _buildDeepAnalysisPrompt(
-	snippet: string,
-	context?: {
-		title?: string | null
-		url?: string | null
-		contentType?: string | null
-	},
-) {
-	const isGitHub = isGitHubUrl(context?.url)
-	const isPDF = isPdfContent(context?.contentType)
-	const isWebPage = isHtmlContent(context?.contentType, context?.url)
-
-	return buildTextAnalysisPrompt(snippet, {
-		title: context?.title,
-		url: context?.url,
-		isGitHub,
-		isPDF,
-		isWebPage,
-	})
-}
-
-export async function summarizeYoutubeVideo(
-	url: string,
-): Promise<string | null> {
-	try {
-		// Import fetchYouTubeTranscriptFallback dynamically to avoid circular dependency
-		const { fetchYouTubeTranscriptFallback } = await import("./markitdown")
-
-		// 1) Try to get transcript directly from YouTube timedtext API first
-		// This is more reliable than MarkItDown for YouTube videos
-		const transcriptResult = await fetchYouTubeTranscriptFallback(url)
-
-		let text = ""
-		let title: string | null = null
-
-		if (transcriptResult?.markdown) {
-			text = transcriptResult.markdown.trim()
-			title = transcriptResult.metadata?.title || null
-			console.log(
-				"[summarizeYoutubeVideo] Using transcript from timedtext API",
-				{
-					length: text.length,
-					title,
-				},
-			)
-		}
-
-		// If no transcript or too short, we can't generate a good summary
-		// Don't fallback to MarkItDown for YouTube as it only extracts page footer
-		if (!text || text.length < 200) {
-			console.warn("[summarizeYoutubeVideo] No valid transcript available", {
-				hasText: !!text,
-				length: text?.length || 0,
-			})
-			return null
-		}
-
-		// 2) Summarize with Grok via OpenRouter - use longer timeout for YouTube videos (transcripts can be long)
-		const viaGrok = await summarizeWithGrok(
-			text,
-			{
-				title,
-				url,
-				contentType: "video/youtube",
-			},
-			{ timeoutMs: 30_000 }, // 30 seconds for YouTube videos
-		)
-		return viaGrok ? ensureUseCasesSection(viaGrok) : null
-	} catch (error) {
-		console.error("summarizeYoutubeVideo (text+Grok) failed:", error)
-		return null
-	}
-}
-
-/**
- * Generate short category tags for a document using Gemini when available.
+ * Generate short category tags for a document using Grok.
  * Fallback: simple keyword extraction from title + text.
  */
 export async function generateCategoryTags(
@@ -260,7 +88,6 @@ export async function generateCategoryTags(
 			const uniq: string[] = []
 			for (const w of sorted) {
 				if (uniq.includes(w)) continue
-				// Favor multiword tags by merging common pairs appearing in title
 				uniq.push(w)
 				if (uniq.length >= MAX_TAGS) break
 			}
@@ -298,7 +125,6 @@ export async function generateCategoryTags(
 			)?.trim() || ""
 		if (!raw) return fallback()
 
-		// Accept comma, newline, or bullet separated
 		const parts = raw
 			.replace(/^[-*•]\s*/gm, "")
 			.split(/[,\n]+/)
@@ -307,27 +133,21 @@ export async function generateCategoryTags(
 			.map((s) => s.replace(/\s{2,}/g, " "))
 			.filter(Boolean)
 
-		// Helper to validate tags
 		const isValidTag = (tag: string): boolean => {
 			if (!tag || tag.length < 2 || tag.length > 30) return false
-			// Reject tags that look like URL parts or repo namespaces
 			if (tag.startsWith("/") || tag.endsWith(":") || tag.endsWith("/"))
 				return false
-			// Reject tags with only special characters
 			if (/^[^a-z0-9]+$/i.test(tag)) return false
-			// Reject common URL/path fragments
 			if (
 				/^(http|https|www|com|org|io|github|google|hugging|huggingface)$/i.test(
 					tag,
 				)
 			)
 				return false
-			// Reject tags containing URL patterns
 			if (/^[a-z0-9-]+\.(com|org|io|net|co|ai)$/i.test(tag)) return false
 			return true
 		}
 
-		// Deduplicate, validate, and clamp
 		const uniq: string[] = []
 		for (const p of parts) {
 			if (!p) continue
@@ -345,15 +165,4 @@ export async function generateCategoryTags(
 		)
 		return fallback()
 	}
-}
-
-/**
- * Garantir que a seção "Casos de Uso" apareça no Markdown de saída.
- * Se o modelo não incluir, adicionamos um bloco padrão vazio.
- */
-function ensureUseCasesSection(markdown: string): string {
-	const hasUseCases = CONTENT_PATTERNS.USE_CASES_SECTION.test(markdown)
-	if (hasUseCases) return sanitizeSummaryMarkdown(markdown)
-	const appendix = `\n\n${getSectionHeader("useCases")}\n${getFallbackMessage("noUseCases")}\n`
-	return sanitizeSummaryMarkdown(markdown.trimEnd() + appendix)
 }

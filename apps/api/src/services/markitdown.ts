@@ -1,24 +1,22 @@
 import { spawn } from "node:child_process"
 import { unlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 import { FILE_LIMITS } from "../config/constants"
 
-// In production, use system Python configured via nixpacks
-// In development, use local venv
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
 const isProduction = process.env.NODE_ENV === "production"
 const MARKITDOWN_PYTHON_PATH =
 	process.env.MARKITDOWN_PYTHON_PATH ||
 	(isProduction
 		? "python3"
-		: "/Users/guilhermevarela/Documents/Projetos/kortix/apps/markitdown/.venv/bin/python")
+		: resolve(__dirname, "../../../markitdown/.venv/bin/python"))
 const MARKITDOWN_VENV_PATH =
 	process.env.MARKITDOWN_VENV_PATH ||
-	(isProduction
-		? ""
-		: "/Users/guilhermevarela/Documents/Projetos/kortix/apps/markitdown/.venv")
-
-let markitdownAvailable: boolean | null = null
+	(isProduction ? "" : resolve(__dirname, "../../../markitdown/.venv"))
 
 type MarkItDownResponse = {
 	markdown: string
@@ -34,7 +32,6 @@ type MarkItDownResponse = {
 async function runMarkItDownCLI(filePath: string): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const args = ["-m", "markitdown", filePath]
-		// Only set VIRTUAL_ENV if we have a venv path (development)
 		const env = MARKITDOWN_VENV_PATH
 			? { ...process.env, VIRTUAL_ENV: MARKITDOWN_VENV_PATH }
 			: process.env
@@ -96,39 +93,5 @@ export async function convertWithMarkItDown(
 		}
 	} finally {
 		await unlink(tempPath).catch(() => {})
-	}
-}
-
-export async function checkMarkItDownHealth(): Promise<boolean> {
-	// Use cache if already checked
-	if (markitdownAvailable !== null) {
-		return markitdownAvailable
-	}
-
-	console.info(
-		"MarkItDown health check: Testing with Python path:",
-		MARKITDOWN_PYTHON_PATH,
-	)
-
-	try {
-		// Test with a simple HTML file
-		const testHtml =
-			"<html><body><h1>Test</h1><p>MarkItDown is working</p></body></html>"
-		const tempPath = join(tmpdir(), `markitdown-health-${Date.now()}.html`)
-
-		await writeFile(tempPath, testHtml)
-		const testResult = await runMarkItDownCLI(tempPath)
-		await unlink(tempPath).catch(() => {})
-
-		markitdownAvailable = testResult.length > 10
-		console.info("MarkItDown health check:", {
-			available: markitdownAvailable,
-			resultLength: testResult.length,
-		})
-		return markitdownAvailable
-	} catch (error) {
-		console.error("MarkItDown health check failed:", error)
-		markitdownAvailable = false
-		return false
 	}
 }

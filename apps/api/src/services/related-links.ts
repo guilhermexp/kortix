@@ -301,29 +301,3 @@ export async function findRelatedLinks(
 	)
 	return allLinks
 }
-
-/**
- * Serialize related links for storage in document metadata
- */
-export function serializeRelatedLinks(links: RelatedLink[]): string {
-	return JSON.stringify(links)
-}
-
-/**
- * Parse related links from stored metadata
- */
-export function parseRelatedLinks(stored: unknown): RelatedLink[] {
-	if (!stored) return []
-
-	try {
-		if (typeof stored === "string") {
-			return JSON.parse(stored) as RelatedLink[]
-		}
-		if (Array.isArray(stored)) {
-			return stored as RelatedLink[]
-		}
-		return []
-	} catch {
-		return []
-	}
-}
