@@ -78,6 +78,7 @@ import { documentsRouter } from "./routes/documents.router"
 import { featureFlagsRouter } from "./routes/feature-flags.router"
 import { healthHandler } from "./routes/health"
 import { registerMcpRoutes } from "./routes/mcp"
+import { notebookLmRouter } from "./routes/notebooklm.router"
 import {
 	completePasswordReset,
 	requestPasswordReset,
@@ -89,7 +90,6 @@ import { projectsRouter } from "./routes/projects.router"
 import { searchRouter } from "./routes/search.router"
 import { settingsRouter } from "./routes/settings.router"
 import { skillsRouter } from "./routes/skills.router"
-import { notebookLmRouter } from "./routes/notebooklm.router"
 import { getWaitlistStatus } from "./routes/waitlist"
 
 // Services

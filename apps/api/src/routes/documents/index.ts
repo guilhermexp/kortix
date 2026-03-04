@@ -7,6 +7,12 @@
 
 export { addDocument, checkUrlExists, ensureSpace } from "./add"
 export {
+	deleteDocumentAttachment,
+	getDocumentAttachment,
+	listDocumentAttachments,
+	uploadDocumentAttachment,
+} from "./attachments"
+export {
 	createBundle,
 	getDocumentChildren,
 	updateBundleParentStatus,
@@ -36,9 +42,3 @@ export type {
 	MemoryAddInput,
 } from "./utils"
 export { DocumentsByIdsSchema } from "./utils"
-export {
-	deleteDocumentAttachment,
-	getDocumentAttachment,
-	listDocumentAttachments,
-	uploadDocumentAttachment,
-} from "./attachments"

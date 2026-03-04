@@ -6,8 +6,8 @@
 import { zValidator } from "@hono/zod-validator"
 import { Hono } from "hono"
 import { z } from "zod"
-import type { SessionContext } from "../session"
 import { NotebookLMClient } from "../services/notebooklm"
+import type { SessionContext } from "../session"
 import { createClientForSession } from "../supabase"
 
 export const notebookLmRouter = new Hono<{
@@ -20,12 +20,11 @@ async function getClient(
 	supabase: ReturnType<typeof createClientForSession>,
 	organizationId: string,
 ): Promise<NotebookLMClient> {
-	const client = await NotebookLMClient.fromConnection(
-		supabase,
-		organizationId,
-	)
+	const client = await NotebookLMClient.fromConnection(supabase, organizationId)
 	if (!client) {
-		throw new Error("NotebookLM not connected. Please connect in Settings → Integrations.")
+		throw new Error(
+			"NotebookLM not connected. Please connect in Settings → Integrations.",
+		)
 	}
 	return client
 }
@@ -278,7 +277,9 @@ notebookLmRouter.post(
 				source = await nlm.sources.addText(notebookId, title, content)
 			} else {
 				return c.json(
-					{ error: { message: "Invalid source: provide url or title+content" } },
+					{
+						error: { message: "Invalid source: provide url or title+content" },
+					},
 					400,
 				)
 			}
@@ -420,8 +421,7 @@ notebookLmRouter.post(
 			})
 			return c.json({ data: result })
 		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : "Failed to chat"
+			const message = error instanceof Error ? error.message : "Failed to chat"
 			return c.json({ error: { message } }, 500)
 		}
 	},
@@ -580,8 +580,7 @@ notebookLmRouter.post(
 
 			return c.json({ data: { synced, skipped, total: documents.length } })
 		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : "Failed to sync"
+			const message = error instanceof Error ? error.message : "Failed to sync"
 			return c.json({ error: { message } }, 500)
 		}
 	},

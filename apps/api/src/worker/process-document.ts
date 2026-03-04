@@ -11,7 +11,6 @@
  */
 
 import { ensureSpace, updateBundleParentStatus } from "../routes/documents"
-import { syncDocumentToNotebookLM } from "../services/notebooklm/sync"
 import { extractTweetId } from "../routes/documents/utils"
 import {
 	extractDocument,
@@ -19,6 +18,7 @@ import {
 	initializePipeline,
 	processExtraction,
 } from "../services/ingestion/pipeline"
+import { syncDocumentToNotebookLM } from "../services/notebooklm/sync"
 import { documentCache, documentListCache } from "../services/query-cache"
 import { getDefaultUserId, supabaseAdmin } from "../supabase"
 import { persistPreviewImage } from "../utils/storage"
@@ -500,8 +500,7 @@ export async function processAndSaveDocument(
 				id: documentId,
 				title: (finalUpdate.title as string) ?? document.title ?? null,
 				url: document.url ?? null,
-				content:
-					(finalUpdate.content as string) ?? document.content ?? null,
+				content: (finalUpdate.content as string) ?? document.content ?? null,
 				type: document.type ?? "text",
 			},
 		}).catch((err) => {

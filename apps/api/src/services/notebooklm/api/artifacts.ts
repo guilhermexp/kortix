@@ -13,8 +13,8 @@ import {
 	type GenerationStatus,
 	type InfographicDetail,
 	type InfographicOrientation,
-	RPCMethod,
 	type ReportFormat,
+	RPCMethod,
 	type SlideDeckFormat,
 	type SlideDeckLength,
 	type VideoFormat,
@@ -252,8 +252,7 @@ export class ArtifactsAPI {
 		notebookId: string,
 		sourceIds?: string[],
 	): Promise<GenerationStatus> {
-		const ids =
-			sourceIds ?? (await this.client.getSourceIds(notebookId))
+		const ids = sourceIds ?? (await this.client.getSourceIds(notebookId))
 		const sourceIdsTriple = ids.map((id) => [[id]])
 
 		const params = [notebookId, sourceIdsTriple]
@@ -369,10 +368,7 @@ export class ArtifactsAPI {
 	// ─── Internal ────────────────────────────────────────────
 
 	private async createArtifact(params: unknown[]): Promise<GenerationStatus> {
-		const result = await this.client.rpcCall(
-			RPCMethod.CREATE_ARTIFACT,
-			params,
-		)
+		const result = await this.client.rpcCall(RPCMethod.CREATE_ARTIFACT, params)
 
 		// Result typically contains the artifact ID for polling
 		let artifactId: string | null = null
@@ -439,11 +435,7 @@ function parseArtifact(raw: unknown): Artifact | null {
 	// Video URLs at raw[8]
 	if (Array.isArray(raw[8])) {
 		for (const item of raw[8]) {
-			if (
-				Array.isArray(item) &&
-				item[2] === "video/mp4" &&
-				item[0]
-			) {
+			if (Array.isArray(item) && item[2] === "video/mp4" && item[0]) {
 				videoUrls.push(String(item[0]))
 			}
 		}
@@ -461,7 +453,8 @@ function parseArtifact(raw: unknown): Artifact | null {
 		title: String(raw[1] ?? ""),
 		kind,
 		status: statusCode,
-		createdAt: typeof timestamp === "number" ? new Date(timestamp * 1000) : null,
+		createdAt:
+			typeof timestamp === "number" ? new Date(timestamp * 1000) : null,
 		url,
 		isCompleted: statusCode === ArtifactStatus.COMPLETED,
 		isProcessing:

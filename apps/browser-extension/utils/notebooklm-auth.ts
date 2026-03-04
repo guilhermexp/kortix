@@ -35,9 +35,7 @@ export async function captureNlmCookies(): Promise<{
 		}
 
 		// Build cookie header string: "name=value; name2=value2; ..."
-		const cookieString = cookies
-			.map((c) => `${c.name}=${c.value}`)
-			.join("; ")
+		const cookieString = cookies.map((c) => `${c.name}=${c.value}`).join("; ")
 
 		console.log(`[NLM] Captured ${cookies.length} cookies`)
 

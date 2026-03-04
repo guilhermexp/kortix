@@ -121,7 +121,7 @@ export async function searchDocuments(
 			const { data: docsData } = await client
 				.from("documents")
 				.select(
-					"id, title, type, content, summary, metadata, created_at, updated_at, status",
+					"id, title, type, content, summary, metadata, url, created_at, updated_at, status",
 				)
 				.in("id", documentIds)
 
@@ -273,6 +273,7 @@ export async function searchDocuments(
 			metadata: doc.metadata ?? null,
 			title: doc.title ?? null,
 			type: doc.type ?? null,
+			url: doc.url ?? null,
 			score: entry.bestScore,
 			summary: payload.includeSummary ? (doc.summary ?? null) : null,
 			content: payload.includeFullDocs ? (doc.content ?? null) : null,
@@ -320,7 +321,7 @@ export async function searchDocuments(
 					const { data } = await client
 						.from("documents")
 						.select(
-							"id, title, type, content, summary, metadata, created_at, updated_at, status",
+							"id, title, type, content, summary, metadata, url, created_at, updated_at, status",
 						)
 						.eq("org_id", orgId)
 						.in("space_id", spaceIds)
@@ -335,7 +336,7 @@ export async function searchDocuments(
 				const { data } = await client
 					.from("documents")
 					.select(
-						"id, title, type, content, summary, metadata, created_at, updated_at, status",
+						"id, title, type, content, summary, metadata, url, created_at, updated_at, status",
 					)
 					.eq("org_id", orgId)
 					.order("created_at", { ascending: false })
@@ -352,6 +353,7 @@ export async function searchDocuments(
 					metadata: doc.metadata ?? null,
 					title: doc.title ?? null,
 					type: doc.type ?? null,
+					url: doc.url ?? null,
 					score: 0.1,
 					summary: payload.includeSummary ? (doc.summary ?? null) : null,
 					content: payload.includeFullDocs ? (doc.content ?? null) : null,

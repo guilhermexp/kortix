@@ -61,11 +61,14 @@ export async function executeStructuredSearch(
 		title: safeString(item.title),
 		type: safeString(item.type),
 		score: typeof item.score === "number" ? item.score : undefined,
-		url: safeString(
-			item.metadata && typeof item.metadata === "object"
-				? (item.metadata as Record<string, unknown>).url
-				: undefined,
-		),
+		url:
+			safeString((item as Record<string, unknown>).url) ??
+			safeString(
+				item.metadata && typeof item.metadata === "object"
+					? ((item.metadata as Record<string, unknown>).url ??
+							(item.metadata as Record<string, unknown>).originalUrl)
+					: undefined,
+			),
 		createdAt: safeString(item.createdAt),
 		updatedAt: safeString(item.updatedAt),
 		summary: safeString(item.summary),

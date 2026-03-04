@@ -73,15 +73,11 @@ export function parsePlaywrightCookies(storageState: {
 
 	for (const cookie of storageState.cookies) {
 		const isGoogleDomain = GOOGLE_COOKIE_DOMAINS.some(
-			(domain) =>
-				cookie.domain === domain || cookie.domain.endsWith(domain),
+			(domain) => cookie.domain === domain || cookie.domain.endsWith(domain),
 		)
 		if (isGoogleDomain) {
 			// .google.com domain takes priority over regional domains
-			if (
-				cookie.domain === ".google.com" ||
-				!cookies[cookie.name]
-			) {
+			if (cookie.domain === ".google.com" || !cookies[cookie.name]) {
 				cookies[cookie.name] = cookie.value
 			}
 		}
@@ -138,8 +134,7 @@ export async function fetchTokens(cookies: StoredCookies): Promise<{
 			Cookie: cookies.cookieHeader,
 			"User-Agent":
 				"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-			Accept:
-				"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+			Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 			"Accept-Language": "en-US,en;q=0.9",
 		},
 		redirect: "follow",

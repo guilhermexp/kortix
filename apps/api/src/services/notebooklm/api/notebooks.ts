@@ -4,11 +4,7 @@
  */
 
 import type { NotebookLMClient } from "../client"
-import {
-	type Notebook,
-	type NotebookDescription,
-	RPCMethod,
-} from "../types"
+import { type Notebook, type NotebookDescription, RPCMethod } from "../types"
 
 export class NotebooksAPI {
 	constructor(private client: NotebookLMClient) {}
@@ -17,10 +13,12 @@ export class NotebooksAPI {
 	 * List all notebooks for the authenticated user.
 	 */
 	async list(): Promise<Notebook[]> {
-		const result = await this.client.rpcCall(
-			RPCMethod.LIST_NOTEBOOKS,
-			[null, 1, null, [2]],
-		)
+		const result = await this.client.rpcCall(RPCMethod.LIST_NOTEBOOKS, [
+			null,
+			1,
+			null,
+			[2],
+		])
 
 		if (!result || !Array.isArray(result)) return []
 
@@ -33,10 +31,13 @@ export class NotebooksAPI {
 	 * Create a new notebook.
 	 */
 	async create(title: string): Promise<Notebook> {
-		const result = await this.client.rpcCall(
-			RPCMethod.CREATE_NOTEBOOK,
-			[title, null, null, [2], [1]],
-		)
+		const result = await this.client.rpcCall(RPCMethod.CREATE_NOTEBOOK, [
+			title,
+			null,
+			null,
+			[2],
+			[1],
+		])
 
 		const notebook = parseNotebook(result)
 		if (!notebook) {
@@ -52,10 +53,13 @@ export class NotebooksAPI {
 		notebook: Notebook
 		rawSourceData: unknown[]
 	}> {
-		const result = await this.client.rpcCall(
-			RPCMethod.GET_NOTEBOOK,
-			[notebookId, null, [2], null, 0],
-		)
+		const result = await this.client.rpcCall(RPCMethod.GET_NOTEBOOK, [
+			notebookId,
+			null,
+			[2],
+			null,
+			0,
+		])
 
 		if (!Array.isArray(result)) {
 			throw new Error(`Notebook ${notebookId} not found`)
@@ -85,10 +89,7 @@ export class NotebooksAPI {
 	 * Delete a notebook.
 	 */
 	async delete(notebookId: string): Promise<boolean> {
-		await this.client.rpcCall(
-			RPCMethod.DELETE_NOTEBOOK,
-			[[notebookId], [2]],
-		)
+		await this.client.rpcCall(RPCMethod.DELETE_NOTEBOOK, [[notebookId], [2]])
 		return true
 	}
 
@@ -96,23 +97,28 @@ export class NotebooksAPI {
 	 * Rename a notebook.
 	 */
 	async rename(notebookId: string, newTitle: string): Promise<Notebook> {
-		const result = await this.client.rpcCall(
-			RPCMethod.RENAME_NOTEBOOK,
-			[notebookId, [[null, null, null, [null, newTitle]]]],
-		)
+		const result = await this.client.rpcCall(RPCMethod.RENAME_NOTEBOOK, [
+			notebookId,
+			[[null, null, null, [null, newTitle]]],
+		])
 
 		const notebook = parseNotebook(result)
-		return notebook ?? { id: notebookId, title: newTitle, createdAt: null, sourcesCount: 0, isOwner: true }
+		return (
+			notebook ?? {
+				id: notebookId,
+				title: newTitle,
+				createdAt: null,
+				sourcesCount: 0,
+				isOwner: true,
+			}
+		)
 	}
 
 	/**
 	 * Get notebook description (AI-generated summary + suggested topics).
 	 */
 	async getDescription(notebookId: string): Promise<NotebookDescription> {
-		const result = await this.client.rpcCall(
-			RPCMethod.SUMMARIZE,
-			[notebookId],
-		)
+		const result = await this.client.rpcCall(RPCMethod.SUMMARIZE, [notebookId])
 
 		if (!Array.isArray(result)) {
 			return { summary: "", suggestedTopics: [] }
@@ -147,7 +153,8 @@ function parseNotebook(raw: unknown): Notebook | null {
 	const meta = raw[3]
 	const title = meta?.[1] ?? "Untitled"
 	const timestamp = meta?.[3]
-	const createdAt = typeof timestamp === "number" ? new Date(timestamp * 1000) : null
+	const createdAt =
+		typeof timestamp === "number" ? new Date(timestamp * 1000) : null
 
 	// Source count: from nested array at raw[1]
 	const sources = Array.isArray(raw[1]) ? raw[1] : []

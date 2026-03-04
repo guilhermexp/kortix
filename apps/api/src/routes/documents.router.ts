@@ -23,9 +23,9 @@ import {
 	cancelDocument,
 	checkUrlExists,
 	createBundle,
-	deleteDocumentAttachment,
 	DocumentsByIdsSchema,
 	deleteDocument,
+	deleteDocumentAttachment,
 	ensureSpace,
 	findDocumentRelatedLinks,
 	getDocument,
@@ -584,8 +584,7 @@ documentsRouter.post("/:id/regenerate-summary", async (c) => {
 			return c.json(
 				{
 					error: {
-						message:
-							"Summary generation failed — check provider credits",
+						message: "Summary generation failed — check provider credits",
 					},
 				},
 				502,
@@ -593,8 +592,7 @@ documentsRouter.post("/:id/regenerate-summary", async (c) => {
 		}
 
 		// 3. Update document
-		const existingMetadata =
-			(doc.metadata as Record<string, unknown>) || {}
+		const existingMetadata = (doc.metadata as Record<string, unknown>) || {}
 		const { error: updateError } = await supabase
 			.from("documents")
 			.update({
@@ -902,10 +900,7 @@ documentsRouter.get("/:id/attachments", async (c) => {
 		return c.json({ attachments })
 	} catch (error) {
 		console.error("Failed to list attachments", error)
-		return c.json(
-			{ error: { message: "Failed to list attachments" } },
-			500,
-		)
+		return c.json({ error: { message: "Failed to list attachments" } }, 500)
 	}
 })
 
@@ -929,10 +924,7 @@ documentsRouter.get("/:id/attachments/:attachmentId", async (c) => {
 		return c.json(attachment)
 	} catch (error) {
 		console.error("Failed to get attachment", error)
-		return c.json(
-			{ error: { message: "Failed to get attachment" } },
-			500,
-		)
+		return c.json({ error: { message: "Failed to get attachment" } }, 500)
 	}
 })
 

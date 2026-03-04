@@ -6,9 +6,9 @@
 import {
 	AuthError,
 	BATCHEXECUTE_URL,
-	type RPCMethodValue,
-	RPCError,
 	RateLimitError,
+	RPCError,
+	type RPCMethodValue,
 } from "./types"
 
 // ─── Encoder ─────────────────────────────────────────────────
@@ -135,10 +135,7 @@ function parseChunkedResponse(response: string): unknown[][] {
  * Extract the RPC result from decoded chunks.
  * Looks for `wrb.fr` frames matching the rpcId.
  */
-function extractRpcResult(
-	chunks: unknown[][],
-	rpcId: string,
-): unknown | null {
+function extractRpcResult(chunks: unknown[][], rpcId: string): unknown | null {
 	for (const chunk of chunks) {
 		if (!Array.isArray(chunk)) continue
 		for (const item of chunk) {
@@ -258,8 +255,7 @@ export function decodeChatResponse(rawResponse: string): {
 			if (Array.isArray(first) && typeof first[0] === "string") {
 				// Check if this is the definitive answer (marked at first[4][-1] === 1)
 				const isDefinitive =
-					Array.isArray(first[4]) &&
-					first[4][first[4].length - 1] === 1
+					Array.isArray(first[4]) && first[4][first[4].length - 1] === 1
 				if (isDefinitive || !answer) {
 					answer = first[0]
 				}
@@ -276,9 +272,7 @@ export function decodeChatResponse(rawResponse: string): {
 						try {
 							// Source UUID is deeply nested
 							const sourceId =
-								cite[1]?.[5]?.[0]?.[0]?.[0] ??
-								cite[1]?.[5]?.[0]?.[0] ??
-								""
+								cite[1]?.[5]?.[0]?.[0]?.[0] ?? cite[1]?.[5]?.[0]?.[0] ?? ""
 							const passages = cite[1]?.[4]
 							if (Array.isArray(passages)) {
 								for (const passage of passages) {
@@ -288,8 +282,7 @@ export function decodeChatResponse(rawResponse: string): {
 										citedText: String(passage[0] ?? ""),
 										startChar:
 											typeof passage[1] === "number" ? passage[1] : null,
-										endChar:
-											typeof passage[2] === "number" ? passage[2] : null,
+										endChar: typeof passage[2] === "number" ? passage[2] : null,
 									})
 								}
 							}

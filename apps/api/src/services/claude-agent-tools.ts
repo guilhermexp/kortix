@@ -269,9 +269,7 @@ export function createKortixTools(
 					try {
 						const { data, error } = await client
 							.from("document_attachments")
-							.select(
-								"id, filename, mime_type, size_bytes, content_text",
-							)
+							.select("id, filename, mime_type, size_bytes, content_text")
 							.eq("id", attachmentId)
 							.eq("org_id", orgId)
 							.maybeSingle()
@@ -313,8 +311,7 @@ export function createKortixTools(
 							],
 						}
 					} catch (err) {
-						const message =
-							err instanceof Error ? err.message : "Unknown error"
+						const message = err instanceof Error ? err.message : "Unknown error"
 						console.error("[readAttachment] Tool error:", err)
 						return {
 							content: [
@@ -1846,9 +1843,7 @@ export function createKortixTools(
 					content: z
 						.string()
 						.optional()
-						.describe(
-							"Content for text source (required when type='text')",
-						),
+						.describe("Content for text source (required when type='text')"),
 				},
 				async ({ notebookId, type, url, title, content }) => {
 					try {

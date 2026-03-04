@@ -109,7 +109,7 @@ export async function createNotebookForProject(params: {
 			.eq("org_id", organizationId)
 			.single()
 
-		const metadata = ((space?.metadata ?? {}) as Record<string, unknown>)
+		const metadata = (space?.metadata ?? {}) as Record<string, unknown>
 		metadata.notebookLmId = notebook.id
 		metadata.notebookLmLinkedAt = new Date().toISOString()
 
@@ -120,11 +120,14 @@ export async function createNotebookForProject(params: {
 			.eq("org_id", organizationId)
 
 		if (updateErr) {
-			console.warn("[NotebookLM sync] Created notebook but failed to save mapping", {
-				spaceId,
-				notebookId: notebook.id,
-				error: updateErr.message,
-			})
+			console.warn(
+				"[NotebookLM sync] Created notebook but failed to save mapping",
+				{
+					spaceId,
+					notebookId: notebook.id,
+					error: updateErr.message,
+				},
+			)
 		}
 
 		console.log("[NotebookLM sync] Notebook created for project", {

@@ -220,7 +220,9 @@ export function createTwitterImportButton(onClick: () => void): HTMLElement {
  * @param onClick - Click handler for the button
  * @returns HTMLElement - The button element
  */
-export function createSavePageButton(onClick: () => Promise<void>): HTMLElement {
+export function createSavePageButton(
+	onClick: () => Promise<void>,
+): HTMLElement {
 	const button = document.createElement("div")
 	button.id = ELEMENT_IDS.SAVE_PAGE_BUTTON
 

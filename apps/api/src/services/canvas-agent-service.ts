@@ -334,8 +334,7 @@ function expandLabelsToContainerText(
 				: makeElementId("shape")
 		const textId = `${shapeId}_label`
 		const text = (label.text as string).trim()
-		const fontSize =
-			typeof label.fontSize === "number" ? label.fontSize : 20
+		const fontSize = typeof label.fontSize === "number" ? label.fontSize : 20
 
 		// Merge text binding into shape's existing boundElements
 		const existingBound = Array.isArray(op.boundElements)
@@ -1565,9 +1564,7 @@ export async function createMindmapCanvasForAgent({
 
 	// Pre-generate IDs
 	const centerId = makeElementId("mm_c")
-	const branchIds = normalizedBranches.map((_, i) =>
-		makeElementId(`mm_b${i}`),
-	)
+	const branchIds = normalizedBranches.map((_, i) => makeElementId(`mm_b${i}`))
 	const branchArrowIds = normalizedBranches.map((_, i) =>
 		makeElementId(`mm_a${i}`),
 	)

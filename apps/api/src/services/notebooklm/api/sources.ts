@@ -4,12 +4,7 @@
  */
 
 import type { NotebookLMClient } from "../client"
-import {
-	RPCMethod,
-	type Source,
-	SourceStatus,
-	SourceTypeCode,
-} from "../types"
+import { RPCMethod, type Source, SourceStatus, SourceTypeCode } from "../types"
 
 const YOUTUBE_REGEX =
 	/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]+)/
@@ -29,10 +24,7 @@ export class SourcesAPI {
 	 * Add a URL source to a notebook.
 	 * Automatically detects YouTube URLs and routes accordingly.
 	 */
-	async addUrl(
-		notebookId: string,
-		url: string,
-	): Promise<Source | null> {
+	async addUrl(notebookId: string, url: string): Promise<Source | null> {
 		const isYouTube = YOUTUBE_REGEX.test(url)
 
 		let params: unknown[]
@@ -195,7 +187,8 @@ function parseSource(raw: unknown): Source | null {
 		title: String(title),
 		url: url ? String(url) : null,
 		kind: SourceTypeCode[typeCode] ?? "unknown",
-		createdAt: typeof timestamp === "number" ? new Date(timestamp * 1000) : null,
+		createdAt:
+			typeof timestamp === "number" ? new Date(timestamp * 1000) : null,
 		status: statusCode,
 		isReady: statusCode === SourceStatus.READY,
 		isProcessing:
@@ -212,8 +205,7 @@ function extractSourceIdFromAddResult(result: unknown[]): string | null {
 		const nested = result[0]
 		if (Array.isArray(nested)) {
 			// Walk the nested arrays looking for a UUID-like string
-			const candidate =
-				nested[0]?.[0]?.[0] ?? nested[0]?.[0] ?? nested[0]
+			const candidate = nested[0]?.[0]?.[0] ?? nested[0]?.[0] ?? nested[0]
 			if (typeof candidate === "string" && candidate.length > 10) {
 				return candidate
 			}

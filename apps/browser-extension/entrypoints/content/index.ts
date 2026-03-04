@@ -1,4 +1,9 @@
-import { DOMAINS, ELEMENT_IDS, MESSAGE_TYPES, STORAGE_KEYS } from "../../utils/constants"
+import {
+	DOMAINS,
+	ELEMENT_IDS,
+	MESSAGE_TYPES,
+	STORAGE_KEYS,
+} from "../../utils/constants"
 import { createSavePageButton, DOMUtils } from "../../utils/ui-components"
 import { initializeChatGPT } from "./chatgpt"
 import { initializeClaude } from "./claude"
@@ -79,10 +84,7 @@ export default defineContentScript({
 							type: "KORTIX_NLM_ERROR",
 							data: {
 								success: false,
-								error:
-									error instanceof Error
-										? error.message
-										: String(error),
+								error: error instanceof Error ? error.message : String(error),
 							},
 						},
 						"*",
@@ -163,7 +165,8 @@ export default defineContentScript({
 
 		// Save Page overlay button — visible on all pages except Kortix app and Twitter
 		const isSavePageExcluded =
-			DOMUtils.isOnDomain(DOMAINS.KORTIX) || DOMUtils.isOnDomain(DOMAINS.TWITTER)
+			DOMUtils.isOnDomain(DOMAINS.KORTIX) ||
+			DOMUtils.isOnDomain(DOMAINS.TWITTER)
 
 		const addSavePageButton = () => {
 			if (isSavePageExcluded) return

@@ -79,9 +79,7 @@ export class ChatAPI {
 	 * Get conversation history in the format expected by the chat RPC.
 	 * Returns: [[answer, null, 2], [question, null, 1], ...] reverse-chronological
 	 */
-	private getConversationHistory(
-		conversationId: string,
-	): unknown[] {
+	private getConversationHistory(conversationId: string): unknown[] {
 		const cached = this.conversationCache.get(conversationId) ?? []
 		const history: unknown[] = []
 		for (const [answer, question] of cached) {

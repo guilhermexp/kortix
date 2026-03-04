@@ -395,10 +395,7 @@ export class URLExtractor implements IURLExtractor {
 	 * Check if an image URL or its HTML attributes suggest it's an icon, logo,
 	 * badge, tracking pixel, or other non-content image that should be filtered out.
 	 */
-	private isLikelyNonContentImage(
-		src: string,
-		imgTag?: string,
-	): boolean {
+	private isLikelyNonContentImage(src: string, imgTag?: string): boolean {
 		const lower = src.toLowerCase()
 
 		// URL path patterns common in icons/logos/tracking

@@ -132,11 +132,7 @@ export class TwitterImporter {
 
 				if (response.status === 429) {
 					await this.rateLimiter.handleRateLimit(this.config.onProgress)
-					return this.batchImportAll(
-						cursor,
-						cumulativeResult,
-						uniqueGroupId,
-					)
+					return this.batchImportAll(cursor, cumulativeResult, uniqueGroupId)
 				}
 				if (
 					response.status === 400 ||
@@ -162,9 +158,7 @@ export class TwitterImporter {
 					const tweetUrl = `https://x.com/${tweet.user.screen_name}/status/${tweet.id_str}`
 					// Pick best preview image: photo > video thumbnail (no avatar fallback)
 					const previewImage =
-						tweet.photos?.[0]?.url ||
-						tweet.videos?.[0]?.thumbnail_url ||
-						""
+						tweet.photos?.[0]?.url || tweet.videos?.[0]?.thumbnail_url || ""
 					const metadata: MemoryPayload["metadata"] = {
 						sm_source: "consumer",
 						type: "tweet",
@@ -193,9 +187,7 @@ export class TwitterImporter {
 			// Save batch and parse response to count actual results
 			try {
 				if (documents.length > 0) {
-					await this.config.onProgress(
-						`Saving ${documents.length} tweets...`,
-					)
+					await this.config.onProgress(`Saving ${documents.length} tweets...`)
 					const batchResponse = await saveAllTweets(documents)
 
 					for (const result of batchResponse.results) {
@@ -233,11 +225,7 @@ export class TwitterImporter {
 
 			if (nextCursor && tweets.length > 0) {
 				await new Promise((resolve) => setTimeout(resolve, 1000)) // Rate limiting
-				await this.batchImportAll(
-					nextCursor,
-					cumulativeResult,
-					uniqueGroupId,
-				)
+				await this.batchImportAll(nextCursor, cumulativeResult, uniqueGroupId)
 			} else {
 				await this.config.onComplete(cumulativeResult)
 			}

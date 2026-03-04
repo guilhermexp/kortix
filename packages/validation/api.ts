@@ -832,6 +832,10 @@ export const SearchResultSchema = z.object({
 		description: "Document type",
 		example: "web",
 	}),
+	url: z.string().nullable().optional().meta({
+		description: "Document source URL",
+		example: "https://github.com/example/repo",
+	}),
 })
 
 export type SearchResult = z.infer<typeof SearchResultSchema>

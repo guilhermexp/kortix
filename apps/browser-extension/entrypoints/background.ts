@@ -64,7 +64,6 @@ export default defineBackground(() => {
 		["requestHeaders", "extraHeaders"],
 	)
 
-
 	// Handle context menu clicks.
 	browser.contextMenus.onClicked.addListener(async (info, tab) => {
 		if (info.menuItemId === CONTEXT_MENU_IDS.SAVE_TO_KORTIX) {

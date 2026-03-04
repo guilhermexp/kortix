@@ -21,7 +21,14 @@ export default defineConfig({
 		name: "Kortix",
 		homepage_url: APP_URL,
 		version: "6.0.004",
-		permissions: ["contextMenus", "storage", "activeTab", "webRequest", "tabs", "cookies"],
+		permissions: [
+			"contextMenus",
+			"storage",
+			"activeTab",
+			"webRequest",
+			"tabs",
+			"cookies",
+		],
 		commands: {
 			"save-to-kortix": {
 				suggested_key: {

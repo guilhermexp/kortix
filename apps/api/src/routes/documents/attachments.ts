@@ -50,7 +50,8 @@ export async function uploadDocumentAttachment(
 		.maybeSingle()
 
 	if (docErr) throw docErr
-	if (!doc) throw Object.assign(new Error("Document not found"), { status: 404 })
+	if (!doc)
+		throw Object.assign(new Error("Document not found"), { status: 404 })
 
 	const arrayBuffer = await file.arrayBuffer()
 	const buffer = Buffer.from(arrayBuffer)
@@ -157,7 +158,8 @@ export async function deleteDocumentAttachment(
 		.maybeSingle()
 
 	if (error) throw error
-	if (!data) throw Object.assign(new Error("Attachment not found"), { status: 404 })
+	if (!data)
+		throw Object.assign(new Error("Attachment not found"), { status: 404 })
 
 	// Delete from storage (best-effort)
 	await deleteFromStorage(data.storage_path)
