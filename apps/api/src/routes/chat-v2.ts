@@ -20,6 +20,7 @@ import {
 	ConversationStorageUnavailableError,
 	EventStorageService,
 } from "../services/event-storage"
+import { executeStructuredSearch } from "../services/search-tool"
 
 // New schema (SDK session-based)
 const chatRequestSchema = z.object({
@@ -300,6 +301,77 @@ function parseSearchToolOutput(raw: string): {
 	} catch {
 		return null
 	}
+}
+
+function buildPreSearchContextBlock(input: {
+	query: string
+	total: number
+	results: Array<{
+		documentId?: string
+		title?: string
+		score?: number
+		summary?: string
+		chunks?: Array<{ content?: string; score?: number }>
+	}>
+}): string {
+	const top = input.results.slice(0, 5)
+	if (top.length === 0) {
+		return [
+			"[PRE_SEARCH_CONTEXT]",
+			`query=${input.query}`,
+			"status=no_relevant_results",
+			"Use this signal: no relevant documents were found for the exact query in current scope.",
+			"Do not invent document findings. Ask for refinement or suggest adjacent terms.",
+		].join("\n")
+	}
+
+	const rows = top.map((result, index) => {
+		const parts: string[] = []
+		parts.push(`Result ${index + 1}:`)
+		if (result.documentId) parts.push(`- documentId: ${result.documentId}`)
+		if (result.title) parts.push(`- title: ${result.title}`)
+		if (typeof result.score === "number") {
+			parts.push(`- score: ${result.score.toFixed(4)}`)
+		}
+		if (result.summary) {
+			parts.push(`- summary: ${result.summary}`)
+		}
+		const chunk = Array.isArray(result.chunks) ? result.chunks[0] : undefined
+		if (chunk?.content) {
+			parts.push(`- snippet: ${chunk.content}`)
+		}
+		return parts.join("\n")
+	})
+
+	return [
+		"[PRE_SEARCH_CONTEXT]",
+		`query=${input.query}`,
+		`total=${input.total}`,
+		"These are deterministic backend search results. Prioritize them in your answer.",
+		"If user asks facts from documents, cite titles/snippets from this block first.",
+		...rows,
+	].join("\n")
+}
+
+function isCrossProjectQuery(message: string): boolean {
+	const normalized = message
+		.normalize("NFD")
+		.replace(/\p{Diacritic}/gu, "")
+		.toLowerCase()
+		.trim()
+	if (!normalized) return false
+
+	const patterns = [
+		"todos os projetos",
+		"todos projetos",
+		"todos os projectos",
+		"all projects",
+		"across projects",
+		"global",
+		"geral",
+		"em todos",
+	]
+	return patterns.some((pattern) => normalized.includes(pattern))
 }
 
 function extractTextDeltaFromEvent(event: unknown): string | null {
@@ -649,6 +721,7 @@ export async function handleChatV2({
 	})()
 	const agentProfile = resolveAgentProfile(metadata, canvasId)
 	const isCanvasAgent = agentProfile === "canvas"
+	const useCrossProjectSearch = isCrossProjectQuery(payload.message)
 	const preferredTone =
 		typeof metadata.preferredTone === "string"
 			? metadata.preferredTone.trim()
@@ -683,9 +756,15 @@ export async function handleChatV2({
 	// Build system prompt (without mode instructions)
 	const instructions: string[] = []
 	if (projectId) {
-		instructions.push(
-			`Active project tag: ${projectId}. Limit searches to this project unless the user explicitly requests otherwise.`,
-		)
+		if (useCrossProjectSearch) {
+			instructions.push(
+				`Active project tag is ${projectId}, but user explicitly requested cross-project search. Search ALL projects and then group findings by project.`,
+			)
+		} else {
+			instructions.push(
+				`Active project tag: ${projectId}. Limit searches to this project unless the user explicitly requests otherwise.`,
+			)
+		}
 	}
 	if (expandContext) {
 		instructions.push(
@@ -736,7 +815,9 @@ export async function handleChatV2({
 
 	const toolContext = {
 		containerTags:
-			projectId && projectId !== "__ALL__" ? [projectId] : undefined,
+			projectId && projectId !== "__ALL__" && !useCrossProjectSearch
+				? [projectId]
+				: undefined,
 		scopedDocumentIds: effectiveScopedIds,
 		canvasId,
 		userId: authUserId ?? userId,
@@ -822,6 +903,42 @@ export async function handleChatV2({
 				"[Chat V2] Failed to append mentioned documents context:",
 				error,
 			)
+		}
+	}
+
+	// Deterministic grounding: always pre-search in default profile when no
+	// full document context is already injected.
+	if (!isCanvasAgent && !contextDocument?.content) {
+		try {
+			const preSearch = await executeStructuredSearch(client, orgId, {
+				query: payload.message,
+				limit: 8,
+				includeSummary: true,
+				includeFullDocs: false,
+				containerTags:
+					projectId && projectId !== "__ALL__" && !useCrossProjectSearch
+						? [projectId]
+						: undefined,
+				scopedDocumentIds: effectiveScopedIds,
+				chunkThreshold: 0.1,
+				documentThreshold: 0.1,
+				onlyMatchingChunks: true,
+			})
+
+			const contextBlock = buildPreSearchContextBlock({
+				query: preSearch.query,
+				total: preSearch.total,
+				results: preSearch.results,
+			})
+
+			messageForAgent = `${messageForAgent}\n\n${contextBlock}`
+			console.log("[Chat V2] Injected deterministic pre-search context:", {
+				returned: preSearch.returned,
+				total: preSearch.total,
+				query: preSearch.query,
+			})
+		} catch (error) {
+			console.error("[Chat V2] Pre-search context injection failed:", error)
 		}
 	}
 

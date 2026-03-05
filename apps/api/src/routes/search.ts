@@ -3,6 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { env } from "../env"
 import { generateEmbedding } from "../services/embedding-provider"
 import { rerankSearchResults } from "../services/rerank"
+import {
+	extractExactTerms,
+	includesNormalizedTerm,
+	isExploratoryQuery,
+} from "./search-heuristics"
 
 const DOCUMENT_SELECT_FIELDS =
 	"id, title, type, content, summary, metadata, url, created_at, updated_at, status" as const
@@ -236,6 +241,24 @@ export async function searchDocuments(
 		(entry) => entry.bestScore >= documentThreshold,
 	)
 
+	// If user asks for exact terms in quotes, enforce literal presence (normalized)
+	// so semantic-only matches don't appear as unrelated/random results.
+	const exactTerms = extractExactTerms(payload.q)
+	if (exactTerms.length > 0) {
+		sorted = sorted.filter((entry) => {
+			const fields = [entry.doc.title, entry.doc.summary, entry.doc.content]
+			return exactTerms.every((term) => {
+				const inDocFields = fields.some((field) =>
+					includesNormalizedTerm(field, term),
+				)
+				if (inDocFields) return true
+				return entry.chunks.some((chunk) =>
+					includesNormalizedTerm(chunk.content, term),
+				)
+			})
+		})
+	}
+
 	// Apply recency boost if enabled
 	let recencyApplied = false
 	if (env.ENABLE_RECENCY_BOOST && sorted.length > 0) {
@@ -300,9 +323,10 @@ export async function searchDocuments(
 		reranked = true
 	}
 
-	// Broad fallback: if no results, return recent documents (scoped) to support
-	// generic queries like "what do I have in this project?"
-	if (results.length === 0) {
+	// Broad fallback: only for exploratory/generic queries.
+	// For specific keyword queries we must return empty results instead of
+	// unrelated recent docs (which appears random to users).
+	if (results.length === 0 && isExploratoryQuery(payload.q)) {
 		try {
 			let docsData: DocumentRow[] | null = null
 

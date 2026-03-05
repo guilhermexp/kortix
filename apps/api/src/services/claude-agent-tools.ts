@@ -28,7 +28,10 @@ import {
 	uploadFile,
 } from "./daytona-sandbox"
 import { NotebookLMClient } from "./notebooklm"
-import { executeStructuredSearch } from "./search-tool"
+import {
+	executeStructuredSearch,
+	type SearchToolResult,
+} from "./search-tool"
 
 type ToolContext = {
 	containerTags?: string[]
@@ -39,6 +42,73 @@ type ToolContext = {
 
 function safeString(value: unknown) {
 	return typeof value === "string" ? value : undefined
+}
+
+function truncateText(value: string | undefined, maxChars: number): string | undefined {
+	if (!value) return undefined
+	if (value.length <= maxChars) return value
+	return `${value.slice(0, maxChars)}...`
+}
+
+function formatSearchToolOutputCompact(
+	payload: SearchToolResult,
+	options?: {
+		maxResults?: number
+		maxChunksPerResult?: number
+		maxSummaryChars?: number
+		maxChunkChars?: number
+		maxContentChars?: number
+	},
+) {
+	const maxResults = options?.maxResults ?? 12
+	const maxChunksPerResult = options?.maxChunksPerResult ?? 2
+	const maxSummaryChars = options?.maxSummaryChars ?? 500
+	const maxChunkChars = options?.maxChunkChars ?? 320
+	const maxContentChars = options?.maxContentChars ?? 900
+
+	const sliced = payload.results.slice(0, maxResults)
+	const projectCount = new Map<string, number>()
+
+	const results = sliced.map((item) => {
+		const metadata =
+			item.metadata && typeof item.metadata === "object" ? item.metadata : {}
+		const containerTags = Array.isArray((metadata as Record<string, unknown>).containerTags)
+			? ((metadata as Record<string, unknown>).containerTags as unknown[])
+					.map((tag) => (typeof tag === "string" ? tag : null))
+					.filter((tag): tag is string => Boolean(tag))
+			: []
+
+		for (const tag of containerTags) {
+			projectCount.set(tag, (projectCount.get(tag) ?? 0) + 1)
+		}
+
+		return {
+			documentId: item.documentId,
+			title: item.title,
+			score: item.score,
+			url: item.url,
+			projectTags: containerTags,
+			summary: truncateText(item.summary, maxSummaryChars),
+			contentSnippet: truncateText(item.content, maxContentChars),
+			chunks: (item.chunks ?? []).slice(0, maxChunksPerResult).map((chunk) => ({
+				score: chunk.score,
+				content: truncateText(chunk.content, maxChunkChars),
+			})),
+		}
+	})
+
+	const projects = Array.from(projectCount.entries())
+		.map(([tag, count]) => ({ tag, count }))
+		.sort((a, b) => b.count - a.count)
+
+	return {
+		query: payload.query,
+		total: payload.total,
+		returned: payload.returned,
+		timing: payload.timing,
+		projects,
+		results,
+	}
 }
 
 export function createKortixTools(
@@ -147,7 +217,7 @@ export function createKortixTools(
 						.number()
 						.min(1)
 						.max(50)
-						.default(20)
+						.default(10)
 						.describe("Maximum number of results to return"),
 					includeSummary: z
 						.boolean()
@@ -195,14 +265,20 @@ export function createKortixTools(
 						console.log(
 							`[searchDatabase] Cache hit for query "${query}" (${duration}ms)`,
 						)
-						return {
-							content: [
-								{
-									type: "text",
-									text: JSON.stringify(cached, null, 2),
-								},
-							],
-						}
+							return {
+								content: [
+									{
+										type: "text",
+										text: JSON.stringify(
+											formatSearchToolOutputCompact(
+												cached as SearchToolResult,
+											),
+											null,
+											2,
+										),
+									},
+								],
+							}
 					}
 
 					console.log(`[searchDatabase] Cache miss for query "${query}"`)
@@ -214,7 +290,7 @@ export function createKortixTools(
 							includeFullDocs,
 							chunkThreshold: 0.1,
 							documentThreshold: 0.15,
-							onlyMatchingChunks: false,
+							onlyMatchingChunks: true,
 							containerTags:
 								containerTags && containerTags.length > 0
 									? containerTags
@@ -236,7 +312,11 @@ export function createKortixTools(
 							content: [
 								{
 									type: "text",
-									text: JSON.stringify(result, null, 2),
+									text: JSON.stringify(
+										formatSearchToolOutputCompact(result),
+										null,
+										2,
+									),
 								},
 							],
 						}
