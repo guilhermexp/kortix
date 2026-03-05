@@ -29,7 +29,7 @@ import {
 } from "./daytona-sandbox"
 import { NotebookLMClient } from "./notebooklm"
 import {
-	executeStructuredSearch,
+	executeIntelligentStructuredSearch,
 	type SearchToolResult,
 } from "./search-tool"
 
@@ -283,7 +283,10 @@ export function createKortixTools(
 
 					console.log(`[searchDatabase] Cache miss for query "${query}"`)
 					try {
-						const result = await executeStructuredSearch(client, orgId, {
+						const result = await executeIntelligentStructuredSearch(
+							client,
+							orgId,
+							{
 							query,
 							limit,
 							includeSummary,
@@ -299,7 +302,8 @@ export function createKortixTools(
 								scopedDocumentIds && scopedDocumentIds.length > 0
 									? scopedDocumentIds
 									: baseScopedIds,
-						})
+							},
+						)
 						const duration = Date.now() - startTime
 						console.log(
 							`[searchDatabase] Found ${result.total} results (${duration}ms)`,

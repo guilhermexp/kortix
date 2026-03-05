@@ -20,7 +20,7 @@ import {
 	ConversationStorageUnavailableError,
 	EventStorageService,
 } from "../services/event-storage"
-import { executeStructuredSearch } from "../services/search-tool"
+import { executeIntelligentStructuredSearch } from "../services/search-tool"
 
 // New schema (SDK session-based)
 const chatRequestSchema = z.object({
@@ -910,7 +910,7 @@ export async function handleChatV2({
 	// full document context is already injected.
 	if (!isCanvasAgent && !contextDocument?.content) {
 		try {
-			const preSearch = await executeStructuredSearch(client, orgId, {
+			const preSearch = await executeIntelligentStructuredSearch(client, orgId, {
 				query: payload.message,
 				limit: 8,
 				includeSummary: true,

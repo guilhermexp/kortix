@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { searchDocuments } from "../routes/search"
+import { buildSearchVariants, fuseSearchPasses } from "./search-intelligence"
 
 export type SearchToolParams = {
 	query: string
@@ -33,6 +34,10 @@ export type SearchToolResult = {
 	returned: number
 	timing: number
 	results: SearchToolResultItem[]
+	plan?: {
+		mode: "single" | "intelligent"
+		passes: Array<{ query: string; weight: number; returned: number }>
+	}
 }
 
 function safeString(value: unknown): string | undefined {
@@ -94,6 +99,80 @@ export async function executeStructuredSearch(
 		returned: results.length,
 		timing: response.timing,
 		results,
+		plan: {
+			mode: "single",
+			passes: [{ query: params.query, weight: 1, returned: results.length }],
+		},
+	}
+}
+
+export async function executeIntelligentStructuredSearch(
+	client: SupabaseClient,
+	orgId: string,
+	params: SearchToolParams,
+): Promise<SearchToolResult> {
+	const start = Date.now()
+	const limit = params.limit ?? 10
+	const passLimit = Math.max(12, Math.min(40, limit * 3))
+	const variants = buildSearchVariants(params.query)
+	const passes: Array<{
+		query: string
+		weight: number
+		results: SearchToolResultItem[]
+	}> = []
+
+	for (const variant of variants) {
+		const res = await executeStructuredSearch(client, orgId, {
+			...params,
+			query: variant.query,
+			limit: passLimit,
+			chunkThreshold: Math.min(params.chunkThreshold ?? 0, 0.1),
+			documentThreshold: Math.min(params.documentThreshold ?? 0, 0.1),
+			onlyMatchingChunks: params.onlyMatchingChunks ?? true,
+		})
+		if (res.results.length > 0) {
+			passes.push({
+				query: variant.query,
+				weight: variant.weight,
+				results: res.results,
+			})
+		}
+	}
+
+	// Hard fallback: if no pass found results, keep deterministic empty response.
+	if (passes.length === 0) {
+		return {
+			query: params.query,
+			total: 0,
+			returned: 0,
+			timing: Date.now() - start,
+			results: [],
+			plan: {
+				mode: "intelligent",
+				passes: variants.map((v) => ({
+					query: v.query,
+					weight: v.weight,
+					returned: 0,
+				})),
+			},
+		}
+	}
+
+	const fused = fuseSearchPasses(passes, limit)
+	return {
+		query: params.query,
+		total: fused.length,
+		returned: fused.length,
+		timing: Date.now() - start,
+		results: fused,
+		plan: {
+			mode: "intelligent",
+			passes: passes.map((p) => ({
+				query: p.query,
+				weight: p.weight,
+				returned: p.results.length,
+			})),
+		},
 	}
 }
 

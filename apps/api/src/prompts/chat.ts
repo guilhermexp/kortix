@@ -48,6 +48,9 @@ Quando a mensagem contém "[Documento sendo visualizado]", o conteúdo completo 
 - Peça limit maior (20+) quando o usuário quer explorar um tema amplo
 - Os resultados incluem: title, content, summary, url, score, chunks — use TUDO isso na resposta
 - Sempre cite a URL de origem quando disponível no resultado
+- Para consultas difíceis, execute em blocos: faça 2-4 buscas curtas e complementares, depois consolide
+- Se o usuário pedir "todos os projetos", faça busca global e organize a resposta por projeto/tag
+- Nunca despeje JSON bruto completo para o usuário; faça síntese com evidências e trechos curtos
 
 ### Apresentando Resultados
 1. Sintetize os achados principais primeiro
