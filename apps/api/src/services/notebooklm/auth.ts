@@ -19,8 +19,18 @@ const GOOGLE_COOKIE_DOMAINS = [
 	".google.com.au",
 ]
 
-// Minimum required cookie for authentication
-const REQUIRED_COOKIE = "SID"
+// At least one of these Google session cookies should exist.
+// Google account cookie sets can vary by region/browser policy.
+const REQUIRED_COOKIES = [
+	"SID",
+	"__Secure-1PSID",
+	"__Secure-3PSID",
+	"SAPISID",
+]
+
+function hasRequiredCookie(cookies: Record<string, string>): boolean {
+	return REQUIRED_COOKIES.some((name) => Boolean(cookies[name]))
+}
 
 export interface StoredCookies {
 	/** Raw cookie string for Cookie header (e.g. "SID=xxx; HSID=yyy; ...") */
@@ -83,9 +93,9 @@ export function parsePlaywrightCookies(storageState: {
 		}
 	}
 
-	if (!cookies[REQUIRED_COOKIE]) {
+	if (!hasRequiredCookie(cookies)) {
 		throw new AuthError(
-			`Missing required cookie: ${REQUIRED_COOKIE}. Please re-authenticate with Google.`,
+			`Missing required Google session cookie (${REQUIRED_COOKIES.join(", ")}). Please re-authenticate with Google.`,
 		)
 	}
 
@@ -109,9 +119,9 @@ export function parseRawCookies(raw: string): StoredCookies {
 		}
 	}
 
-	if (!cookies[REQUIRED_COOKIE]) {
+	if (!hasRequiredCookie(cookies)) {
 		throw new AuthError(
-			`Missing required cookie: ${REQUIRED_COOKIE}. Please re-authenticate with Google.`,
+			`Missing required Google session cookie (${REQUIRED_COOKIES.join(", ")}). Please re-authenticate with Google.`,
 		)
 	}
 
