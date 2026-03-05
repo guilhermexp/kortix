@@ -285,32 +285,47 @@ export function IntegrationsView() {
 				cookies?: string
 				error?: string
 			}>((resolve) => {
+				let done = false
+				let lastError: string | undefined
+
+				const cleanup = () => {
+					done = true
+					window.removeEventListener("message", handler)
+					window.clearInterval(intervalId)
+					window.clearTimeout(timeoutId)
+				}
+
 				const handler = (event: MessageEvent) => {
 					if (event.data?.type === "KORTIX_NLM_COOKIES") {
-						window.removeEventListener("message", handler)
+						cleanup()
 						resolve({
 							success: true,
 							cookies: event.data?.data?.cookies,
 						})
 					} else if (event.data?.type === "KORTIX_NLM_ERROR") {
-						window.removeEventListener("message", handler)
-						resolve({
-							success: false,
-							error: event.data?.data?.error,
-						})
+						lastError = event.data?.data?.error
 					}
 				}
 				window.addEventListener("message", handler)
 
-				setTimeout(() => {
-					window.removeEventListener("message", handler)
+				const requestCapture = () => {
+					if (done) return
+					window.postMessage({ type: "KORTIX_NLM_START_CAPTURE" }, "*")
+				}
+
+				// Trigger immediately and then keep polling while user finishes login in popup.
+				requestCapture()
+				const intervalId = window.setInterval(requestCapture, 2500)
+
+				const timeoutId = window.setTimeout(() => {
+					cleanup()
 					resolve({
 						success: false,
-						error: "Extension did not respond. Is the Kortix extension installed?",
+						error:
+							lastError ||
+							"Extension did not return NotebookLM cookies in time. Check if extension is installed and login completed.",
 					})
-				}, 30000)
-
-				window.postMessage({ type: "KORTIX_NLM_START_CAPTURE" }, "*")
+				}, 45000)
 			})
 
 			// Close popup

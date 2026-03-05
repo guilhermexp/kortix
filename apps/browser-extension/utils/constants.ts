@@ -25,6 +25,8 @@ export const STORAGE_KEYS = {
 	TWITTER_COOKIE: "twitter-cookie",
 	TWITTER_CSRF: "twitter-csrf",
 	TWITTER_AUTH_TOKEN: "twitter-auth-token",
+	NLM_COOKIE_HEADER: "nlm-cookie-header",
+	NLM_CAPTURED_AT: "nlm-captured-at",
 	DEFAULT_PROJECT: "sm-default-project",
 	AUTO_SEARCH_ENABLED: "sm-auto-search-enabled",
 	SAVE_PAGE_BUTTON_ENABLED: "sm-save-page-button-enabled",

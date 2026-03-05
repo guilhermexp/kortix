@@ -4,7 +4,10 @@ import {
 	getContainerTagForUrl,
 	MESSAGE_TYPES,
 } from "../utils/constants"
-import { captureNlmCookies } from "../utils/notebooklm-auth"
+import {
+	captureNlmCookies,
+	captureNlmCookiesFromRequest,
+} from "../utils/notebooklm-auth"
 import { captureTwitterTokens } from "../utils/twitter-auth"
 import {
 	type ImportResult,
@@ -61,6 +64,16 @@ export default defineBackground(() => {
 			return {}
 		},
 		{ urls: ["*://x.com/*", "*://twitter.com/*"] },
+		["requestHeaders", "extraHeaders"],
+	)
+
+	// Intercept NotebookLM requests to keep Google session cookies fresh in storage.
+	browser.webRequest.onBeforeSendHeaders.addListener(
+		(details) => {
+			captureNlmCookiesFromRequest(details)
+			return {}
+		},
+		{ urls: ["*://notebooklm.google.com/*"] },
 		["requestHeaders", "extraHeaders"],
 	)
 
