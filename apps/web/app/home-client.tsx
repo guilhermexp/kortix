@@ -5,7 +5,7 @@ import { useIsMobile } from "@hooks/use-mobile";
 import { useAuth } from "@lib/auth-context";
 import { $fetch } from "@repo/lib/api";
 import type { DocumentsWithMemoriesResponseSchema } from "@repo/validation/api";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Button } from "@ui/components/button";
 import { GlassMenuEffect } from "@ui/other/glass-effect";
 import { LoaderIcon, MessageSquare, RefreshCcw, Search, X } from "lucide-react";
@@ -29,6 +29,7 @@ import { CouncilChat } from "@/components/views/council";
 import { TOUR_STEP_IDS } from "@/lib/tour-constants";
 import { useViewMode } from "@/lib/view-mode-context";
 import { useChatMode, useChatOpen, useProject } from "@/stores";
+import { useGraphHighlights } from "@/stores/highlights";
 
 type DocumentsResponse = z.infer<typeof DocumentsWithMemoriesResponseSchema>;
 type DocumentWithMemories = DocumentsResponse["documents"][0];
@@ -39,6 +40,8 @@ const MemoryGraphPage = () => {
   const isMobile = useIsMobile();
   const { viewMode } = useViewMode();
   const { selectedProject } = useProject();
+  const { documentIds: highlightedDocumentIds, clear: clearHighlightedDocuments } =
+    useGraphHighlights();
   const { isOpen, setIsOpen } = useChatOpen();
   const { mode, setMode } = useChatMode();
   const [showAddMemoryView, setShowAddMemoryView] = useState(false);
@@ -348,7 +351,6 @@ const MemoryGraphPage = () => {
 
         // Handle authentication errors - don't retry
         if (status === 401 || status === 403) {
-          console.error("Authentication error:", message);
           // Don't mark as rate limited for auth errors
           const authError = new Error(message || "Authentication failed");
           (authError as any).status = status;
@@ -443,13 +445,74 @@ const MemoryGraphPage = () => {
     });
   }, [data]);
 
+  const loadedDocumentIds = useMemo(
+    () => new Set(allDocuments.map((doc) => doc.id)),
+    [allDocuments],
+  );
+
+  const missingHighlightedIds = useMemo(
+    () => highlightedDocumentIds.filter((id) => !loadedDocumentIds.has(id)),
+    [highlightedDocumentIds, loadedDocumentIds],
+  );
+
+  const { data: missingHighlightedDocuments = [] } = useQuery<
+    DocumentWithMemories[],
+    Error
+  >({
+    queryKey: ["documents-by-ids", selectedProject, missingHighlightedIds],
+    enabled: missingHighlightedIds.length > 0,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const response = await $fetch("@post/documents/documents/by-ids", {
+        body: {
+          ids: missingHighlightedIds,
+          by: "id",
+        },
+        disableValidation: true,
+      });
+
+      if (response.error) {
+        throw new Error(response.error?.message || "Failed to fetch documents");
+      }
+
+      return ((response.data as any)?.documents ?? []) as DocumentWithMemories[];
+    },
+  });
+
+  const documentsForList = useMemo(() => {
+    if (highlightedDocumentIds.length === 0) return allDocuments;
+
+    const byId = new Map<string, DocumentWithMemories>();
+    for (const doc of allDocuments) {
+      byId.set(doc.id, doc);
+    }
+    for (const doc of missingHighlightedDocuments) {
+      if (!byId.has(doc.id)) {
+        byId.set(doc.id, doc);
+      }
+    }
+
+    const ordered: DocumentWithMemories[] = [];
+    const seen = new Set<string>();
+
+    for (const id of highlightedDocumentIds) {
+      const doc = byId.get(id);
+      if (!doc || seen.has(id)) continue;
+      ordered.push(doc);
+      seen.add(id);
+    }
+
+    // When highlights are active, list mode should focus ONLY on those results.
+    return ordered;
+  }, [allDocuments, highlightedDocumentIds, missingHighlightedDocuments]);
+
   // Extract available filter values from documents
   const availableFilterValues = useMemo(() => {
     const tagsSet = new Set<string>();
     const mentionsSet = new Set<string>();
     const propertiesSet = new Set<string>();
 
-    allDocuments.forEach((doc) => {
+    documentsForList.forEach((doc) => {
       // Extract tags from document metadata
       const extracted = doc.metadata?.extracted as any;
       if (extracted) {
@@ -477,10 +540,10 @@ const MemoryGraphPage = () => {
       mentions: Array.from(mentionsSet).sort(),
       properties: Array.from(propertiesSet).sort(),
     };
-  }, [allDocuments]);
+  }, [documentsForList]);
 
-  const totalLoaded = allDocuments.length;
-  const hasMore = hasNextPage;
+  const totalLoaded = documentsForList.length;
+  const hasMore = highlightedDocumentIds.length === 0 ? hasNextPage : false;
   const isLoadingMore = isFetchingNextPage;
   const isRefreshing = isRefetching && !isFetchingNextPage;
   const manualRefreshDisabled = isRateLimited || isPending || isRefreshing;
@@ -594,6 +657,17 @@ const MemoryGraphPage = () => {
                   )}
                   <span className="hidden md:inline ml-2">Atualizar</span>
                 </Button>
+                {highlightedDocumentIds.length > 0 ? (
+                  <Button
+                    className="bg-background border border-foreground/15 text-foreground/80 hover:text-foreground hover:bg-foreground/10 px-2 sm:px-3 rounded-md"
+                    onClick={clearHighlightedDocuments}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    <span className="hidden md:inline">Limpar resultados</span>
+                    <span className="md:hidden">Limpar</span>
+                  </Button>
+                ) : null}
               </div>
             </div>
 
@@ -628,9 +702,10 @@ const MemoryGraphPage = () => {
           }}
         >
           <MemoryListView
-            documents={allDocuments}
+            documents={documentsForList}
             error={error}
             hasMore={hasMore}
+            highlightedDocumentIds={highlightedDocumentIds}
             isLoading={isPending}
             isLoadingMore={isLoadingMore}
             loadMoreDocuments={loadMoreDocuments}

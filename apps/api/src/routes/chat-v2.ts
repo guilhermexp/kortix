@@ -94,7 +94,11 @@ type AgentProfile = "default" | "canvas"
 
 const mcpTool = (name: string) => `mcp__kortix-tools__${name}` as const
 
-const SHARED_TOOLS = [mcpTool("searchDatabase"), mcpTool("readAttachment")]
+const SHARED_TOOLS = [
+	mcpTool("searchDatabase"),
+	mcpTool("readAttachment"),
+	mcpTool("list_show_documents"),
+]
 
 // Tools allowed for the default profile (list + document detail pages)
 const DEFAULT_ALLOWED_TOOLS = [
@@ -910,20 +914,24 @@ export async function handleChatV2({
 	// full document context is already injected.
 	if (!isCanvasAgent && !contextDocument?.content) {
 		try {
-			const preSearch = await executeIntelligentStructuredSearch(client, orgId, {
-				query: payload.message,
-				limit: 8,
-				includeSummary: true,
-				includeFullDocs: false,
-				containerTags:
-					projectId && projectId !== "__ALL__" && !useCrossProjectSearch
-						? [projectId]
-						: undefined,
-				scopedDocumentIds: effectiveScopedIds,
-				chunkThreshold: 0.1,
-				documentThreshold: 0.1,
-				onlyMatchingChunks: true,
-			})
+			const preSearch = await executeIntelligentStructuredSearch(
+				client,
+				orgId,
+				{
+					query: payload.message,
+					limit: 8,
+					includeSummary: true,
+					includeFullDocs: false,
+					containerTags:
+						projectId && projectId !== "__ALL__" && !useCrossProjectSearch
+							? [projectId]
+							: undefined,
+					scopedDocumentIds: effectiveScopedIds,
+					chunkThreshold: 0.1,
+					documentThreshold: 0.1,
+					onlyMatchingChunks: true,
+				},
+			)
 
 			const contextBlock = buildPreSearchContextBlock({
 				query: preSearch.query,

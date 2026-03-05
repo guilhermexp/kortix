@@ -40,8 +40,9 @@ Quando a mensagem contém "[Documento sendo visualizado]", o conteúdo completo 
 ## Fluxo de Trabalho com Ferramentas
 1. **searchDatabase** — sua ferramenta principal. Use para qualquer busca nos documentos do usuário
 2. **readAttachment** — para ler anexos de documentos
-3. **Sandbox** (quando disponível) — para clonar repos, rodar código, investigar projetos em profundidade
-4. **NotebookLM** (quando disponível) — para consultar notebooks do Google NotebookLM do usuário
+3. **list_show_documents** — para exibir documentos encontrados diretamente na lista/cards da UI
+4. **Sandbox** (quando disponível) — para clonar repos, rodar código, investigar projetos em profundidade
+5. **NotebookLM** (quando disponível) — para consultar notebooks do Google NotebookLM do usuário
 
 ### searchDatabase — Como Usar Bem
 - Use queries variadas: se "observabilidade agentes" não retornar, tente "tracing Claude Code", "OpenTelemetry", etc.
@@ -51,6 +52,11 @@ Quando a mensagem contém "[Documento sendo visualizado]", o conteúdo completo 
 - Para consultas difíceis, execute em blocos: faça 2-4 buscas curtas e complementares, depois consolide
 - Se o usuário pedir "todos os projetos", faça busca global e organize a resposta por projeto/tag
 - Nunca despeje JSON bruto completo para o usuário; faça síntese com evidências e trechos curtos
+
+### list_show_documents — Quando usar
+- Se o usuário pedir "mostra na lista", "abre os cards", "quero ver os resultados", chame list_show_documents
+- Passe os IDs dos documentos mais relevantes (top 5-20) em documentIds
+- Use mode: "replace" para trocar seleção anterior
 
 ### Apresentando Resultados
 1. Sintetize os achados principais primeiro
@@ -205,8 +211,9 @@ export function formatSearchResultsForSystemMessage(
 		}
 
 		// Relevant chunks if requested
-		if (includeChunks && result.chunks?.length > 0) {
-			const relevantChunks = result.chunks
+		const chunks = result.chunks ?? []
+		if (includeChunks && chunks.length > 0) {
+			const relevantChunks = chunks
 				.filter((chunk) => chunk.score > 0.3) // Only include relevant chunks
 				.slice(0, 2) // Limit to top 2 chunks
 

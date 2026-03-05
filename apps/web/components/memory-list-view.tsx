@@ -450,6 +450,7 @@ export const getDocumentPreview = (
 interface MemoryListViewProps {
 	children?: React.ReactNode
 	documents: DocumentWithMemories[]
+	highlightedDocumentIds?: string[]
 	isLoading: boolean
 	isLoadingMore: boolean
 	error: Error | null
@@ -731,12 +732,14 @@ function DocumentPreviewModal({
 const MasonryCard = memo(
 	({
 		document,
+		isHighlighted,
 		isPinned,
 		onDelete,
 		onPreview,
 		onTogglePin,
 	}: {
 		document: DocumentWithMemories
+		isHighlighted: boolean
 		isPinned: boolean
 		onDelete: (document: DocumentWithMemories) => void
 		onPreview: (document: DocumentWithMemories) => void
@@ -1043,7 +1046,12 @@ const MasonryCard = memo(
 
 			return (
 				<div
-					className="group relative inline-block w-full mb-4 break-inside-avoid cursor-pointer rounded-xl overflow-hidden bg-card border border-border/50 hover:border-border transition-all duration-300 hover:shadow-lg hover:shadow-black/10"
+					className={cn(
+						"group relative inline-block w-full mb-4 break-inside-avoid cursor-pointer rounded-xl overflow-hidden bg-card border transition-all duration-300 hover:shadow-lg hover:shadow-black/10",
+						isHighlighted
+							? "border-foreground/25 ring-1 ring-foreground/15"
+							: "border-border/50 hover:border-border",
+					)}
 					onClick={() => {
 						analytics.documentCardClicked()
 						onPreview(document)
@@ -1052,6 +1060,11 @@ const MasonryCard = memo(
 				onMouseEnter={handlePrefetchEdit}
 				onTouchStart={handlePrefetchEdit}
 			>
+				{isHighlighted ? (
+					<div className="absolute left-3 top-3 z-20 rounded-full border border-foreground/25 bg-background/95 px-2 py-0.5 text-[10px] font-medium text-foreground/80">
+						Agente
+					</div>
+				) : null}
 				{/* Paused state - show warning and resume button */}
 				{isPaused ? (
 					<div className="p-6 flex flex-col items-center justify-center min-h-[140px] gap-3">
@@ -1655,6 +1668,7 @@ const MasonryCard = memo(
 export const MemoryListView = ({
 	children,
 	documents,
+	highlightedDocumentIds = [],
 	isLoading,
 	isLoadingMore,
 	error,
@@ -1671,6 +1685,10 @@ export const MemoryListView = ({
 	const deleteDocumentMutation = useDeleteDocument(selectedProject)
 	const [previewDocument, setPreviewDocument] =
 		useState<DocumentWithMemories | null>(null)
+	const highlightedIdSet = useMemo(
+		() => new Set(highlightedDocumentIds),
+		[highlightedDocumentIds],
+	)
 
 	const handleDeleteDocument = useCallback(
 		(document: DocumentWithMemories) => {
@@ -1702,9 +1720,14 @@ export const MemoryListView = ({
 				.filter((doc) => doc.memoryEntries.length > 0)
 		}
 
-		// Sort pinned documents to the top, preserving relative order
-		if (pinnedIds.size > 0) {
+		// Prioritize highlighted docs from agent, then pinned docs.
+		if (pinnedIds.size > 0 || highlightedIdSet.size > 0) {
 			docs = [...docs].sort((a, b) => {
+				const aHighlighted = highlightedIdSet.has(a.id) ? 1 : 0
+				const bHighlighted = highlightedIdSet.has(b.id) ? 1 : 0
+				if (aHighlighted !== bHighlighted) {
+					return bHighlighted - aHighlighted
+				}
 				const aPinned = pinnedIds.has(a.id) ? 1 : 0
 				const bPinned = pinnedIds.has(b.id) ? 1 : 0
 				return bPinned - aPinned
@@ -1712,7 +1735,7 @@ export const MemoryListView = ({
 		}
 
 		return docs
-	}, [documents, selectedSpace, pinnedIds])
+	}, [documents, selectedSpace, pinnedIds, highlightedIdSet])
 
 	// Infinite scroll with IntersectionObserver
 	useEffect(() => {
@@ -1782,6 +1805,7 @@ export const MemoryListView = ({
 						{filteredDocuments.map((document) => (
 							<MasonryCard
 								document={document}
+								isHighlighted={highlightedIdSet.has(document.id)}
 								isPinned={isPinned(document.id)}
 								key={document.id}
 								onDelete={handleDeleteDocument}

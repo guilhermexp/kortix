@@ -57,6 +57,17 @@ interface ExpandableMemoriesProps {
 	results: MemoryResult[]
 }
 
+type ShowInListPayload = {
+	documentIds: string[]
+	mode: "replace" | "append"
+}
+
+type ShowInListLink = {
+	documentId: string
+	title: string
+	url?: string
+}
+
 type SlashCommand = {
 	id: string
 	label: string
@@ -279,6 +290,51 @@ function toMemoryResults(value: unknown): MemoryResult[] {
 	return value
 		.map((item) => toMemoryResult(item))
 		.filter((item): item is MemoryResult => item !== null)
+}
+
+function toDocumentIds(value: unknown): string[] {
+	if (!Array.isArray(value)) return []
+	return Array.from(
+		new Set(
+			value.filter(
+				(id): id is string => typeof id === "string" && id.length > 0,
+			),
+		),
+	)
+}
+
+function parseShowInListPayload(value: string | undefined): ShowInListPayload | null {
+	if (!value) return null
+	try {
+		const parsed = JSON.parse(value) as Record<string, unknown>
+		const documentIds = toDocumentIds(parsed.documentIds)
+		if (documentIds.length === 0) return null
+		return {
+			documentIds,
+			mode: parsed.mode === "append" ? "append" : "replace",
+		}
+	} catch {
+		return null
+	}
+}
+
+function collectShowInListLinks(
+	parts: unknown[],
+	documentIds: string[],
+): ShowInListLink[] {
+	const byId = new Map<string, ShowInListLink>()
+	for (const part of parts) {
+		if (!isSearchMemoriesOutputPart(part)) continue
+		for (const result of toMemoryResults(part.output?.results)) {
+			if (!result.documentId || byId.has(result.documentId)) continue
+			byId.set(result.documentId, {
+				documentId: result.documentId,
+				title: result.title || `Documento ${result.documentId}`,
+				url: result.url,
+			})
+		}
+	}
+	return documentIds.map((id) => byId.get(id) ?? { documentId: id, title: `Documento ${id}` })
 }
 
 function ExpandableMemories({ foundCount, results }: ExpandableMemoriesProps) {
@@ -818,6 +874,10 @@ type ClaudeChatOptions = {
 		userMessage: string,
 		sdkSessionId: string | null,
 	) => Record<string, unknown>
+	onShowInList?: (payload: {
+		documentIds: string[]
+		mode: "replace" | "append"
+	}) => void
 	onComplete?: (payload: {
 		text: string
 		messages: ClaudeChatMessage[]
@@ -933,6 +993,7 @@ function useClaudeChat({
 	conversationId,
 	endpoint,
 	buildRequestBody,
+	onShowInList,
 	onComplete,
 	onConversationId,
 	onSdkSessionId,
@@ -1451,6 +1512,8 @@ function useClaudeChat({
 							toolName ?? (toolUseId ? toolUseId : "tool")
 						const isSearchTool =
 							resolvedToolName === "mcp__kortix-tools__searchDatabase"
+						const isShowInListTool =
+							resolvedToolName === "mcp__kortix-tools__list_show_documents"
 						const isAskQuestionTool = /ask.?question/i.test(resolvedToolName)
 
 						if (isSearchTool) {
@@ -1508,6 +1571,51 @@ function useClaudeChat({
 										: "Tool execution failed")
 							} else {
 								delete (basePart as Record<string, unknown>).output
+								basePart.error = undefined
+							}
+							if (existingIndex >= 0) {
+								existingParts[existingIndex] = basePart
+							} else {
+								existingParts.push(basePart)
+							}
+						} else if (isShowInListTool) {
+							if (toolState === "output-available") {
+								const ids = toDocumentIds(outputPayload?.documentIds)
+								if (ids.length > 0) {
+									const mode =
+										outputPayload?.mode === "append" ? "append" : "replace"
+									onShowInList?.({ documentIds: ids, mode })
+								}
+							}
+
+							const existingIndex = existingParts.findIndex(
+								(part) =>
+									isGenericToolPart(part) &&
+									(toolUseId
+										? part.toolUseId === toolUseId
+										: part.toolName === resolvedToolName),
+							)
+							const basePart: GenericToolPart =
+								existingIndex >= 0 &&
+								isGenericToolPart(existingParts[existingIndex])
+									? { ...existingParts[existingIndex] }
+									: {
+											type: "tool-generic",
+											toolName: resolvedToolName,
+											toolUseId,
+											state: toolState,
+										}
+							basePart.toolUseId = toolUseId
+							basePart.toolName = resolvedToolName
+							basePart.state = toolState
+							basePart.outputText = outputText
+							if (toolState === "output-error") {
+								basePart.error =
+									errorText ??
+									(outputText && outputText.length > 0
+										? outputText
+										: "Tool execution failed")
+							} else {
 								basePart.error = undefined
 							}
 							if (existingIndex >= 0) {
@@ -2154,7 +2262,7 @@ export function ChatMessages({
 	// Track previous chat ID to prevent persisting stale messages when switching chats
 	const prevPersistChatIdRef = useRef<string | null | undefined>(undefined)
 
-	const { setDocumentIds, clear } = useGraphHighlights()
+	const { setDocumentIds, appendDocumentIds, clear } = useGraphHighlights()
 
 	// Mode and Model now handled by Claude Agent SDK backend
 	// Project scoping for chat (defaults to global selection or All Projects)
@@ -2365,6 +2473,14 @@ export function ChatMessages({
 		endpoint: "/chat/v2",
 		buildRequestBody: composeRequestBody,
 		getSdkSessionId, // Passar função para carregar sdkSessionId salvo
+		onShowInList: ({ documentIds, mode }) => {
+			if (documentIds.length === 0) return
+			if (mode === "append") {
+				appendDocumentIds(documentIds)
+				return
+			}
+			setDocumentIds(documentIds)
+		},
 		onComplete: handleAssistantComplete,
 		onConversationId: (nextId) => {
 			if (nextId === activeChatIdRef.current && nextId === currentChatId) {
@@ -3040,7 +3156,8 @@ export function ChatMessages({
 		}
 	}, [messages, currentChatId, id, setConversation])
 
-	// Update graph highlights from the most recent tool-searchMemories output
+	// Update highlighted documents from the most recent explicit list tool output,
+	// then fallback to search tool output.
 	useEffect(() => {
 		try {
 			const lastAssistant = [...messages]
@@ -3049,6 +3166,35 @@ export function ChatMessages({
 			if (!lastAssistant) {
 				clear()
 				return
+			}
+			const lastListToolPart = [...lastAssistant.parts]
+				.reverse()
+				.find(
+					(part) =>
+						isGenericToolPart(part) &&
+						part.toolName === "mcp__kortix-tools__list_show_documents" &&
+						part.state === "output-available" &&
+						typeof part.outputText === "string" &&
+						part.outputText.length > 0,
+				)
+			if (lastListToolPart && isGenericToolPart(lastListToolPart)) {
+				try {
+					const parsed = JSON.parse(lastListToolPart.outputText ?? "{}") as Record<
+						string,
+						unknown
+					>
+					const ids = toDocumentIds(parsed.documentIds)
+					if (ids.length > 0) {
+						if (parsed.mode === "append") {
+							appendDocumentIds(ids)
+							return
+						}
+						setDocumentIds(ids)
+						return
+					}
+				} catch {
+					// ignore malformed payload and fallback to search part
+				}
 			}
 			const lastSearchPart = [...lastAssistant.parts]
 				.reverse()
@@ -3066,7 +3212,7 @@ export function ChatMessages({
 			}
 		} catch {}
 		clear()
-	}, [messages, setDocumentIds, clear])
+	}, [messages, setDocumentIds, appendDocumentIds, clear])
 
 	useEffect(() => {
 		const currentSummary = getCurrentChat()
@@ -3371,6 +3517,62 @@ export function ChatMessages({
 										}
 
 										if (isGenericToolPart(part)) {
+											if (
+												part.toolName === "mcp__kortix-tools__list_show_documents"
+											) {
+												const payload = parseShowInListPayload(part.outputText)
+												const links = payload
+													? collectShowInListLinks(message.parts, payload.documentIds)
+													: []
+												return [
+													<ToolCard
+														durationMs={part.durationMs}
+														errorMessage={part.error ?? "Falha ao mostrar resultados na lista"}
+														key={`${partKey}-list-show`}
+														loadingMessage="Atualizando lista com resultados..."
+														state={part.state}
+														successMessage={
+															part.state === "output-available" && links.length === 0 ? (
+																<span className="text-xs text-zinc-300">
+																	Resultados enviados para a lista
+																</span>
+															) : null
+														}
+														title={part.toolName}
+														type={buildToolType(part.toolName, part.toolUseId)}
+													>
+														{part.state === "output-available" && links.length > 0 ? (
+															<div className="mt-2 space-y-2">
+																{links.map((link) => {
+																	const isClickable =
+																		typeof link.url === "string" &&
+																		(link.url.startsWith("http://") ||
+																			link.url.startsWith("https://"))
+																	return isClickable ? (
+																		<a
+																			className="block rounded-md border border-white/10 bg-[#141516] px-3 py-2 text-xs text-primary hover:bg-[#1a1b1c]"
+																			href={link.url}
+																			key={link.documentId}
+																			rel="noopener noreferrer"
+																			target="_blank"
+																		>
+																			{link.title}
+																		</a>
+																	) : (
+																		<div
+																			className="block rounded-md border border-white/10 bg-[#141516] px-3 py-2 text-xs text-zinc-300"
+																			key={link.documentId}
+																		>
+																			{link.title}
+																		</div>
+																	)
+																})}
+															</div>
+														) : null}
+													</ToolCard>,
+												]
+											}
+
 											const outputSegments = part.outputText
 												? splitTextIntoSegments(part.outputText)
 												: []

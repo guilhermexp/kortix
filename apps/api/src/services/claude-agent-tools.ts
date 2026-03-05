@@ -44,7 +44,10 @@ function safeString(value: unknown) {
 	return typeof value === "string" ? value : undefined
 }
 
-function truncateText(value: string | undefined, maxChars: number): string | undefined {
+function truncateText(
+	value: string | undefined,
+	maxChars: number,
+): string | undefined {
 	if (!value) return undefined
 	if (value.length <= maxChars) return value
 	return `${value.slice(0, maxChars)}...`
@@ -72,7 +75,9 @@ function formatSearchToolOutputCompact(
 	const results = sliced.map((item) => {
 		const metadata =
 			item.metadata && typeof item.metadata === "object" ? item.metadata : {}
-		const containerTags = Array.isArray((metadata as Record<string, unknown>).containerTags)
+		const containerTags = Array.isArray(
+			(metadata as Record<string, unknown>).containerTags,
+		)
 			? ((metadata as Record<string, unknown>).containerTags as unknown[])
 					.map((tag) => (typeof tag === "string" ? tag : null))
 					.filter((tag): tag is string => Boolean(tag))
@@ -265,20 +270,18 @@ export function createKortixTools(
 						console.log(
 							`[searchDatabase] Cache hit for query "${query}" (${duration}ms)`,
 						)
-							return {
-								content: [
-									{
-										type: "text",
-										text: JSON.stringify(
-											formatSearchToolOutputCompact(
-												cached as SearchToolResult,
-											),
-											null,
-											2,
-										),
-									},
-								],
-							}
+						return {
+							content: [
+								{
+									type: "text",
+									text: JSON.stringify(
+										formatSearchToolOutputCompact(cached as SearchToolResult),
+										null,
+										2,
+									),
+								},
+							],
+						}
 					}
 
 					console.log(`[searchDatabase] Cache miss for query "${query}"`)
@@ -287,21 +290,21 @@ export function createKortixTools(
 							client,
 							orgId,
 							{
-							query,
-							limit,
-							includeSummary,
-							includeFullDocs,
-							chunkThreshold: 0.1,
-							documentThreshold: 0.15,
-							onlyMatchingChunks: true,
-							containerTags:
-								containerTags && containerTags.length > 0
-									? containerTags
-									: baseContainerTags,
-							scopedDocumentIds:
-								scopedDocumentIds && scopedDocumentIds.length > 0
-									? scopedDocumentIds
-									: baseScopedIds,
+								query,
+								limit,
+								includeSummary,
+								includeFullDocs,
+								chunkThreshold: 0.1,
+								documentThreshold: 0.15,
+								onlyMatchingChunks: true,
+								containerTags:
+									containerTags && containerTags.length > 0
+										? containerTags
+										: baseContainerTags,
+								scopedDocumentIds:
+									scopedDocumentIds && scopedDocumentIds.length > 0
+										? scopedDocumentIds
+										: baseScopedIds,
 							},
 						)
 						const duration = Date.now() - startTime
@@ -406,6 +409,56 @@ export function createKortixTools(
 							],
 							isError: true as const,
 						}
+					}
+				},
+			),
+			tool(
+				"list_show_documents",
+				"Show specific documents in the list UI by document IDs. Use this after finding relevant memories when user asks to see them in the list/cards view.",
+				{
+					documentIds: z
+						.array(z.string().min(1))
+						.min(1)
+						.max(100)
+						.describe(
+							"Document IDs that should be shown/highlighted in the list",
+						),
+					mode: z
+						.enum(["replace", "append"])
+						.default("replace")
+						.describe(
+							"replace = replace previous highlighted list, append = add to previous highlighted list",
+						),
+					reason: z
+						.string()
+						.optional()
+						.describe("Optional short reason to display in UI"),
+				},
+				async ({ documentIds, mode, reason }) => {
+					const ids = Array.from(
+						new Set(
+							(documentIds ?? []).filter(
+								(id): id is string => typeof id === "string" && id.length > 0,
+							),
+						),
+					).slice(0, 100)
+
+					return {
+						content: [
+							{
+								type: "text",
+								text: JSON.stringify(
+									{
+										action: "show_in_list",
+										documentIds: ids,
+										mode,
+										reason: reason ?? null,
+									},
+									null,
+									2,
+								),
+							},
+						],
 					}
 				},
 			),
