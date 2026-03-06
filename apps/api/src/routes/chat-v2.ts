@@ -1337,29 +1337,40 @@ export async function handleChatV2({
 						sdkSessionId: returnedSessionId,
 						events,
 					})
-				} catch (error) {
-					const aborted = Boolean(activeSessionAbortController?.signal.aborted)
-					streamResultStatus = aborted ? "aborted" : "failed"
-					const message =
-						error instanceof Error ? error.message : "Internal chat failure"
-					console.error("[Chat V2] Streaming error:", error)
+					} catch (error) {
+						const aborted = Boolean(activeSessionAbortController?.signal.aborted)
+						streamResultStatus = aborted ? "aborted" : "failed"
+						const rawMessage =
+							error instanceof Error ? error.message : "Internal chat failure"
+						const message = rawMessage
+							.toLowerCase()
+							.includes("considered high risk")
+							? "O provedor bloqueou esta solicitação por política de risco. Reescreva o pedido e tente novamente."
+							: rawMessage
+						console.error("[Chat V2] Streaming error:", {
+							message: rawMessage,
+							stack:
+								error instanceof Error
+									? error.stack?.split("\n").slice(0, 5).join("\n")
+									: undefined,
+						})
 
-					if (!aborted) {
-						enqueue({
-							type: "error",
-							message,
-						})
-					} else {
-						console.log(
-							`[Chat V2] Session ${activeSessionId ?? "(unknown)"} aborted`,
-						)
-						enqueue({
-							type: "session_aborted",
-							sessionId: activeSessionId,
-							conversationId,
-						})
-					}
-				} finally {
+						if (!aborted) {
+							enqueue({
+								type: "error",
+								message,
+							})
+						} else {
+							console.log(
+								`[Chat V2] Session ${activeSessionId ?? "(unknown)"} aborted`,
+							)
+							enqueue({
+								type: "session_aborted",
+								sessionId: activeSessionId,
+								conversationId,
+							})
+						}
+					} finally {
 					if (activeSessionId) {
 						chatSessionManager.finish(activeSessionId, {
 							status: activeSessionAbortController?.signal.aborted

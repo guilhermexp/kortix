@@ -72,6 +72,33 @@ type ToolState = "output-available" | "output-error"
 
 let cachedCliPath: string | null = null
 
+const PROVIDER_HIGH_RISK_MESSAGE =
+	"O provedor bloqueou esta solicitação por política de risco. Reescreva o pedido com menos detalhes sensíveis e tente novamente."
+
+function isProviderHighRiskError(error: unknown): boolean {
+	const text = error instanceof Error ? error.message : String(error ?? "")
+	if (text.toLowerCase().includes("considered high risk")) {
+		return true
+	}
+	if (
+		error &&
+		typeof error === "object" &&
+		"error" in error &&
+		(error as { error?: unknown }).error &&
+		typeof (error as { error?: unknown }).error === "object" &&
+		"message" in ((error as { error: { message?: unknown } }).error ?? {}) &&
+		typeof (error as { error: { message?: unknown } }).error.message ===
+			"string"
+	) {
+		return (
+			((error as { error: { message: string } }).error.message ?? "")
+				.toLowerCase()
+				.includes("considered high risk")
+		)
+	}
+	return false
+}
+
 async function resolveClaudeCodeCliPath(): Promise<string> {
 	if (cachedCliPath) {
 		return cachedCliPath
@@ -503,6 +530,18 @@ export async function executeClaudeAgent(
 				: ""
 		console.error("[executeClaudeAgent] Error message:", errMsg)
 		console.error("[executeClaudeAgent] Error stack:", errStack)
+		if (isProviderHighRiskError(error)) {
+			console.warn(
+				"[executeClaudeAgent] Provider blocked request as high risk; returning safe user-facing message",
+			)
+			return {
+				events: [],
+				text: PROVIDER_HIGH_RISK_MESSAGE,
+				parts: [{ type: "text", text: PROVIDER_HIGH_RISK_MESSAGE }],
+				sdkSessionId: null,
+			}
+		}
+
 		// Fallback: use direct Anthropic Messages API when CLI process fails (common under Bun)
 		try {
 			const fallbackClient = new Anthropic({
@@ -525,7 +564,20 @@ export async function executeClaudeAgent(
 				sdkSessionId: null,
 			}
 		} catch (fallbackErr) {
-			console.error("[executeClaudeAgent] Fallback failed:", fallbackErr)
+			if (isProviderHighRiskError(fallbackErr)) {
+				console.warn(
+					"[executeClaudeAgent] Fallback request also blocked as high risk; returning safe user-facing message",
+				)
+				return {
+					events: [],
+					text: PROVIDER_HIGH_RISK_MESSAGE,
+					parts: [{ type: "text", text: PROVIDER_HIGH_RISK_MESSAGE }],
+					sdkSessionId: null,
+				}
+			}
+			const fallbackErrMsg =
+				fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
+			console.error("[executeClaudeAgent] Fallback failed:", fallbackErrMsg)
 		}
 		throw error
 	}
