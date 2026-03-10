@@ -28,7 +28,6 @@
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
-    "supabase",
-    "Railway"
+    "supabase"
   ]
 }
